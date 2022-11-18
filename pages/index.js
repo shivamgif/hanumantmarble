@@ -13,16 +13,16 @@ export default function Home() {
 
   return (
   <div>
-  <Navbar className='site-header sticky-top' expand="sm">
+  <Navbar className='site-header sticky-top' expand="sm" variant='dark'>
   <Container>
   <Navbar.Brand href="/"><h3>Hanumant Marble</h3></Navbar.Brand>
   <Navbar.Toggle aria-controls="basic-navbar-nav" />
   <Navbar.Collapse id="basic-navbar-nav">
   <Nav className="me-auto">
-        <Nav.Item><Link href="#">Products</Link></Nav.Item>
-        <Nav.Item ><Link href="#">Locations</Link></Nav.Item>
-        <Nav.Item><Link href="#">Get Your Quotation</Link></Nav.Item>
-        <Nav.Item><Link href="#">About Us</Link></Nav.Item>
+        <Nav.Item className='px-4'><Link href="/#products">Products</Link></Nav.Item>
+        <Nav.Item  className='px-4'><Link href="#">Locations</Link></Nav.Item>
+        <Nav.Item className='px-4'><Link href="#">Get Your Quotation</Link></Nav.Item>
+        <Nav.Item className='px-4'><Link href="#">About Us</Link></Nav.Item>
   </Nav>
   </Navbar.Collapse>
   </Container>
@@ -48,31 +48,31 @@ export default function Home() {
   </div>
 
   <div class="d-md-flex flex-md-equal w-100 my-md-3 ps-md-3">
-    <div class="text-bg-dark me-md-3 pt-3 px-3 pt-md-5 px-md-5 text-center overflow-hidden">
+    <div id="products" class="text-bg-dark me-md-3 pt-3 px-3 pt-md-5 px-md-5 text-center overflow-hidden">
       <div class="my-3 py-3">
         <img src='/product0.png'></img>
-        <p class="lead">And an even wittier subheading.</p>
+        <p class="lead">Exceptionally designed products for your home. Easy to clean rimless design for utmost hygiene</p>
       </div>
       <div class="bg-dark shadow-sm mx-auto custom-box" ></div>
     </div>
-    <div class="bg-dark me-md-3 pt-3 px-3 pt-md-5 px-md-5 text-center overflow-hidden">
+    <div class="text-bg-dark me-md-3 pt-3 px-3 pt-md-5 px-md-5 text-center overflow-hidden">
       <div class="my-3 p-3">
         <img src='/product1.png'></img>
-        <p class="lead">And an even wittier subheading.</p>
+        <p class="lead">Style and durability - together. Variety of finishings!</p>
       </div>
       <div class="bg-dark shadow-sm mx-auto custom-box" ></div>
     </div>
   </div>
 
   <div class="d-md-flex flex-md-equal w-100 my-md-3 ps-md-3">
-    <div class="bg-light  me-md-3 pt-3 px-3 pt-md-5 px-md-5 text-center overflow-hidden">
+    <div class="text-bg-light  me-md-3 pt-3 px-3 pt-md-5 px-md-5 text-center overflow-hidden">
       <div class="my-3 p-3">
         <img src='/product2.png'></img>
         <p class="lead">And an even wittier subheading.</p>
       </div>
-      <div class="bg-dark shadow-sm mx-auto custom-box"></div>
+      <div class="bg-light shadow-sm mx-auto custom-box"></div>
     </div>
-    <div class="bg-light me-md-3 pt-3 px-3 pt-md-5 px-md-5 text-center overflow-hidden">
+    <div class="text-bg-light me-md-3 pt-3 px-3 pt-md-5 px-md-5 text-center overflow-hidden">
       <div class="my-3 py-3">
       <img src='/product3.png'></img>
         <p class="lead">And an even wittier subheading.</p>
