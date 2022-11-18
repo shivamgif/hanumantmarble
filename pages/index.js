@@ -1,8 +1,8 @@
-import Head from 'next/head'
+import Head from 'next/head';
 import React, { useState } from 'react';
-import '../styles/Home.module.css'
-import { Carousel, Nav,NavDropdown,Container, Navbar} from 'react-bootstrap'
-
+import '../styles/Home.module.css';
+import { Carousel, Nav,NavDropdown,Container, Navbar} from 'react-bootstrap';
+import Link from 'next/link';
 
 export default function Home() {
   const [index, setIndex] = useState(0);
@@ -13,26 +13,18 @@ export default function Home() {
 
   return (
   <div>
-  <Navbar class="site-header sticky-top py-1">
+  <Navbar className='site-header sticky-top' expand="sm">
   <Container>
-  <nav class="navbar navbar-expand-sm container d-flex flex-row justify-content-between">
-  <a class="py-0" href="/" aria-label="Product">
-    <h2 class="mb-0">Hanumant Marble</h2>  
-  </a>
-
+  <Navbar.Brand href="/"><h3>Hanumant Marble</h3></Navbar.Brand>
   <Navbar.Toggle aria-controls="basic-navbar-nav" />
   <Navbar.Collapse id="basic-navbar-nav">
   <Nav className="me-auto">
-      <ul class="px-4 navbar-nav">
-        <Nav.Item class="py-2 px-4 "><a  href="#">Products</a></Nav.Item>
-        <Nav.Item class=" py-2 px-4 "><a href="#">Locations</a></Nav.Item>
-        <Nav.Item class="py-2 px-4 "><a  href="#">Get Your Quotation</a></Nav.Item>
-        <Nav.Item class="py-2 px-4 "><a  href="#">About</a></Nav.Item>
-        </ul>
+        <Nav.Item><Link href="#">Products</Link></Nav.Item>
+        <Nav.Item ><Link href="#">Locations</Link></Nav.Item>
+        <Nav.Item><Link href="#">Get Your Quotation</Link></Nav.Item>
+        <Nav.Item><Link href="#">About Us</Link></Nav.Item>
   </Nav>
-
   </Navbar.Collapse>
-  </nav>
   </Container>
 </Navbar>
 <main>

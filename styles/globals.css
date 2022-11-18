@@ -56,23 +56,6 @@ a {
   fill: currentColor;
 }
 
-/* .nav-scroller {
-  position: relative;
-  z-index: 2;
-  height: 2.75rem;
-  overflow-y: hidden;
-} */
-
-/* .nav-scroller .nav {
-  display: flex;
-  flex-wrap: nowrap;
-  padding-bottom: 1rem;
-  margin-top: -1px;
-  overflow-x: auto;
-  text-align: center;
-  white-space: nowrap;
-  -webkit-overflow-scrolling: touch;
-} */
 
 .container {
   max-width: 960px;
@@ -94,40 +77,6 @@ transition: color .15s ease-in-out;
 .site-header a:hover {
 color: #fff;
 text-decoration: none;
-}
-
-/*
-* Dummy devices (replace them with your own or something else entirely!)
-*/
-
-.product-device {
-position: absolute;
-right: 10%;
-bottom: -30%;
-width: 300px;
-height: 540px;
-background-color: #333;
-border-radius: 21px;
-transform: rotate(30deg);
-}
-
-.product-device::before {
-position: absolute;
-top: 10%;
-right: 10px;
-bottom: 10%;
-left: 10px;
-content: "";
-background-color: rgba(255, 255, 255, .1);
-border-radius: 5px;
-}
-
-.product-device-2 {
-top: -25%;
-right: auto;
-bottom: 0;
-left: 5%;
-background-color: #e5e5e5;
 }
 
 
