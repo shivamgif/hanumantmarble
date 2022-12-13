@@ -15,7 +15,7 @@ export default function Quote(){
                     <Form.Label>Email address</Form.Label>
                     <Form.Control type="email" placeholder="Enter email" />
                     <Form.Text className="text-muted"> 
-                            <p>We'll never share your email with anyone else.</p>
+                            <p>We will never share your email with anyone else.</p>
                     </Form.Text>
                     </Form.Group>
                     <Form.Group controlId="brand">

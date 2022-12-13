@@ -29,7 +29,7 @@ export default function Home() {
       <div className="text-light col-md-5 p-lg-5 mx-auto my-5 ">
         <h1 className="display-4 fw-normal">FOR YOUR SWEET HOME</h1>
         <p className="lead fw-normal">And an even wittier subheading to boot. Jumpstart your marketing efforts with this example based on Apple’s marketing pages.</p>
-        <a className="btn btn-outline-warning" href="/quote">Get Your Quotation</a>
+        <Link className="btn btn-outline-warning" href="/quote">Get Your Quotation</Link>
       </div>
     </div>
 
