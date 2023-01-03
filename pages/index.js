@@ -37,9 +37,9 @@ export default function Home() {
               One of the biggest collection of tiles and sanitaryware in
               Lucknow. Build your dream home with us.
             </p>
-            <a className="custombtn" href="/quote">
+            <Link className="custombtn" href="/quote">
               Get Your Quotation
-            </a>
+            </Link>
           </div>
         </div>
         <div className="row">
