@@ -12,29 +12,45 @@ export default function Quote() {
             <input type="hidden" name="form-name" value="contact" />
             <Form.Group controlId="name">
               <Form.Label>Name</Form.Label>
-              <Form.Control type="email" placeholder="Enter your fullname" />
+              <Form.Control
+                name="fullname"
+                type="text"
+                placeholder="Enter your fullname"
+              />
             </Form.Group>
             <Form.Group controlId="formBasicEmail">
               <Form.Label>Email address</Form.Label>
-              <Form.Control type="email" placeholder="Enter email" />
+              <Form.Control
+                name="email"
+                type="email"
+                placeholder="Enter email"
+              />
               <Form.Text className="text-muted">
                 <p>We will never share your email with anyone else.</p>
               </Form.Text>
             </Form.Group>
             <Form.Group controlId="brand">
               <Form.Label>Select Brand</Form.Label>
-              <Form.Select>
+              <Form.Select name="brand">
                 <option>Kajaria</option>
                 <option>Cera</option>
               </Form.Select>
             </Form.Group>
             <Form.Group controlId="product">
               <Form.Label>Product Name/Number</Form.Label>
-              <Form.Control placeholder="Enter product name/number" />
+              <Form.Control
+                name="product"
+                type="text"
+                placeholder="Enter product name/number"
+              />
             </Form.Group>
             <Form.Group controlId="quantity">
               <Form.Label>Quantity</Form.Label>
-              <Form.Control placeholder="Enter quantity" />
+              <Form.Control
+                name="quantity"
+                type="text"
+                placeholder="Enter quantity"
+              />
             </Form.Group>
 
             <br />
