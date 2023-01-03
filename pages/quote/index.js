@@ -8,8 +8,8 @@ export default function Quote() {
       <Container className="center box-border">
         <div className="form-box">
           <span className="heading">Get Your Quotation</span>
-
-          <Form name="contact" netlify>
+          <Form name="contact" method="POST" data-netlify="true">
+            <input type="hidden" name="form-name" value="contact" />
             <Form.Group controlId="name">
               <Form.Label>Name</Form.Label>
               <Form.Control type="email" placeholder="Enter your fullname" />
