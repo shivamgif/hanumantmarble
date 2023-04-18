@@ -6,6 +6,7 @@
   background-size: cover;
   padding: 5rem 0;
 }
+
 .site-header {
   background: rgba(255, 255, 255, 1);
   padding: 1rem;
@@ -18,13 +19,15 @@
   text-align: center;
   text-shadow: 0 0 10px #000;
 }
+
 .subtitle {
   color: #fff;
   font-size: 2rem;
-  font-weight: 200;
+  font-weight: 500;
   text-align: center;
   text-shadow: 0 0 10px #000;
 }
+
 .custombtn {
   background: #fff;
   color: rgb(83, 112, 93);
@@ -36,11 +39,14 @@
   text-align: center;
   margin: 1rem 0;
   border: none;
+  width: 300px;
 }
+
 .custombtn:hover {
   background: rgb(83, 112, 93);
   color: #fff;
 }
+
 .custombtn2 {
   color: #fff;
   background: rgb(83, 112, 93);
@@ -53,21 +59,28 @@
   margin: 1rem 0;
   border: none;
 }
+
 .custombtn2:hover {
   background: rgb(41, 52, 44);
 }
+
 .footer {
   background: rgba(255, 255, 255, 1);
   padding: 1rem;
   text-align: center;
 }
+
 .productbox {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   background: rgba(255, 255, 255, 1);
   padding: 2rem;
   text-align: center;
   width: 45%;
   margin: 2rem 0;
 }
+
 .row {
   display: flex;
   justify-content: space-evenly;
@@ -79,6 +92,7 @@
   color: rgb(83, 112, 93);
   font-weight: 700;
 }
+
 .navbar-items a:hover {
   color: rgb(41, 52, 44);
 }
@@ -89,6 +103,7 @@
   flex-direction: row;
   margin: 0;
 }
+
 .lead {
   font-size: 1.5rem;
   font-weight: 500;
@@ -96,13 +111,16 @@
   text-align: center;
   margin: 1rem 0;
 }
+
 .productbox {
   border-radius: 15px;
 }
+
 .center {
   width: 60%;
   margin: 0 auto;
 }
+
 .heading {
   font-size: 1.6rem;
   font-weight: 500;
@@ -110,6 +128,7 @@
   text-align: center;
   margin: 1rem 0;
 }
+
 .form-box {
   background: rgba(255, 255, 255, 1);
   padding: 2rem;

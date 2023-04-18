@@ -11,7 +11,7 @@ const Header = () => {
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse
           id="basic-navbar-nav"
-          className="collapsable menu-items"
+          className="collapsable menu-items "
         >
           <Nav className="navbar-items">
             <Nav.Item className="px-4">
