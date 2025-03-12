@@ -7,8 +7,6 @@ const nextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     formats: ['image/webp'],
   },
-  // Add this if you're deploying to Netlify
-  target: 'serverless',
 }
 
 module.exports = nextConfig
