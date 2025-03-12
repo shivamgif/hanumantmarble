@@ -1,0 +1,29 @@
+@layer base {
+  :root {
+    --color-background: #ffffff;
+    --color-text: rgb(64, 28, 8);
+    --color-primary: rgb(255, 92, 2);
+    --color-secondary: rgba(83, 112, 93, 0.1);
+    --color-border: rgba(0, 0, 0, 0.1);
+    --color-header: rgba(255, 255, 255, 1);
+    --color-footer: rgba(255, 255, 255, 1);
+    --color-card-bg: rgba(255, 255, 255, 1);
+    --shadow-color: rgba(0, 0, 0, 0.1);
+  }
+
+  .dark {
+    --color-background: #1a1a1a;
+    --color-text: #f5f5f5;
+    --color-primary: rgb(255, 92, 2);
+    --color-secondary: rgba(134, 175, 150, 0.1);
+    --color-border: rgba(255, 255, 255, 0.1);
+    --color-header: rgba(26, 26, 26, 0.95);
+    --color-footer: rgba(26, 26, 26, 0.95);
+    --color-card-bg: rgba(32, 32, 32, 0.95);
+    --shadow-color: rgba(0, 0, 0, 0.3);
+  }
+
+  body {
+    @apply bg-background text-foreground transition-colors duration-300;
+  }
+}

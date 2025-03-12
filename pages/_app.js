@@ -1,14 +1,18 @@
-// add bootstrap css 
-import 'bootstrap/dist/css/bootstrap.css'
-import '../styles/globals.css'
-import Layout from '../components/Layout'
+import { ThemeProvider } from '@/components/ThemeProvider'
+import Layout from '@/components/Layout'
+import '@/styles/globals.css'
 
-
-function MyApp({ Component, pageProps }) {
+export default function App({ Component, pageProps }) {
   return (
-        <Layout>
-              <Component {...pageProps} />
-        </Layout>);
+    <ThemeProvider 
+      attribute="class" 
+      defaultTheme="system" 
+      enableSystem 
+      disableTransitionOnChange
+    >
+      <Layout>
+        <Component {...pageProps} />
+      </Layout>
+    </ThemeProvider>
+  )
 }
-
-export default MyApp
