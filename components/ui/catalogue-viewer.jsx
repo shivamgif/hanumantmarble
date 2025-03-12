@@ -1,5 +1,5 @@
 import * as React from "react"
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import * as Dialog from "@radix-ui/react-dialog"
 import { X, FileText } from "lucide-react"
 import { Document, Page, pdfjs } from "react-pdf"
@@ -12,16 +12,39 @@ export function CatalogueViewer() {
   const [numPages, setNumPages] = useState(null)
   const [pageNumber, setPageNumber] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [retry, setRetry] = useState(0)
 
-  // Preload the PDF worker
+  // Handle document loading
   React.useEffect(() => {
+    setError(null)
+    setIsLoading(true)
+    
     pdfjs.getDocument("/fullbody-catalogue-60x120-80x80-60x60.pdf").promise
-  }, [])
+      .then(() => {
+        setError(null)
+      })
+      .catch((err) => {
+        setError("Failed to load catalogue. Please try again.")
+        console.error("PDF loading error:", err)
+      })
+  }, [retry])
 
-  function onDocumentLoadSuccess({ numPages }) {
+  const onDocumentLoadSuccess = useCallback(({ numPages }) => {
     setNumPages(numPages)
     setIsLoading(false)
-  }
+    setError(null)
+  }, [])
+
+  const handleError = useCallback((err) => {
+    setIsLoading(false)
+    setError("Failed to load catalogue. Please try again.")
+    console.error("PDF error:", err)
+  }, [])
+
+  const handleRetry = useCallback(() => {
+    setRetry(count => count + 1)
+  }, [])
 
   return (
     <Dialog.Root>
@@ -52,11 +75,26 @@ export function CatalogueViewer() {
             </div>
             
             <div className="flex-1 overflow-auto relative min-h-[60vh]">
-              {isLoading && (
+              {isLoading && !error && (
                 <div className="absolute inset-0 flex items-center justify-center bg-white/80">
                   <div className="flex flex-col items-center gap-2">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                     <p className="text-sm text-gray-500">Loading catalogue...</p>
+                  </div>
+                </div>
+              )}
+              {error && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="flex flex-col items-center gap-4 text-center">
+                    <p className="text-red-600">{error}</p>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleRetry}
+                      className="mt-2"
+                    >
+                      Try Again
+                    </Button>
                   </div>
                 </div>
               )}
@@ -65,6 +103,7 @@ export function CatalogueViewer() {
                 onLoadSuccess={onDocumentLoadSuccess}
                 loading={null}
                 className="mx-auto"
+                onLoadError={handleError}
               >
                 <Page
                   pageNumber={pageNumber}
@@ -74,7 +113,7 @@ export function CatalogueViewer() {
                   loading={null}
                   scale={1.0}
                   onRenderSuccess={() => setIsLoading(false)}
-                  onLoadError={() => setIsLoading(false)}
+                  onLoadError={handleError}
                 />
               </Document>
             </div>

@@ -1,7 +1,8 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Clock, Users, Package, Store } from "lucide-react";
+import { ArrowRight, Clock, Users, Package, Store, FileText } from "lucide-react";
+import { CatalogueViewer } from "./catalogue-viewer";
 import { cn } from "@/lib/utils";
 import { useInView } from "@/lib/hooks/useInView";
 
@@ -23,6 +24,16 @@ export function ProductShowcase({
       title: "Sanitaryware",
       description: "Exceptionally designed products for your home. Easy to clean rimless design for utmost hygiene",
       image: "/product0.png",
+    },
+    {
+      title: "Wall Tiles",
+      description: "Stunning wall tiles that transform your space with elegant designs and durable finishes.",
+      image: "/product1.png",
+    },
+    {
+      title: "Floor Tiles",
+      description: "High-performance floor tiles combining aesthetic beauty with exceptional durability and strength.",
+      image: "/product2.png",
     },
   ],
 }) {
@@ -109,12 +120,11 @@ export function ProductShowcase({
                   "text-white/80 mb-4 animate-on-scroll",
                   isProductsInView ? 'in-view' : ''
                 )} style={{ transitionDelay: `${index * 200 + 400}ms` }}>{product.description}</p>
-                <Button 
-                  variant="outline" 
-                  className="border-white/20 text-white hover:bg-white/10 hover-scale shimmer"
-                >
-                  View Products <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
+                <div className="flex gap-3">
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <CatalogueViewer />
+                  </div>
+                </div>
               </div>
             </div>
           ))}
