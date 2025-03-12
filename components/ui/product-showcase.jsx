@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { ArrowRight, Clock, Users, Package, Store, FileText } from "lucide-react";
 import { CatalogueViewer } from "./catalogue-viewer";
 import { cn } from "@/lib/utils";
@@ -101,7 +100,6 @@ export function ProductShowcase({
                 isProductsInView ? 'in-view' : ''
               )}
               style={{ transitionDelay: `${index * 200}ms` }}
-              onClick={() => window.location.href='/kajaria'}
             >
               <div className="relative h-80">
                 <img
