@@ -27,6 +27,9 @@
     "styled-components": "^5.3.6",
     "tailwind-merge": "^3.0.2"
   },
+  "engines": {
+    "node": ">=18.18.0"
+  },
   "devDependencies": {
     "autoprefixer": "^10.4.21",
     "eslint": "8.25.0",
