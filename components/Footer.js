@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { NavigationMenu, NavigationMenuList, NavigationMenuItem, NavigationMenuLink } from "@/components/ui/navigation-menu";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -13,7 +15,7 @@ const Footer = () => {
     { href: "tel:+91-9999999999", label: "+91 99999 99999", icon: "📞" }
   ];
 
-  const aboutLinks = [
+  const quickLinks = [
     { href: "/about", label: "About Us" },
     { href: "/quote", label: "Get Quote" },
     { href: "/#products", label: "Our Products" }
@@ -23,64 +25,75 @@ const Footer = () => {
     <footer className="bg-background border-t border-border py-12">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div>
-            <h2 className="text-xl font-bold text-foreground mb-4">Hanumant Marble</h2>
-            <p className="text-sm text-muted-foreground">
-              &copy; {currentYear} Hanumant Marble.<br/>All rights reserved.
+          {/* Brand Section */}
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold tracking-tight">Hanumant Marble</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              &copy; {currentYear} Hanumant Marble.<br/>
+              Premium marble and granite products with unmatched quality and service.
             </p>
           </div>
           
-          <div>
-            <h3 className="text-lg font-semibold text-foreground mb-4">Connect With Us</h3>
-            <ul className="space-y-3">
-              {socialLinks.map((link) => (
-                <li key={link.href}>
-                  <a
-                    href={link.href}
-                    className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={link.label}
-                  >
-                    <span role="img" aria-hidden="true" className="text-lg">{link.icon}</span>
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
+          {/* Social Links */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold tracking-tight">Connect With Us</h3>
+            <NavigationMenu orientation="vertical">
+              <NavigationMenuList className="flex-col space-y-2">
+                {socialLinks.map((link) => (
+                  <NavigationMenuItem key={link.href}>
+                    <a
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <span role="img" aria-hidden="true" className="text-lg">{link.icon}</span>
+                      {link.label}
+                    </a>
+                  </NavigationMenuItem>
+                ))}
+              </NavigationMenuList>
+            </NavigationMenu>
           </div>
           
-          <div>
-            <h3 className="text-lg font-semibold text-foreground mb-4">Contact Us</h3>
-            <ul className="space-y-3">
+          {/* Contact Links */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold tracking-tight">Contact Us</h3>
+            <div className="space-y-3">
               {contactLinks.map((link) => (
-                <li key={link.href}>
-                  <a 
-                    href={link.href} 
-                    className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
-                  >
+                <Button
+                  key={link.href}
+                  variant="link"
+                  asChild
+                  className="h-auto p-0 text-muted-foreground hover:text-foreground"
+                >
+                  <a href={link.href} className="flex items-center gap-2 justify-start">
                     <span role="img" aria-hidden="true" className="text-lg">{link.icon}</span>
-                    {link.label}
+                    <span className="text-sm">{link.label}</span>
                   </a>
-                </li>
+                </Button>
               ))}
-            </ul>
+            </div>
           </div>
           
-          <div>
-            <h3 className="text-lg font-semibold text-foreground mb-4">Quick Links</h3>
-            <ul className="space-y-3">
-              {aboutLinks.map((link) => (
-                <li key={link.href}>
-                  <Link 
-                    href={link.href}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+          {/* Quick Links */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold tracking-tight">Quick Links</h3>
+            <NavigationMenu orientation="vertical">
+              <NavigationMenuList className="flex-col space-y-2">
+                {quickLinks.map((link) => (
+                  <NavigationMenuItem key={link.href}>
+                    <Link href={link.href} legacyBehavior passHref>
+                      <NavigationMenuLink
+                        className="group inline-flex text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {link.label}
+                      </NavigationMenuLink>
+                    </Link>
+                  </NavigationMenuItem>
+                ))}
+              </NavigationMenuList>
+            </NavigationMenu>
           </div>
         </div>
       </div>

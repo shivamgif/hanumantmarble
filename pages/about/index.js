@@ -1,14 +1,16 @@
 import Head from "next/head";
 import Image from "next/image";
+import { Badge } from "@/components/ui/badge";
 
 export default function About() {
+
   const galleryImages = [
-    "/images/gallery1.jpg",
-    "/images/gallery2.jpg",
-    "/images/gallery3.jpg",
-    "/images/gallery4.jpg",
-    "/images/gallery5.jpg",
-    "/images/gallery6.jpg",
+    "/hero1.png",
+    "/hero2.jpeg",
+    "/hero3.jpeg",
+    "/hero1.png",
+    "/hero2.jpeg",
+    "/hero3.jpeg",
   ];
 
   const awards = [
@@ -39,24 +41,26 @@ export default function About() {
         />
       </Head>
       <div className="container mx-auto px-4 py-16 space-y-20">
-        <section>
-          <h1 className="text-4xl font-bold text-center mb-8">About Us</h1>
-          <p className="text-xl text-gray-600 text-center max-w-3xl mx-auto mb-12">
+        {/* Hero Section */}
+        <section className="text-center space-y-12">
+
+          <h1 className="text-4xl font-bold tracking-tight lg:text-5xl">About Us</h1>
+          <p className="text-xl text-muted-foreground mx-auto max-w-3xl leading-relaxed">
             With over 25 years of experience in the natural stone industry, Hanumant
             Marble has established itself as a leading supplier of premium marble and
             granite products.
           </p>
           <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <div className="text-gray-600">
-              <p className="leading-relaxed">
+            <div className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm">
+              <p className="leading-relaxed text-muted-foreground">
                 Our commitment to quality and customer satisfaction has made us the
                 preferred choice for architects, interior designers, and homeowners.
                 We source our materials from the finest quarries worldwide to ensure
                 superior quality and unique patterns.
               </p>
             </div>
-            <div className="text-gray-600">
-              <p className="leading-relaxed">
+            <div className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm">
+              <p className="leading-relaxed text-muted-foreground">
                 Our state-of-the-art facility and experienced team ensure precise
                 cutting, polishing, and finishing of every stone piece. We take pride
                 in our vast inventory and ability to cater to projects of any scale.
@@ -65,35 +69,47 @@ export default function About() {
           </div>
         </section>
 
-        <section>
-          <h2 className="text-3xl font-bold text-center mb-12">Gallery</h2>
+        {/* Gallery Section */}
+        <section className="space-y-8">
+          <h2 className="text-3xl font-bold tracking-tight text-center">Gallery</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {galleryImages.map((image, index) => (
-              <div key={index} className="relative h-64 rounded-lg overflow-hidden hover:opacity-90 transition-opacity">
+              <div 
+                key={index} 
+                className="group relative h-64 rounded-lg overflow-hidden border bg-card shadow-sm transition-all hover:shadow-lg"
+              >
                 <Image
                   src={image}
                   alt={`Gallery image ${index + 1}`}
                   fill
-                  className="object-cover"
+                  className="object-cover transition-transform duration-300 group-hover:scale-105"
                 />
+                <div className="absolute inset-0 bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 flex items-center justify-center">
+                  <Badge variant="secondary" className="text-sm">
+                    View Image
+                  </Badge>
+                </div>
               </div>
             ))}
           </div>
         </section>
 
-        <section>
-          <h2 className="text-3xl font-bold text-center mb-12">Awards & Recognition</h2>
+        {/* Awards Section */}
+        <section className="space-y-8">
+          <h2 className="text-3xl font-bold tracking-tight text-center">Awards & Recognition</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {awards.map((award, index) => (
               <div
                 key={index}
-                className="bg-white rounded-lg shadow-lg p-8 hover:shadow-xl transition-shadow"
+                className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm hover:shadow-md transition-shadow space-y-4"
               >
-                <div className="text-center">
-                  <h3 className="text-xl font-semibold mb-2">{award.title}</h3>
-                  <p className="text-gray-500 mb-4">{award.year}</p>
-                  <p className="text-gray-600">{award.organization}</p>
-                </div>
+                <Badge variant="outline" className="mb-2">
+                  {award.year}
+                </Badge>
+                <h3 className="text-xl font-semibold tracking-tight">{award.title}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {award.organization}
+                </p>
               </div>
             ))}
           </div>

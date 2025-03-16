@@ -86,7 +86,7 @@ export function CatalogueViewer() {
         {catalogues.map((cat) => (
           <div
             key={cat.path}
-            className="relative cursor-pointer rounded-lg overflow-hidden border-2 border-gray-200 hover:border-gray-300 transition-all aspect-[3/4]"
+            className="relative cursor-pointer rounded-lg overflow-hidden border-2 border-muted hover:border-border transition-all aspect-[3/4]"
             onClick={() => {
               setSelectedCatalogue(cat)
               setPageNumber(1)
@@ -127,9 +127,9 @@ export function CatalogueViewer() {
             onClick={() => setSelectedCatalogue(null)}
             className="gap-2"
           >
-            <ArrowLeft className="h-4 w-4" /> Back to Selection
+            <ArrowLeft className="h-3 w-3 m-0" /> 
           </Button>
-          <h3 className="text-lg font-medium">{selectedCatalogue.name}</h3>
+          <h3 className="text-sm font-medium text-foreground/90">{selectedCatalogue.name}</h3>
         </div>
 
         <div 
@@ -137,17 +137,17 @@ export function CatalogueViewer() {
           className="flex-1 overflow-auto min-h-0 relative"
         >
           {isLoading && !error && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/80">
+            <div className="absolute inset-0 flex items-center justify-center bg-background/80">
               <div className="flex flex-col items-center gap-2">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                <p className="text-sm text-gray-500">Loading catalogue...</p>
+                <p className="text-sm text-muted-foreground">Loading catalogue...</p>
               </div>
             </div>
           )}
           {error && (
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center bg-background/80">
               <div className="flex flex-col items-center gap-4 text-center">
-                <p className="text-red-600">{error}</p>
+                <p className="text-destructive font-medium">{error}</p>
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -179,7 +179,7 @@ export function CatalogueViewer() {
           </Document>
         </div>
 
-        <div className="flex items-center justify-between border-t pt-4 mt-4">
+        <div className="flex items-center justify-between border-t border-border pt-4 mt-4">
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -209,9 +209,9 @@ export function CatalogueViewer() {
                     setPageNumber(value)
                   }
                 }}
-                className="w-16 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                className="w-16 rounded-md border border-input bg-transparent px-2 py-1 text-sm"
               />
-              <span className="text-sm text-gray-500">of {numPages || 1}</span>
+              <span className="text-sm text-muted-foreground">of {numPages || 1}</span>
             </div>
             <Button
               variant="outline"
@@ -240,22 +240,22 @@ export function CatalogueViewer() {
       <Dialog.Trigger asChild>
         <Button 
           variant="outline" 
-          className="border-white/20 text-white hover:bg-white/10 hover-scale shimmer"
+          className="border-white/20 text-white hover:bg-white/10 hover:scale-105 transition-transform shimmer"
         >
           View Catalogue <FileText className="ml-2 h-4 w-4" />
         </Button>
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
-        <Dialog.Content ref={dialogRef} className="fixed left-[50%] top-[50%] z-50 h-[85vh] w-[90vw] max-w-[1200px] translate-x-[-50%] translate-y-[-50%] rounded-lg bg-white p-6 shadow-lg">
+        <Dialog.Overlay className="fixed inset-0 bg-background/80 backdrop-blur-sm" />
+        <Dialog.Content ref={dialogRef} className="fixed left-[50%] top-[50%] z-50 h-[85vh] w-[90vw] max-w-[1200px] translate-x-[-50%] translate-y-[-50%] rounded-lg bg-card text-card-foreground p-6 shadow-lg border border-border">
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between mb-4">
-              <Dialog.Title className="text-xl font-semibold">
+              <Dialog.Title className="text-xl font-semibold text-foreground">
                 {selectedCatalogue ? 'Product Catalogue' : 'Select a Catalogue'}
               </Dialog.Title>
               <Dialog.Close asChild>
                 <button
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                   aria-label="Close"
                 >
                   <X className="h-4 w-4" />

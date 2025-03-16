@@ -6,6 +6,7 @@ import Image from "next/image"
 import { Menu, Sun, Moon } from "lucide-react"
 import { useTheme } from "next-themes"
 
+import { ScrollProgress } from "@/components/ui/scroll-progress"
 import { NavigationMenu, NavigationMenuList, NavigationMenuItem, NavigationMenuLink } from "@/components/ui/navigation-menu"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -109,6 +110,7 @@ export function Header() {
           </div>
         </div>
       </div>
+      <ScrollProgress />
     </header>
   )
 }

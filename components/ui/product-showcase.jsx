@@ -4,6 +4,14 @@ import { ArrowRight, Clock, Users, Package, Store, FileText } from "lucide-react
 import { CatalogueViewer } from "./catalogue-viewer";
 import { cn } from "@/lib/utils";
 import { useInView } from "@/lib/hooks/useInView";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "./card";
 
 const stats = [
   { value: "30+", label: "Years Experience" },
@@ -45,35 +53,37 @@ export function ProductShowcase({
       <div className="container mx-auto px-4">
         {/* Stats Section */}
         <div ref={statsRef} className="mb-16">
-          <div className={cn(
-            "grid grid-cols-2 md:grid-cols-4 gap-8 p-8 bg-primary/5 rounded-2xl hover-lift fade-on-scroll",
+          <Card className={cn(
+            "p-8 bg-primary/5 fade-on-scroll",
             isStatsInView ? 'in-view' : ''
           )}>
-            {stats.map((stat, index) => (
-              <div 
-                key={index} 
-                className={cn(
-                  "text-center animate-on-scroll",
-                  isStatsInView ? 'in-view' : ''
-                )}
-                style={{ transitionDelay: `${index * 100}ms` }}
-              >
-                <div className="flex flex-col items-center">
-                  <div className={cn(
-                    "mb-3 float-on-scroll",
+            <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-8 p-0">
+              {stats.map((stat, index) => (
+                <div 
+                  key={index} 
+                  className={cn(
+                    "text-center animate-on-scroll",
                     isStatsInView ? 'in-view' : ''
-                  )}>
-                    {index === 0 && <Clock className="w-8 h-8 text-primary" />}
-                    {index === 1 && <Users className="w-8 h-8 text-primary" />}
-                    {index === 2 && <Package className="w-8 h-8 text-primary" />}
-                    {index === 3 && <Store className="w-8 h-8 text-primary" />}
+                  )}
+                  style={{ transitionDelay: `${index * 100}ms` }}
+                >
+                  <div className="flex flex-col items-center">
+                    <div className={cn(
+                      "mb-3 float-on-scroll",
+                      isStatsInView ? 'in-view' : ''
+                    )}>
+                      {index === 0 && <Clock className="w-8 h-8 text-primary" />}
+                      {index === 1 && <Users className="w-8 h-8 text-primary" />}
+                      {index === 2 && <Package className="w-8 h-8 text-primary" />}
+                      {index === 3 && <Store className="w-8 h-8 text-primary" />}
+                    </div>
+                    <div className="text-4xl font-bold text-primary">{stat.value}</div>
+                    <div className="text-sm text-muted-foreground">{stat.label}</div>
                   </div>
-                  <div className="text-4xl font-bold text-primary">{stat.value}</div>
-                  <div className="text-sm text-muted-foreground">{stat.label}</div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Heading */}
@@ -93,38 +103,40 @@ export function ProductShowcase({
         {/* Product Grid */}
         <div ref={productsRef} className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {productShowcases.map((product, index) => (
-            <div
+            <Card
               key={index}
               className={cn(
-                "relative overflow-hidden rounded-lg border border-border group cursor-pointer hover-lift fade-on-scroll",
+                "relative group cursor-pointer hover-lift fade-on-scroll",
                 isProductsInView ? 'in-view' : ''
               )}
               style={{ transitionDelay: `${index * 200}ms` }}
             >
-              <div className="relative h-80">
+              <CardContent className="p-0 relative h-80">
                 <img
                   src={product.image}
                   alt={product.title}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  className="absolute inset-0 w-full h-full transition-transform duration-500"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent transition-opacity duration-300 group-hover:opacity-90" />
-              </div>
-              <div className="absolute bottom-0 left-0 right-0 p-6 text-white transform transition-transform duration-300 group-hover:translate-y-[-8px]">
-                <h3 className={cn(
-                  "text-2xl font-bold mb-2 animate-on-scroll",
-                  isProductsInView ? 'in-view' : ''
-                )} style={{ transitionDelay: `${index * 200 + 200}ms` }}>{product.title}</h3>
-                <p className={cn(
-                  "text-white/80 mb-4 animate-on-scroll",
-                  isProductsInView ? 'in-view' : ''
-                )} style={{ transitionDelay: `${index * 200 + 400}ms` }}>{product.description}</p>
-                <div className="flex gap-3">
-                  <div onClick={(e) => e.stopPropagation()}>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50  to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 p-6 transform transition-transform duration-300 group-hover:translate-y-[-8px]">
+                  <CardTitle className={cn(
+                    "text-2xl font-bold text-white mb-2 animate-on-scroll",
+                    isProductsInView ? 'in-view' : ''
+                  )} style={{ transitionDelay: `${index * 200 + 200}ms` }}>
+                    {product.title}
+                  </CardTitle>
+                  <CardDescription className={cn(
+                    "text-white/80 mb-4 animate-on-scroll",
+                    isProductsInView ? 'in-view' : ''
+                  )} style={{ transitionDelay: `${index * 200 + 400}ms` }}>
+                    {product.description}
+                  </CardDescription>
+                  <CardFooter className="p-0">
                     <CatalogueViewer />
-                  </div>
+                  </CardFooter>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>
