@@ -11,14 +11,13 @@ const Footer = () => {
   ];
 
   const contactLinks = [
-    { href: "mailto:info@hanumantmarble.com", label: "info@hanumantmarble.com", icon: "✉️" },
-    { href: "tel:+91-9999999999", label: "+91 99999 99999", icon: "📞" }
+    { href: "mailto:hanumantmarble@rediffmail.com", label: "hanumantmarble@rediffmail.com", icon: "✉️" },
+    { href: "tel:+91-9415089051", label: "+91 94150 89051", icon: "📞" }
   ];
 
   const quickLinks = [
     { href: "/about", label: "About Us" },
     { href: "/quote", label: "Get Quote" },
-    { href: "/#products", label: "Our Products" }
   ];
 
   return (

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 
-export function ScrollProgress({ color = 'rgb(255, 92, 2)' }) {
+export function ScrollProgress({ color = 'rgb(255, 153, 96)' }) {
   const [scrollProgress, setScrollProgress] = useState(0);
 
   useEffect(() => {
