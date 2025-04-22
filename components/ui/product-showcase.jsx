@@ -4,6 +4,8 @@ import { ArrowRight, Clock, Users, Package, Store, FileText } from "lucide-react
 import { CatalogueViewer } from "./catalogue-viewer";
 import { cn } from "@/lib/utils";
 import { useInView } from "@/lib/hooks/useInView";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getTranslation } from "@/lib/translations";
 import {
   Card,
   CardContent,
@@ -13,37 +15,34 @@ import {
   CardTitle,
 } from "./card";
 
-const stats = [
-  { value: "30+", label: "Years Experience" },
-  { value: "40+", label: "Employees" },
-  { value: "500+", label: "Products" },
-  { value: "4", label: "Showrooms" }
-];
+const statsValues = ["30+", "40+", "500+", "4"];
 
-export function ProductShowcase({
-  productShowcases = [
+export function ProductShowcase() {
+  const { language } = useLanguage();
+  
+  const productShowcases = [
     {
-      title: "Premium Tiles",
-      description: "Crafted with passion, the digital vitrified tiles feature extraordinary aesthetic appeal and supreme quality.",
+      key: "premiumTiles",
       image: "/product3.png",
     },
     {
-      title: "Sanitaryware",
-      description: "Exceptionally designed products for your home. Easy to clean rimless design for utmost hygiene",
+      key: "sanitaryware",
       image: "/product0.png",
     },
     {
-      title: "Wall Tiles",
-      description: "Stunning wall tiles that transform your space with elegant designs and durable finishes.",
+      key: "wallTiles",
       image: "/product1.png",
     },
     {
-      title: "Floor Tiles",
-      description: "High-performance floor tiles combining aesthetic beauty with exceptional durability and strength.",
+      key: "floorTiles",
       image: "/product2.png",
     },
-  ],
-}) {
+  ];
+
+  const stats = statsValues.map((value, index) => ({
+    value,
+    label: getTranslation(`stats.${['yearsExperience', 'employees', 'products', 'showrooms'][index]}`, language)
+  }));
   const [statsRef, isStatsInView] = useInView({ threshold: 0.2 });
   const [productsRef, isProductsInView] = useInView({ threshold: 0.2 });
   const [titleRef, isTitleInView] = useInView({ threshold: 0.2 });
@@ -88,11 +87,11 @@ export function ProductShowcase({
 
         {/* Heading */}
         <div ref={titleRef}>
-          <h2 className={cn(
-            "text-4xl font-bold text-center mb-12 animate-on-scroll",
-            isTitleInView ? 'in-view' : ''
-          )}>
-            Branded Products
+            <h2 className={cn(
+              "text-4xl font-bold text-center mb-12 animate-on-scroll",
+              isTitleInView ? 'in-view' : ''
+            )}>
+              {getTranslation('products.sectionTitle', language)}
             <div className={cn(
               "h-1 w-20 bg-primary mx-auto mt-4 rounded-full scale-on-scroll",
               isTitleInView ? 'in-view' : ''
@@ -123,13 +122,13 @@ export function ProductShowcase({
                     "text-2xl font-bold text-white mb-2 animate-on-scroll",
                     isProductsInView ? 'in-view' : ''
                   )} style={{ transitionDelay: `${index * 200 + 200}ms` }}>
-                    {product.title}
+                    {getTranslation(`products.items.${product.key}.title`, language)}
                   </CardTitle>
                   <CardDescription className={cn(
                     "text-white/80 mb-4 animate-on-scroll",
                     isProductsInView ? 'in-view' : ''
                   )} style={{ transitionDelay: `${index * 200 + 400}ms` }}>
-                    {product.description}
+                    {getTranslation(`products.items.${product.key}.description`, language)}
                   </CardDescription>
                   <CardFooter className="p-0">
                     <CatalogueViewer />

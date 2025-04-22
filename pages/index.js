@@ -4,15 +4,19 @@ import "../styles/Home.module.css";
 import { HeroCarousel } from "../components/ui/hero-carousel";
 import { ProductShowcase } from "../components/ui/product-showcase";
 import { Branches } from "../components/ui/branches";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getTranslation } from "@/lib/translations";
 
 export default function Home() {
+  const { language } = useLanguage();
+
   return (
     <React.Fragment>
       <Head>
-        <title>Hanumant Marble - Premium Marble & Tiles</title>
+        <title>{getTranslation('meta.title', language)}</title>
         <meta 
           name="description" 
-          content="Discover premium quality marble, tiles, and stones at Hanumant Marble. Visit our branches across India for the best selection and expert service."
+          content={getTranslation('meta.description', language)}
         />
       </Head>
       <main>

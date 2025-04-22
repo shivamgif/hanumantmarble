@@ -3,35 +3,13 @@
 import { Building2, MapPin, Phone, BarChart } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useInView } from "@/lib/hooks/useInView"
+import { useLanguage } from "@/contexts/LanguageContext"
+import { getTranslation } from "@/lib/translations"
 
-const branchData = [
-  {
-    name: "Delhi Branch",
-    address: "123 Marble Market, Karol Bagh, New Delhi - 110005",
-    contact: "+91 98765 43210",
-    stats: "5000+ Satisfied Customers"
-  },
-  {
-    name: "Mumbai Branch",
-    address: "45 Ceramic Center, Andheri West, Mumbai - 400053",
-    contact: "+91 98765 43211",
-    stats: "1000+ Projects Completed"
-  },
-  {
-    name: "Bangalore Branch",
-    address: "78 Stone Plaza, Whitefield, Bangalore - 560066",
-    contact: "+91 98765 43212",
-    stats: "3000+ Product Varieties"
-  },
-  {
-    name: "Hyderabad Branch",
-    address: "90 Tile Market, Gachibowli, Hyderabad - 500032",
-    contact: "+91 98765 43213",
-    stats: "15+ Years of Excellence"
-  }
-]
+const branchKeys = ["ringRoad", "vrindavan", "sultanpur", "buddheshwar"]
 
 export function Branches() {
+  const { language } = useLanguage();
   const [titleRef, isTitleInView] = useInView({ threshold: 0.2 });
   const [branchesRef, isBranchesInView] = useInView({ threshold: 0.1 });
 
@@ -43,7 +21,7 @@ export function Branches() {
             "text-3xl font-bold text-center mb-12 animate-on-scroll",
             isTitleInView ? 'in-view' : ''
           )}>
-            Our Branches
+            {getTranslation('branches.title', language)}
             <div className={cn(
               "h-1 w-16 bg-primary mx-auto mt-4 rounded-full scale-on-scroll",
               isTitleInView ? 'in-view' : ''
@@ -52,7 +30,7 @@ export function Branches() {
         </div>
 
         <div ref={branchesRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {branchData.map((branch, index) => (
+          {branchKeys.map((key, index) => (
             <div
               key={index}
               className={cn(
@@ -67,7 +45,7 @@ export function Branches() {
                   isBranchesInView ? 'in-view' : ''
                 )} style={{ transitionDelay: `${index * 100 + 100}ms` }}>
                   <Building2 className="h-5 w-5 float-on-scroll" />
-                  <h3 className="font-semibold">{branch.name}</h3>
+                  <h3 className="font-semibold">{getTranslation(`branches.locations.${key}.name`, language)}</h3>
                 </div>
                 
                 <div className={cn(
@@ -75,7 +53,7 @@ export function Branches() {
                   isBranchesInView ? 'in-view' : ''
                 )} style={{ transitionDelay: `${index * 100 + 200}ms` }}>
                   <MapPin className="h-4 w-4 mt-1 text-muted-foreground float-on-scroll" />
-                  <p className="text-muted-foreground">{branch.address}</p>
+                  <p className="text-muted-foreground">{getTranslation(`branches.locations.${key}.address`, language)}</p>
                 </div>
                 
                 <div className={cn(
@@ -83,7 +61,7 @@ export function Branches() {
                   isBranchesInView ? 'in-view' : ''
                 )} style={{ transitionDelay: `${index * 100 + 300}ms` }}>
                   <Phone className="h-4 w-4 text-muted-foreground float-on-scroll" />
-                  <p className="text-muted-foreground">{branch.contact}</p>
+                  <p className="text-muted-foreground">+91 9696103802</p>
                 </div>
                 
                 <div className={cn(
@@ -91,7 +69,7 @@ export function Branches() {
                   isBranchesInView ? 'in-view' : ''
                 )} style={{ transitionDelay: `${index * 100 + 400}ms` }}>
                   <BarChart className="h-4 w-4 text-primary float-on-scroll" />
-                  <p className="text-foreground">{branch.stats}</p>
+                  <p className="text-foreground">{getTranslation(`branches.locations.${key}.stats`, language)}</p>
                 </div>
               </div>
             </div>

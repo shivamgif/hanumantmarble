@@ -1,0 +1,63 @@
+{
+  "nav": {
+    "products": "Products",
+    "quote": "Get Your Quotation",
+    "about": "About Us"
+  },
+  "stats": {
+    "yearsExperience": "Years Experience",
+    "employees": "Employees",
+    "products": "Products",
+    "showrooms": "Showrooms"
+  },
+  "products": {
+    "sectionTitle": "Branded Products",
+    "items": {
+      "premiumTiles": {
+        "title": "Premium Tiles",
+        "description": "Crafted with passion, the digital vitrified tiles feature extraordinary aesthetic appeal and supreme quality."
+      },
+      "sanitaryware": {
+        "title": "Sanitaryware",
+        "description": "Exceptionally designed products for your home. Easy to clean rimless design for utmost hygiene"
+      },
+      "wallTiles": {
+        "title": "Wall Tiles",
+        "description": "Stunning wall tiles that transform your space with elegant designs and durable finishes."
+      },
+      "floorTiles": {
+        "title": "Floor Tiles",
+        "description": "High-performance floor tiles combining aesthetic beauty with exceptional durability and strength."
+      }
+    }
+  },
+  "branches": {
+    "title": "Our Branches",
+    "locations": {
+      "ringRoad": {
+        "name": "Ring Road Main Branch",
+        "address": "Plot No. 10, CP/7, Tedhi Pulia Ring Rd, Sector-10, Sector 11, Vikas Nagar, Lucknow, Uttar Pradesh 226022, India",
+        "stats": "5000+ Satisfied Customers"
+      },
+      "vrindavan": {
+        "name": "Vrindavan Colony Branch",
+        "address": "Sector 3, Vrindavan Colony, Lucknow, Uttar Pradesh 226014, India",
+        "stats": "1000+ Projects Completed"
+      },
+      "sultanpur": {
+        "name": "Sultanpur Road Branch",
+        "address": "Plot No 941, Ahimamau, Sultanpur Rd, behind Best Price, Lucknow, Uttar Pradesh 226027, India",
+        "stats": "1000+ Product Varieties"
+      },
+      "buddheshwar": {
+        "name": "Buddheshwar Chauraha Branch",
+        "address": "Buddheshwar Chouraha RVP3+9P5 Ring Road, Hardoi Bypass Rd, opposite Moment Lawn, Lucknow, Uttar Pradesh 226017, India",
+        "stats": "1000+ Product Varieties"
+      }
+    }
+  },
+  "meta": {
+    "title": "Hanumant Marble - Premium Marble & Tiles",
+    "description": "Discover premium quality marble, tiles, and stones at Hanumant Marble. Visit our branches across India for the best selection and expert service."
+  }
+}

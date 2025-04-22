@@ -3,8 +3,10 @@
 import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Menu, Sun, Moon } from "lucide-react"
+import { Menu, Sun, Moon, Languages } from "lucide-react"
 import { useTheme } from "next-themes"
+import { useLanguage } from "@/contexts/LanguageContext"
+import { getTranslation } from "@/lib/translations"
 
 import { ScrollProgress } from "@/components/ui/scroll-progress"
 import { NavigationMenu, NavigationMenuList, NavigationMenuItem, NavigationMenuLink } from "@/components/ui/navigation-menu"
@@ -15,10 +17,12 @@ export function Header() {
   const { theme, setTheme } = useTheme()
   const [isOpen, setOpen] = React.useState(false)
   
+  const { language, toggleLanguage } = useLanguage();
+  
   const navigationItems = [
-    { href: "/#products", label: "Products" },
-    { href: "/quote", label: "Get Your Quotation" },
-    { href: "/about", label: "About Us" },
+    { href: "/#products", label: getTranslation('nav.products', language) },
+    { href: "/quote", label: getTranslation('nav.quote', language) },
+    { href: "/about", label: getTranslation('nav.about', language) },
   ]
 
   return (
@@ -56,15 +60,26 @@ export function Header() {
 
         {/* Right Side - Theme Toggle & Mobile Menu */}
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            aria-label="Toggle theme"
-          >
-            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleLanguage}
+              aria-label="Toggle language"
+            >
+              <Languages className="h-5 w-5" />
+              <span className="ml-1 text-sm font-medium">{language.toUpperCase()}</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              aria-label="Toggle theme"
+            >
+              <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+              <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            </Button>
+          </div>
 
           {/* Mobile Menu Button */}
           <div className="md:hidden">
