@@ -281,6 +281,7 @@ export function ProductForm({ className, onSubmit, isSubmitting, ...props }) {
       )} 
       onSubmit={handleSubmit}
       {...props}
+      netlify
     >
       <div className="space-y-4">
         <h2 className={cn(
@@ -316,6 +317,21 @@ export function ProductForm({ className, onSubmit, isSubmitting, ...props }) {
           onClear={() => {
             setFormData((prev) => ({ ...prev, email: "" }))
             setErrors((prev) => ({ ...prev, email: "" }))
+          }}
+        />
+
+        <Input
+          label="Mobile Number"
+          name="mobile"
+          type="tel"
+          placeholder="Enter your mobile number"
+          value={formData.mobile}
+          onChange={handleChange}
+          error={errors.mobile}
+          isInView={isFormInView}
+          onClear={() => {
+            setFormData((prev) => ({ ...prev, mobile: "" }))
+            setErrors((prev) => ({ ...prev, mobile: "" }))
           }}
         />
 
