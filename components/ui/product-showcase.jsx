@@ -23,19 +23,23 @@ export function ProductShowcase() {
   const productShowcases = [
     {
       key: "premiumTiles",
-      image: "/product3.png",
+      image: "/Varmora.png",
+      brand: "Varmora"
     },
     {
       key: "sanitaryware",
-      image: "/product0.png",
+      image: "/Cera.png",
+      brand: "Cera"
     },
     {
       key: "wallTiles",
-      image: "/product1.png",
+      image: "/Kajaria.png",
+      brand: "Kajaria"
     },
     {
       key: "floorTiles",
-      image: "/product2.png",
+      image: "/Kajaria Eternity.png",
+      brand: "Kajaria Eternity"
     },
   ];
 
@@ -114,7 +118,7 @@ export function ProductShowcase() {
                 <img
                   src={product.image}
                   alt={product.title}
-                  className="absolute inset-0 w-full h-full transition-transform duration-500"
+                  className=" w-full h-full transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50  to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-6 transform transition-transform duration-300 group-hover:translate-y-[-8px]">
@@ -131,7 +135,7 @@ export function ProductShowcase() {
                     {getTranslation(`products.items.${product.key}.description`, language)}
                   </CardDescription>
                   <CardFooter className="p-0">
-                    <CatalogueViewer />
+                    <CatalogueViewer brand={product.brand} />
                   </CardFooter>
                 </div>
               </CardContent>

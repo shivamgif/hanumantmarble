@@ -1,8 +1,11 @@
 import Head from "next/head";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getTranslation } from "@/lib/translations";
 
 export default function About() {
+  const { language } = useLanguage();
 
   const galleryImages = [
     "/hero1.png",
@@ -13,57 +16,34 @@ export default function About() {
     "/hero3.jpeg",
   ];
 
-  const awards = [
-    {
-      year: "2022",
-      title: "Best Marble Supplier",
-      organization: "Indian Stone Industry Awards",
-    },
-    {
-      year: "2021",
-      title: "Excellence in Customer Service",
-      organization: "Construction Excellence Awards",
-    },
-    {
-      year: "2020",
-      title: "Quality Achievement Award",
-      organization: "Natural Stone Council",
-    },
-  ];
+  const awards = getTranslation('about.awards.list', language);
 
   return (
     <>
       <Head>
-        <title>About Us - Hanumant Marble</title>
+        <title>{getTranslation('about.pageTitle', language)}</title>
         <meta 
           name="description" 
-          content="Learn about Hanumant Marble's 25+ years of experience in providing premium marble and granite products with unmatched quality and service."
+          content={getTranslation('about.pageDescription', language)}
         />
       </Head>
       <div className="container mx-auto px-4 py-16 space-y-20">
         {/* Hero Section */}
         <section className="text-center space-y-12">
 
-          <h1 className="text-4xl font-bold tracking-tight lg:text-5xl">About Us</h1>
+          <h1 className="text-4xl font-bold tracking-tight lg:text-5xl">{getTranslation('about.title', language)}</h1>
           <p className="text-xl text-muted-foreground mx-auto max-w-3xl leading-relaxed">
-            With over 25 years of experience in the natural stone industry, Hanumant
-            Marble has established itself as a leading supplier of premium marble and
-            granite products.
+            {getTranslation('about.intro', language)}
           </p>
           <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             <div className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm">
               <p className="leading-relaxed text-muted-foreground">
-                Our commitment to quality and customer satisfaction has made us the
-                preferred choice for architects, interior designers, and homeowners.
-                We source our materials from the finest quarries worldwide to ensure
-                superior quality and unique patterns.
+                {getTranslation('about.commitment', language)}
               </p>
             </div>
             <div className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm">
               <p className="leading-relaxed text-muted-foreground">
-                Our state-of-the-art facility and experienced team ensure precise
-                cutting, polishing, and finishing of every stone piece. We take pride
-                in our vast inventory and ability to cater to projects of any scale.
+                {getTranslation('about.facility', language)}
               </p>
             </div>
           </div>
@@ -71,7 +51,7 @@ export default function About() {
 
         {/* Gallery Section */}
         <section className="space-y-8">
-          <h2 className="text-3xl font-bold tracking-tight text-center">Gallery</h2>
+          <h2 className="text-3xl font-bold tracking-tight text-center">{getTranslation('about.gallery.title', language)}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {galleryImages.map((image, index) => (
               <div 
@@ -85,9 +65,7 @@ export default function About() {
                   className="object-cover transition-transform duration-300 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 flex items-center justify-center">
-                  <Badge variant="secondary" className="text-sm">
-                    View Image
-                  </Badge>
+                  
                 </div>
               </div>
             ))}
@@ -96,7 +74,7 @@ export default function About() {
 
         {/* Awards Section */}
         <section className="space-y-8">
-          <h2 className="text-3xl font-bold tracking-tight text-center">Awards & Recognition</h2>
+          <h2 className="text-3xl font-bold tracking-tight text-center">{getTranslation('about.awards.title', language)}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {awards.map((award, index) => (
               <div

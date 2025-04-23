@@ -4,25 +4,45 @@ import * as Dialog from "@radix-ui/react-dialog"
 import { X, FileText, ChevronLeft, ChevronRight, ArrowLeft } from "lucide-react"
 import { Document, Page, pdfjs } from "react-pdf"
 import { Button } from "./button"
+import { useLanguage } from "@/contexts/LanguageContext"
+import { getTranslation } from "@/lib/translations"
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.worker.mjs`
 
-export function CatalogueViewer() {
-  const catalogues = [
+export function CatalogueViewer({ brand }) {
+  const { language } = useLanguage()
+  const allCatalogues = [
     {
-      name: "Full Body Tiles 60x120, 80x80, 60x60",
-      path: "/fullbody-catalogue-60x120-80x80-60x60.pdf"
+      name: "Senator Catalogue October 2024",
+      path: "/Cera Senator Catalogue October 2024_3.pdf",
+      brand: "Cera"
     },
     {
-      name: "Wall Tiles Collection 2025",
-      path: "/wall-tiles-catalogue-2025.pdf"
+      name: "Ceramics Wall North East",
+      path: "/Kajaria Ceramics wall_north_east.pdf",
+      brand: "Kajaria"
     },
     {
-      name: "Designer Floor Collection",
-      path: "/designer-floor-collection.pdf"
+      name: "Eternity Fullbody Catalogue",
+      path: "/Kajaria Eternity fullbody-catalogue-60x120-80x80-60x60.pdf",
+      brand: "Kajaria Eternity"
+    },
+    {
+      name: "Monochroma Collection",
+      path: "/Varmora-Monochroma-Collection.pdf",
+      brand: "Varmora"
+    },
+    {
+      name: "Petrozza Collection",
+      path: "/Varmora-Petrozza-Collection.pdf",
+      brand: "Varmora"
     }
   ]
+
+  const catalogues = brand 
+    ? allCatalogues.filter(cat => cat.brand === brand)
+    : allCatalogues
 
   const [numPages, setNumPages] = useState(null)
   const [pageNumber, setPageNumber] = useState(1)
@@ -59,7 +79,7 @@ export function CatalogueViewer() {
         setError(null)
       })
       .catch((err) => {
-        setError("Failed to load catalogue. Please try again.")
+        setError(getTranslation('catalogue.error', language))
         console.error("PDF loading error:", err)
       })
   }, [retry, selectedCatalogue])
@@ -72,7 +92,7 @@ export function CatalogueViewer() {
 
   const handleError = useCallback((err) => {
     setIsLoading(false)
-    setError("Failed to load catalogue. Please try again.")
+    setError(getTranslation('catalogue.error', language))
     console.error("PDF error:", err)
   }, [])
 
@@ -140,7 +160,7 @@ export function CatalogueViewer() {
             <div className="absolute inset-0 flex items-center justify-center bg-background/80">
               <div className="flex flex-col items-center gap-2">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                <p className="text-sm text-muted-foreground">Loading catalogue...</p>
+                <p className="text-sm text-muted-foreground">{getTranslation('catalogue.loading', language)}</p>
               </div>
             </div>
           )}
@@ -154,7 +174,7 @@ export function CatalogueViewer() {
                   onClick={handleRetry}
                   className="mt-2"
                 >
-                  Try Again
+                  {getTranslation('catalogue.tryAgain', language)}
                 </Button>
               </div>
             </div>
@@ -187,7 +207,7 @@ export function CatalogueViewer() {
               onClick={() => setPageNumber(1)}
               disabled={pageNumber <= 1}
             >
-              First
+              {getTranslation('catalogue.first', language)}
             </Button>
             <Button
               variant="outline"
@@ -211,7 +231,7 @@ export function CatalogueViewer() {
                 }}
                 className="w-16 rounded-md border border-input bg-transparent px-2 py-1 text-sm"
               />
-              <span className="text-sm text-muted-foreground">of {numPages || 1}</span>
+              <span className="text-sm text-muted-foreground">{getTranslation('catalogue.of', language)} {numPages || 1}</span>
             </div>
             <Button
               variant="outline"
@@ -227,7 +247,7 @@ export function CatalogueViewer() {
               onClick={() => setPageNumber(numPages || 1)}
               disabled={pageNumber >= (numPages || 1)}
             >
-              Last
+              {getTranslation('catalogue.last', language)}
             </Button>
           </div>
         </div>
@@ -242,7 +262,7 @@ export function CatalogueViewer() {
           variant="outline" 
           className="border-white/20 text-white hover:bg-white/10 hover:scale-105 transition-transform shimmer"
         >
-          View Catalogue <FileText className="ml-2 h-4 w-4" />
+          {getTranslation('catalogue.viewButton', language)} <FileText className="ml-2 h-4 w-4" />
         </Button>
       </Dialog.Trigger>
       <Dialog.Portal>
@@ -251,7 +271,7 @@ export function CatalogueViewer() {
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between mb-4">
               <Dialog.Title className="text-xl font-semibold text-foreground">
-                {selectedCatalogue ? 'Product Catalogue' : 'Select a Catalogue'}
+                {selectedCatalogue ? getTranslation('catalogue.title', language) : getTranslation('catalogue.selectTitle', language)}
               </Dialog.Title>
               <Dialog.Close asChild>
                 <button

@@ -59,5 +59,61 @@
   "meta": {
     "title": "Hanumant Marble - Premium Marble & Tiles",
     "description": "Discover premium quality marble, tiles, and stones at Hanumant Marble. Visit our branches across India for the best selection and expert service."
+  },
+  "catalogue": {
+    "viewButton": "View Catalogue",
+    "title": "Product Catalogue",
+    "selectTitle": "Select a Catalogue",
+    "loading": "Loading catalogue...",
+    "error": "Failed to load catalogue. Please try again.",
+    "tryAgain": "Try Again",
+    "first": "First",
+    "last": "Last",
+    "of": "of"
+  },
+  "quote": {
+    "pageTitle": "Get a Quote - Hanumant Marble",
+    "pageDescription": "Request a quote for premium marble and granite products from Hanumant Marble. We offer competitive pricing and excellent service.",
+    "title": "Get Your Quote",
+    "subtitle": "Fill out the form below and our team will provide you with a detailed quote for your project",
+    "badges": {
+      "quality": "Premium Quality",
+      "pricing": "Competitive Pricing",
+      "consultation": "Expert Consultation"
+    },
+    "success": "Thank you for your inquiry. We will get back to you soon!",
+    "error": "Sorry, there was an error submitting your form. Please try again later."
+  },
+  "about": {
+    "pageTitle": "About Us - Hanumant Marble",
+    "pageDescription": "Learn about Hanumant Marble's 25+ years of experience in providing premium marble and granite products with unmatched quality and service.",
+    "title": "About Us",
+    "intro": "With over 25 years of experience in the natural stone industry, Hanumant Marble has established itself as a leading supplier of premium marble and granite products.",
+    "commitment": "Our commitment to quality and customer satisfaction has made us the preferred choice for architects, interior designers, and homeowners. We source our materials from the finest quarries worldwide to ensure superior quality and unique patterns.",
+    "facility": "Our state-of-the-art facility and experienced team ensure precise cutting, polishing, and finishing of every stone piece. We take pride in our vast inventory and ability to cater to projects of any scale.",
+    "gallery": {
+      "title": "Gallery",
+      "viewImage": "View Image"
+    },
+    "awards": {
+      "title": "Awards & Recognition",
+      "list": [
+        {
+          "year": "2022",
+          "title": "Best Marble Supplier",
+          "organization": "Indian Stone Industry Awards"
+        },
+        {
+          "year": "2021",
+          "title": "Excellence in Customer Service",
+          "organization": "Construction Excellence Awards"
+        },
+        {
+          "year": "2020",
+          "title": "Quality Achievement Award",
+          "organization": "Natural Stone Council"
+        }
+      ]
+    }
   }
 }
