@@ -91,15 +91,27 @@ export function HeroCarousel({
           <p className="max-w-[600px] text-white/90 text-lg md:text-xl mb-8 animate-slide-up opacity-100" style={{ animationDelay: '200ms' }}>
             {subtitle}
           </p>
-          <Button 
-            size="lg"
-            className="animate-scale-in opacity-100 hover-scale shimmer" 
-            style={{ animationDelay: '400ms' }}
-          >
-            <a href="/quote" className="flex items-center">
-              {ctaText} <ArrowRight className="ml-2 h-4 w-4" />
-            </a>
-          </Button>
+          <div className="flex gap-4 mb-8">
+            <Button 
+              size="lg"
+              className="animate-scale-in opacity-100 hover-scale shimmer" 
+              style={{ animationDelay: '400ms' }}
+            >
+              <a href="/quote" className="flex items-center">
+                {ctaText} <ArrowRight className="ml-2 h-4 w-4" />
+              </a>
+            </Button>
+            <Button 
+              size="lg"
+              className="animate-scale-in opacity-100 hover-scale shimmer" 
+              style={{ animationDelay: '400ms' }}
+            >
+              <a href="tel:+919696103802" className="flex items-center">
+                Call Us <ArrowRight className="ml-2 h-4 w-4" />
+              </a>
+            </Button>
+          </div>
+          
         </div>
       </div>
     </section>
