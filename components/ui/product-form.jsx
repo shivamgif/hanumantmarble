@@ -4,6 +4,9 @@ import * as React from "react"
 import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useInView } from "@/lib/hooks/useInView"
+import { submitForm } from "@/app/actions/submit-form"
+import { useLanguage } from "@/contexts/LanguageContext"
+import { getTranslation } from "@/lib/translations"
 
 const Input = React.forwardRef(
   ({ className, type, label, error, onClear, isInView, ...props }, ref) => {
@@ -207,17 +210,19 @@ const Select = React.forwardRef(
 )
 Select.displayName = "Select"
 
-export function ProductForm({ className, onSubmit, isSubmitting, ...props }) {
+export function ProductForm({ className, isSubmitting, ...props }) {
   const [formData, setFormData] = React.useState({
     fullname: "",
     email: "",
+    mobile: "",
     brand: "Kajaria",
     product: "",
     quantity: "",
   })
-
   const [errors, setErrors] = React.useState({})
   const [formRef, isFormInView] = useInView({ threshold: 0.1 })
+  const { language } = useLanguage()
+  const [isProcessing, setIsProcessing] = React.useState(false)
 
   const validateForm = () => {
     const newErrors = {}
@@ -247,8 +252,36 @@ export function ProductForm({ className, onSubmit, isSubmitting, ...props }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (validateForm()) {
-      await onSubmit(formData)
+    if (!validateForm()) return
+
+    setIsProcessing(true)
+    try {
+      const formDataObj = new FormData()
+      Object.entries(formData).forEach(([key, value]) => {
+        formDataObj.append(key, value)
+      })
+
+      const result = await submitForm(formDataObj)
+      
+      if (result.success) {
+        alert(getTranslation('quote.success', language))
+        // Reset form
+        setFormData({
+          fullname: "",
+          email: "",
+          mobile: "",
+          brand: "Kajaria",
+          product: "",
+          quantity: "",
+        })
+      } else {
+        throw new Error(result.error || 'Form submission failed')
+      }
+    } catch (error) {
+      console.error('Form submission error:', error)
+      alert(getTranslation('quote.error', language))
+    } finally {
+      setIsProcessing(false)
     }
   }
 
@@ -277,6 +310,7 @@ export function ProductForm({ className, onSubmit, isSubmitting, ...props }) {
       ref={formRef}
       name="product-quote"
       method="POST"
+      netlify="true"
       data-netlify="true"
       className={cn(
         "space-y-6 w-full max-w-md mx-auto p-8 rounded-xl shadow-sm fade-on-scroll", 
@@ -381,7 +415,7 @@ export function ProductForm({ className, onSubmit, isSubmitting, ...props }) {
 
       <button
         type="submit"
-        disabled={isSubmitting}
+        disabled={isProcessing || isSubmitting}
         className={cn(
           "w-full px-4 py-2 rounded-lg",
           "bg-primary text-primary-foreground",
@@ -394,7 +428,7 @@ export function ProductForm({ className, onSubmit, isSubmitting, ...props }) {
           isFormInView ? 'in-view' : ''
         )}
       >
-        {isSubmitting ? "Sending..." : "Get Quote"}
+        {isProcessing ? "Sending..." : "Get Quote"}
       </button>
     </form>
   )

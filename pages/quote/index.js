@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from 'react';
 import Head from "next/head";
 import { ProductForm } from '@/components/ui/product-form';
 import { Badge } from '@/components/ui/badge';
@@ -8,38 +7,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 
 export default function Quote() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const { language } = useLanguage();
-
-  const handleSubmit = async (formData) => {
-    setIsSubmitting(true);
-    try {
-      // Netlify forms submission
-      const response = await fetch('/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          'form-name': 'product-quote', // Match the form name we set in product-form.jsx
-          ...formData
-        }).toString()
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Form submission failed: ${response.status}`);
-      }
-
-      alert(getTranslation('quote.success', language));
-      
-      // Reset form (will trigger through ProductForm's onSubmit callback)
-      return true;
-    } catch (error) {
-      console.error('Form submission error:', error);
-      alert(getTranslation('quote.error', language));
-      return false;
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   return (
     <>
@@ -51,7 +19,7 @@ export default function Quote() {
         />
       </Head>
 
-      {/* Add hidden form for Netlify form detection */}
+      {/* Add hidden form for Netlify form prerendering */}
       <form name="product-quote" data-netlify="true" hidden>
         <input type="text" name="fullname" />
         <input type="email" name="email" />
@@ -75,7 +43,7 @@ export default function Quote() {
         </div>
         <div className="max-w-3xl mx-auto">
           <div className="rounded-lg border bg-card p-8">
-            <ProductForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+            <ProductForm />
           </div>
         </div>
       </div>
