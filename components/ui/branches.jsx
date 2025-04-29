@@ -58,19 +58,7 @@ export function Branches() {
                   <Building2 className="h-5 w-5 float-on-scroll" />
                   <h3 className="font-semibold">{getTranslation(`branches.locations.${key}.name`, language)}</h3>
                 </div>
-                <div className={cn(
-                  "animate-on-scroll overflow-hidden rounded-lg h-[200px]",
-                  isBranchesInView ? 'in-view' : ''
-                )} style={{ transitionDelay: `${index * 100 + 500}ms` }}>
-                  <iframe
-                    title={getTranslation(`branches.locations.${key}.name`, language)}
-                    width="100%"
-                    height="100%"
-                    src={getMapUrl(branchLocations[key])}
-                    className="rounded-lg"
-                    loading="lazy"
-                  />
-                </div>
+                
                 <div className={cn(
                   "flex items-start gap-2 text-sm animate-on-scroll",
                   isBranchesInView ? 'in-view' : ''
@@ -95,6 +83,23 @@ export function Branches() {
                   <p className="text-foreground">{getTranslation(`branches.locations.${key}.stats`, language)}</p>
                 </div>
 
+                <div className={cn(
+                  "animate-on-scroll overflow-hidden rounded-lg h-[200px]",
+                  isBranchesInView ? 'in-view' : ''
+                )} style={{ transitionDelay: `${index * 100 + 500}ms` }}>
+                  <iframe
+                    title={getTranslation(`branches.locations.${key}.name`, language)}
+                    width="100%"
+                    height="100%"
+                    frameBorder="0"
+                    scrolling="no"
+                    marginHeight="0"
+                    marginWidth="0"
+                    src={getMapUrl(branchLocations[key])}
+                    className="rounded-lg"
+                    loading="lazy"
+                  />
+                </div>
               </div>
             </div>
           ))}

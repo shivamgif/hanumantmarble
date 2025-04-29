@@ -4,9 +4,6 @@ import * as React from "react"
 import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useInView } from "@/lib/hooks/useInView"
-import { submitForm } from "@/app/actions/submit-form"
-import { useLanguage } from "@/contexts/LanguageContext"
-import { getTranslation } from "@/lib/translations"
 
 const Input = React.forwardRef(
   ({ className, type, label, error, onClear, isInView, ...props }, ref) => {
@@ -210,19 +207,17 @@ const Select = React.forwardRef(
 )
 Select.displayName = "Select"
 
-export function ProductForm({ className, isSubmitting, ...props }) {
+export function ProductForm({ className, onSubmit, isSubmitting, ...props }) {
   const [formData, setFormData] = React.useState({
     fullname: "",
     email: "",
-    mobile: "",
     brand: "Kajaria",
     product: "",
     quantity: "",
   })
+
   const [errors, setErrors] = React.useState({})
   const [formRef, isFormInView] = useInView({ threshold: 0.1 })
-  const { language } = useLanguage()
-  const [isProcessing, setIsProcessing] = React.useState(false)
 
   const validateForm = () => {
     const newErrors = {}
@@ -252,37 +247,56 @@ export function ProductForm({ className, isSubmitting, ...props }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (!validateForm()) return
-
-    setIsProcessing(true)
-    try {
-      const formDataObj = new FormData()
-      Object.entries(formData).forEach(([key, value]) => {
-        formDataObj.append(key, value)
-      })
-
-      const result = await submitForm(formDataObj)
-      
-      if (result.success) {
-        alert(getTranslation('quote.success', language))
-        // Reset form
-        setFormData({
-          fullname: "",
-          email: "",
-          mobile: "",
-          brand: "Kajaria",
-          product: "",
-          quantity: "",
-        })
-      } else {
-        throw new Error(result.error || 'Form submission failed')
-      }
-    } catch (error) {
-      console.error('Form submission error:', error)
-      alert(getTranslation('quote.error', language))
-    } finally {
-      setIsProcessing(false)
+    if (!validateForm()) {
+      return
     }
+
+    // Rate limiting check
+    const lastSubmitTime = localStorage.getItem('lastQuoteSubmitTime')
+    const now = Date.now()
+    if (lastSubmitTime && now - parseInt(lastSubmitTime) < 60000) { // 1 minute cooldown
+      alert('Please wait a minute before requesting another quote.')
+      return
+    }
+
+    // Show confirmation dialog
+    if (!window.confirm('You will be redirected to your default email application to send the quote request. Continue?')) {
+      return
+    }
+
+    // Store submission time for rate limiting
+    localStorage.setItem('lastQuoteSubmitTime', now.toString())
+
+    // Format email content
+    const emailSubject = encodeURIComponent(`Quote Request for ${formData.brand} ${formData.product}`)
+    const emailBody = encodeURIComponent(
+      `Dear Hanumant Marble Team,\n\n` +
+      `I would like to request a quote for the following:\n\n` +
+      `Product Details:\n` +
+      `- Brand: ${formData.brand}\n` +
+      `- Product Name/Number: ${formData.product}\n` +
+      `- Quantity: ${formData.quantity}\n\n` +
+      `Contact Information:\n` +
+      `- Name: ${formData.fullname}\n` +
+      `- Email: ${formData.email}\n` +
+      `- Mobile: ${formData.mobile || 'Not provided'}\n\n` +
+      `I look forward to hearing from you.\n\n` +
+      `Best regards,\n` +
+      `${formData.fullname}`
+    )
+
+    // Open email client
+    window.location.href = `mailto:hanumantmarble@rediffmail.com?subject=${emailSubject}&body=${emailBody}`
+    
+    // Clear form
+    setFormData({
+      fullname: "",
+      email: "",
+      mobile: "",
+      brand: "Kajaria",
+      product: "",
+      quantity: "",
+    })
   }
 
   const handleChange = (e) => {
@@ -302,16 +316,11 @@ export function ProductForm({ className, isSubmitting, ...props }) {
   const brandOptions = [
     { value: "Kajaria", label: "Kajaria" },
     { value: "Cera", label: "Cera" },
-    { value: "Vermora", label: "Vermora" },
   ]
 
   return (
     <form 
       ref={formRef}
-      name="product-quote"
-      method="POST"
-      netlify="true"
-      data-netlify="true"
       className={cn(
         "space-y-6 w-full max-w-md mx-auto p-8 rounded-xl shadow-sm fade-on-scroll", 
         isFormInView ? 'in-view' : '',
@@ -319,9 +328,8 @@ export function ProductForm({ className, isSubmitting, ...props }) {
       )} 
       onSubmit={handleSubmit}
       {...props}
+      netlify
     >
-      <input type="hidden" name="form-name" value="product-quote" />
-      
       <div className="space-y-4">
         <h2 className={cn(
           "text-3xl font-semibold text-center text-primary animate-on-scroll",
@@ -415,7 +423,7 @@ export function ProductForm({ className, isSubmitting, ...props }) {
 
       <button
         type="submit"
-        disabled={isProcessing || isSubmitting}
+        disabled={isSubmitting}
         className={cn(
           "w-full px-4 py-2 rounded-lg",
           "bg-primary text-primary-foreground",
@@ -428,7 +436,7 @@ export function ProductForm({ className, isSubmitting, ...props }) {
           isFormInView ? 'in-view' : ''
         )}
       >
-        {isProcessing ? "Sending..." : "Get Quote"}
+        {isSubmitting ? "Sending..." : "Get Quote"}
       </button>
     </form>
   )
