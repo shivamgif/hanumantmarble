@@ -14,22 +14,28 @@ export default function Quote() {
   const handleSubmit = async (formData) => {
     setIsSubmitting(true);
     try {
+      // Netlify forms submission
       const response = await fetch('/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
-          'form-name': 'contact',
+          'form-name': 'product-quote', // Match the form name we set in product-form.jsx
           ...formData
         }).toString()
       });
       
-      if (response.ok) {
-        alert(getTranslation('quote.success', language));
-      } else {
-        throw new Error('Form submission failed');
+      if (!response.ok) {
+        throw new Error(`Form submission failed: ${response.status}`);
       }
+
+      alert(getTranslation('quote.success', language));
+      
+      // Reset form (will trigger through ProductForm's onSubmit callback)
+      return true;
     } catch (error) {
+      console.error('Form submission error:', error);
       alert(getTranslation('quote.error', language));
+      return false;
     } finally {
       setIsSubmitting(false);
     }
@@ -44,6 +50,17 @@ export default function Quote() {
           content={getTranslation('quote.pageDescription', language)}
         />
       </Head>
+
+      {/* Add hidden form for Netlify form detection */}
+      <form name="product-quote" data-netlify="true" hidden>
+        <input type="text" name="fullname" />
+        <input type="email" name="email" />
+        <input type="tel" name="mobile" />
+        <select name="brand" />
+        <input type="text" name="product" />
+        <input type="text" name="quantity" />
+      </form>
+
       <div className="container mx-auto min-h-screen py-16 px-4 space-y-8">
         <div className="text-center space-y-4 max-w-2xl mx-auto">
           <h1 className="text-4xl font-bold tracking-tight lg:text-5xl">{getTranslation('quote.title', language)}</h1>

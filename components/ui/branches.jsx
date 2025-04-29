@@ -8,10 +8,21 @@ import { getTranslation } from "@/lib/translations"
 
 const branchKeys = ["ringRoad", "vrindavan", "sultanpur", "buddheshwar"]
 
+const branchLocations = {
+  ringRoad: { lat: 26.8467, lng: 80.9462 },
+  vrindavan: { lat: 26.8601, lng: 80.9465 },
+  sultanpur: { lat: 26.8220, lng: 80.9716 },
+  buddheshwar: { lat: 26.8741, lng: 80.9451 }
+}
+
 export function Branches() {
   const { language } = useLanguage();
   const [titleRef, isTitleInView] = useInView({ threshold: 0.2 });
   const [branchesRef, isBranchesInView] = useInView({ threshold: 0.1 });
+
+  const getMapUrl = (location) => {
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${location.lng - 0.002},${location.lat - 0.002},${location.lng + 0.002},${location.lat + 0.002}&layer=mapnik&marker=${location.lat},${location.lng}`
+  }
 
   return (
     <section id="branches" className="py-16 bg-muted/50">
@@ -47,7 +58,19 @@ export function Branches() {
                   <Building2 className="h-5 w-5 float-on-scroll" />
                   <h3 className="font-semibold">{getTranslation(`branches.locations.${key}.name`, language)}</h3>
                 </div>
-                
+                <div className={cn(
+                  "animate-on-scroll overflow-hidden rounded-lg h-[200px]",
+                  isBranchesInView ? 'in-view' : ''
+                )} style={{ transitionDelay: `${index * 100 + 500}ms` }}>
+                  <iframe
+                    title={getTranslation(`branches.locations.${key}.name`, language)}
+                    width="100%"
+                    height="100%"
+                    src={getMapUrl(branchLocations[key])}
+                    className="rounded-lg"
+                    loading="lazy"
+                  />
+                </div>
                 <div className={cn(
                   "flex items-start gap-2 text-sm animate-on-scroll",
                   isBranchesInView ? 'in-view' : ''
@@ -71,6 +94,7 @@ export function Branches() {
                   <BarChart className="h-4 w-4 text-primary float-on-scroll" />
                   <p className="text-foreground">{getTranslation(`branches.locations.${key}.stats`, language)}</p>
                 </div>
+
               </div>
             </div>
           ))}

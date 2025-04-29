@@ -269,11 +269,15 @@ export function ProductForm({ className, onSubmit, isSubmitting, ...props }) {
   const brandOptions = [
     { value: "Kajaria", label: "Kajaria" },
     { value: "Cera", label: "Cera" },
+    { value: "Vermora", label: "Vermora" },
   ]
 
   return (
     <form 
       ref={formRef}
+      name="product-quote"
+      method="POST"
+      data-netlify="true"
       className={cn(
         "space-y-6 w-full max-w-md mx-auto p-8 rounded-xl shadow-sm fade-on-scroll", 
         isFormInView ? 'in-view' : '',
@@ -281,8 +285,9 @@ export function ProductForm({ className, onSubmit, isSubmitting, ...props }) {
       )} 
       onSubmit={handleSubmit}
       {...props}
-      netlify
     >
+      <input type="hidden" name="form-name" value="product-quote" />
+      
       <div className="space-y-4">
         <h2 className={cn(
           "text-3xl font-semibold text-center text-primary animate-on-scroll",
