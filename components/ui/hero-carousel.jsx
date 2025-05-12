@@ -7,7 +7,7 @@ import { ArrowRight, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function HeroCarousel({
-  images = ["/hero1.png", "/hero2.jpeg", "/hero3.jpeg"],
+  images = ["/hero1.png", "/hero2.jpeg", "/hero3.jpeg", "/hero4.jpeg", "/hero5.jpeg", "/hero6.jpeg"],
   title = "FOR YOUR SWEET HOME",
   subtitle = "One of the biggest collection of tiles and sanitaryware in Lucknow. Build your dream home with us.",
   ctaText = "Get Quote",
