@@ -40,6 +40,15 @@
   100% { background-position: 0% 50%; }
 }
 
+/* Animations for dialogs/modals */
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 @layer components {
   /* Base animation states with no animation */
   .animate-on-scroll {
