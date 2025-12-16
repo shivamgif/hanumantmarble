@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  turbopack: {
+    root: __dirname,
+  },
   images: {
     domains: [], // Add any external image domains if needed
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],

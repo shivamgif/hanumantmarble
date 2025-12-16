@@ -1,5 +1,9 @@
-import { handleAuth } from '@auth0/nextjs-auth0/edge';
+export const runtime = 'nodejs';
 
-export const runtime = 'edge';
-export const GET = handleAuth();
-export const POST = handleAuth();
+export async function GET() {
+	return new Response('Auth routes are handled by middleware', { status: 404 });
+}
+
+export async function POST() {
+	return new Response('Auth routes are handled by middleware', { status: 404 });
+}
