@@ -1,6 +1,7 @@
 import '@/styles/globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { LanguageProvider } from '@/contexts/LanguageContext'
+import { ClientProviders } from '@/contexts/ClientProviders'
 import Layout from '@/components/Layout'
 import { getTranslation } from '@/lib/translations'
 
@@ -20,9 +21,11 @@ export default function RootLayout({ children }) {
             enableSystem
             disableTransitionOnChange
           >
-            <Layout>
-              {children}
-            </Layout>
+            <ClientProviders>
+              <Layout>
+                {children}
+              </Layout>
+            </ClientProviders>
           </ThemeProvider>
         </LanguageProvider>
       </body>

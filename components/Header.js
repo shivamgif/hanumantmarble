@@ -12,6 +12,8 @@ import { ScrollProgress } from "@/components/ui/scroll-progress"
 import { NavigationMenu, NavigationMenuList, NavigationMenuItem, NavigationMenuLink } from "@/components/ui/navigation-menu"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { AuthButton } from "@/components/ui/AuthButton"
+import { CartSummary } from "@/components/ui/CartSummary"
 
 export function Header() {
   const { theme, setTheme } = useTheme()
@@ -61,6 +63,8 @@ export function Header() {
         {/* Right Side - Theme Toggle & Mobile Menu */}
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2">
+            <AuthButton />
+            <CartSummary />
             <Button
               variant="ghost"
               size="icon"

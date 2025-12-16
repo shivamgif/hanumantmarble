@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useInView } from "@/lib/hooks/useInView";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
+import { ProductCard } from "./ProductCard";
 import {
   Card,
   CardContent,
@@ -63,24 +64,32 @@ export function ProductShowcase() {
 
   const productShowcases = [
     {
+      id: "price_1J9XqG2eZvKYlo2CgXp8fJ4g",
       key: "premiumTiles",
       image: "/Varmora.png",
-      brand: "Varmora"
+      brand: "Varmora",
+      price: 1200,
     },
     {
+      id: "price_1J9XqG2eZvKYlo2CgXp8fJ4h",
       key: "sanitaryware",
       image: "/Cera.png",
-      brand: "Cera"
+      brand: "Cera",
+      price: 4500,
     },
     {
+      id: "price_1J9XqG2eZvKYlo2CgXp8fJ4i",
       key: "wallTiles",
       image: "/Kajaria.png",
-      brand: "Kajaria"
+      brand: "Kajaria",
+      price: 800,
     },
     {
+      id: "price_1J9XqG2eZvKYlo2CgXp8fJ4j",
       key: "floorTiles",
       image: "/Kajaria Eternity.png",
-      brand: "Kajaria Eternity"
+      brand: "Kajaria Eternity",
+      price: 1500,
     },
   ];
 
@@ -94,7 +103,7 @@ export function ProductShowcase() {
   const [titleRef, isTitleInView] = useInView({ threshold: 0.2 });
 
   return (
-    <section className="relative bg-background text-foreground py-16">
+    <section id="products" className="relative bg-background text-foreground py-16">
       <div className="container mx-auto px-4">
         {/* Stats Section */}
         <div ref={statsRef} className="mb-16">
@@ -132,7 +141,7 @@ export function ProductShowcase() {
         </div>
 
         {/* Products Section */}
-        <div ref={productsRef} className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div ref={productsRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {productShowcases.map((product, index) => (
             <div
               key={index}
@@ -142,25 +151,11 @@ export function ProductShowcase() {
               )}
               style={{ transitionDelay: `${index * 100}ms` }}
             >
-              <Card className="overflow-hidden h-full hover-lift">
-                <CardHeader className="p-0">
-                  <div className="relative h-64">
-                    <img
-                      src={product.image}
-                      alt={getTranslation(`products.${product.key}.title`, language)}
-                      className="object-cover w-full h-full"
-                    />
-                    <div className="absolute inset-0 bg-black/20" />
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <CardTitle className="mb-2">{getTranslation(`products.${product.key}.title`, language)}</CardTitle>
-                  <CardDescription>{getTranslation(`products.${product.key}.description`, language)}</CardDescription>
-                </CardContent>
-                <CardFooter className="p-6 pt-0">
-                  <CatalogueViewer brand={product.brand} />
-                </CardFooter>
-              </Card>
+              <ProductCard product={{
+                ...product,
+                title: getTranslation(`products.${product.key}.title`, language),
+                description: getTranslation(`products.${product.key}.description`, language),
+              }} />
             </div>
           ))}
         </div>
