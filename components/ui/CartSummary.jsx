@@ -15,11 +15,11 @@ import Image from "next/image";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export function CartSummary() {
-  const { cartCount, cartDetails, removeItem, totalPrice, redirectToCheckout } = useCart();
+  const { cartCount, cartDetails, removeItem, formattedTotalPrice, redirectToCheckout } = useCart();
 
   const handleCheckout = async () => {
     try {
-      const response = await fetch('/.netlify/functions/checkout', {
+      const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -27,8 +27,9 @@ export function CartSummary() {
         body: JSON.stringify({ cart: cartDetails }),
       });
 
+      if (!response.ok) throw new Error('Failed to create checkout session');
       const { id } = await response.json();
-      redirectToCheckout(id);
+      await redirectToCheckout({ sessionId: id });
     } catch (error) {
       console.error('Error during checkout:', error);
     }
@@ -51,7 +52,7 @@ export function CartSummary() {
           <SheetTitle>Shopping Cart</SheetTitle>
         </SheetHeader>
         <ScrollArea className="flex-grow">
-          {Object.values(cartDetails).map((item) => (
+          {Object.values(cartDetails || {}).map((item) => (
             <div key={item.id} className="flex items-center gap-4 py-4">
               <div className="relative h-16 w-16 rounded-md overflow-hidden">
                 <Image
@@ -81,7 +82,7 @@ export function CartSummary() {
           <div className="w-full space-y-4">
             <div className="flex justify-between font-semibold">
               <span>Total</span>
-              <span>₹{totalPrice.toFixed(2)}</span>
+              <span>{formattedTotalPrice}</span>
             </div>
             <Button className="w-full" onClick={handleCheckout} disabled={cartCount === 0}>
               Checkout

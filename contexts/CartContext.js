@@ -1,12 +1,12 @@
 "use client"
 import React, { createContext, useContext } from 'react';
 import { useShoppingCart, CartProvider as USCProvider } from 'use-shopping-cart';
-import { useIdentity } from './IdentityContext';
+import { useUser } from '@auth0/nextjs-auth0/client';
 
 const CartContext = createContext({});
 
 export const CartProvider = ({ children }) => {
-  const { user } = useIdentity();
+  const { user } = useUser();
 
   return (
     <USCProvider
