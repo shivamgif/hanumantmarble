@@ -12,23 +12,21 @@
   },
   "products": {
     "sectionTitle": "Branded Products",
-    "items": {
-      "premiumTiles": {
-        "title": "Premium Tiles",
-        "description": "Crafted with passion, the digital vitrified tiles feature extraordinary aesthetic appeal and supreme quality."
-      },
-      "sanitaryware": {
-        "title": "Sanitaryware",
-        "description": "Exceptionally designed products for your home. Easy to clean rimless design for utmost hygiene"
-      },
-      "wallTiles": {
-        "title": "Wall Tiles",
-        "description": "Stunning wall tiles that transform your space with elegant designs and durable finishes."
-      },
-      "floorTiles": {
-        "title": "Floor Tiles",
-        "description": "High-performance floor tiles combining aesthetic beauty with exceptional durability and strength."
-      }
+    "premiumTiles": {
+      "title": "Premium Tiles",
+      "description": "Crafted with passion, the digital vitrified tiles feature extraordinary aesthetic appeal and supreme quality."
+    },
+    "sanitaryware": {
+      "title": "Sanitaryware",
+      "description": "Exceptionally designed products for your home. Easy to clean rimless design for utmost hygiene"
+    },
+    "wallTiles": {
+      "title": "Wall Tiles",
+      "description": "Stunning wall tiles that transform your space with elegant designs and durable finishes."
+    },
+    "floorTiles": {
+      "title": "Floor Tiles",
+      "description": "High-performance floor tiles combining aesthetic beauty with exceptional durability and strength."
     }
   },
   "branches": {

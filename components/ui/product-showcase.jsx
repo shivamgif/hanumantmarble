@@ -15,11 +15,52 @@ import {
   CardTitle,
 } from "./card";
 
-const statsValues = ["30+", "40+", "500+", "4"];
+const statsData = [
+  {
+    value: "30+",
+    key: "yearsExperience",
+    icon: <Clock className="w-8 h-8 text-primary" />,
+  },
+  {
+    value: "40+",
+    key: "employees",
+    icon: <Users className="w-8 h-8 text-primary" />,
+  },
+  {
+    value: "500+",
+    key: "products",
+    icon: <Package className="w-8 h-8 text-primary" />,
+  },
+  {
+    value: "4",
+    key: "showrooms",
+    icon: <Store className="w-8 h-8 text-primary" />,
+  },
+];
+
+function Stat({ icon, value, label, inView, delay }) {
+  return (
+    <div
+      className={cn(
+        "text-center animate-on-scroll",
+        inView ? "in-view" : ""
+      )}
+      style={{ transitionDelay: delay }}
+    >
+      <div className="flex flex-col items-center">
+        <div className={cn("mb-3 float-on-scroll", inView ? "in-view" : "")}>
+          {icon}
+        </div>
+        <div className="text-4xl font-bold text-primary">{value}</div>
+        <div className="text-sm text-muted-foreground">{label}</div>
+      </div>
+    </div>
+  );
+}
 
 export function ProductShowcase() {
   const { language } = useLanguage();
-  
+
   const productShowcases = [
     {
       key: "premiumTiles",
@@ -43,10 +84,11 @@ export function ProductShowcase() {
     },
   ];
 
-  const stats = statsValues.map((value, index) => ({
-    value,
-    label: getTranslation(`stats.${['yearsExperience', 'employees', 'products', 'showrooms'][index]}`, language)
+  const stats = statsData.map((stat) => ({
+    ...stat,
+    label: getTranslation(`stats.${stat.key}`, language),
   }));
+
   const [statsRef, isStatsInView] = useInView({ threshold: 0.2 });
   const [productsRef, isProductsInView] = useInView({ threshold: 0.2 });
   const [titleRef, isTitleInView] = useInView({ threshold: 0.2 });
@@ -58,32 +100,18 @@ export function ProductShowcase() {
         <div ref={statsRef} className="mb-16">
           <Card className={cn(
             "p-8 bg-primary/5 fade-on-scroll",
-            isStatsInView ? 'in-view' : ''
+            isStatsInView ? "in-view" : ""
           )}>
             <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-8 p-0">
               {stats.map((stat, index) => (
-                <div 
-                  key={index} 
-                  className={cn(
-                    "text-center animate-on-scroll",
-                    isStatsInView ? 'in-view' : ''
-                  )}
-                  style={{ transitionDelay: `${index * 100}ms` }}
-                >
-                  <div className="flex flex-col items-center">
-                    <div className={cn(
-                      "mb-3 float-on-scroll",
-                      isStatsInView ? 'in-view' : ''
-                    )}>
-                      {index === 0 && <Clock className="w-8 h-8 text-primary" />}
-                      {index === 1 && <Users className="w-8 h-8 text-primary" />}
-                      {index === 2 && <Package className="w-8 h-8 text-primary" />}
-                      {index === 3 && <Store className="w-8 h-8 text-primary" />}
-                    </div>
-                    <div className="text-4xl font-bold text-primary">{stat.value}</div>
-                    <div className="text-sm text-muted-foreground">{stat.label}</div>
-                  </div>
-                </div>
+                <Stat
+                  key={index}
+                  icon={stat.icon}
+                  value={stat.value}
+                  label={stat.label}
+                  inView={isStatsInView}
+                  delay={`${index * 100}ms`}
+                />
               ))}
             </CardContent>
           </Card>
@@ -91,55 +119,49 @@ export function ProductShowcase() {
 
         {/* Heading */}
         <div ref={titleRef}>
-            <h2 className={cn(
-              "text-4xl font-bold text-center mb-12 animate-on-scroll",
-              isTitleInView ? 'in-view' : ''
-            )}>
-              {getTranslation('products.sectionTitle', language)}
+          <h2 className={cn(
+            "text-4xl font-bold text-center mb-12 animate-on-scroll",
+            isTitleInView ? "in-view" : ""
+          )}>
+            {getTranslation('products.sectionTitle', language)}
             <div className={cn(
               "h-1 w-20 bg-primary mx-auto mt-4 rounded-full scale-on-scroll",
-              isTitleInView ? 'in-view' : ''
+              isTitleInView ? "in-view" : ""
             )}></div>
           </h2>
         </div>
 
-        {/* Product Grid */}
+        {/* Products Section */}
         <div ref={productsRef} className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {productShowcases.map((product, index) => (
-            <Card
+            <div
               key={index}
               className={cn(
-                "relative group cursor-pointer hover-lift fade-on-scroll",
-                isProductsInView ? 'in-view' : ''
+                "animate-on-scroll",
+                isProductsInView ? "in-view" : ""
               )}
-              style={{ transitionDelay: `${index * 200}ms` }}
+              style={{ transitionDelay: `${index * 100}ms` }}
             >
-              <CardContent className="p-0 relative h-80">
-                <img
-                  src={product.image}
-                  alt={product.title}
-                  className=" w-full h-full transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50  to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 p-6 transform transition-transform duration-300 group-hover:translate-y-[-8px]">
-                  <CardTitle className={cn(
-                    "text-2xl font-bold text-white mb-2 animate-on-scroll",
-                    isProductsInView ? 'in-view' : ''
-                  )} style={{ transitionDelay: `${index * 200 + 200}ms` }}>
-                    {getTranslation(`products.items.${product.key}.title`, language)}
-                  </CardTitle>
-                  <CardDescription className={cn(
-                    "text-white/80 mb-4 animate-on-scroll",
-                    isProductsInView ? 'in-view' : ''
-                  )} style={{ transitionDelay: `${index * 200 + 400}ms` }}>
-                    {getTranslation(`products.items.${product.key}.description`, language)}
-                  </CardDescription>
-                  <CardFooter className="p-0">
-                    <CatalogueViewer brand={product.brand} />
-                  </CardFooter>
-                </div>
-              </CardContent>
-            </Card>
+              <Card className="overflow-hidden h-full hover-lift">
+                <CardHeader className="p-0">
+                  <div className="relative h-64">
+                    <img
+                      src={product.image}
+                      alt={getTranslation(`products.${product.key}.title`, language)}
+                      className="object-cover w-full h-full"
+                    />
+                    <div className="absolute inset-0 bg-black/20" />
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <CardTitle className="mb-2">{getTranslation(`products.${product.key}.title`, language)}</CardTitle>
+                  <CardDescription>{getTranslation(`products.${product.key}.description`, language)}</CardDescription>
+                </CardContent>
+                <CardFooter className="p-6 pt-0">
+                  <CatalogueViewer brand={product.brand} />
+                </CardFooter>
+              </Card>
+            </div>
           ))}
         </div>
       </div>

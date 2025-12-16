@@ -1,35 +1,15 @@
 "use client"
 
 import * as React from "react"
+import { useForm } from "react-hook-form"
 import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useInView } from "@/lib/hooks/useInView"
 
 const Input = React.forwardRef(
-  ({ className, type, label, error, onClear, isInView, ...props }, ref) => {
-    const [isFocused, setIsFocused] = React.useState(false)
-    const [value, setValue] = React.useState(
-      props.value || props.defaultValue || "",
-    )
-    const inputRef = React.useRef(null)
-
-    React.useImperativeHandle(ref, () => inputRef.current)
-
-    const handleClear = () => {
-      setValue("")
-      onClear?.()
-      inputRef.current?.focus()
-
-      // Trigger change event
-      const event = new Event("change", { bubbles: true })
-      inputRef.current?.dispatchEvent(event)
-    }
-
+  ({ className, type, label, error, ...props }, ref) => {
     return (
-      <div className={cn(
-        "w-full space-y-1.5 animate-on-scroll",
-        isInView ? 'in-view' : ''
-      )}>
+      <div className="w-full space-y-1.5">
         {label && (
           <label
             className="text-sm font-medium text-foreground/90"
@@ -38,7 +18,6 @@ const Input = React.forwardRef(
             {label}
           </label>
         )}
-
         <div className="relative">
           <input
             type={type}
@@ -49,65 +28,24 @@ const Input = React.forwardRef(
               "text-sm text-foreground",
               "placeholder:text-muted-foreground",
               "transition-all duration-300",
-              "focus:outline-none focus:ring-2 hover-scale",
+              "focus:outline-none focus:ring-2",
               error && "border-destructive focus:ring-destructive/20",
               !error && "focus:ring-primary/20",
-              isFocused && !error && "border-primary scale-[1.02]",
               "disabled:opacity-50 disabled:cursor-not-allowed",
               className,
             )}
-            ref={inputRef}
-            onChange={(e) => {
-              setValue(e.target.value)
-              props.onChange?.(e)
-            }}
-            onFocus={(e) => {
-              setIsFocused(true)
-              props.onFocus?.(e)
-            }}
-            onBlur={(e) => {
-              setIsFocused(false)
-              props.onBlur?.(e)
-            }}
-            value={value}
+            ref={ref}
             {...props}
           />
-
-          {/* Clear button */}
-          {value && onClear && (
-            <button
-              type="button"
-              onClick={handleClear}
-              className={cn(
-                "absolute right-2 top-1/2 -translate-y-1/2",
-                "p-1 rounded-md",
-                "text-muted-foreground hover:text-foreground",
-                "transition-colors float-on-scroll",
-                isInView ? 'in-view' : ''
-              )}
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-
-          {/* Error indicator */}
           {error && (
-            <div className={cn(
-              "absolute -right-6 top-1/2 -translate-y-1/2 scale-on-scroll",
-              isInView ? 'in-view' : ''
-            )}>
+            <div className="absolute -right-6 top-1/2 -translate-y-1/2">
               <X className="h-4 w-4 text-destructive" />
             </div>
           )}
         </div>
-
-        {/* Error message */}
         {error && (
-          <p className={cn(
-            "text-sm text-destructive animate-on-scroll",
-            isInView ? 'in-view' : ''
-          )}>
-            {error}
+          <p className="text-sm text-destructive">
+            {error.message}
           </p>
         )}
       </div>
@@ -117,14 +55,9 @@ const Input = React.forwardRef(
 Input.displayName = "Input"
 
 const Select = React.forwardRef(
-  ({ className, label, error, options, isInView, ...props }, ref) => {
-    const [isFocused, setIsFocused] = React.useState(false)
-
+  ({ className, label, error, options, ...props }, ref) => {
     return (
-      <div className={cn(
-        "w-full space-y-1.5 animate-on-scroll",
-        isInView ? 'in-view' : ''
-      )}>
+      <div className="w-full space-y-1.5">
         {label && (
           <label
             className="text-sm font-medium text-foreground/90"
@@ -133,7 +66,6 @@ const Select = React.forwardRef(
             {label}
           </label>
         )}
-
         <div className="relative">
           <select
             className={cn(
@@ -142,17 +74,14 @@ const Select = React.forwardRef(
               "border border-input",
               "text-sm text-foreground",
               "transition-all duration-300",
-              "focus:outline-none focus:ring-2 hover-scale",
+              "focus:outline-none focus:ring-2",
               error && "border-destructive focus:ring-destructive/20",
               !error && "focus:ring-primary/20",
-              isFocused && !error && "border-primary scale-[1.02]",
               "disabled:opacity-50 disabled:cursor-not-allowed",
               "pr-10", // Space for the dropdown icon
               className,
             )}
             ref={ref}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
             {...props}
           >
             {options.map((option) => (
@@ -161,14 +90,9 @@ const Select = React.forwardRef(
               </option>
             ))}
           </select>
-
-          {/* Dropdown icon */}
           <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
             <svg
-              className={cn(
-                "h-4 w-4 text-muted-foreground float-on-scroll",
-                isInView ? 'in-view' : ''
-              )}
+              className="h-4 w-4 text-muted-foreground"
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 20 20"
               fill="currentColor"
@@ -180,25 +104,15 @@ const Select = React.forwardRef(
               />
             </svg>
           </div>
-
-          {/* Error indicator */}
           {error && (
-            <div className={cn(
-              "absolute -right-6 top-1/2 -translate-y-1/2 scale-on-scroll",
-              isInView ? 'in-view' : ''
-            )}>
+            <div className="absolute -right-6 top-1/2 -translate-y-1/2">
               <X className="h-4 w-4 text-destructive" />
             </div>
           )}
         </div>
-
-        {/* Error message */}
         {error && (
-          <p className={cn(
-            "text-sm text-destructive animate-on-scroll",
-            isInView ? 'in-view' : ''
-          )}>
-            {error}
+          <p className="text-sm text-destructive">
+            {error.message}
           </p>
         )}
       </div>
@@ -207,50 +121,11 @@ const Select = React.forwardRef(
 )
 Select.displayName = "Select"
 
-export function ProductForm({ className, onSubmit, isSubmitting, ...props }) {
-  const [formData, setFormData] = React.useState({
-    fullname: "",
-    email: "",
-    brand: "Kajaria",
-    product: "",
-    quantity: "",
-  })
+export function ProductForm({ className, ...props }) {
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm();
+  const [formRef, isFormInView] = useInView({ threshold: 0.1 });
 
-  const [errors, setErrors] = React.useState({})
-  const [formRef, isFormInView] = useInView({ threshold: 0.1 })
-
-  const validateForm = () => {
-    const newErrors = {}
-
-    if (!formData.fullname) {
-      newErrors.fullname = "Name is required"
-    }
-
-    if (!formData.email) {
-      newErrors.email = "Email is required"
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid"
-    }
-
-    if (!formData.product) {
-      newErrors.product = "Product name is required"
-    }
-
-    if (!formData.quantity) {
-      newErrors.quantity = "Quantity is required"
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    
-    if (!validateForm()) {
-      return
-    }
-
+  const onSubmit = async (data) => {
     // Rate limiting check
     const lastSubmitTime = localStorage.getItem('lastQuoteSubmitTime')
     const now = Date.now()
@@ -268,49 +143,25 @@ export function ProductForm({ className, onSubmit, isSubmitting, ...props }) {
     localStorage.setItem('lastQuoteSubmitTime', now.toString())
 
     // Format email content
-    const emailSubject = encodeURIComponent(`Quote Request for ${formData.brand} ${formData.product}`)
+    const emailSubject = encodeURIComponent(`Quote Request for ${data.brand} ${data.product}`)
     const emailBody = encodeURIComponent(
       `Dear Hanumant Marble Team,\n\n` +
       `I would like to request a quote for the following:\n\n` +
       `Product Details:\n` +
-      `- Brand: ${formData.brand}\n` +
-      `- Product Name/Number: ${formData.product}\n` +
-      `- Quantity: ${formData.quantity}\n\n` +
+      `- Brand: ${data.brand}\n` +
+      `- Product Name/Number: ${data.product}\n` +
+      `- Quantity: ${data.quantity}\n\n` +
       `Contact Information:\n` +
-      `- Name: ${formData.fullname}\n` +
-      `- Email: ${formData.email}\n` +
-      `- Mobile: ${formData.mobile || 'Not provided'}\n\n` +
+      `- Name: ${data.fullname}\n` +
+      `- Email: ${data.email}\n` +
+      `- Mobile: ${data.mobile || 'Not provided'}\n\n` +
       `I look forward to hearing from you.\n\n` +
       `Best regards,\n` +
-      `${formData.fullname}`
+      `${data.fullname}`
     )
 
     // Open email client
     window.location.href = `mailto:hanumantmarble@rediffmail.com?subject=${emailSubject}&body=${emailBody}`
-    
-    // Clear form
-    setFormData({
-      fullname: "",
-      email: "",
-      mobile: "",
-      brand: "Kajaria",
-      product: "",
-      quantity: "",
-    })
-  }
-
-  const handleChange = (e) => {
-    const { name, value } = e.target
-    
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
-
-    // Clear error when user types
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }))
-    }
   }
 
   const brandOptions = [
@@ -319,14 +170,14 @@ export function ProductForm({ className, onSubmit, isSubmitting, ...props }) {
   ]
 
   return (
-    <form 
+    <form
       ref={formRef}
       className={cn(
-        "space-y-6 w-full max-w-md mx-auto p-8 rounded-xl shadow-sm fade-on-scroll", 
+        "space-y-6 w-full max-w-md mx-auto p-8 rounded-xl shadow-sm fade-on-scroll",
         isFormInView ? 'in-view' : '',
         className
-      )} 
-      onSubmit={handleSubmit}
+      )}
+      onSubmit={handleSubmit(onSubmit)}
       {...props}
       netlify
     >
@@ -340,84 +191,52 @@ export function ProductForm({ className, onSubmit, isSubmitting, ...props }) {
       <div className="space-y-4">
         <Input
           label="Full Name"
-          name="fullname"
+          {...register("fullname", { required: "Name is required" })}
           placeholder="Enter your full name"
-          value={formData.fullname}
-          onChange={handleChange}
           error={errors.fullname}
-          isInView={isFormInView}
-          onClear={() => {
-            setFormData((prev) => ({ ...prev, fullname: "" }))
-            setErrors((prev) => ({ ...prev, fullname: "" }))
-          }}
         />
 
         <Input
           label="Email Address"
-          name="email"
           type="email"
+          {...register("email", { 
+            required: "Email is required",
+            pattern: {
+              value: /\S+@\S+\.\S+/,
+              message: "Email is invalid"
+            }
+          })}
           placeholder="Enter your email"
-          value={formData.email}
-          onChange={handleChange}
           error={errors.email}
-          isInView={isFormInView}
-          onClear={() => {
-            setFormData((prev) => ({ ...prev, email: "" }))
-            setErrors((prev) => ({ ...prev, email: "" }))
-          }}
         />
 
         <Input
           label="Mobile Number"
-          name="mobile"
           type="tel"
+          {...register("mobile")}
           placeholder="Enter your mobile number"
-          value={formData.mobile}
-          onChange={handleChange}
           error={errors.mobile}
-          isInView={isFormInView}
-          onClear={() => {
-            setFormData((prev) => ({ ...prev, mobile: "" }))
-            setErrors((prev) => ({ ...prev, mobile: "" }))
-          }}
         />
 
         <Select
           label="Select Brand"
-          name="brand"
+          {...register("brand")}
           options={brandOptions}
-          value={formData.brand}
-          onChange={handleChange}
           error={errors.brand}
-          isInView={isFormInView}
         />
 
         <Input
           label="Product Name/Number"
-          name="product"
+          {...register("product", { required: "Product name is required" })}
           placeholder="Enter product name/number"
-          value={formData.product}
-          onChange={handleChange}
           error={errors.product}
-          isInView={isFormInView}
-          onClear={() => {
-            setFormData((prev) => ({ ...prev, product: "" }))
-            setErrors((prev) => ({ ...prev, product: "" }))
-          }}
         />
 
         <Input
           label="Quantity"
-          name="quantity"
+          {...register("quantity", { required: "Quantity is required" })}
           placeholder="Enter quantity"
-          value={formData.quantity}
-          onChange={handleChange}
           error={errors.quantity}
-          isInView={isFormInView}
-          onClear={() => {
-            setFormData((prev) => ({ ...prev, quantity: "" }))
-            setErrors((prev) => ({ ...prev, quantity: "" }))
-          }}
         />
       </div>
 
