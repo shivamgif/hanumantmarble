@@ -1,6 +1,7 @@
 {
   "nav": {
     "products": "Products",
+    "brands": "Brands",
     "quote": "Get Your Quotation",
     "about": "About Us"
   },
@@ -112,6 +113,26 @@
           "organization": "Natural Stone Council"
         }
       ]
+    }
+  }
+  ,
+  "shop": {
+    "sectionTitle": "Products",
+    "porcelainTile": {
+      "title": "Porcelain Tile",
+      "description": "Durable, low-maintenance porcelain tiles ideal for high-traffic areas."
+    },
+    "graniteSlab": {
+      "title": "Granite Slab",
+      "description": "Premium granite slabs with natural patterns for kitchen and flooring."
+    },
+    "wallCladding": {
+      "title": "Wall Cladding",
+      "description": "Elegant wall cladding to add texture and depth to interiors."
+    },
+    "bathroomSet": {
+      "title": "Bathroom Set",
+      "description": "Complete bathroom accessory set for a cohesive modern look."
     }
   }
 }

@@ -1,3 +1,5 @@
+"use client"
+
 import * as React from "react"
 import { useState, useCallback } from "react"
 import * as Dialog from "@radix-ui/react-dialog"
@@ -260,9 +262,10 @@ export function CatalogueViewer({ brand }) {
       <Dialog.Trigger asChild>
         <Button 
           variant="outline" 
-          className="border-white/20 text-white hover:bg-white/10 hover:scale-105 transition-transform shimmer"
+          className="w-full group border-2 border-primary/20 hover:border-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300 rounded-full"
         >
-          {getTranslation('catalogue.viewButton', language)} <FileText className="ml-2 h-4 w-4" />
+          {getTranslation('catalogue.viewButton', language)} 
+          <FileText className="ml-2 h-4 w-4 transition-transform group-hover:rotate-12" />
         </Button>
       </Dialog.Trigger>
       <Dialog.Portal>
