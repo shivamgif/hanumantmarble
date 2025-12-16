@@ -135,7 +135,7 @@ export function Header() {
                   {/* Cart & Login for Mobile */}
                   <div className="flex flex-col space-y-2 mb-6 pb-6 border-b border-border/50">
                     <a
-                      href={user ? "/api/auth/logout" : "/api/auth/login"}
+                      href={user ? "/auth/logout" : "/auth/login"}
                       className="group flex justify-between items-center py-3 px-4 rounded-xl text-foreground hover:bg-primary/10 hover:text-primary transition-all"
                       onClick={() => setOpen(false)}
                     >

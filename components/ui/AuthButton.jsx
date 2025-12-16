@@ -12,12 +12,12 @@ export function AuthButton() {
         <div className="flex items-center gap-4">
           <span className="text-sm text-muted-foreground hidden md:inline">{user.email}</span>
           <Button asChild>
-            <a href="/api/auth/logout">Logout</a>
+            <a href="/auth/logout">Logout</a>
           </Button>
         </div>
       ) : (
         <Button asChild>
-          <a href="/api/auth/login">Login</a>
+          <a href="/auth/login">Login</a>
         </Button>
       )}
     </div>
