@@ -2,13 +2,29 @@ import Stripe from 'stripe';
 import { NextResponse } from 'next/server';
 import { ordersDB } from '@/lib/db/orders';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+// Lazy initialization to avoid module-level evaluation during build
+let _stripe = null;
+
+function getStripe() {
+  if (!_stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('Missing STRIPE_SECRET_KEY environment variable');
+    }
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  }
+  return _stripe;
+}
+
+function getWebhookSecret() {
+  return process.env.STRIPE_WEBHOOK_SECRET;
+}
 
 export async function POST(request) {
   try {
     const body = await request.text();
     const signature = request.headers.get('stripe-signature');
+    const stripe = getStripe();
+    const webhookSecret = getWebhookSecret();
 
     let event;
 
