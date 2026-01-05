@@ -3,7 +3,13 @@
     "products": "Products",
     "brands": "Brands",
     "quote": "Get Your Quotation",
-    "about": "About Us"
+    "about": "About Us",
+    "profile": "Profile",
+    "orders": "Orders",
+    "wishlist": "Wishlist",
+    "cart": "Cart",
+    "login": "Login",
+    "logout": "Logout"
   },
   "stats": {
     "yearsExperience": "Years Experience",

@@ -3,11 +3,12 @@
 import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Menu, Sun, Moon, Languages, ArrowRight, ShoppingCart, User, LogOut } from "lucide-react"
+import { Menu, Sun, Moon, Languages, ArrowRight, ShoppingCart, User, LogOut, Heart, Package, Settings, Shield } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useLanguage } from "@/contexts/LanguageContext"
 import { getTranslation } from "@/lib/translations"
 import { useUser } from '@auth0/nextjs-auth0/client'
+import { isAdmin } from '@/lib/admin-config'
 
 import { ScrollProgress } from "@/components/ui/scroll-progress"
 import { NavigationMenu, NavigationMenuList, NavigationMenuItem, NavigationMenuLink } from "@/components/ui/navigation-menu"
@@ -46,7 +47,7 @@ export function Header() {
       <div className="container mx-auto px-4 h-20 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center">
-          <Link href="/" className="relative h-16 w-16 hover:scale-105 transition-transform">
+          <Link href="/" className="relative h-20 w-20 hover:scale-105 transition-transform">
             <Image
               src="/logo.png"
               alt="Hanumant Marble Logo"
@@ -78,7 +79,7 @@ export function Header() {
         </div>
 
         {/* Right Side - Theme Toggle & Mobile Menu */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-3">
           <div className="hidden md:flex items-center gap-1">
             <AuthButton />
             <CartSummary />
@@ -132,19 +133,94 @@ export function Header() {
                   </SheetTitle>
                 </SheetHeader>
                 <div className="py-8">
-                  {/* Cart & Login for Mobile */}
+                  {/* User Profile Section for Mobile */}
+                  {user && (
+                    <div className="mb-6 pb-6 border-b border-border/50">
+                      {/* User Info */}
+                      <div className="flex items-center gap-3 px-4 mb-4">
+                        <div className="relative h-12 w-12 rounded-full overflow-hidden ring-2 ring-primary/20">
+                          {user.picture ? (
+                            <Image
+                              src={user.picture}
+                              alt={user.name || 'User'}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-primary/10 flex items-center justify-center">
+                              <User className="h-6 w-6 text-primary" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-foreground truncate">{user.name || 'User'}</p>
+                          <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+                        </div>
+                      </div>
+                      
+                      {/* Profile Quick Actions */}
+                      <div className={`grid ${isAdmin(user.email) ? 'grid-cols-4' : 'grid-cols-3'} gap-2 px-4`}>
+                        <Link
+                          href="/profile"
+                          className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-primary/5 hover:bg-primary/10 transition-colors"
+                          onClick={() => setOpen(false)}
+                        >
+                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <User className="h-5 w-5 text-primary" />
+                          </div>
+                          <span className="text-xs font-medium">{getTranslation('nav.profile', language) || 'Profile'}</span>
+                        </Link>
+                        <Link
+                          href="/orders"
+                          className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-primary/5 hover:bg-primary/10 transition-colors"
+                          onClick={() => setOpen(false)}
+                        >
+                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Package className="h-5 w-5 text-primary" />
+                          </div>
+                          <span className="text-xs font-medium">{getTranslation('nav.orders', language) || 'Orders'}</span>
+                        </Link>
+                        <Link
+                          href="/wishlist"
+                          className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-primary/5 hover:bg-primary/10 transition-colors"
+                          onClick={() => setOpen(false)}
+                        >
+                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Heart className="h-5 w-5 text-primary" />
+                          </div>
+                          <span className="text-xs font-medium">{getTranslation('nav.wishlist', language) || 'Wishlist'}</span>
+                        </Link>
+                        {isAdmin(user.email) && (
+                          <Link
+                            href="/admin"
+                            className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 transition-colors"
+                            onClick={() => setOpen(false)}
+                          >
+                            <div className="h-10 w-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+                              <Shield className="h-5 w-5 text-amber-600" />
+                            </div>
+                            <span className="text-xs font-medium text-amber-600">Admin</span>
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cart Section */}
                   <div className="flex flex-col space-y-2 mb-6 pb-6 border-b border-border/50">
-                    <a
-                      href={user ? "/auth/logout" : "/auth/login"}
-                      className="group flex justify-between items-center py-3 px-4 rounded-xl text-foreground hover:bg-primary/10 hover:text-primary transition-all"
-                      onClick={() => setOpen(false)}
-                    >
-                      <span className="flex items-center gap-3 text-lg font-medium">
-                        {user ? <LogOut className="h-5 w-5" /> : <User className="h-5 w-5" />}
-                        {user ? "Logout" : "Login"}
-                      </span>
-                      <ArrowRight className="h-5 w-5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-                    </a>
+                    {!user && (
+                      <a
+                        href="/auth/login"
+                        className="group flex justify-between items-center py-3 px-4 rounded-xl text-foreground hover:bg-primary/10 hover:text-primary transition-all"
+                        onClick={() => setOpen(false)}
+                      >
+                        <span className="flex items-center gap-3 text-lg font-medium">
+                          <User className="h-5 w-5" />
+                          {getTranslation('nav.login', language) || 'Login'}
+                        </span>
+                        <ArrowRight className="h-5 w-5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                      </a>
+                    )}
                     <Link
                       href="/#products"
                       className="group flex justify-between items-center py-3 px-4 rounded-xl text-foreground hover:bg-primary/10 hover:text-primary transition-all"
@@ -152,7 +228,7 @@ export function Header() {
                     >
                       <span className="flex items-center gap-3 text-lg font-medium">
                         <ShoppingCart className="h-5 w-5" />
-                        Cart
+                        {getTranslation('nav.cart', language) || 'Cart'}
                         {cartCount > 0 && (
                           <span className="bg-primary text-primary-foreground rounded-full h-5 w-5 flex items-center justify-center text-xs font-medium">
                             {cartCount}
@@ -177,6 +253,23 @@ export function Header() {
                       </Link>
                     ))}
                   </div>
+
+                  {/* Logout Button for logged in users */}
+                  {user && (
+                    <div className="mt-6 pt-6 border-t border-border/50">
+                      <a
+                        href="/auth/logout"
+                        className="group flex justify-between items-center py-3 px-4 rounded-xl text-red-500 hover:bg-red-500/10 transition-all"
+                        onClick={() => setOpen(false)}
+                      >
+                        <span className="flex items-center gap-3 text-lg font-medium">
+                          <LogOut className="h-5 w-5" />
+                          {getTranslation('nav.logout', language) || 'Logout'}
+                        </span>
+                        <ArrowRight className="h-5 w-5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                      </a>
+                    </div>
+                  )}
                 </div>
               </SheetContent>
             </Sheet>

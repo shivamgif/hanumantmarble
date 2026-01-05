@@ -1,0 +1,232 @@
+[
+  {
+    "id": "tile-adhesive",
+    "slug": "tile-adhesive",
+    "name": "Tile Adhesive",
+    "nameHi": "टाइल एडहेसिव",
+    "category": "Adhesives",
+    "categoryHi": "एडहेसिव",
+    "description": "Premium quality tile adhesive for secure and long-lasting tile installation. Ideal for fixing ceramic, vitrified, and porcelain tiles on walls and floors.",
+    "descriptionHi": "सुरक्षित और लंबे समय तक चलने वाले टाइल इंस्टॉलेशन के लिए प्रीमियम गुणवत्ता टाइल एडहेसिव। दीवारों और फर्श पर सिरेमिक, विट्रिफाइड और पोर्सिलेन टाइल्स को फिक्स करने के लिए आदर्श।",
+    "price": 599,
+    "rating": 4.8,
+    "reviews": 124,
+    "inStock": true,
+    "features": [
+      "High bond strength",
+      "Water resistant formula",
+      "Non-slip consistency",
+      "Easy to mix and apply",
+      "Suitable for interior and exterior use"
+    ],
+    "featuresHi": [
+      "उच्च बॉन्ड शक्ति",
+      "जलरोधक फॉर्मूला",
+      "नॉन-स्लिप कंसिस्टेंसी",
+      "मिश्रण और लागू करने में आसान",
+      "आंतरिक और बाहरी उपयोग के लिए उपयुक्त"
+    ],
+    "specifications": {
+      "Coverage": "4-5 kg/m² depending on tile size",
+      "Open Time": "20-30 minutes",
+      "Pot Life": "2-3 hours",
+      "Setting Time": "24 hours",
+      "Pack Size": "20 kg, 40 kg"
+    },
+    "variants": [
+      {
+        "id": "ta-1",
+        "name": "Standard",
+        "image": "/products/Tile-Adehesive-1.png"
+      },
+      {
+        "id": "ta-2",
+        "name": "Premium",
+        "image": "/products/Tile-Adhesive-2.png"
+      },
+      {
+        "id": "ta-3",
+        "name": "Heavy Duty",
+        "image": "/products/Tile-Adhesive-3.png"
+      }
+    ],
+    "mainImage": "/products/Tile-Adehesive-1.png"
+  },
+  {
+    "id": "grout",
+    "slug": "grout",
+    "name": "Tile Grout",
+    "nameHi": "टाइल ग्राउट",
+    "category": "Grouts",
+    "categoryHi": "ग्राउट",
+    "description": "High-performance tile grout for filling joints between tiles. Available in multiple colors to complement your tile design and create a seamless finish.",
+    "descriptionHi": "टाइल्स के बीच जोड़ों को भरने के लिए उच्च-प्रदर्शन टाइल ग्राउट। आपके टाइल डिज़ाइन को पूरक और एक सहज फिनिश बनाने के लिए कई रंगों में उपलब्ध।",
+    "price": 349,
+    "rating": 4.7,
+    "reviews": 89,
+    "inStock": true,
+    "features": [
+      "Crack resistant",
+      "Stain resistant",
+      "Mold and mildew resistant",
+      "Color consistent",
+      "Easy to clean"
+    ],
+    "featuresHi": [
+      "दरार प्रतिरोधी",
+      "दाग प्रतिरोधी",
+      "मोल्ड और फफूंदी प्रतिरोधी",
+      "रंग सुसंगत",
+      "साफ करने में आसान"
+    ],
+    "specifications": {
+      "Joint Width": "2-10 mm",
+      "Coverage": "1.5-2 kg/m² for 3mm joint",
+      "Working Time": "30-45 minutes",
+      "Final Setting": "24 hours",
+      "Pack Size": "1 kg, 5 kg, 20 kg"
+    },
+    "variants": [
+      {
+        "id": "gr-1",
+        "name": "White",
+        "image": "/products/Grout-1.png"
+      },
+      {
+        "id": "gr-2",
+        "name": "Grey",
+        "image": "/products/Grout-2.png"
+      }
+    ],
+    "mainImage": "/products/Grout-1.png"
+  },
+  {
+    "id": "grout-admix",
+    "slug": "grout-admix",
+    "name": "Grout Admix",
+    "nameHi": "ग्राउट एडमिक्स",
+    "category": "Additives",
+    "categoryHi": "एडिटिव्स",
+    "description": "Liquid additive that enhances grout performance by improving flexibility, water resistance, and adhesion. Perfect for high-stress areas and wet zones.",
+    "descriptionHi": "तरल एडिटिव जो लचीलापन, जल प्रतिरोध और आसंजन में सुधार करके ग्राउट प्रदर्शन को बढ़ाता है। उच्च-तनाव क्षेत्रों और गीले क्षेत्रों के लिए उत्तम।",
+    "price": 249,
+    "rating": 4.6,
+    "reviews": 56,
+    "inStock": true,
+    "features": [
+      "Improves flexibility",
+      "Enhances water resistance",
+      "Better adhesion",
+      "Reduces shrinkage",
+      "Compatible with all grouts"
+    ],
+    "featuresHi": [
+      "लचीलापन में सुधार",
+      "जल प्रतिरोध बढ़ाता है",
+      "बेहतर आसंजन",
+      "सिकुड़न कम करता है",
+      "सभी ग्राउट के साथ संगत"
+    ],
+    "specifications": {
+      "Type": "Liquid Polymer",
+      "Color": "Milky White",
+      "Mix Ratio": "Replace water with admix",
+      "Shelf Life": "12 months",
+      "Pack Size": "500ml, 1L, 5L"
+    },
+    "variants": [
+      {
+        "id": "ga-1",
+        "name": "Standard",
+        "image": "/products/Grout-Admix.png"
+      }
+    ],
+    "mainImage": "/products/Grout-Admix.png"
+  },
+  {
+    "id": "tile-spacer",
+    "slug": "tile-spacer",
+    "name": "Tile Spacers",
+    "nameHi": "टाइल स्पेसर",
+    "category": "Accessories",
+    "categoryHi": "एक्सेसरीज़",
+    "description": "Precision tile spacers for achieving uniform grout joints. Made from durable plastic for consistent spacing and professional tile installation results.",
+    "descriptionHi": "समान ग्राउट जोड़ों को प्राप्त करने के लिए प्रिसिशन टाइल स्पेसर। सुसंगत स्पेसिंग और पेशेवर टाइल इंस्टॉलेशन परिणामों के लिए टिकाऊ प्लास्टिक से बने।",
+    "price": 99,
+    "rating": 4.5,
+    "reviews": 203,
+    "inStock": true,
+    "features": [
+      "Uniform spacing",
+      "Reusable design",
+      "Easy to remove",
+      "Multiple sizes available",
+      "High quality plastic"
+    ],
+    "featuresHi": [
+      "समान स्पेसिंग",
+      "पुन: प्रयोज्य डिज़ाइन",
+      "निकालने में आसान",
+      "कई साइज़ उपलब्ध",
+      "उच्च गुणवत्ता प्लास्टिक"
+    ],
+    "specifications": {
+      "Material": "High-grade Plastic",
+      "Sizes Available": "1mm, 2mm, 3mm, 5mm",
+      "Quantity": "100 pcs/pack",
+      "Reusable": "Yes",
+      "Color": "White"
+    },
+    "variants": [
+      {
+        "id": "sp-1",
+        "name": "Assorted Pack",
+        "image": "/products/Spacer.png"
+      }
+    ],
+    "mainImage": "/products/Spacer.png"
+  },
+  {
+    "id": "tile-cleaner",
+    "slug": "tile-cleaner",
+    "name": "Tile Cleaner",
+    "nameHi": "टाइल क्लीनर",
+    "category": "Cleaners",
+    "categoryHi": "क्लीनर",
+    "description": "Professional grade tile and grout cleaner that removes tough stains, grease, and grime. Safe for all tile types including marble, granite, and ceramic.",
+    "descriptionHi": "पेशेवर ग्रेड टाइल और ग्राउट क्लीनर जो कठिन दाग, ग्रीस और गंदगी को हटाता है। मार्बल, ग्रेनाइट और सिरेमिक सहित सभी टाइल प्रकारों के लिए सुरक्षित।",
+    "price": 199,
+    "rating": 4.7,
+    "reviews": 156,
+    "inStock": true,
+    "features": [
+      "Removes tough stains",
+      "Safe for all surfaces",
+      "No harsh chemicals",
+      "Pleasant fragrance",
+      "Eco-friendly formula"
+    ],
+    "featuresHi": [
+      "कठिन दाग हटाता है",
+      "सभी सतहों के लिए सुरक्षित",
+      "कोई कठोर रसायन नहीं",
+      "सुखद खुशबू",
+      "पर्यावरण अनुकूल फॉर्मूला"
+    ],
+    "specifications": {
+      "Type": "Liquid Concentrate",
+      "Dilution": "1:10 with water",
+      "Coverage": "50-100 m² per liter",
+      "pH Level": "Neutral",
+      "Pack Size": "500ml, 1L, 5L"
+    },
+    "variants": [
+      {
+        "id": "tc-1",
+        "name": "Standard",
+        "image": "/products/Tile-Cleaner.png"
+      }
+    ],
+    "mainImage": "/products/Tile-Cleaner.png"
+  }
+]

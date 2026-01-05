@@ -28,7 +28,7 @@ export function AuthButton() {
   if (error) {
     return (
       <Button variant="ghost" asChild className="rounded-full">
-        <Link href="/login">Login</Link>
+        <Link href="/auth/login">Login</Link>
       </Button>
     )
   }

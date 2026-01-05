@@ -41,7 +41,7 @@ export function CartSummary() {
         <Button variant="outline" size="icon" className="relative rounded-full hover:scale-105 transition-transform">
           <ShoppingCart className="h-5 w-5" />
           {cartCount > 0 && (
-            <span className="absolute -top-2 -right-2 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-full h-5 w-5 flex items-center justify-center text-xs font-medium shadow-lg">
+            <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground rounded-full h-5 w-5 flex items-center justify-center text-xs font-medium shadow-lg">
               {cartCount}
             </span>
           )}
@@ -95,9 +95,9 @@ export function CartSummary() {
               <span className="text-muted-foreground">Total</span>
               <span className="text-2xl font-bold">{formattedTotalPrice}</span>
             </div>
-            <Button 
-              className="w-full h-12 rounded-full bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 transition-opacity text-lg font-medium" 
-              onClick={handleCheckout} 
+            <Button
+              className="w-full h-12 rounded-full hover:opacity-90 transition-opacity text-lg font-medium"
+              onClick={handleCheckout}
               disabled={cartCount === 0}
             >
               Checkout

@@ -6,37 +6,26 @@ import { useInView } from "@/lib/hooks/useInView";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
 import { ProductCard } from "./ProductCard";
+import { getAllProducts } from "@/lib/products";
 
 export function ProductsGrid() {
   const { language } = useLanguage();
+  const allProducts = getAllProducts();
 
-  // Placeholder products for online/cart
-  const products = [
-    {
-      id: "prod_placeholder_1",
-      key: "porcelainTile",
-      image: "/gallery1.jpeg",
-      price: 999,
-    },
-    {
-      id: "prod_placeholder_2",
-      key: "graniteSlab",
-      image: "/gallery2.jpeg",
-      price: 2499,
-    },
-    {
-      id: "prod_placeholder_3",
-      key: "wallCladding",
-      image: "/gallery3.jpeg",
-      price: 1499,
-    },
-    {
-      id: "prod_placeholder_4",
-      key: "bathroomSet",
-      image: "/gallery4.jpeg",
-      price: 3299,
-    },
-  ];
+  // Map products to display format with language support
+  const products = allProducts.map(product => ({
+    id: product.id,
+    slug: product.slug,
+    name: language === 'hi' ? product.nameHi : product.name,
+    title: language === 'hi' ? product.nameHi : product.name,
+    description: language === 'hi' ? product.descriptionHi : product.description,
+    image: product.mainImage,
+    mainImage: product.mainImage,
+    price: product.price,
+    category: language === 'hi' ? product.categoryHi : product.category,
+    rating: product.rating,
+    variants: product.variants,
+  }));
 
   const [titleRef, isTitleInView] = useInView({ threshold: 0.2 });
   const [gridRef, isGridInView] = useInView({ threshold: 0.2 });
@@ -56,7 +45,7 @@ export function ProductsGrid() {
             isTitleInView ? "in-view" : ""
           )}>
             <Sparkles className="w-4 h-4" />
-            Shop Online
+            {language === 'hi' ? 'ऑनलाइन खरीदें' : 'Shop Online'}
           </div>
           <h2
             className={cn(
@@ -71,7 +60,10 @@ export function ProductsGrid() {
             "text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto px-4 sm:px-0 animate-on-scroll",
             isTitleInView ? "in-view" : ""
           )} style={{ transitionDelay: "200ms" }}>
-            Discover our curated collection of premium tiles and marble products
+            {language === 'hi' 
+              ? 'टाइल इंस्टॉलेशन के लिए प्रीमियम एडहेसिव, ग्राउट और एक्सेसरीज़'
+              : 'Premium adhesives, grouts, and accessories for tile installation'
+            }
           </p>
           <div
             className={cn(
@@ -84,24 +76,18 @@ export function ProductsGrid() {
 
         <div
           ref={gridRef}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8"
         >
-          {products.map((p, index) => (
+          {products.map((product, index) => (
             <div
-              key={p.id}
+              key={product.id}
               className={cn(
                 "animate-on-scroll",
                 isGridInView ? "in-view" : ""
               )}
               style={{ transitionDelay: `${index * 100}ms` }}
             >
-              <ProductCard
-                product={{
-                  ...p,
-                  title: getTranslation(`shop.${p.key}.title`, language),
-                  description: getTranslation(`shop.${p.key}.description`, language),
-                }}
-              />
+              <ProductCard product={product} />
             </div>
           ))}
         </div>
