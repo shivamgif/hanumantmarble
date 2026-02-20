@@ -42,13 +42,26 @@
   100% { background-position: 0% 50%; }
 }
 
-/* Animations for dialogs/modals */
+/* Animations */
 .animate-fade-in {
   animation: fade-in 0.2s ease-out;
 }
 
 .animate-scale-in {
   animation: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 4s ease infinite;
 }
 
 @layer components {

@@ -1,5 +1,7 @@
 import Header from './Header';
 import Footer from './Footer';
+import { WhatsAppButton } from './ui/whatsapp-button';
+import { ScrollToTop } from './ui/scroll-to-top';
 
 const Layout = ({ children }) => {
   return (
@@ -9,6 +11,8 @@ const Layout = ({ children }) => {
         {children}
       </main>
       <Footer />
+      <WhatsAppButton />
+      <ScrollToTop />
     </div>
   );
 };
