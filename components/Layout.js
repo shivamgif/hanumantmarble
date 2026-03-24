@@ -11,7 +11,7 @@ const Layout = ({ children }) => {
         {children}
       </main>
       <Footer />
-      <WhatsAppButton />
+      {/* <WhatsAppButton /> */}
       <ScrollToTop />
     </div>
   );
