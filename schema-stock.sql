@@ -112,6 +112,35 @@ CREATE TABLE IF NOT EXISTS stock_vehicles (
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS stock_app_users (
+  id BIGSERIAL PRIMARY KEY,
+  auth0_sub TEXT UNIQUE,
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  email TEXT UNIQUE,
+  role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'manager', 'stock_entry', 'stock_approver', 'accounts', 'sales', 'user')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended')),
+  can_manage_users BOOLEAN NOT NULL DEFAULT FALSE,
+  can_approve_changes BOOLEAN NOT NULL DEFAULT FALSE,
+  can_view_dashboard BOOLEAN NOT NULL DEFAULT TRUE,
+  last_login_at TIMESTAMP,
+  created_by TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS stock_sales_people (
+  id BIGSERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  email TEXT,
+  whatsapp_phone TEXT,
+  notes TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
 -- ====== PRODUCT MASTER ======
 
 CREATE TABLE IF NOT EXISTS stock_items (
@@ -198,11 +227,22 @@ CREATE TABLE IF NOT EXISTS stock_inbound_shipments (
   supplier_id BIGINT REFERENCES stock_suppliers(id),
   transporter_id BIGINT REFERENCES stock_transporters(id),
   vehicle_id BIGINT REFERENCES stock_vehicles(id),
+  truck_license_plate TEXT,
   truck_number TEXT,
   driver_name TEXT,
   driver_phone TEXT,
   arrival_date TIMESTAMP NOT NULL DEFAULT NOW(),
   received_date TIMESTAMP,
+  submitted_at TIMESTAMP,
+  submitted_by_user_id BIGINT REFERENCES stock_app_users(id),
+  reviewed_at TIMESTAMP,
+  reviewed_by_user_id BIGINT REFERENCES stock_app_users(id),
+  approval_status TEXT NOT NULL DEFAULT 'pending' CHECK (approval_status IN ('pending', 'reviewed', 'approved', 'rejected', 'changes_requested')),
+  approval_notes TEXT,
+  approved_at TIMESTAMP,
+  approved_by_user_id BIGINT REFERENCES stock_app_users(id),
+  locked_at TIMESTAMP,
+  locked_by_user_id BIGINT REFERENCES stock_app_users(id),
   invoice_number TEXT,
   invoice_document_id BIGINT,
   transporter_bill_number TEXT,
@@ -212,9 +252,10 @@ CREATE TABLE IF NOT EXISTS stock_inbound_shipments (
   unloading_labour_cost NUMERIC(14, 2) NOT NULL DEFAULT 0,
   total_whole_qty INTEGER NOT NULL DEFAULT 0,
   total_broken_qty INTEGER NOT NULL DEFAULT 0,
-  status TEXT NOT NULL DEFAULT 'arrived' CHECK (status IN ('arrived', 'partially_received', 'received', 'closed', 'cancelled')),
+  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'submitted', 'arrived', 'partially_received', 'received', 'closed', 'cancelled')),
   whatsapp_notified_at TIMESTAMP,
   received_by TEXT,
+  recorded_by_user_id BIGINT REFERENCES stock_app_users(id),
   notes TEXT,
   created_by TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -283,6 +324,7 @@ CREATE TABLE IF NOT EXISTS stock_outbound_shipments (
   shipment_number TEXT NOT NULL UNIQUE,
   sales_order_id BIGINT REFERENCES stock_sales_orders(id),
   vehicle_id BIGINT REFERENCES stock_vehicles(id),
+  truck_license_plate TEXT,
   driver_name TEXT,
   driver_phone TEXT,
   truck_number TEXT,
@@ -290,16 +332,25 @@ CREATE TABLE IF NOT EXISTS stock_outbound_shipments (
   gatepass_document_id BIGINT,
   invoice_number TEXT,
   invoice_document_id BIGINT,
+  submitted_at TIMESTAMP,
+  submitted_by_user_id BIGINT REFERENCES stock_app_users(id),
+  reviewed_at TIMESTAMP,
+  reviewed_by_user_id BIGINT REFERENCES stock_app_users(id),
+  approval_status TEXT NOT NULL DEFAULT 'pending' CHECK (approval_status IN ('pending', 'reviewed', 'approved', 'rejected', 'changes_requested')),
+  approval_notes TEXT,
+  approved_at TIMESTAMP,
+  approved_by_user_id BIGINT REFERENCES stock_app_users(id),
   dispatch_date TIMESTAMP NOT NULL DEFAULT NOW(),
   delivered_date TIMESTAMP,
   customer_acknowledged_at TIMESTAMP,
   customer_acknowledged_by TEXT,
   customer_acknowledgement_id BIGINT,
-  status TEXT NOT NULL DEFAULT 'packed' CHECK (status IN ('packed', 'dispatched', 'delivered', 'partially_returned', 'returned', 'closed', 'cancelled')),
+  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'submitted', 'packed', 'dispatched', 'delivered', 'partially_returned', 'returned', 'closed', 'cancelled')),
   loading_labour_cost NUMERIC(14, 2) NOT NULL DEFAULT 0,
   transport_cost NUMERIC(14, 2) NOT NULL DEFAULT 0,
   return_broken_qty INTEGER NOT NULL DEFAULT 0,
   return_notes TEXT,
+  recorded_by_user_id BIGINT REFERENCES stock_app_users(id),
   notes TEXT,
   created_by TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -465,6 +516,46 @@ CREATE TABLE IF NOT EXISTS stock_audit_logs (
   user_agent TEXT
 );
 
+CREATE TABLE IF NOT EXISTS stock_change_requests (
+  id BIGSERIAL PRIMARY KEY,
+  request_number TEXT NOT NULL UNIQUE,
+  source_entity_type TEXT NOT NULL CHECK (source_entity_type IN ('inbound_shipment', 'outbound_shipment', 'purchase_order', 'sales_order', 'stock_item', 'stock_document', 'other')),
+  source_entity_id BIGINT NOT NULL,
+  request_type TEXT NOT NULL CHECK (request_type IN ('create', 'update', 'delete', 'correct', 'approve', 'reject', 'reopen', 'adjust')),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'reviewed', 'approved', 'rejected', 'cancelled', 'implemented')),
+  requested_changes JSONB NOT NULL DEFAULT '{}'::jsonb,
+  original_snapshot JSONB,
+  reason TEXT NOT NULL,
+  requested_by_user_id BIGINT REFERENCES stock_app_users(id),
+  requested_by_name TEXT,
+  reviewed_by_user_id BIGINT REFERENCES stock_app_users(id),
+  reviewed_at TIMESTAMP,
+  reviewed_notes TEXT,
+  approved_by_user_id BIGINT REFERENCES stock_app_users(id),
+  approved_at TIMESTAMP,
+  approval_notes TEXT,
+  implemented_at TIMESTAMP,
+  implemented_by_user_id BIGINT REFERENCES stock_app_users(id),
+  priority TEXT NOT NULL DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
+  requires_higher_level_approval BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS stock_timeline_events (
+  id BIGSERIAL PRIMARY KEY,
+  event_number TEXT NOT NULL UNIQUE,
+  event_type TEXT NOT NULL CHECK (event_type IN ('inbound_submitted', 'inbound_reviewed', 'inbound_approved', 'inbound_received', 'outbound_submitted', 'outbound_reviewed', 'outbound_approved', 'outbound_dispatched', 'customer_acknowledged', 'change_requested', 'change_approved', 'change_rejected', 'user_created', 'user_removed', 'login', 'logout', 'other')),
+  entity_type TEXT NOT NULL,
+  entity_id BIGINT,
+  occurred_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  recorded_by_user_id BIGINT REFERENCES stock_app_users(id),
+  summary TEXT NOT NULL,
+  details JSONB,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
 -- ====== INDEXES FOR PERFORMANCE ======
 
 CREATE INDEX IF NOT EXISTS idx_stock_brands_name ON stock_brands(name);
@@ -518,6 +609,18 @@ CREATE INDEX IF NOT EXISTS idx_stock_notifications_event_type ON stock_notificat
 CREATE INDEX IF NOT EXISTS idx_stock_notifications_status ON stock_notifications(status);
 CREATE INDEX IF NOT EXISTS idx_stock_notifications_created_at ON stock_notifications(created_at DESC);
 
+CREATE INDEX IF NOT EXISTS idx_stock_app_users_role ON stock_app_users(role);
+CREATE INDEX IF NOT EXISTS idx_stock_app_users_status ON stock_app_users(status);
+CREATE INDEX IF NOT EXISTS idx_stock_sales_people_name ON stock_sales_people(name);
+
+CREATE INDEX IF NOT EXISTS idx_stock_change_requests_source ON stock_change_requests(source_entity_type, source_entity_id);
+CREATE INDEX IF NOT EXISTS idx_stock_change_requests_status ON stock_change_requests(status);
+CREATE INDEX IF NOT EXISTS idx_stock_change_requests_requested_by ON stock_change_requests(requested_by_user_id);
+
+CREATE INDEX IF NOT EXISTS idx_stock_timeline_events_entity ON stock_timeline_events(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_stock_timeline_events_type ON stock_timeline_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_stock_timeline_events_occurred_at ON stock_timeline_events(occurred_at DESC);
+
 CREATE INDEX IF NOT EXISTS idx_stock_audit_logs_timestamp ON stock_audit_logs(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_stock_audit_logs_user_email ON stock_audit_logs(user_email);
 CREATE INDEX IF NOT EXISTS idx_stock_audit_logs_action ON stock_audit_logs(action);
@@ -541,3 +644,16 @@ LEFT JOIN stock_types t ON t.id = i.type_id
 LEFT JOIN stock_sizes s ON s.id = i.size_id
 LEFT JOIN stock_inventory_lots l ON l.item_id = i.id
 GROUP BY i.id, i.sku, i.name, b.name, t.name, s.label;
+
+CREATE OR REPLACE VIEW stock_dashboard_summary_view AS
+SELECT
+  (SELECT COUNT(*) FROM stock_items WHERE is_active = TRUE) AS total_items,
+  (SELECT COALESCE(SUM(current_whole_qty), 0) FROM stock_items WHERE is_active = TRUE) AS total_whole_stored,
+  (SELECT COALESCE(SUM(current_broken_qty), 0) FROM stock_items WHERE is_active = TRUE) AS total_broken_stored,
+  (SELECT COALESCE(SUM(quantity), 0) FROM stock_movements WHERE direction = 'in') AS total_incoming,
+  (SELECT COALESCE(SUM(quantity), 0) FROM stock_movements WHERE direction = 'out') AS total_outgoing,
+  (SELECT COALESCE(SUM(labour_cost), 0) FROM stock_movements) AS total_labour_cost,
+  (SELECT COALESCE(SUM(transport_cost), 0) FROM stock_movements) AS total_transport_cost,
+  (SELECT COUNT(*) FROM stock_change_requests WHERE status = 'pending') AS pending_change_requests,
+  (SELECT COUNT(*) FROM stock_inbound_shipments WHERE approval_status = 'pending') AS pending_inbound_reviews,
+  (SELECT COUNT(*) FROM stock_outbound_shipments WHERE approval_status = 'pending') AS pending_outbound_reviews;
