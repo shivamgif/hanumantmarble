@@ -1,6 +1,6 @@
 'use client';
 
-import { useSession } from '@auth0/nextjs-auth0/client';
+import { useUser } from '@auth0/nextjs-auth0/client';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
@@ -9,7 +9,7 @@ import { useEffect } from 'react';
  * Enforces authentication and internal-only access
  */
 export default function StockLayout({ children }) {
-  const { user, isLoading } = useSession();
+  const { user, isLoading, error } = useUser();
   const router = useRouter();
 
   useEffect(() => {
@@ -23,6 +23,17 @@ export default function StockLayout({ children }) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600">Authentication Error</h1>
+          <p className="text-gray-600 mt-2">{error.message}</p>
+        </div>
       </div>
     );
   }

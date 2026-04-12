@@ -5,7 +5,16 @@
 
 import { NextResponse } from 'next/server';
 import { auth0 } from '@/lib/auth0';
-import { getAuditLogs } from '@/lib/audit-logger';
+
+// Graceful degradation for missing database
+let getAuditLogs = async () => [];
+
+try {
+  const auditModule = await import('@/lib/audit-logger');
+  getAuditLogs = auditModule.getAuditLogs;
+} catch (e) {
+  console.warn('Audit logger not available yet:', e.message);
+}
 
 export async function GET(request) {
   try {

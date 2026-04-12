@@ -5,8 +5,19 @@
 
 import { NextResponse } from 'next/server';
 import { auth0 } from '@/lib/auth0';
-import { sql } from '@/lib/db';
-import { logAudit } from '@/lib/audit-logger';
+
+// Graceful degradation for missing database
+let sql = null;
+let logAudit = async () => {};
+
+try {
+  const dbModule = await import('@/lib/db');
+  sql = dbModule.sql;
+  const auditModule = await import('@/lib/audit-logger');
+  logAudit = auditModule.logAudit;
+} catch (e) {
+  console.warn('Database not configured yet:', e.message);
+}
 
 const VALID_MOVEMENT_TYPES = ['purchase', 'sale', 'adjustment', 'transfer', 'damage', 'return'];
 
@@ -14,6 +25,13 @@ export async function POST(request) {
   try {
     const session = await auth0.getSession(request);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    if (!sql) {
+      return NextResponse.json(
+        { error: 'Database not configured. See STOCK_DEPLOYMENT_GUIDE.md Step 2' },
+        { status: 503 }
+      );
+    }
 
     const body = await request.json();
     const { itemId, locationId, type, quantity, reference, notes } = body;
@@ -74,6 +92,13 @@ export async function GET(request) {
   try {
     const session = await auth0.getSession(request);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    if (!sql) {
+      return NextResponse.json(
+        { movements: [], message: 'Database not configured yet.' },
+        { status: 503 }
+      );
+    }
 
     const { searchParams } = new URL(request.url);
     const itemId = searchParams.get('itemId');

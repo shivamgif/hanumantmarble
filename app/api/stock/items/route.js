@@ -1,5 +1,3 @@
-import { sql } from '@/lib/db';
-
 /**
  * Stock Items API
  * GET /api/stock/items - List all items
@@ -10,12 +8,35 @@ import { sql } from '@/lib/db';
 
 import { NextResponse } from 'next/server';
 import { auth0 } from '@/lib/auth0';
-import { logAudit } from '@/lib/audit-logger';
+
+// Graceful degradation for missing database
+let sql = null;
+let logAudit = async () => {};
+
+try {
+  const dbModule = await import('@/lib/db');
+  sql = dbModule.sql;
+  const auditModule = await import('@/lib/audit-logger');
+  logAudit = auditModule.logAudit;
+} catch (e) {
+  console.warn('Database not configured yet:', e.message);
+}
 
 export async function GET(request) {
   try {
     const session = await auth0.getSession(request);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    if (!sql) {
+      return NextResponse.json(
+        { 
+          items: [],
+          message: 'Database not configured yet. Please enable Neon PostgreSQL integration in Netlify.',
+          setupDocs: 'See STOCK_DEPLOYMENT_GUIDE.md Step 2'
+        },
+        { status: 503 }
+      );
+    }
 
     const { searchParams } = new URL(request.url);
     const categoryId = searchParams.get('categoryId');
@@ -46,6 +67,13 @@ export async function POST(request) {
   try {
     const session = await auth0.getSession(request);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    if (!sql) {
+      return NextResponse.json(
+        { error: 'Database not configured. See STOCK_DEPLOYMENT_GUIDE.md Step 2' },
+        { status: 503 }
+      );
+    }
 
     const body = await request.json();
     const { sku, name, nameHi, categoryId, description, descriptionHi, reorderLevel, maximumLevel, unit, costPrice, sellingPrice } = body;
