@@ -23,13 +23,7 @@
 [context.deploy-preview]
   command = "npm run build"
 
-# Redirect rules for internal-only access
-[[redirects]]
-  from = "/stock/*"
-  to = "/.netlify/functions/auth-check?path=:splat"
-  status = 200
-  force = false
-
+# Redirect rules
 [[redirects]]
   from = "/*"
   to = "/index.html"
