@@ -1,0 +1,57 @@
+# Netlify configuration for stock management subdomain
+
+[build]
+  command = "npm run build"
+  functions = "netlify/functions"
+  publish = ".next"
+
+[build.environment]
+  # Node.js version
+  NODE_VERSION = "22.14.0"
+  # Next.js specific
+  NEXT_PUBLIC_ENV = "production"
+
+# Environment-based behavior
+[context.production]
+  command = "npm run build"
+  
+  [context.production.environment]
+    NEXT_PUBLIC_APP_TYPE = "stock"
+    NEXT_PUBLIC_REQUIRE_AUTH = "true"
+    NEXT_PUBLIC_INTERNAL_ONLY = "true"
+
+[context.deploy-preview]
+  command = "npm run build"
+
+# Redirect rules for internal-only access
+[[redirects]]
+  from = "/stock/*"
+  to = "/.netlify/functions/auth-check?path=:splat"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers for security and SEO
+[[headers]]
+  for = "/stock/*"
+  
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+    Cache-Control = "private, no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/api/stock/*"
+  
+  [headers.values]
+    X-Robots-Tag = "noindex"
+    X-Frame-Options = "DENY"
+    Cache-Control = "private, no-cache, max-age=0"
+    Access-Control-Allow-Methods = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
