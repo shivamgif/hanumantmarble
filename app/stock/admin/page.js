@@ -8,6 +8,7 @@ import EntryPreviewSheet, { PreviewKeyValueGrid } from '@/components/ui/entry-pr
 import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { validateStockPassword } from '@/lib/auth0-management';
+import { ChevronDown, Eye, EyeOff } from 'lucide-react';
 
 function formatDateTime(value) {
   if (!value) {
@@ -28,6 +29,11 @@ function formatDateTime(value) {
   }).format(date);
 }
 
+const FORM_LABEL_CLASS = 'block text-[11px] font-semibold uppercase tracking-[0.08em] text-foreground/75';
+const FORM_INPUT_CLASS = 'mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground shadow-sm outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20';
+const FORM_SELECT_CLASS = `${FORM_INPUT_CLASS} appearance-none pr-10`;
+const FORM_PANEL_CLASS = 'rounded-2xl border border-border/80 bg-background/80 p-4';
+
 export default function AdminDashboard() {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.admin.${key}`, language);
@@ -37,6 +43,10 @@ export default function AdminDashboard() {
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
   const [showUserForm, setShowUserForm] = useState(false);
+  const [showPrimaryPassword, setShowPrimaryPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [userFormNotice, setUserFormNotice] = useState(null);
   const [arrivalPage, setArrivalPage] = useState(1);
   const [dispatchPage, setDispatchPage] = useState(1);
   const [userPage, setUserPage] = useState(1);
@@ -206,19 +216,27 @@ export default function AdminDashboard() {
   async function handleSaveUser(event) {
     event.preventDefault();
 
+    setUserFormNotice(null);
+    setError(null);
+
     if (!userDraft.name.trim() || !userDraft.phone.trim()) {
-      setError('Name and phone are required');
+      setUserFormNotice({ type: 'error', message: 'Name and phone are required.' });
       return;
     }
 
     if (!userDraft.email.trim()) {
-      setError('Email is required');
+      setUserFormNotice({ type: 'error', message: 'Email is required.' });
       return;
     }
 
     const passwordError = validateStockPassword(userDraft.password);
     if (passwordError) {
-      setError(passwordError);
+      setUserFormNotice({ type: 'error', message: passwordError });
+      return;
+    }
+
+    if (userDraft.password !== confirmPassword) {
+      setUserFormNotice({ type: 'error', message: 'Password and confirm password do not match.' });
       return;
     }
 
@@ -237,10 +255,14 @@ export default function AdminDashboard() {
       }
 
       setUserDraft({ name: '', phone: '', email: '', password: '', role: 'stock_maintainer', status: 'active' });
+      setConfirmPassword('');
+      setShowPrimaryPassword(false);
+      setShowConfirmPassword(false);
+      setUserFormNotice(null);
       setShowUserForm(false);
       await refreshDashboard();
     } catch (err) {
-      setError(err.message);
+      setUserFormNotice({ type: 'error', message: err.message });
     } finally {
       setActionLoading(null);
     }
@@ -291,12 +313,17 @@ export default function AdminDashboard() {
   }, [previewItemPagination.pageCount]);
 
   if (loading) return <div className="p-8 text-center">{t('loading')}</div>;
-  if (error) return <div className="p-8 text-red-500">{error}</div>;
+  if (!data && error) return <div className="p-8 text-red-500">{error}</div>;
   if (!data) return null;
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-foreground">{t('adminTitle')}</h1>
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="border-b border-border p-4">
@@ -472,72 +499,136 @@ export default function AdminDashboard() {
           </button>
         </div>
         {showUserForm && (
-          <form onSubmit={handleSaveUser} className="grid gap-3 border-b border-border bg-muted/30 p-4 md:grid-cols-2">
-            <label className="text-sm">
-              <span className="mb-1 block font-medium text-foreground/80">{t('name')}</span>
-              <input
-                value={userDraft.name}
-                onChange={(event) => setUserDraft((current) => ({ ...current, name: event.target.value }))}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground"
-              />
-            </label>
-            <label className="text-sm">
-              <span className="mb-1 block font-medium text-foreground/80">{t('phone')}</span>
-              <input
-                value={userDraft.phone}
-                onChange={(event) => setUserDraft((current) => ({ ...current, phone: event.target.value }))}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground"
-              />
-            </label>
-            <label className="text-sm">
-              <span className="mb-1 block font-medium text-foreground/80">{t('email')}</span>
-              <input
-                type="email"
-                value={userDraft.email}
-                onChange={(event) => setUserDraft((current) => ({ ...current, email: event.target.value }))}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground"
-              />
-            </label>
-            <label className="text-sm">
-              <span className="mb-1 block font-medium text-foreground/80">Password</span>
-              <input
-                type="password"
-                value={userDraft.password}
-                onChange={(event) => setUserDraft((current) => ({ ...current, password: event.target.value }))}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground"
-                placeholder="12+ chars, 3 of 4 types"
-                minLength={12}
-              />
-              <p className="mt-1 text-xs text-muted-foreground">Use at least 12 characters and include 3 of 4 types: lowercase, uppercase, number, and symbol.</p>
-            </label>
-            <label className="text-sm">
-              <span className="mb-1 block font-medium text-foreground/80">{t('role')}</span>
-              <select
-                value={userDraft.role}
-                onChange={(event) => setUserDraft((current) => ({ ...current, role: event.target.value }))}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground"
+          <form onSubmit={handleSaveUser} className="space-y-4 border-b border-border bg-muted/20 p-4">
+            {userFormNotice && (
+              <div
+                className={`rounded-xl border px-3 py-2 text-sm ${
+                  userFormNotice.type === 'error'
+                    ? 'border-red-200 bg-red-50 text-red-700'
+                    : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                }`}
               >
-                <option value="stock_maintainer">stock_maintainer</option>
-                <option value="manager">manager</option>
-                <option value="admin">admin</option>
-              </select>
-            </label>
-            <div className="flex items-center gap-3 md:col-span-2">
+                {userFormNotice.message}
+              </div>
+            )}
+            <div className="grid gap-4 md:grid-cols-2">
+              <label>
+                <span className={FORM_LABEL_CLASS}>{t('name')}</span>
+                <input
+                  value={userDraft.name}
+                  onChange={(event) => setUserDraft((current) => ({ ...current, name: event.target.value }))}
+                  autoFocus
+                  className={FORM_INPUT_CLASS}
+                  placeholder="Full name"
+                />
+              </label>
+              <label>
+                <span className={FORM_LABEL_CLASS}>{t('phone')}</span>
+                <input
+                  value={userDraft.phone}
+                  onChange={(event) => setUserDraft((current) => ({ ...current, phone: event.target.value }))}
+                  className={FORM_INPUT_CLASS}
+                  placeholder="10-digit phone"
+                />
+              </label>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label>
+                <span className={FORM_LABEL_CLASS}>{t('email')}</span>
+                <input
+                  type="email"
+                  value={userDraft.email}
+                  onChange={(event) => setUserDraft((current) => ({ ...current, email: event.target.value }))}
+                  className={FORM_INPUT_CLASS}
+                  placeholder="name@example.com"
+                />
+              </label>
+              <label>
+                <span className={FORM_LABEL_CLASS}>{t('role')}</span>
+                <div className="relative">
+                  <select
+                    value={userDraft.role}
+                    onChange={(event) => setUserDraft((current) => ({ ...current, role: event.target.value }))}
+                    className={FORM_SELECT_CLASS}
+                  >
+                    <option value="stock_maintainer">stock_maintainer</option>
+                    <option value="manager">manager</option>
+                    <option value="admin">admin</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                </div>
+              </label>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className={FORM_PANEL_CLASS}>
+                <span className={FORM_LABEL_CLASS}>Password</span>
+                <div className="relative">
+                  <input
+                    type={showPrimaryPassword ? 'text' : 'password'}
+                    value={userDraft.password}
+                    onChange={(event) => setUserDraft((current) => ({ ...current, password: event.target.value }))}
+                    className={`${FORM_INPUT_CLASS} pr-10`}
+                    placeholder="12+ chars, 3 of 4 types"
+                    minLength={12}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPrimaryPassword((current) => !current)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    aria-label={showPrimaryPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showPrimaryPassword}
+                  >
+                    {showPrimaryPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">Use at least 12 characters and include 3 of 4 types: lowercase, uppercase, number, and symbol.</p>
+              </label>
+              <label className={FORM_PANEL_CLASS}>
+                <span className={FORM_LABEL_CLASS}>Confirm Password</span>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    className={`${FORM_INPUT_CLASS} pr-10`}
+                    placeholder="Re-enter password"
+                    minLength={12}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((current) => !current)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    aria-pressed={showConfirmPassword}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </label>
+            </div>
+            <div className="flex items-center gap-3">
               <button
                 type="submit"
                 disabled={actionLoading === 'user-save'}
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Save
+                {actionLoading === 'user-save' ? 'Saving...' : 'Save User'}
               </button>
               <button
                 type="button"
-                onClick={() => setShowUserForm(false)}
-                className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground"
+                onClick={() => {
+                  setShowUserForm(false);
+                  setUserFormNotice(null);
+                  setConfirmPassword('');
+                  setShowPrimaryPassword(false);
+                  setShowConfirmPassword(false);
+                }}
+                className="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
               >
                 Cancel
               </button>
             </div>
+            <input type="hidden" value={userDraft.status} readOnly />
           </form>
         )}
         <div className="overflow-x-auto">

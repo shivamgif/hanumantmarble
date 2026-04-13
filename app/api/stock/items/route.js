@@ -76,7 +76,7 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { sku, name, nameHi, categoryId, description, descriptionHi, reorderLevel, maximumLevel, unit, costPrice, sellingPrice } = body;
+    const { sku, name, categoryId, description, reorderLevel, maximumLevel, unit, costPrice, sellingPrice } = body;
 
     if (!sku || !name) {
       return NextResponse.json(
@@ -86,10 +86,10 @@ export async function POST(request) {
     }
 
     const result = await sql(
-      `INSERT INTO stock_items (sku, name, nameHi, categoryId, description, descriptionHi, reorderLevel, maximumLevel, unit, costPrice, sellingPrice)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `INSERT INTO stock_items (sku, name, categoryId, description, reorderLevel, maximumLevel, unit, costPrice, sellingPrice)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [sku, name, nameHi, categoryId || null, description, descriptionHi, reorderLevel, maximumLevel, unit, costPrice, sellingPrice]
+      [sku, name, categoryId || null, description, reorderLevel, maximumLevel, unit, costPrice, sellingPrice]
     );
 
     await logAudit({
@@ -131,26 +131,24 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
 
-    const { SKU, name, nameHi, categoryId, description, descriptionHi, reorderLevel, maximumLevel, unit, costPrice, sellingPrice, isActive } = body;
+    const { sku, name, categoryId, description, reorderLevel, maximumLevel, unit, costPrice, sellingPrice, isActive } = body;
 
     const result = await sql(
       `UPDATE stock_items SET 
         sku = COALESCE($1, sku),
         name = COALESCE($2, name),
-        nameHi = COALESCE($3, nameHi),
-        categoryId = COALESCE($4, categoryId),
-        description = COALESCE($5, description),
-        descriptionHi = COALESCE($6, descriptionHi),
-        reorderLevel = COALESCE($7, reorderLevel),
-        maximumLevel = COALESCE($8, maximumLevel),
-        unit = COALESCE($9, unit),
-        costPrice = COALESCE($10, costPrice),
-        sellingPrice = COALESCE($11, sellingPrice),
-        isActive = COALESCE($12, isActive),
+        categoryId = COALESCE($3, categoryId),
+        description = COALESCE($4, description),
+        reorderLevel = COALESCE($5, reorderLevel),
+        maximumLevel = COALESCE($6, maximumLevel),
+        unit = COALESCE($7, unit),
+        costPrice = COALESCE($8, costPrice),
+        sellingPrice = COALESCE($9, sellingPrice),
+        isActive = COALESCE($10, isActive),
         updatedAt = CURRENT_TIMESTAMP
-       WHERE id = $13
+       WHERE id = $11
        RETURNING *`,
-      [sku, name, nameHi, categoryId, description, descriptionHi, reorderLevel, maximumLevel, unit, costPrice, sellingPrice, isActive, parseInt(itemId)]
+      [sku, name, categoryId, description, reorderLevel, maximumLevel, unit, costPrice, sellingPrice, isActive, parseInt(itemId)]
     );
 
     await logAudit({

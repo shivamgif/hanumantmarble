@@ -16,7 +16,6 @@
 CREATE TABLE IF NOT EXISTS stock_brands (
   id BIGSERIAL PRIMARY KEY,
   name TEXT NOT NULL UNIQUE,
-  name_hi TEXT,
   description TEXT,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -26,7 +25,6 @@ CREATE TABLE IF NOT EXISTS stock_brands (
 CREATE TABLE IF NOT EXISTS stock_types (
   id BIGSERIAL PRIMARY KEY,
   name TEXT NOT NULL UNIQUE,
-  name_hi TEXT,
   description TEXT,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -187,7 +185,6 @@ CREATE TABLE IF NOT EXISTS stock_items (
   type_id BIGINT REFERENCES stock_types(id),
   size_id BIGINT REFERENCES stock_sizes(id),
   name TEXT NOT NULL,
-  name_hi TEXT,
   finish TEXT,
   color TEXT,
   material TEXT,
@@ -208,7 +205,6 @@ CREATE TABLE IF NOT EXISTS stock_items (
   landed_cost NUMERIC(12, 2),
   selling_price NUMERIC(12, 2),
   description TEXT,
-  description_hi TEXT,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -220,12 +216,19 @@ CREATE TABLE IF NOT EXISTS stock_items (
   )
 );
 
+-- Remove deprecated Hindi tile metadata columns if they exist from older deployments.
+ALTER TABLE IF EXISTS stock_brands DROP COLUMN IF EXISTS name_hi;
+ALTER TABLE IF EXISTS stock_types DROP COLUMN IF EXISTS name_hi;
+ALTER TABLE IF EXISTS stock_items DROP COLUMN IF EXISTS name_hi;
+ALTER TABLE IF EXISTS stock_items DROP COLUMN IF EXISTS description_hi;
+
 -- ====== PURCHASE / INBOUND FLOW ======
 
 CREATE TABLE IF NOT EXISTS stock_purchase_orders (
   id BIGSERIAL PRIMARY KEY,
   po_number TEXT NOT NULL UNIQUE,
   supplier_id BIGINT REFERENCES stock_suppliers(id),
+  currency_code TEXT NOT NULL DEFAULT 'INR',
   order_date DATE NOT NULL DEFAULT CURRENT_DATE,
   expected_arrival_date DATE,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'ordered', 'partially_received', 'received', 'cancelled')),
@@ -262,6 +265,7 @@ CREATE TABLE IF NOT EXISTS stock_inbound_shipments (
   shipment_number TEXT NOT NULL UNIQUE,
   purchase_order_id BIGINT REFERENCES stock_purchase_orders(id),
   supplier_id BIGINT REFERENCES stock_suppliers(id),
+  currency_code TEXT NOT NULL DEFAULT 'INR',
   customer_name TEXT,
   customer_phone TEXT,
   salesperson_name TEXT,
@@ -326,6 +330,7 @@ CREATE TABLE IF NOT EXISTS stock_sales_orders (
   id BIGSERIAL PRIMARY KEY,
   order_number TEXT NOT NULL UNIQUE,
   customer_id BIGINT REFERENCES stock_customers(id),
+  currency_code TEXT NOT NULL DEFAULT 'INR',
   order_date DATE NOT NULL DEFAULT CURRENT_DATE,
   expected_dispatch_date DATE,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'confirmed', 'picked', 'dispatched', 'delivered', 'partially_returned', 'returned', 'cancelled')),
@@ -365,6 +370,7 @@ CREATE TABLE IF NOT EXISTS stock_outbound_shipments (
   shipment_number TEXT NOT NULL UNIQUE,
   sales_order_id BIGINT REFERENCES stock_sales_orders(id),
   vehicle_id BIGINT REFERENCES stock_vehicles(id),
+  currency_code TEXT NOT NULL DEFAULT 'INR',
   customer_name TEXT,
   customer_phone TEXT,
   salesperson_name TEXT,
@@ -467,6 +473,7 @@ CREATE TABLE IF NOT EXISTS stock_movements (
   movement_number TEXT NOT NULL UNIQUE,
   movement_type TEXT NOT NULL CHECK (movement_type IN ('purchase_receive', 'sale_issue', 'return_in', 'return_out', 'damage_writeoff', 'adjustment_plus', 'adjustment_minus', 'transfer_in', 'transfer_out')),
   direction TEXT NOT NULL CHECK (direction IN ('in', 'out')),
+  currency_code TEXT NOT NULL DEFAULT 'INR',
   item_id BIGINT NOT NULL REFERENCES stock_items(id),
   location_id BIGINT REFERENCES stock_locations(id),
   inventory_lot_id BIGINT REFERENCES stock_inventory_lots(id),
@@ -523,6 +530,13 @@ CREATE TABLE IF NOT EXISTS stock_cost_entries (
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+-- Ensure explicit INR currency columns on existing deployments where these tables pre-exist.
+ALTER TABLE IF EXISTS stock_purchase_orders ADD COLUMN IF NOT EXISTS currency_code TEXT NOT NULL DEFAULT 'INR';
+ALTER TABLE IF EXISTS stock_inbound_shipments ADD COLUMN IF NOT EXISTS currency_code TEXT NOT NULL DEFAULT 'INR';
+ALTER TABLE IF EXISTS stock_sales_orders ADD COLUMN IF NOT EXISTS currency_code TEXT NOT NULL DEFAULT 'INR';
+ALTER TABLE IF EXISTS stock_outbound_shipments ADD COLUMN IF NOT EXISTS currency_code TEXT NOT NULL DEFAULT 'INR';
+ALTER TABLE IF EXISTS stock_movements ADD COLUMN IF NOT EXISTS currency_code TEXT NOT NULL DEFAULT 'INR';
 
 -- ====== NOTIFICATIONS ======
 

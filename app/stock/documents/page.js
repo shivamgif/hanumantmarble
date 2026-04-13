@@ -244,31 +244,31 @@ export default function StockDocumentsPage() {
           <h2 className="text-lg font-semibold text-foreground">{t.uploadTitle}</h2>
           <label className="block text-sm font-medium text-foreground/80">
             {t.documentType}
-            <select className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-foreground" value={form.documentType} onChange={(event) => setForm((prev) => ({ ...prev, documentType: event.target.value }))}>
+            <select className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" value={form.documentType} onChange={(event) => setForm((prev) => ({ ...prev, documentType: event.target.value }))}>
               {documentTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </label>
           <label className="block text-sm font-medium text-foreground/80">
             {t.entityType}
-            <select className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-foreground" value={form.entityType} onChange={(event) => setForm((prev) => ({ ...prev, entityType: event.target.value }))}>
+            <select className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" value={form.entityType} onChange={(event) => setForm((prev) => ({ ...prev, entityType: event.target.value }))}>
               {entityTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </label>
           <label className="block text-sm font-medium text-foreground/80">
             {t.entityId}
-            <input className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-foreground" value={form.entityId} onChange={(event) => setForm((prev) => ({ ...prev, entityId: event.target.value }))} />
+            <input autoFocus className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder="Shipment or order id" value={form.entityId} onChange={(event) => setForm((prev) => ({ ...prev, entityId: event.target.value }))} />
           </label>
           <label className="block text-sm font-medium text-foreground/80">
             {t.documentNumber}
-            <input className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-foreground" value={form.documentNumber} onChange={(event) => setForm((prev) => ({ ...prev, documentNumber: event.target.value }))} />
+            <input className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder="Invoice / gatepass no" value={form.documentNumber} onChange={(event) => setForm((prev) => ({ ...prev, documentNumber: event.target.value }))} />
           </label>
           <label className="block text-sm font-medium text-foreground/80">
             {t.notes}
-            <textarea className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-foreground" rows="3" value={form.notes} onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))} />
+            <textarea className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" rows="3" placeholder="Optional comments" value={form.notes} onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))} />
           </label>
           <label className="block text-sm font-medium text-foreground/80">
             {t.file}
-            <input type="file" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-foreground" onChange={(event) => setForm((prev) => ({ ...prev, file: event.target.files?.[0] || null }))} />
+            <input type="file" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" onChange={(event) => setForm((prev) => ({ ...prev, file: event.target.files?.[0] || null }))} />
           </label>
           <button type="submit" disabled={uploading} className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
             {uploading ? t.upload : t.upload}

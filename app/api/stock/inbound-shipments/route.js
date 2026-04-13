@@ -59,8 +59,8 @@ async function upsertItemMaster(item) {
     return existingItem;
   }
 
-  const brand = await upsertNamedRecord({ table: 'stock_brands', value: item.brandName, extra: { name_hi: item.brandNameHi || null } });
-  const type = await upsertNamedRecord({ table: 'stock_types', value: item.typeName, extra: { name_hi: item.typeNameHi || null } });
+  const brand = await upsertNamedRecord({ table: 'stock_brands', value: item.brandName });
+  const type = await upsertNamedRecord({ table: 'stock_types', value: item.typeName });
   const size = await upsertNamedRecord({
     table: 'stock_sizes',
     column: 'label',
@@ -81,7 +81,6 @@ async function upsertItemMaster(item) {
       type_id,
       size_id,
       name,
-      name_hi,
       unit_of_measure,
       tiles_per_box,
       pieces_per_box,
@@ -90,15 +89,13 @@ async function upsertItemMaster(item) {
       purchase_price,
       landed_cost,
       selling_price,
-      description,
-      description_hi
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+      description
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
     ON CONFLICT (sku) DO UPDATE SET
       brand_id = EXCLUDED.brand_id,
       type_id = EXCLUDED.type_id,
       size_id = EXCLUDED.size_id,
       name = EXCLUDED.name,
-      name_hi = EXCLUDED.name_hi,
       unit_of_measure = EXCLUDED.unit_of_measure,
       tiles_per_box = EXCLUDED.tiles_per_box,
       pieces_per_box = EXCLUDED.pieces_per_box,
@@ -108,7 +105,6 @@ async function upsertItemMaster(item) {
       landed_cost = EXCLUDED.landed_cost,
       selling_price = EXCLUDED.selling_price,
       description = EXCLUDED.description,
-      description_hi = EXCLUDED.description_hi,
       updated_at = NOW()
     RETURNING *`,
     [
@@ -117,7 +113,6 @@ async function upsertItemMaster(item) {
       type.id,
       size.id,
       normalizeText(item.itemName),
-      item.itemNameHi || null,
       item.unitOfMeasure || 'box',
       item.tilesPerBox || null,
       item.piecesPerBox || null,
@@ -127,7 +122,6 @@ async function upsertItemMaster(item) {
       item.landedCost || null,
       item.sellingPrice || null,
       item.description || null,
-      item.descriptionHi || null,
     ]
   );
 

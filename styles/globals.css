@@ -42,6 +42,18 @@
   100% { background-position: 0% 50%; }
 }
 
+@keyframes stock-tab-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Animations */
 .animate-fade-in {
   animation: fade-in 0.2s ease-out;
@@ -62,6 +74,10 @@
 .animate-gradient {
   background-size: 200% 200%;
   animation: gradient-shift 4s ease infinite;
+}
+
+.stock-tab-panel {
+  animation: stock-tab-panel-enter 220ms ease-out;
 }
 
 @layer components {

@@ -12,20 +12,17 @@ import PaginationControls from '@/components/ui/pagination-controls';
 
 function createArrivalItemRow() {
   return {
-    itemMode: 'existing',
     itemId: '',
     sku: '',
     itemName: '',
     brandName: '',
     typeName: '',
     sizeLabel: '',
-    itemNameHi: '',
-    brandNameHi: '',
-    typeNameHi: '',
     sizeUnit: 'mm',
     tilesPerBox: '',
     piecesPerBox: '',
     reorderLevel: '',
+    description: '',
     wholeQty: '0',
     brokenQty: '0',
     notes: '',
@@ -107,6 +104,22 @@ function formatDateTime(value) {
   }).format(date);
 }
 
+function formatChartDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+  }).format(date);
+}
+
+const FORM_LABEL_CLASS = 'block text-[11px] font-semibold uppercase tracking-[0.08em] text-foreground/75';
+const FORM_INPUT_CLASS = 'mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground shadow-sm outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20';
+const FORM_CARD_CLASS = 'rounded-2xl border border-border/80 bg-muted/20 p-4';
+
 function renderDocumentPreview(document) {
   if (!document?.file_url) {
     return (
@@ -147,6 +160,21 @@ function matchesQuery(value, query) {
   return normalizeSearchValue(value).includes(query);
 }
 
+function normalizeItemKey(value) {
+  return normalizeSearchValue(value).replace(/\s+/g, ' ');
+}
+
+function findMatchingActiveItem(activeItems, value) {
+  const normalizedValue = normalizeItemKey(value);
+  if (!normalizedValue) {
+    return null;
+  }
+
+  return (activeItems || []).find((item) => (
+    normalizeItemKey(item.name) === normalizedValue || normalizeItemKey(item.sku) === normalizedValue
+  )) || null;
+}
+
 function InlineNotice({ notice }) {
   if (!notice) {
     return null;
@@ -164,15 +192,15 @@ function InlineNotice({ notice }) {
 
 function AttachmentField({ label, accept = 'image/*,.pdf', onChange, file, hint }) {
   return (
-    <label className="block text-xs font-medium text-gray-700">
-      {label}
+    <label className="block">
+      <span className={FORM_LABEL_CLASS}>{label}</span>
       <input
         type="file"
         accept={accept}
-        className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+        className={FORM_INPUT_CLASS}
         onChange={(event) => onChange(event.target.files?.[0] || null)}
       />
-      <div className="mt-1 text-[11px] text-gray-500">
+      <div className="mt-1 text-[11px] text-muted-foreground">
         {hint || 'Attach a photo or PDF.'}
         {file ? ` Selected: ${file.name}` : ''}
       </div>
@@ -208,6 +236,7 @@ export default function StockDashboard() {
   const [arrivalSort, setArrivalSort] = useState({ key: 'datetime', direction: 'desc' });
   const [dispatchSort, setDispatchSort] = useState({ key: 'datetime', direction: 'desc' });
   const [stockSort, setStockSort] = useState({ key: 'sku', direction: 'asc' });
+  const [activeTableView, setActiveTableView] = useState('items');
   const [stockPage, setStockPage] = useState(1);
   const [arrivalPage, setArrivalPage] = useState(1);
   const [dispatchPage, setDispatchPage] = useState(1);
@@ -402,7 +431,7 @@ export default function StockDashboard() {
     }));
   }
 
-  function setArrivalItemMode(index, mode) {
+  function autoPopulateArrivalItem(index, matchedItem) {
     setArrivalDraft((current) => ({
       ...current,
       items: current.items.map((item, itemIndex) => {
@@ -410,21 +439,46 @@ export default function StockDashboard() {
           return item;
         }
 
-        if (mode === 'existing') {
-          return {
-            ...item,
-            itemMode: 'existing',
-            itemId: item.itemId,
-          };
-        }
-
         return {
           ...item,
-          itemMode: 'new',
-          itemId: '',
+          itemId: String(matchedItem.id),
+          itemName: matchedItem.name || item.itemName,
+          sku: matchedItem.sku || item.sku,
+          brandName: matchedItem.brand_name || item.brandName,
+          typeName: matchedItem.type_name || item.typeName,
+          sizeLabel: matchedItem.size_label || item.sizeLabel,
+          sizeUnit: matchedItem.size_unit || item.sizeUnit || 'mm',
+          tilesPerBox: matchedItem.tiles_per_box != null ? String(matchedItem.tiles_per_box) : item.tilesPerBox,
+          piecesPerBox: matchedItem.pieces_per_box != null ? String(matchedItem.pieces_per_box) : item.piecesPerBox,
+          reorderLevel: matchedItem.reorder_level != null ? String(matchedItem.reorder_level) : item.reorderLevel,
+          description: matchedItem.description || item.description,
         };
       }),
     }));
+  }
+
+  function handleArrivalItemNameChange(index, value) {
+    updateArrivalItem(index, 'itemName', value);
+
+    const matchedItem = findMatchingActiveItem(data?.activeItems, value);
+    if (matchedItem) {
+      autoPopulateArrivalItem(index, matchedItem);
+      return;
+    }
+
+    updateArrivalItem(index, 'itemId', '');
+  }
+
+  function handleArrivalItemSkuChange(index, value) {
+    updateArrivalItem(index, 'sku', value);
+
+    const matchedItem = findMatchingActiveItem(data?.activeItems, value);
+    if (matchedItem) {
+      autoPopulateArrivalItem(index, matchedItem);
+      return;
+    }
+
+    updateArrivalItem(index, 'itemId', '');
   }
 
   function updateDispatchItem(index, field, value) {
@@ -499,20 +553,17 @@ export default function StockDashboard() {
     try {
       const items = arrivalDraft.items
         .map((item) => ({
-          itemMode: item.itemMode,
           itemId: trimText(item.itemId),
           sku: trimText(item.sku),
           itemName: trimText(item.itemName),
           brandName: trimText(item.brandName),
           typeName: trimText(item.typeName),
           sizeLabel: trimText(item.sizeLabel),
-          itemNameHi: trimText(item.itemNameHi),
-          brandNameHi: trimText(item.brandNameHi),
-          typeNameHi: trimText(item.typeNameHi),
           sizeUnit: trimText(item.sizeUnit) || 'mm',
           tilesPerBox: toNumber(item.tilesPerBox),
           piecesPerBox: toNumber(item.piecesPerBox),
           reorderLevel: toNumber(item.reorderLevel),
+          description: trimText(item.description),
           wholeQty: toNumber(item.wholeQty),
           brokenQty: toNumber(item.brokenQty),
           notes: trimText(item.notes),
@@ -523,12 +574,8 @@ export default function StockDashboard() {
         throw new Error('Add at least one arrival item.');
       }
 
-      if (items.some((item) => item.itemMode === 'existing' && !item.itemId)) {
-        throw new Error('Select a stock item for each existing arrival row.');
-      }
-
-      if (items.some((item) => item.itemMode === 'new' && (!item.itemName || !item.brandName || !item.typeName || !item.sizeLabel))) {
-        throw new Error('Enter brand, type, size, and tile name for each new arrival row.');
+      if (items.some((item) => !item.itemId && (!item.itemName || !item.brandName || !item.typeName || !item.sizeLabel))) {
+        throw new Error('Pick an existing tile from autocomplete or enter tile name, brand, type, and size for a new tile.');
       }
 
       if (items.some((item) => item.wholeQty === 0 && item.brokenQty === 0)) {
@@ -557,13 +604,11 @@ export default function StockDashboard() {
             brandName: item.brandName || undefined,
             typeName: item.typeName || undefined,
             sizeLabel: item.sizeLabel || undefined,
-            itemNameHi: item.itemNameHi || undefined,
-            brandNameHi: item.brandNameHi || undefined,
-            typeNameHi: item.typeNameHi || undefined,
             sizeUnit: item.sizeUnit || undefined,
             tilesPerBox: item.tilesPerBox || undefined,
             piecesPerBox: item.piecesPerBox || undefined,
             reorderLevel: item.reorderLevel || undefined,
+            description: item.description || undefined,
             wholeQty: item.wholeQty,
             brokenQty: item.brokenQty,
             notes: item.notes || undefined,
@@ -743,49 +788,112 @@ export default function StockDashboard() {
     }
   }
 
+  const pendingReviews = Number(data?.summary?.pending_inbound_reviews || 0) + Number(data?.summary?.pending_outbound_reviews || 0);
+  const totalIncoming = Number(data?.summary?.total_incoming || 0);
+  const totalOutgoing = Number(data?.summary?.total_outgoing || 0);
+
   const summaryTiles = [
     {
-      label: t('totalStored'),
-      value: data?.summary?.total_whole_stored,
+      label: 'Available Whole Stock',
+      value: Number(data?.summary?.total_whole_stored || 0),
       href: '#current-stock',
-      tone: 'text-blue-600 bg-blue-50 border-blue-100',
-      hint: t('currentStock'),
+      tone: 'from-blue-500/15 to-cyan-500/5 border-blue-100 text-blue-700',
+      hint: 'Ready to dispatch',
     },
     {
-      label: t('totalBroken'),
-      value: data?.summary?.total_broken_stored,
+      label: 'Damaged / Broken Stock',
+      value: Number(data?.summary?.total_broken_stored || 0),
       href: '#current-stock',
-      tone: 'text-amber-600 bg-amber-50 border-amber-100',
-      hint: t('currentStock'),
+      tone: 'from-amber-500/15 to-orange-500/5 border-amber-100 text-amber-700',
+      hint: 'Needs action',
     },
     {
-      label: t('incoming'),
-      value: data?.summary?.total_incoming,
+      label: 'Pending Reviews',
+      value: pendingReviews,
+      href: '/stock/approvals',
+      tone: 'from-rose-500/15 to-orange-500/5 border-rose-100 text-rose-700',
+      hint: 'Arrivals + dispatches',
+    },
+    {
+      label: 'Net Movement',
+      value: totalIncoming - totalOutgoing,
       href: '#arrivals',
-      tone: 'text-emerald-600 bg-emerald-50 border-emerald-100',
-      hint: t('newArrival'),
+      tone: 'from-emerald-500/15 to-teal-500/5 border-emerald-100 text-emerald-700',
+      hint: 'Incoming - outgoing',
     },
-    {
-      label: t('outgoing'),
-      value: data?.summary?.total_outgoing,
-      href: '#dispatches',
-      tone: 'text-purple-600 bg-purple-50 border-purple-100',
-      hint: t('newDispatch'),
-    },
-    {
-      label: t('pendingArrivals'),
-      value: data?.summary?.pending_inbound_reviews,
-      href: '/stock/approvals',
-      tone: 'text-orange-600 bg-orange-50 border-orange-100',
-      hint: t('approvals'),
-    },
-    {
-      label: t('pendingDispatches'),
-      value: data?.summary?.pending_outbound_reviews,
-      href: '/stock/approvals',
-      tone: 'text-slate-700 bg-slate-50 border-slate-200',
-      hint: t('approvals'),
-    },
+  ];
+
+  const movementByDate = new Map();
+
+  (data?.recentArrivals || []).forEach((shipment) => {
+    const dateSource = shipment.arrival_date || shipment.created_at;
+    const date = new Date(dateSource);
+    if (Number.isNaN(date.getTime())) {
+      return;
+    }
+
+    const dateKey = date.toISOString().slice(0, 10);
+    const current = movementByDate.get(dateKey) || { inbound: 0, outbound: 0, date: dateKey };
+    current.inbound += Number(shipment.total_whole_qty || 0) + Number(shipment.total_broken_qty || 0);
+    movementByDate.set(dateKey, current);
+  });
+
+  (data?.recentDispatches || []).forEach((shipment) => {
+    const dateSource = shipment.dispatch_date || shipment.created_at;
+    const date = new Date(dateSource);
+    if (Number.isNaN(date.getTime())) {
+      return;
+    }
+
+    const dateKey = date.toISOString().slice(0, 10);
+    const current = movementByDate.get(dateKey) || { inbound: 0, outbound: 0, date: dateKey };
+    current.outbound += Number(shipment.total_whole_qty || 0) + Number(shipment.total_broken_qty || 0);
+    movementByDate.set(dateKey, current);
+  });
+
+  const movementTrend = Array.from(movementByDate.values())
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-8);
+
+  const chartWidth = 700;
+  const chartHeight = 240;
+  const chartPadding = { top: 18, right: 16, bottom: 34, left: 48 };
+  const chartInnerWidth = chartWidth - chartPadding.left - chartPadding.right;
+  const chartInnerHeight = chartHeight - chartPadding.top - chartPadding.bottom;
+  const maxChartValue = Math.max(
+    ...movementTrend.map((point) => Math.max(point.inbound, point.outbound)),
+    1
+  );
+
+  function pointX(index) {
+    if (movementTrend.length <= 1) {
+      return chartPadding.left + chartInnerWidth / 2;
+    }
+
+    return chartPadding.left + (index / (movementTrend.length - 1)) * chartInnerWidth;
+  }
+
+  function pointY(value) {
+    return chartPadding.top + chartInnerHeight - (value / maxChartValue) * chartInnerHeight;
+  }
+
+  function linePath(key) {
+    if (!movementTrend.length) {
+      return '';
+    }
+
+    return movementTrend
+      .map((point, index) => `${index === 0 ? 'M' : 'L'} ${pointX(index)} ${pointY(point[key])}`)
+      .join(' ');
+  }
+
+  const inboundPath = linePath('inbound');
+  const outboundPath = linePath('outbound');
+
+  const tableViewTabs = [
+    { id: 'items', label: t('currentStock') },
+    { id: 'arrivals', label: t('arrivals') },
+    { id: 'dispatches', label: t('dispatches') },
   ];
 
   const arrivalRows = getSortedRows(
@@ -798,6 +906,8 @@ export default function StockDashboard() {
       return [
         shipment.shipment_number,
         shipment.status,
+        shipment.generated_by,
+        shipment.approved_by,
         formatDateTime(shipment.arrival_date),
         shipment.truck_license_plate,
         shipment.driver_name,
@@ -827,6 +937,8 @@ export default function StockDashboard() {
       return [
         shipment.shipment_number,
         shipment.status,
+        shipment.generated_by,
+        shipment.approved_by,
         formatDateTime(shipment.dispatch_date),
         shipment.truck_license_plate,
         shipment.driver_name,
@@ -894,21 +1006,109 @@ export default function StockDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {summaryTiles.map((stat) => (
-          <Link key={stat.label} href={stat.href} className={`group rounded-xl border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-950 ${stat.tone}`}>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium opacity-80">{stat.label}</p>
-                <p className="mt-1 text-2xl font-bold">{stat.value || 0}</p>
-              </div>
-              <span className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] opacity-70 transition group-hover:opacity-100">
-                {stat.hint}
-              </span>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:col-span-2">
+          {summaryTiles.map((stat) => (
+            <Link
+              key={stat.label}
+              href={stat.href}
+              className={`group rounded-2xl border bg-gradient-to-br p-4 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-950 ${stat.tone}`}
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] opacity-80">{stat.label}</p>
+              <p className="mt-2 text-3xl font-bold leading-none">{stat.value}</p>
+              <p className="mt-2 text-xs font-medium opacity-75">{stat.hint}</p>
+            </Link>
+          ))}
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm xl:col-span-3">
+          <div className="mb-3 flex items-end justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Movement Trend</h2>
+              <p className="text-xs text-muted-foreground">Quantity vs Date for recent arrivals and dispatches</p>
             </div>
-          </Link>
-        ))}
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />Incoming</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-violet-500" />Outgoing</span>
+            </div>
+          </div>
+          {movementTrend.length ? (
+            <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-56 w-full rounded-xl border border-border bg-muted/20">
+              {[0, 0.5, 1].map((tick) => {
+                const value = Math.round(maxChartValue * tick);
+                const y = pointY(value);
+
+                return (
+                  <g key={`grid-${tick}`}>
+                    <line
+                      x1={chartPadding.left}
+                      y1={y}
+                      x2={chartWidth - chartPadding.right}
+                      y2={y}
+                      stroke="currentColor"
+                      className="text-border"
+                      strokeDasharray="3 4"
+                    />
+                    <text
+                      x={chartPadding.left - 8}
+                      y={y + 4}
+                      textAnchor="end"
+                      className="fill-muted-foreground text-[10px]"
+                    >
+                      {value}
+                    </text>
+                  </g>
+                );
+              })}
+
+              <path d={inboundPath} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+              <path d={outboundPath} fill="none" stroke="#8b5cf6" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+
+              {movementTrend.map((point, index) => (
+                <g key={`dots-${point.date}`}>
+                  <circle cx={pointX(index)} cy={pointY(point.inbound)} r="3.5" fill="#10b981" />
+                  <circle cx={pointX(index)} cy={pointY(point.outbound)} r="3.5" fill="#8b5cf6" />
+                  <text
+                    x={pointX(index)}
+                    y={chartHeight - 10}
+                    textAnchor="middle"
+                    className="fill-muted-foreground text-[10px]"
+                  >
+                    {formatChartDate(point.date)}
+                  </text>
+                </g>
+              ))}
+            </svg>
+          ) : (
+            <div className="flex h-56 items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 text-sm text-muted-foreground">
+              No movement data available yet.
+            </div>
+          )}
+        </div>
       </div>
+      <div className="rounded-2xl border border-border/80 bg-card/70 p-1 shadow-sm backdrop-blur">
+        <div className="grid grid-cols-3 gap-1">
+          {tableViewTabs.map((tab) => {
+            const isActive = activeTableView === tab.id;
+
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTableView(tab.id)}
+                className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                  isActive
+                    ? 'bg-primary text-primary-foreground shadow-sm duration-300'
+                    : 'text-muted-foreground duration-300 hover:bg-muted/80 hover:text-foreground'
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      {activeTableView === 'items' && (
+        <div className="stock-tab-panel" key="stock-panel-items">
         <div id="current-stock" className="overflow-hidden scroll-mt-6 rounded-xl border border-border bg-card shadow-sm">
         <div className="flex items-center justify-between border-b border-border bg-muted/40 p-3">
           <h2 className="text-base font-semibold text-foreground">{t('currentStock')}</h2>
@@ -994,7 +1194,10 @@ export default function StockDashboard() {
           onPageChange={setStockPage}
         />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        </div>
+      )}
+      {activeTableView === 'arrivals' && (
+        <div className="stock-tab-panel" key="stock-panel-arrivals">
         <section id="arrivals" className="flex h-full flex-col overflow-hidden scroll-mt-6 rounded-xl border border-border bg-card shadow-sm">
           <div className="flex items-center justify-between border-b border-border bg-muted/40 p-3">
             <h2 className="text-base font-semibold text-foreground">{t('arrivals')}</h2>
@@ -1008,65 +1211,70 @@ export default function StockDashboard() {
                   + {t('newArrival')}
                 </button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[min(50vw,72rem)] max-w-none overflow-y-auto">
+              <SheetContent side="right" className="w-full max-w-none overflow-y-auto md:w-[50vw]">
                 <SheetHeader>
                   <SheetTitle>{t('logNewArrival')}</SheetTitle>
                   <SheetDescription>{t('logNewArrivalDesc')}</SheetDescription>
                 </SheetHeader>
-                <form className="mt-6 space-y-4" onSubmit={handleArrivalSubmit}>
+                <form className="mt-6 space-y-5" onSubmit={handleArrivalSubmit}>
                   <InlineNotice notice={arrivalNotice} />
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className={FORM_CARD_CLASS}>
+                    <h3 className="text-sm font-semibold text-foreground">Shipment Basics</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">Enter core details for this inbound shipment.</p>
+                    <div className="mt-3 grid gap-4 md:grid-cols-2">
                     <div>
-                      <label className="text-xs font-medium text-gray-700">{t('shipmentNo')}</label>
+                      <label className={FORM_LABEL_CLASS}>{t('shipmentNo')}</label>
                       <input
                         value={arrivalDraft.shipmentNumber}
                         onChange={(event) => updateArrivalDraft('shipmentNumber', event.target.value)}
                         type="text"
-                        className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
+                        autoFocus
+                        className={FORM_INPUT_CLASS}
                         placeholder="SHP-202X..."
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-700">{t('supplier')}</label>
+                      <label className={FORM_LABEL_CLASS}>{t('supplier')}</label>
                       <input
                         value={arrivalDraft.supplierName}
                         onChange={(event) => updateArrivalDraft('supplierName', event.target.value)}
                         type="text"
-                        className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
+                        className={FORM_INPUT_CLASS}
                         placeholder="Supplier Name..."
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  </div>
+                  <div className={FORM_CARD_CLASS}>
+                    <h3 className="text-sm font-semibold text-foreground">Vehicle And Invoice</h3>
+                    <div className="mt-3 grid gap-4 md:grid-cols-2">
                     <div>
-                      <label className="text-xs font-medium text-gray-700">{t('truck')}</label>
+                      <label className={FORM_LABEL_CLASS}>{t('truck')}</label>
                       <input
                         value={arrivalDraft.truckLicensePlate}
                         onChange={(event) => updateArrivalDraft('truckLicensePlate', event.target.value)}
                         type="text"
-                        className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
+                        className={FORM_INPUT_CLASS}
                         placeholder="RJ 14 XY 0000"
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-700">{t('driver')}</label>
+                      <label className={FORM_LABEL_CLASS}>{t('driver')}</label>
                       <input
                         value={arrivalDraft.driverName}
                         onChange={(event) => updateArrivalDraft('driverName', event.target.value)}
                         type="text"
-                        className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
+                        className={FORM_INPUT_CLASS}
                         placeholder="Driver Name..."
                       />
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-medium text-gray-700">{t('invoiceNo')}</label>
+                      <label className={FORM_LABEL_CLASS}>{t('invoiceNo')}</label>
                       <input
                         value={arrivalDraft.invoiceNumber}
                         onChange={(event) => updateArrivalDraft('invoiceNumber', event.target.value)}
                         type="text"
-                        className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
+                        className={FORM_INPUT_CLASS}
                         placeholder="INV-..."
                       />
                     </div>
@@ -1084,215 +1292,191 @@ export default function StockDashboard() {
                       hint="Truck bill, lorry receipt, or transporter bill photo."
                     />
                     <div>
-                      <label className="text-xs font-medium text-gray-700">{t('transportCost')}</label>
-                      <input
-                        value={arrivalDraft.transportCost}
-                        onChange={(event) => updateArrivalDraft('transportCost', event.target.value)}
-                        type="number"
-                        min="0"
-                        className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
-                        placeholder="0"
-                      />
+                      <label className={FORM_LABEL_CLASS}>{t('transportCost')}</label>
+                      <div className="relative mt-1">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">₹</span>
+                        <input
+                          value={arrivalDraft.transportCost}
+                          onChange={(event) => updateArrivalDraft('transportCost', event.target.value)}
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          className="w-full rounded-xl border border-border bg-background py-2.5 pl-12 pr-3 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <p className="mt-1 text-[11px] text-muted-foreground">Amount in INR.</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  </div>
+                  <div className={FORM_CARD_CLASS}>
+                    <div className="grid gap-4 md:grid-cols-2">
                     <div>
-                      <label className="text-xs font-medium text-gray-700">{t('laborCost')}</label>
-                      <input
-                        value={arrivalDraft.laborCost}
-                        onChange={(event) => updateArrivalDraft('laborCost', event.target.value)}
-                        type="number"
-                        min="0"
-                        className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
-                        placeholder="0"
-                      />
+                      <label className={FORM_LABEL_CLASS}>{t('laborCost')}</label>
+                      <div className="relative mt-1">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">₹</span>
+                        <input
+                          value={arrivalDraft.laborCost}
+                          onChange={(event) => updateArrivalDraft('laborCost', event.target.value)}
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          className="w-full rounded-xl border border-border bg-background py-2.5 pl-12 pr-3 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <p className="mt-1 text-[11px] text-muted-foreground">Amount in INR.</p>
                     </div>
                   </div>
-                  <div className="border-t pt-4">
+                  </div>
+                  <div className="rounded-2xl border border-border/80 bg-muted/20 p-4">
                     <div className="flex justify-between items-center mb-2 gap-4">
-                      <label className="text-sm font-semibold text-gray-800">{t('items')}</label>
+                      <label className="text-sm font-semibold text-foreground">{t('items')}</label>
                       <button
                         type="button"
                         onClick={addArrivalItemRow}
-                        className="text-blue-600 text-xs font-medium hover:underline"
+                        className="rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary transition hover:bg-primary/15"
                       >
                         {t('addItem')}
                       </button>
                     </div>
-                    <div className="grid grid-cols-4 gap-2 items-center mb-2">
-                      <div className="col-span-2 text-xs font-medium text-gray-600">Arrival item or tile</div>
-                      <div className="text-xs font-medium text-gray-600">{t('whole')}</div>
-                      <div className="text-xs font-medium text-gray-600">{t('broken')}</div>
-                    </div>
+                    <datalist id="arrival-item-options">
+                      {(data?.activeItems || []).map((stockItem) => (
+                        <option key={`arrival-option-${stockItem.id}`} value={stockItem.name}>
+                          {stockItem.sku}
+                        </option>
+                      ))}
+                    </datalist>
                     <div className="space-y-3">
                       {arrivalDraft.items.map((item, index) => (
-                        <div key={`arrival-item-${index}`} className="space-y-2 rounded-lg border border-gray-200 bg-gray-50/60 p-3">
-                          <div className="flex items-center justify-between gap-4 text-xs font-medium text-gray-500">
+                        <div key={`arrival-item-${index}`} className="space-y-2 rounded-xl border border-border bg-background/70 p-3">
+                          <div className="flex items-center justify-between gap-4 text-xs font-medium text-muted-foreground">
                             <span>Item {index + 1}</span>
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setArrivalItemMode(index, 'existing')}
-                                className={`rounded-full px-2.5 py-1 ${item.itemMode !== 'new' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-300'}`}
-                              >
-                                Known tile
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setArrivalItemMode(index, 'new')}
-                                className={`rounded-full px-2.5 py-1 ${item.itemMode === 'new' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-300'}`}
-                              >
-                                New tile
-                              </button>
-                            </div>
+                            <span className={`rounded-full border px-2.5 py-1 ${item.itemId ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
+                              {item.itemId ? 'Autofilled from catalog' : 'New tile entry'}
+                            </span>
                           </div>
                           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                             <div className="col-span-2">
-                              {item.itemMode === 'new' ? (
-                                <input
-                                  value={item.itemName}
-                                  onChange={(event) => updateArrivalItem(index, 'itemName', event.target.value)}
-                                  className="w-full px-2 py-1.5 border rounded-md text-sm"
-                                  placeholder="Tile name"
-                                />
-                              ) : (
-                                <select
-                                  value={item.itemId}
-                                  onChange={(event) => updateArrivalItem(index, 'itemId', event.target.value)}
-                                  className="w-full px-2 py-1.5 border rounded-md text-sm"
-                                >
-                                  <option value="">{t('selectItem')}</option>
-                                  {data?.activeItems?.map((stockItem) => (
-                                    <option key={stockItem.id} value={stockItem.id}>
-                                      {stockItem.sku} - {stockItem.name}
-                                    </option>
-                                  ))}
-                                </select>
-                              )}
+                              <input
+                                value={item.itemName}
+                                onChange={(event) => handleArrivalItemNameChange(index, event.target.value)}
+                                className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                placeholder="Type tile name (autocomplete will auto-fill if found)"
+                                list="arrival-item-options"
+                              />
+                              <div className="mt-1 text-[11px] text-muted-foreground">If this matches an existing tile, details auto-fill. Otherwise fill details below for new tile entry.</div>
                             </div>
                             <div>
+                              <label className="mb-1 block text-xs font-semibold text-muted-foreground">Whole(Box)</label>
                               <input
                                 value={item.wholeQty}
                                 onChange={(event) => updateArrivalItem(index, 'wholeQty', event.target.value)}
                                 type="number"
                                 min="0"
-                                className="w-full px-2 py-1.5 border rounded-md text-sm"
+                                className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 placeholder="0"
                               />
                             </div>
                             <div>
+                              <label className="mb-1 block text-xs font-semibold text-muted-foreground">Broken tiles</label>
                               <input
                                 value={item.brokenQty}
                                 onChange={(event) => updateArrivalItem(index, 'brokenQty', event.target.value)}
                                 type="number"
                                 min="0"
-                                className="w-full px-2 py-1.5 border rounded-md text-sm"
+                                className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 placeholder="0"
                               />
                             </div>
                           </div>
-                          {item.itemMode === 'new' ? (
-                            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                              <input
-                                value={item.brandName}
-                                onChange={(event) => updateArrivalItem(index, 'brandName', event.target.value)}
-                                className="w-full px-2 py-1.5 border rounded-md text-sm"
-                                placeholder="Brand"
-                              />
-                              <input
-                                value={item.typeName}
-                                onChange={(event) => updateArrivalItem(index, 'typeName', event.target.value)}
-                                className="w-full px-2 py-1.5 border rounded-md text-sm"
-                                placeholder="Type"
-                              />
-                              <input
-                                value={item.sizeLabel}
-                                onChange={(event) => updateArrivalItem(index, 'sizeLabel', event.target.value)}
-                                className="w-full px-2 py-1.5 border rounded-md text-sm"
-                                placeholder="Size"
-                              />
-                              <input
-                                value={item.sku}
-                                onChange={(event) => updateArrivalItem(index, 'sku', event.target.value)}
-                                className="w-full px-2 py-1.5 border rounded-md text-sm"
-                                placeholder="SKU optional"
-                              />
-                              <input
-                                value={item.tilesPerBox}
-                                onChange={(event) => updateArrivalItem(index, 'tilesPerBox', event.target.value)}
-                                type="number"
-                                min="0"
-                                className="w-full px-2 py-1.5 border rounded-md text-sm"
-                                placeholder="Tiles / box"
-                              />
-                              <input
-                                value={item.piecesPerBox}
-                                onChange={(event) => updateArrivalItem(index, 'piecesPerBox', event.target.value)}
-                                type="number"
-                                min="0"
-                                className="w-full px-2 py-1.5 border rounded-md text-sm"
-                                placeholder="Pieces / box"
-                              />
-                              <input
-                                value={item.reorderLevel}
-                                onChange={(event) => updateArrivalItem(index, 'reorderLevel', event.target.value)}
-                                type="number"
-                                min="0"
-                                className="w-full px-2 py-1.5 border rounded-md text-sm"
-                                placeholder="Reorder level"
-                              />
-                              <input
-                                value={item.sizeUnit}
-                                onChange={(event) => updateArrivalItem(index, 'sizeUnit', event.target.value)}
-                                className="w-full px-2 py-1.5 border rounded-md text-sm"
-                                placeholder="Size unit"
-                              />
-                              <input
-                                value={item.itemNameHi}
-                                onChange={(event) => updateArrivalItem(index, 'itemNameHi', event.target.value)}
-                                className="w-full px-2 py-1.5 border rounded-md text-sm"
-                                placeholder="Tile name hi"
-                              />
-                              <input
-                                value={item.brandNameHi}
-                                onChange={(event) => updateArrivalItem(index, 'brandNameHi', event.target.value)}
-                                className="w-full px-2 py-1.5 border rounded-md text-sm"
-                                placeholder="Brand hi"
-                              />
-                              <input
-                                value={item.typeNameHi}
-                                onChange={(event) => updateArrivalItem(index, 'typeNameHi', event.target.value)}
-                                className="w-full px-2 py-1.5 border rounded-md text-sm"
-                                placeholder="Type hi"
-                              />
-                            </div>
-                          ) : null}
-                          <div>
-                            <label className="text-xs font-medium text-gray-700">{t('notes')}</label>
-                            <textarea
-                              value={item.notes}
-                              onChange={(event) => updateArrivalItem(index, 'notes', event.target.value)}
-                              className="mt-1 w-full px-2 py-1.5 border rounded-md text-sm"
-                              rows="2"
+                          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                            <input
+                              value={item.brandName}
+                              onChange={(event) => updateArrivalItem(index, 'brandName', event.target.value)}
+                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                              placeholder="Brand"
+                              disabled={Boolean(item.itemId)}
+                            />
+                            <input
+                              value={item.typeName}
+                              onChange={(event) => updateArrivalItem(index, 'typeName', event.target.value)}
+                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                              placeholder="Type"
+                              disabled={Boolean(item.itemId)}
+                            />
+                            <input
+                              value={item.sizeLabel}
+                              onChange={(event) => updateArrivalItem(index, 'sizeLabel', event.target.value)}
+                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                              placeholder="Size"
+                              disabled={Boolean(item.itemId)}
+                            />
+                            <input
+                              value={item.sku}
+                              onChange={(event) => handleArrivalItemSkuChange(index, event.target.value)}
+                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                              placeholder="SKU optional"
+                            />
+                            <input
+                              value={item.tilesPerBox}
+                              onChange={(event) => updateArrivalItem(index, 'tilesPerBox', event.target.value)}
+                              type="number"
+                              min="0"
+                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                              placeholder="Tiles / box"
+                              disabled={Boolean(item.itemId)}
+                            />
+                            <input
+                              value={item.piecesPerBox}
+                              onChange={(event) => updateArrivalItem(index, 'piecesPerBox', event.target.value)}
+                              type="number"
+                              min="0"
+                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                              placeholder="Pieces / box"
+                              disabled={Boolean(item.itemId)}
+                            />
+                            <input
+                              value={item.reorderLevel}
+                              onChange={(event) => updateArrivalItem(index, 'reorderLevel', event.target.value)}
+                              type="number"
+                              min="0"
+                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                              placeholder="Reorder level"
+                              disabled={Boolean(item.itemId)}
+                            />
+                            <input
+                              value={item.sizeUnit}
+                              onChange={(event) => updateArrivalItem(index, 'sizeUnit', event.target.value)}
+                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                              placeholder="Size unit"
+                              disabled={Boolean(item.itemId)}
+                            />
+                            <input
+                              value={item.description}
+                              onChange={(event) => updateArrivalItem(index, 'description', event.target.value)}
+                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 lg:col-span-2"
+                              placeholder="Description"
+                              disabled={Boolean(item.itemId)}
                             />
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-700">{t('notes')}</label>
+                  <div className={FORM_CARD_CLASS}>
+                    <label className={FORM_LABEL_CLASS}>{t('notes')}</label>
                     <textarea
                       value={arrivalDraft.notes}
                       onChange={(event) => updateArrivalDraft('notes', event.target.value)}
-                      className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
+                      className={FORM_INPUT_CLASS}
                       rows="2"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={arrivalSubmitting}
-                    className="w-full py-2.5 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 mt-4 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="mt-4 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {arrivalSubmitting ? 'Submitting...' : t('submitArrival')}
                   </button>
@@ -1338,6 +1522,8 @@ export default function StockDashboard() {
                       {t('status')}
                     </button>
                   </th>
+                  <th className="px-3 py-2">Generated By</th>
+                  <th className="px-3 py-2">Approved By</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -1367,6 +1553,8 @@ export default function StockDashboard() {
                       {Number(a.total_whole_qty || 0)} whole / {Number(a.total_broken_qty || 0)} broken
                     </td>
                     <td className="px-3 py-2"><span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">{a.status}</span></td>
+                    <td className="px-3 py-2 text-muted-foreground">{a.generated_by || '—'}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{a.approved_by || '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1380,7 +1568,11 @@ export default function StockDashboard() {
             onPageChange={setArrivalPage}
           />
         </section>
+        </div>
+        )}
 
+        {activeTableView === 'dispatches' && (
+        <div className="stock-tab-panel" key="stock-panel-dispatches">
         <section id="dispatches" className="flex h-full flex-col overflow-hidden scroll-mt-6 rounded-xl border border-border bg-card shadow-sm">
           <div className="flex items-center justify-between border-b border-border bg-muted/40 p-3">
             <h2 className="text-base font-semibold text-foreground">{t('dispatches')}</h2>
@@ -1394,7 +1586,7 @@ export default function StockDashboard() {
                   + {t('newDispatch')}
                 </button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[min(96vw,72rem)] max-w-none overflow-y-auto">
+              <SheetContent side="right" className="w-full max-w-none overflow-y-auto md:w-[50vw]">
                 <SheetHeader>
                   <SheetTitle>{t('logNewDispatch')}</SheetTitle>
                   <SheetDescription>{t('logNewDispatchDesc')}</SheetDescription>
@@ -1403,56 +1595,57 @@ export default function StockDashboard() {
                   <InlineNotice notice={dispatchNotice} />
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-medium text-gray-700">{t('dispatchNo')}</label>
+                      <label className="text-xs font-semibold text-foreground/80">{t('dispatchNo')}</label>
                       <input
                         value={dispatchDraft.shipmentNumber}
                         onChange={(event) => updateDispatchDraft('shipmentNumber', event.target.value)}
                         type="text"
-                        className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
+                        autoFocus
+                        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                         placeholder="DSP-202X..."
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-700">{t('customer')}</label>
+                      <label className="text-xs font-semibold text-foreground/80">{t('customer')}</label>
                       <input
                         value={dispatchDraft.customerName}
                         onChange={(event) => updateDispatchDraft('customerName', event.target.value)}
                         type="text"
-                        className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
+                        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                         placeholder="Customer Name..."
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-medium text-gray-700">{t('truck')}</label>
+                      <label className="text-xs font-semibold text-foreground/80">{t('truck')}</label>
                       <input
                         value={dispatchDraft.truckLicensePlate}
                         onChange={(event) => updateDispatchDraft('truckLicensePlate', event.target.value)}
                         type="text"
-                        className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
+                        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                         placeholder="RJ 14 XY 0000"
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-700">{t('driver')}</label>
+                      <label className="text-xs font-semibold text-foreground/80">{t('driver')}</label>
                       <input
                         value={dispatchDraft.driverName}
                         onChange={(event) => updateDispatchDraft('driverName', event.target.value)}
                         type="text"
-                        className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
+                        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                         placeholder="Driver Name..."
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-medium text-gray-700">{t('invoiceNo')}</label>
+                      <label className="text-xs font-semibold text-foreground/80">{t('invoiceNo')}</label>
                       <input
                         value={dispatchDraft.invoiceNumber}
                         onChange={(event) => updateDispatchDraft('invoiceNumber', event.target.value)}
                         type="text"
-                        className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
+                        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                         placeholder="INV-..."
                       />
                     </div>
@@ -1470,60 +1663,70 @@ export default function StockDashboard() {
                       hint="Gatepass photo before dispatch leaves the yard."
                     />
                     <div>
-                      <label className="text-xs font-medium text-gray-700">{t('salesperson')}</label>
+                      <label className="text-xs font-semibold text-foreground/80">{t('salesperson')}</label>
                       <input
                         value={dispatchDraft.salespersonName}
                         onChange={(event) => updateDispatchDraft('salespersonName', event.target.value)}
                         type="text"
-                        className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
+                        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                         placeholder="Salesperson..."
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-medium text-gray-700">{t('transportCost')}</label>
-                      <input
-                        value={dispatchDraft.transportCost}
-                        onChange={(event) => updateDispatchDraft('transportCost', event.target.value)}
-                        type="number"
-                        min="0"
-                        className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
-                        placeholder="0"
-                      />
+                      <label className="text-xs font-semibold text-foreground/80">{t('transportCost')}</label>
+                      <div className="relative mt-1">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">₹</span>
+                        <input
+                          value={dispatchDraft.transportCost}
+                          onChange={(event) => updateDispatchDraft('transportCost', event.target.value)}
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          className="w-full rounded-xl border border-border bg-background pl-12 pr-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <p className="mt-1 text-[11px] text-muted-foreground">Amount in INR.</p>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-700">{t('laborCost')}</label>
-                      <input
-                        value={dispatchDraft.laborCost}
-                        onChange={(event) => updateDispatchDraft('laborCost', event.target.value)}
-                        type="number"
-                        min="0"
-                        className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
-                        placeholder="0"
-                      />
+                      <label className="text-xs font-semibold text-foreground/80">{t('laborCost')}</label>
+                      <div className="relative mt-1">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">₹</span>
+                        <input
+                          value={dispatchDraft.laborCost}
+                          onChange={(event) => updateDispatchDraft('laborCost', event.target.value)}
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          className="w-full rounded-xl border border-border bg-background pl-12 pr-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <p className="mt-1 text-[11px] text-muted-foreground">Amount in INR.</p>
                     </div>
                   </div>
                   <div className="border-t pt-4">
                     <div className="flex justify-between items-center mb-2 gap-4">
-                      <label className="text-sm font-semibold text-gray-800">{t('items')}</label>
+                      <label className="text-sm font-semibold text-foreground">{t('items')}</label>
                       <button
                         type="button"
                         onClick={addDispatchItemRow}
-                        className="text-purple-600 text-xs font-medium hover:underline"
+                        className="text-primary text-xs font-semibold hover:underline"
                       >
                         {t('addItem')}
                       </button>
                     </div>
                     <div className="grid grid-cols-4 gap-2 items-center mb-2">
-                      <div className="col-span-2 text-xs font-medium text-gray-600">{t('sku')} / {t('name')}</div>
-                      <div className="text-xs font-medium text-gray-600">{t('whole')}</div>
-                      <div className="text-xs font-medium text-gray-600">{t('broken')}</div>
+                      <div className="col-span-2 text-xs font-semibold text-muted-foreground">{t('sku')} / {t('name')}</div>
+                      <div className="text-xs font-semibold text-muted-foreground">{t('whole')}</div>
+                      <div className="text-xs font-semibold text-muted-foreground">{t('broken')}</div>
                     </div>
                     <div className="space-y-3">
                       {dispatchDraft.items.map((item, index) => (
-                        <div key={`dispatch-item-${index}`} className="space-y-2 rounded-lg border border-gray-200 bg-gray-50/60 p-3">
-                          <div className="flex items-center justify-between gap-4 text-xs font-medium text-gray-500">
+                        <div key={`dispatch-item-${index}`} className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+                          <div className="flex items-center justify-between gap-4 text-xs font-medium text-muted-foreground">
                             <span>Item {index + 1}</span>
                           </div>
                           <div className="grid grid-cols-4 gap-2 items-center">
@@ -1531,7 +1734,7 @@ export default function StockDashboard() {
                               <select
                                 value={item.itemId}
                                 onChange={(event) => updateDispatchItem(index, 'itemId', event.target.value)}
-                                className="w-full px-2 py-1.5 border rounded-md text-sm"
+                                className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                               >
                                 <option value="">{t('selectItem')}</option>
                                 {data?.activeItems?.map((stockItem) => (
@@ -1547,7 +1750,7 @@ export default function StockDashboard() {
                                 onChange={(event) => updateDispatchItem(index, 'loadedWholeQty', event.target.value)}
                                 type="number"
                                 min="0"
-                                className="w-full px-2 py-1.5 border rounded-md text-sm"
+                                className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 placeholder="0"
                               />
                             </div>
@@ -1557,7 +1760,7 @@ export default function StockDashboard() {
                                 onChange={(event) => updateDispatchItem(index, 'loadedBrokenQty', event.target.value)}
                                 type="number"
                                 min="0"
-                                className="w-full px-2 py-1.5 border rounded-md text-sm"
+                                className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 placeholder="0"
                               />
                             </div>
@@ -1567,18 +1770,18 @@ export default function StockDashboard() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-gray-700">{t('notes')}</label>
+                    <label className="text-xs font-semibold text-foreground/80">{t('notes')}</label>
                     <textarea
                       value={dispatchDraft.notes}
                       onChange={(event) => updateDispatchDraft('notes', event.target.value)}
-                      className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
+                      className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                       rows="2"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={dispatchSubmitting}
-                    className="w-full py-2.5 bg-purple-600 text-white rounded-md font-medium hover:bg-purple-700 mt-4 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="mt-4 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {dispatchSubmitting ? 'Submitting...' : t('submitDispatch')}
                   </button>
@@ -1624,6 +1827,8 @@ export default function StockDashboard() {
                       {t('status')}
                     </button>
                   </th>
+                  <th className="px-3 py-2">Generated By</th>
+                  <th className="px-3 py-2">Approved By</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -1653,6 +1858,8 @@ export default function StockDashboard() {
                       {Number(d.total_whole_qty || 0)} whole / {Number(d.total_broken_qty || 0)} broken
                     </td>
                     <td className="px-3 py-2"><span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">{d.status}</span></td>
+                    <td className="px-3 py-2 text-muted-foreground">{d.generated_by || '—'}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{d.approved_by || '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1666,7 +1873,8 @@ export default function StockDashboard() {
             onPageChange={setDispatchPage}
           />
         </section>
-      </div>
+        </div>
+        )}
 
       <EntryPreviewSheet
         open={previewState.open}
