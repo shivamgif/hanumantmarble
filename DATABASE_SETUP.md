@@ -73,7 +73,6 @@ Only emails listed in `lib/admin-config.js` can:
 - Create/edit/delete products
 - See the admin button in navigation
 
-Current admin: `ssshivam.singh.2@gmail.com`
 
 ## 📝 Manual Database Operations
 

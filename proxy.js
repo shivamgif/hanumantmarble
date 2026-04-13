@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth0 } from "./lib/auth0";
 
 const INTERNAL_ROUTES = ['/stock', '/api/stock'];
-const ALLOWED_INTERNAL_EMAILS = (process.env.ALLOWED_INTERNAL_EMAILS || 'ssshivam.singh.2@gmail.com').split(',').map(e => e.trim());
+const ALLOWED_INTERNAL_EMAILS = (process.env.ALLOWED_INTERNAL_EMAILS || ''  ).split(',').map(e => e.trim());
 
 export async function proxy(request) {
   const { pathname } = request.nextUrl;

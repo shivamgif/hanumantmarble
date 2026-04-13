@@ -11,6 +11,9 @@
   # Next.js specific
   NEXT_PUBLIC_ENV = "production"
 
+[[plugins]]
+package = "@netlify/plugin-nextjs"
+
 # Environment-based behavior
 [context.production]
   command = "npm run build"

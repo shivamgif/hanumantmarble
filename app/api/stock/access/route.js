@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getRoleFlags, getStockContext, normalizeStockRole, normalizeText } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 
-const superAdminEmails = (process.env.STOCK_SUPER_ADMIN_EMAILS || 'ssshivam.singh.2@gmail.com')
+const superAdminEmails = (process.env.STOCK_SUPER_ADMIN_EMAILS || '')
   .split(',')
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean);
