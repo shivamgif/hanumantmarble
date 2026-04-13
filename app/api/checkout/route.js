@@ -67,7 +67,7 @@ export async function POST(request) {
       },
     });
 
-    return new Response(JSON.stringify({ id: checkoutSession.id, orderId: order?.id }), { status: 200 });
+    return new Response(JSON.stringify({ id: checkoutSession.id, url: checkoutSession.url, orderId: order?.id }), { status: 200 });
   } catch (err) {
     console.error('Checkout error:', err);
     return new Response(JSON.stringify({ error: err.message }), { status: 500 });

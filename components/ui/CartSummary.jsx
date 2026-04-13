@@ -19,17 +19,7 @@ export function CartSummary() {
 
   const handleCheckout = async () => {
     try {
-      const response = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ cart: cartDetails }),
-      });
-
-      if (!response.ok) throw new Error('Failed to create checkout session');
-      const { id } = await response.json();
-      await redirectToCheckout({ sessionId: id });
+      await redirectToCheckout();
     } catch (error) {
       console.error('Error during checkout:', error);
     }
