@@ -23,12 +23,6 @@
 [context.deploy-preview]
   command = "npm run build"
 
-# Redirect rules
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
 # Headers for security and SEO
 [[headers]]
   for = "/stock/*"

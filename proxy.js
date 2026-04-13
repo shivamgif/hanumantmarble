@@ -6,10 +6,15 @@ const ALLOWED_INTERNAL_EMAILS = (process.env.ALLOWED_INTERNAL_EMAILS || 'ssshiva
 
 export async function proxy(request) {
   const { pathname } = request.nextUrl;
+  const hostname = request.nextUrl.hostname;
   const postLogoutReturnTo = request.cookies.get('hm-login-return-to')?.value;
 
   if (pathname === '/' && postLogoutReturnTo) {
     return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  if (hostname === 'stock.hanumantmarble.com' && pathname === '/') {
+    return NextResponse.redirect(new URL('/stock', request.url));
   }
 
   // Check if accessing internal stock routes
