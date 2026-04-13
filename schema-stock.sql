@@ -554,10 +554,15 @@ CREATE TABLE IF NOT EXISTS stock_notifications (
   error_message TEXT,
   source_table TEXT,
   source_id BIGINT,
+  is_read BOOLEAN NOT NULL DEFAULT FALSE,
+  read_at TIMESTAMP,
   created_by TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE IF EXISTS stock_notifications ADD COLUMN IF NOT EXISTS is_read BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE IF EXISTS stock_notifications ADD COLUMN IF NOT EXISTS read_at TIMESTAMP;
 
 -- ====== AUDIT & LOGGING ======
 

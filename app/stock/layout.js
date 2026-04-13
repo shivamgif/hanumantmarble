@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronLeft, ChevronRight, ClipboardList, FileText, Home, Languages, MoonStar, PackagePlus, SunMedium, Users, LogOut } from 'lucide-react';
+import { Bell, CheckCheck, ChevronLeft, ChevronRight, ClipboardList, FileText, Home, Languages, MoonStar, PackagePlus, SunMedium, Users, LogOut } from 'lucide-react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -10,6 +10,7 @@ import { useTheme } from 'next-themes';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import BrandedLoginPage from '@/components/BrandedLoginPage';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
 /**
  * Layout for internal stock management routes
@@ -25,6 +26,12 @@ export default function StockLayout({ children }) {
   const [accessMessage, setAccessMessage] = useState('');
   const [accessRole, setAccessRole] = useState('stock_maintainer');
   const [collapsed, setCollapsed] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationLoading, setNotificationLoading] = useState(false);
+  const [notificationError, setNotificationError] = useState(null);
+  const [notificationUpdating, setNotificationUpdating] = useState(false);
 
   const t = (key) => getTranslation(`stock.layout.${key}`, language);
   const isDarkTheme = resolvedTheme === 'dark';
@@ -109,6 +116,94 @@ export default function StockLayout({ children }) {
       mounted = false;
     };
   }, [user]);
+
+  async function loadNotifications({ silent = false } = {}) {
+    if (!silent) {
+      setNotificationLoading(true);
+    }
+
+    try {
+      const response = await fetch('/api/stock/notifications?limit=25', { cache: 'no-store' });
+      const json = await response.json();
+
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to load notifications');
+      }
+
+      setNotifications(json.notifications || []);
+      setUnreadCount(Number(json.unreadCount || 0));
+      setNotificationError(null);
+    } catch (err) {
+      setNotificationError(err.message);
+    } finally {
+      if (!silent) {
+        setNotificationLoading(false);
+      }
+    }
+  }
+
+  async function markAllNotificationsRead() {
+    setNotificationUpdating(true);
+
+    try {
+      const response = await fetch('/api/stock/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'markAllRead' }),
+      });
+
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to mark notifications read');
+      }
+
+      await loadNotifications({ silent: true });
+    } catch (err) {
+      setNotificationError(err.message);
+    } finally {
+      setNotificationUpdating(false);
+    }
+  }
+
+  async function markNotificationRead(notificationId) {
+    try {
+      const response = await fetch('/api/stock/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'markRead', id: notificationId }),
+      });
+
+      if (!response.ok) {
+        const json = await response.json();
+        throw new Error(json.error || 'Failed to mark notification read');
+      }
+
+      await loadNotifications({ silent: true });
+    } catch (err) {
+      setNotificationError(err.message);
+    }
+  }
+
+  function handleNotificationNavigate(notification) {
+    if (!notification?.is_read) {
+      markNotificationRead(notification.id);
+    }
+    setNotificationOpen(false);
+  }
+
+  useEffect(() => {
+    if (!accessApproved || !user) {
+      return;
+    }
+
+    loadNotifications();
+
+    const intervalId = setInterval(() => {
+      loadNotifications({ silent: true });
+    }, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [accessApproved, user]);
 
   if (isLoading) {
     return (
@@ -222,6 +317,19 @@ export default function StockLayout({ children }) {
               <Languages className="h-4 w-4" />
               <span className={collapsed ? 'lg:hidden' : ''}>{language.toUpperCase()}</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setNotificationOpen(true)}
+              className="relative inline-flex rounded-full border border-border bg-muted/60 p-2 text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
+              aria-label="Open notifications"
+            >
+              <Bell className="h-4 w-4" />
+              {unreadCount > 0 ? (
+                <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              ) : null}
+            </button>
                <button
               type="button"
               onClick={() => setCollapsed((current) => !current)}
@@ -291,6 +399,69 @@ export default function StockLayout({ children }) {
           <p>{t('footerTitle')} • {t('footerUpdated')}: {new Date().toLocaleString()}</p>
         </footer>
       </div>
+
+      <Sheet open={notificationOpen} onOpenChange={setNotificationOpen}>
+        <SheetContent side="right" className="w-full max-w-none overflow-y-auto md:w-[420px]">
+          <SheetHeader>
+            <SheetTitle>Notifications</SheetTitle>
+            <SheetDescription>Operational alerts and shipment updates from stock workflow.</SheetDescription>
+          </SheetHeader>
+
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <div className="text-xs text-muted-foreground">
+              {unreadCount} unread
+            </div>
+            <button
+              type="button"
+              onClick={markAllNotificationsRead}
+              disabled={notificationUpdating || unreadCount === 0}
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <CheckCheck className="h-3.5 w-3.5" />
+              Mark all read
+            </button>
+          </div>
+
+          {notificationError ? (
+            <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {notificationError}
+            </div>
+          ) : null}
+
+          {notificationLoading ? (
+            <div className="mt-4 text-sm text-muted-foreground">Loading notifications...</div>
+          ) : notifications.length === 0 ? (
+            <div className="mt-4 rounded-lg border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
+              No notifications yet.
+            </div>
+          ) : (
+            <div className="mt-4 space-y-2">
+              {notifications.map((notification) => (
+                <Link
+                  key={notification.id}
+                  href={notification.actionHref || '/stock'}
+                  onClick={() => handleNotificationNavigate(notification)}
+                  className={`block w-full rounded-xl border px-3 py-2 text-left transition hover:border-primary/30 hover:bg-primary/5 ${
+                    notification.is_read ? 'border-border bg-card' : 'border-primary/25 bg-primary/5'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-semibold text-foreground">{notification.event_type.replace(/_/g, ' ')}</p>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                      {notification.channel}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-foreground/85">{notification.message_text}</p>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <p className="text-[11px] text-muted-foreground">{new Date(notification.created_at).toLocaleString()}</p>
+                    <span className="text-[11px] font-semibold text-primary">Open</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

@@ -1,8 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
+import { useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
@@ -101,18 +101,6 @@ function formatDateTime(value) {
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(date);
-}
-
-function formatChartDate(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
   }).format(date);
 }
 
@@ -223,6 +211,7 @@ export default function StockDashboard() {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.dashboard.${key}`, language);
   const { user, isLoading: userLoading } = useUser();
+  const searchParams = useSearchParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -237,6 +226,8 @@ export default function StockDashboard() {
   const [dispatchSort, setDispatchSort] = useState({ key: 'datetime', direction: 'desc' });
   const [stockSort, setStockSort] = useState({ key: 'sku', direction: 'asc' });
   const [activeTableView, setActiveTableView] = useState('items');
+  const [processedDeepLink, setProcessedDeepLink] = useState('');
+  const [highlightedShipmentKey, setHighlightedShipmentKey] = useState(null);
   const [stockPage, setStockPage] = useState(1);
   const [arrivalPage, setArrivalPage] = useState(1);
   const [dispatchPage, setDispatchPage] = useState(1);
@@ -788,108 +779,6 @@ export default function StockDashboard() {
     }
   }
 
-  const pendingReviews = Number(data?.summary?.pending_inbound_reviews || 0) + Number(data?.summary?.pending_outbound_reviews || 0);
-  const totalIncoming = Number(data?.summary?.total_incoming || 0);
-  const totalOutgoing = Number(data?.summary?.total_outgoing || 0);
-
-  const summaryTiles = [
-    {
-      label: 'Available Whole Stock',
-      value: Number(data?.summary?.total_whole_stored || 0),
-      href: '#current-stock',
-      tone: 'from-blue-500/15 to-cyan-500/5 border-blue-100 text-blue-700',
-      hint: 'Ready to dispatch',
-    },
-    {
-      label: 'Damaged / Broken Stock',
-      value: Number(data?.summary?.total_broken_stored || 0),
-      href: '#current-stock',
-      tone: 'from-amber-500/15 to-orange-500/5 border-amber-100 text-amber-700',
-      hint: 'Needs action',
-    },
-    {
-      label: 'Pending Reviews',
-      value: pendingReviews,
-      href: '/stock/approvals',
-      tone: 'from-rose-500/15 to-orange-500/5 border-rose-100 text-rose-700',
-      hint: 'Arrivals + dispatches',
-    },
-    {
-      label: 'Net Movement',
-      value: totalIncoming - totalOutgoing,
-      href: '#arrivals',
-      tone: 'from-emerald-500/15 to-teal-500/5 border-emerald-100 text-emerald-700',
-      hint: 'Incoming - outgoing',
-    },
-  ];
-
-  const movementByDate = new Map();
-
-  (data?.recentArrivals || []).forEach((shipment) => {
-    const dateSource = shipment.arrival_date || shipment.created_at;
-    const date = new Date(dateSource);
-    if (Number.isNaN(date.getTime())) {
-      return;
-    }
-
-    const dateKey = date.toISOString().slice(0, 10);
-    const current = movementByDate.get(dateKey) || { inbound: 0, outbound: 0, date: dateKey };
-    current.inbound += Number(shipment.total_whole_qty || 0) + Number(shipment.total_broken_qty || 0);
-    movementByDate.set(dateKey, current);
-  });
-
-  (data?.recentDispatches || []).forEach((shipment) => {
-    const dateSource = shipment.dispatch_date || shipment.created_at;
-    const date = new Date(dateSource);
-    if (Number.isNaN(date.getTime())) {
-      return;
-    }
-
-    const dateKey = date.toISOString().slice(0, 10);
-    const current = movementByDate.get(dateKey) || { inbound: 0, outbound: 0, date: dateKey };
-    current.outbound += Number(shipment.total_whole_qty || 0) + Number(shipment.total_broken_qty || 0);
-    movementByDate.set(dateKey, current);
-  });
-
-  const movementTrend = Array.from(movementByDate.values())
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(-8);
-
-  const chartWidth = 700;
-  const chartHeight = 240;
-  const chartPadding = { top: 18, right: 16, bottom: 34, left: 48 };
-  const chartInnerWidth = chartWidth - chartPadding.left - chartPadding.right;
-  const chartInnerHeight = chartHeight - chartPadding.top - chartPadding.bottom;
-  const maxChartValue = Math.max(
-    ...movementTrend.map((point) => Math.max(point.inbound, point.outbound)),
-    1
-  );
-
-  function pointX(index) {
-    if (movementTrend.length <= 1) {
-      return chartPadding.left + chartInnerWidth / 2;
-    }
-
-    return chartPadding.left + (index / (movementTrend.length - 1)) * chartInnerWidth;
-  }
-
-  function pointY(value) {
-    return chartPadding.top + chartInnerHeight - (value / maxChartValue) * chartInnerHeight;
-  }
-
-  function linePath(key) {
-    if (!movementTrend.length) {
-      return '';
-    }
-
-    return movementTrend
-      .map((point, index) => `${index === 0 ? 'M' : 'L'} ${pointX(index)} ${pointY(point[key])}`)
-      .join(' ');
-  }
-
-  const inboundPath = linePath('inbound');
-  const outboundPath = linePath('outbound');
-
   const tableViewTabs = [
     { id: 'items', label: t('currentStock') },
     { id: 'arrivals', label: t('arrivals') },
@@ -1000,90 +889,68 @@ export default function StockDashboard() {
     setPreviewItemsPage((current) => Math.min(current, previewItemPagination.pageCount));
   }, [previewItemPagination.pageCount]);
 
+  useEffect(() => {
+    if (!data) {
+      return;
+    }
+
+    const view = searchParams.get('view');
+    const entityType = searchParams.get('entityType');
+    const entityIdRaw = searchParams.get('entityId');
+    const entityId = Number(entityIdRaw);
+
+    if (view === 'items' || view === 'arrivals' || view === 'dispatches') {
+      setActiveTableView(view);
+    }
+
+    if (!entityType || !entityId || Number.isNaN(entityId)) {
+      return;
+    }
+
+    const deepLinkKey = `${entityType}:${entityId}`;
+    if (processedDeepLink === deepLinkKey) {
+      return;
+    }
+
+    if (entityType === 'inbound_shipment') {
+      const target = (data.recentArrivals || []).find((item) => Number(item.id) === entityId);
+      setActiveTableView('arrivals');
+      setHighlightedShipmentKey(`arrival-${entityId}`);
+      openShipmentPreview('arrival', target || { id: entityId, shipment_number: `INB-${entityId}` });
+      setProcessedDeepLink(deepLinkKey);
+      return;
+    }
+
+    if (entityType === 'outbound_shipment') {
+      const target = (data.recentDispatches || []).find((item) => Number(item.id) === entityId);
+      setActiveTableView('dispatches');
+      setHighlightedShipmentKey(`dispatch-${entityId}`);
+      openShipmentPreview('dispatch', target || { id: entityId, shipment_number: `OUT-${entityId}` });
+      setProcessedDeepLink(deepLinkKey);
+    }
+  }, [data, processedDeepLink, searchParams]);
+
+  useEffect(() => {
+    if (!highlightedShipmentKey) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setHighlightedShipmentKey(null);
+    }, 4000);
+
+    return () => clearTimeout(timeoutId);
+  }, [highlightedShipmentKey]);
+
   if (loading) return <div className="p-8 text-center">{t('loading')}</div>;
   if (error) return <div className="p-8 text-red-500">{error}</div>;
   if (!data) return null;
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:col-span-2">
-          {summaryTiles.map((stat) => (
-            <Link
-              key={stat.label}
-              href={stat.href}
-              className={`group rounded-2xl border bg-gradient-to-br p-4 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-950 ${stat.tone}`}
-            >
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] opacity-80">{stat.label}</p>
-              <p className="mt-2 text-3xl font-bold leading-none">{stat.value}</p>
-              <p className="mt-2 text-xs font-medium opacity-75">{stat.hint}</p>
-            </Link>
-          ))}
-        </div>
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm xl:col-span-3">
-          <div className="mb-3 flex items-end justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold text-foreground">Movement Trend</h2>
-              <p className="text-xs text-muted-foreground">Quantity vs Date for recent arrivals and dispatches</p>
-            </div>
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />Incoming</span>
-              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-violet-500" />Outgoing</span>
-            </div>
-          </div>
-          {movementTrend.length ? (
-            <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-56 w-full rounded-xl border border-border bg-muted/20">
-              {[0, 0.5, 1].map((tick) => {
-                const value = Math.round(maxChartValue * tick);
-                const y = pointY(value);
-
-                return (
-                  <g key={`grid-${tick}`}>
-                    <line
-                      x1={chartPadding.left}
-                      y1={y}
-                      x2={chartWidth - chartPadding.right}
-                      y2={y}
-                      stroke="currentColor"
-                      className="text-border"
-                      strokeDasharray="3 4"
-                    />
-                    <text
-                      x={chartPadding.left - 8}
-                      y={y + 4}
-                      textAnchor="end"
-                      className="fill-muted-foreground text-[10px]"
-                    >
-                      {value}
-                    </text>
-                  </g>
-                );
-              })}
-
-              <path d={inboundPath} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-              <path d={outboundPath} fill="none" stroke="#8b5cf6" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-
-              {movementTrend.map((point, index) => (
-                <g key={`dots-${point.date}`}>
-                  <circle cx={pointX(index)} cy={pointY(point.inbound)} r="3.5" fill="#10b981" />
-                  <circle cx={pointX(index)} cy={pointY(point.outbound)} r="3.5" fill="#8b5cf6" />
-                  <text
-                    x={pointX(index)}
-                    y={chartHeight - 10}
-                    textAnchor="middle"
-                    className="fill-muted-foreground text-[10px]"
-                  >
-                    {formatChartDate(point.date)}
-                  </text>
-                </g>
-              ))}
-            </svg>
-          ) : (
-            <div className="flex h-56 items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 text-sm text-muted-foreground">
-              No movement data available yet.
-            </div>
-          )}
-        </div>
+      <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        <h1 className="text-lg font-semibold text-foreground">Stock Operations</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Focused view for maintainers: current stock, arrivals, and dispatches.</p>
       </div>
       <div className="rounded-2xl border border-border/80 bg-card/70 p-1 shadow-sm backdrop-blur">
         <div className="grid grid-cols-3 gap-1">
@@ -1530,7 +1397,9 @@ export default function StockDashboard() {
                 {arrivalPagination.rows.map((a) => (
                   <tr
                     key={a.id}
-                    className="cursor-pointer transition hover:bg-primary/5 focus-within:bg-primary/5"
+                    className={`cursor-pointer transition hover:bg-primary/5 focus-within:bg-primary/5 ${
+                      highlightedShipmentKey === `arrival-${a.id}` ? 'bg-primary/10 ring-1 ring-primary/40' : ''
+                    }`}
                     onClick={() => openShipmentPreview('arrival', a)}
                     tabIndex={0}
                     role="button"
@@ -1835,7 +1704,9 @@ export default function StockDashboard() {
                 {dispatchPagination.rows.map((d) => (
                   <tr
                     key={d.id}
-                    className="cursor-pointer transition hover:bg-primary/5 focus-within:bg-primary/5"
+                    className={`cursor-pointer transition hover:bg-primary/5 focus-within:bg-primary/5 ${
+                      highlightedShipmentKey === `dispatch-${d.id}` ? 'bg-primary/10 ring-1 ring-primary/40' : ''
+                    }`}
                     onClick={() => openShipmentPreview('dispatch', d)}
                     tabIndex={0}
                     role="button"
