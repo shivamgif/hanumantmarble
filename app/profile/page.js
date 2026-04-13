@@ -98,7 +98,7 @@ function ProfilePage() {
 
                 {/* Edit Profile Button */}
                 <Button variant="outline" className="rounded-full" asChild>
-                  <a href="/api/auth/logout" className="flex items-center gap-2">
+                  <a href="/auth/logout" className="flex items-center gap-2">
                     <LogOut className="h-4 w-4" />
                     Sign Out
                   </a>

@@ -1,0 +1,72 @@
+import { NextResponse } from 'next/server';
+import { ensureDatabaseAvailable, getStockContext, normalizeStockRole } from '@/lib/stock-workflow';
+import { sql } from '@/lib/db';
+
+export async function GET(request) {
+  const { session, appUser } = await getStockContext(request);
+  const userRole = normalizeStockRole(appUser?.role);
+
+  if (!session || (userRole !== 'admin' && userRole !== 'manager')) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  if (!(await ensureDatabaseAvailable())) {
+    return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+  }
+
+  try {
+    const [pendingArrivals, pendingDispatches, users] = await Promise.all([
+      sql(
+        `SELECT
+           s.id,
+           s.shipment_number,
+           s.truck_license_plate,
+           s.driver_name,
+           s.arrival_date,
+           s.status,
+           s.total_whole_qty,
+           s.total_broken_qty,
+           s.created_at,
+           COALESCE(u.name, u.email, s.created_by) AS maintainer_name
+         FROM stock_inbound_shipments s
+         LEFT JOIN stock_app_users u ON u.id = s.submitted_by_user_id
+         WHERE approval_status = 'pending'
+         ORDER BY s.created_at DESC`,
+        []
+      ),
+      sql(
+        `SELECT sos.id, sos.shipment_number, sos.truck_license_plate, sos.driver_name, sos.created_at AS dispatch_date, sos.status, 
+                COALESCE(SUM(soi.loaded_whole_qty), 0) as total_whole_qty, COALESCE(SUM(soi.loaded_broken_qty), 0) as total_broken_qty
+         FROM stock_outbound_shipments sos
+         LEFT JOIN stock_outbound_shipment_items soi ON sos.id = soi.outbound_shipment_id
+         WHERE sos.approval_status = 'pending'
+         GROUP BY sos.id
+         ORDER BY sos.created_at DESC`,
+        []
+      ),
+      sql(
+        `SELECT
+           id,
+           auth0_sub,
+           email,
+           name AS full_name,
+           phone AS phone_number,
+           role,
+           (status = 'active') AS is_active,
+           last_login_at
+         FROM stock_app_users
+         ORDER BY created_at DESC`,
+        []
+      ),
+    ]);
+
+    return NextResponse.json({
+      pendingArrivals,
+      pendingDispatches,
+      users,
+    });
+  } catch (error) {
+    console.error('Failed to load admin dashboard:', error);
+    return NextResponse.json({ error: 'Failed to load admin dashboard', detail: error.message }, { status: 500 });
+  }
+}

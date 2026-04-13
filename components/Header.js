@@ -9,16 +9,17 @@ import { useLanguage } from "@/contexts/LanguageContext"
 import { getTranslation } from "@/lib/translations"
 import { useUser } from '@auth0/nextjs-auth0/client'
 import { isAdmin } from '@/lib/admin-config'
+import { usePathname } from 'next/navigation'
 
 import { ScrollProgress } from "@/components/ui/scroll-progress"
 import { NavigationMenu, NavigationMenuList, NavigationMenuItem, NavigationMenuLink } from "@/components/ui/navigation-menu"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { AuthButton } from "@/components/ui/AuthButton"
 import { CartSummary } from "@/components/ui/CartSummary"
 import { useCart } from "@/contexts/CartContext"
 
 export function Header() {
+  const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const [isOpen, setOpen] = React.useState(false)
   const [scrolled, setScrolled] = React.useState(false)
@@ -42,6 +43,10 @@ export function Header() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  if (pathname?.startsWith('/stock')) {
+    return null
+  }
+
   return (
     <header className={`w-full z-40 sticky top-0 transition-all duration-300 ${scrolled ? 'bg-background/80 backdrop-blur-xl shadow-lg border-b border-border/50' : 'bg-background border-b border-border/50'}`}>
       <div className="container mx-auto px-4 h-20 flex items-center justify-between">
@@ -52,6 +57,7 @@ export function Header() {
               src="/logo.png"
               alt="Hanumant Marble Logo"
               fill
+              sizes="80px"
               className="object-contain"
               priority
             />
@@ -81,7 +87,6 @@ export function Header() {
         {/* Right Side - Theme Toggle & Mobile Menu */}
         <div className="flex items-center gap-3">
           <div className="hidden md:flex items-center gap-1">
-            <AuthButton />
             <CartSummary />
           </div>
           <div className="flex items-center gap-1">
@@ -124,6 +129,7 @@ export function Header() {
                           src="/logo.png"
                           alt="Hanumant Marble Logo"
                           fill
+                          sizes="48px"
                           className="object-contain"
                           priority
                         />
@@ -208,19 +214,6 @@ export function Header() {
 
                   {/* Cart Section */}
                   <div className="flex flex-col space-y-2 mb-6 pb-6 border-b border-border/50">
-                    {!user && (
-                      <a
-                        href="/auth/login"
-                        className="group flex justify-between items-center py-3 px-4 rounded-xl text-foreground hover:bg-primary/10 hover:text-primary transition-all"
-                        onClick={() => setOpen(false)}
-                      >
-                        <span className="flex items-center gap-3 text-lg font-medium">
-                          <User className="h-5 w-5" />
-                          {getTranslation('nav.login', language) || 'Login'}
-                        </span>
-                        <ArrowRight className="h-5 w-5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-                      </a>
-                    )}
                     <Link
                       href="/#products"
                       className="group flex justify-between items-center py-3 px-4 rounded-xl text-foreground hover:bg-primary/10 hover:text-primary transition-all"

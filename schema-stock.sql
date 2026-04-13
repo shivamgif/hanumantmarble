@@ -118,7 +118,7 @@ CREATE TABLE IF NOT EXISTS stock_app_users (
   name TEXT NOT NULL,
   phone TEXT NOT NULL,
   email TEXT UNIQUE,
-  role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'manager', 'stock_entry', 'stock_approver', 'accounts', 'sales', 'user')),
+  role TEXT NOT NULL DEFAULT 'stock_maintainer' CHECK (role IN ('admin', 'manager', 'stock_maintainer')),
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended')),
   can_manage_users BOOLEAN NOT NULL DEFAULT FALSE,
   can_approve_changes BOOLEAN NOT NULL DEFAULT FALSE,
@@ -140,6 +140,43 @@ CREATE TABLE IF NOT EXISTS stock_sales_people (
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+DO $$
+DECLARE
+  role_constraint_name TEXT;
+BEGIN
+  SELECT c.conname
+  INTO role_constraint_name
+  FROM pg_constraint c
+  JOIN pg_class t ON t.oid = c.conrelid
+  WHERE t.relname = 'stock_app_users'
+    AND c.contype = 'c'
+    AND pg_get_constraintdef(c.oid) ILIKE '%role IN%'
+  LIMIT 1;
+
+  IF role_constraint_name IS NOT NULL THEN
+    EXECUTE format('ALTER TABLE stock_app_users DROP CONSTRAINT %I', role_constraint_name);
+  END IF;
+
+  UPDATE stock_app_users
+  SET role = CASE
+    WHEN role = 'admin' THEN 'admin'
+    WHEN role IN ('manager', 'stock_approver') THEN 'manager'
+    ELSE 'stock_maintainer'
+  END;
+
+  UPDATE stock_app_users
+  SET can_manage_users = CASE WHEN role IN ('admin', 'manager') THEN TRUE ELSE FALSE END,
+      can_approve_changes = CASE WHEN role IN ('admin', 'manager') THEN TRUE ELSE FALSE END,
+      can_view_dashboard = COALESCE(can_view_dashboard, TRUE);
+
+  ALTER TABLE stock_app_users
+    ALTER COLUMN role SET DEFAULT 'stock_maintainer';
+
+  ALTER TABLE stock_app_users
+    ADD CONSTRAINT stock_app_users_role_check
+    CHECK (role IN ('admin', 'manager', 'stock_maintainer'));
+END $$;
 
 -- ====== PRODUCT MASTER ======
 
@@ -225,6 +262,10 @@ CREATE TABLE IF NOT EXISTS stock_inbound_shipments (
   shipment_number TEXT NOT NULL UNIQUE,
   purchase_order_id BIGINT REFERENCES stock_purchase_orders(id),
   supplier_id BIGINT REFERENCES stock_suppliers(id),
+  customer_name TEXT,
+  customer_phone TEXT,
+  salesperson_name TEXT,
+  salesperson_phone TEXT,
   transporter_id BIGINT REFERENCES stock_transporters(id),
   vehicle_id BIGINT REFERENCES stock_vehicles(id),
   truck_license_plate TEXT,
@@ -324,6 +365,10 @@ CREATE TABLE IF NOT EXISTS stock_outbound_shipments (
   shipment_number TEXT NOT NULL UNIQUE,
   sales_order_id BIGINT REFERENCES stock_sales_orders(id),
   vehicle_id BIGINT REFERENCES stock_vehicles(id),
+  customer_name TEXT,
+  customer_phone TEXT,
+  salesperson_name TEXT,
+  salesperson_phone TEXT,
   truck_license_plate TEXT,
   driver_name TEXT,
   driver_phone TEXT,

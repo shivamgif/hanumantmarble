@@ -35,8 +35,36 @@ export default function AdminPage() {
   const [expandedProduct, setExpandedProduct] = useState(null);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [hasChanges, setHasChanges] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [stockFilter, setStockFilter] = useState('all');
 
   const userIsAdmin = user && isAdmin(user.email);
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch = !normalizedSearch || [
+      product.name,
+      product.nameHi,
+      product.slug,
+      product.category,
+      product.categoryHi,
+      product.description,
+      product.descriptionHi,
+      ...(product.features || []),
+      ...(product.featuresHi || []),
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .includes(normalizedSearch);
+
+    const matchesStock =
+      stockFilter === 'all' ||
+      (stockFilter === 'in-stock' && product.inStock) ||
+      (stockFilter === 'out-of-stock' && !product.inStock);
+
+    return matchesSearch && matchesStock;
+  });
 
   useEffect(() => {
     if (userIsAdmin) {
@@ -166,6 +194,22 @@ export default function AdminPage() {
     setHasChanges(true);
   };
 
+  const duplicateProduct = (product) => {
+    const timestamp = Date.now();
+    const copy = {
+      ...product,
+      id: `${product.id || product.slug}-copy-${timestamp}`,
+      slug: `${product.slug}-copy-${timestamp}`,
+      name: `${product.name} Copy`,
+      nameHi: `${product.nameHi || product.name} कॉपी`,
+    };
+
+    setProducts([...products, copy]);
+    setEditingProduct(copy.slug);
+    setExpandedProduct(copy.slug);
+    setHasChanges(true);
+  };
+
   // Loading state
   if (userLoading || loading) {
     return (
@@ -188,7 +232,7 @@ export default function AdminPage() {
             <h1 className="text-2xl font-bold mb-2">Admin Access Required</h1>
             <p className="text-muted-foreground mb-6">Please login to access the admin panel.</p>
             <Button asChild className="rounded-full">
-              <a href="/api/auth/login">Login</a>
+              <a href="/auth/login">Login</a>
             </Button>
           </CardContent>
         </Card>
@@ -286,20 +330,43 @@ export default function AdminPage() {
       {/* Content */}
       <div className="container mx-auto px-4 py-6">
         {/* Products Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <Package className="h-6 w-6 text-primary" />
-            <h2 className="text-xl font-bold">Products ({products.length})</h2>
+        <div className="flex flex-col gap-4 mb-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <Package className="h-6 w-6 text-primary" />
+              <h2 className="text-xl font-bold">Products ({filteredProducts.length}/{products.length})</h2>
+            </div>
+            <p className="text-sm text-muted-foreground max-w-2xl">
+              Search and edit products in a table-style browser. Changes stay local until you press Save.
+            </p>
           </div>
-          <Button onClick={addProduct} className="rounded-full" size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Product
-          </Button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search name, slug, category, description..."
+              className="min-w-[280px] rounded-full border border-border bg-background px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <select
+              value={stockFilter}
+              onChange={(e) => setStockFilter(e.target.value)}
+              className="rounded-full border border-border bg-background px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="all">All stock states</option>
+              <option value="in-stock">In stock</option>
+              <option value="out-of-stock">Out of stock</option>
+            </select>
+            <Button onClick={addProduct} className="rounded-full" size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Product
+            </Button>
+          </div>
         </div>
 
         {/* Products List */}
         <div className="space-y-4">
-          {products.map((product) => (
+          {filteredProducts.map((product) => (
             <Card key={product.slug} className="overflow-hidden">
               <CardContent className="p-0">
                 {/* Product Header - Always visible */}
@@ -345,6 +412,18 @@ export default function AdminPage() {
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        duplicateProduct(product);
+                      }}
+                      title="Duplicate product"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
                     {expandedProduct === product.slug ? (
                       <ChevronUp className="h-5 w-5 text-muted-foreground" />
                     ) : (
@@ -356,6 +435,11 @@ export default function AdminPage() {
                 {/* Expanded Content */}
                 {expandedProduct === product.slug && (
                   <div className="border-t border-border/50 p-4 bg-muted/30">
+                    <div className="mb-4 grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+                      <div className="rounded-lg border border-border/60 bg-background/70 px-3 py-2">Slug: {product.slug}</div>
+                      <div className="rounded-lg border border-border/60 bg-background/70 px-3 py-2">ID: {product.id}</div>
+                      <div className="rounded-lg border border-border/60 bg-background/70 px-3 py-2">Variants: {product.variants?.length || 0}</div>
+                    </div>
                     {editingProduct === product.slug ? (
                       /* Edit Mode */
                       <div className="space-y-6">

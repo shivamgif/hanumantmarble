@@ -6,6 +6,11 @@ const ALLOWED_INTERNAL_EMAILS = (process.env.ALLOWED_INTERNAL_EMAILS || 'ssshiva
 
 export async function proxy(request) {
   const { pathname } = request.nextUrl;
+  const postLogoutReturnTo = request.cookies.get('hm-login-return-to')?.value;
+
+  if (pathname === '/' && postLogoutReturnTo) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
 
   // Check if accessing internal stock routes
   const isInternalRoute = INTERNAL_ROUTES.some(route => pathname.startsWith(route));
