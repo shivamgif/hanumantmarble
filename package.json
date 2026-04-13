@@ -36,7 +36,7 @@
     "use-shopping-cart": "^3.2.0"
   },
   "engines": {
-    "node": ">=22.14.0"
+    "node": ">=24.14.1"
   },
   "devDependencies": {
     "@types/node": "^25.0.2",

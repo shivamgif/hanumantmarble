@@ -7,7 +7,7 @@
 
 [build.environment]
   # Node.js version
-  NODE_VERSION = "22.14.0"
+  NODE_VERSION = "24.14.1"
   # Next.js specific
   NEXT_PUBLIC_ENV = "production"
 
