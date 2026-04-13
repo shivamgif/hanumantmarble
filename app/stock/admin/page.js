@@ -59,6 +59,7 @@ export default function AdminDashboard() {
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
   const [showUserForm, setShowUserForm] = useState(false);
+  const [mobileSection, setMobileSection] = useState('approvals');
   const [showPrimaryPassword, setShowPrimaryPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -406,6 +407,7 @@ export default function AdminDashboard() {
     }
 
     setHighlightedChangeRequestId(requestId);
+    setMobileSection('changes');
     openChangeRequestPreview(target);
     setProcessedDeepLink(deepLinkKey);
 
@@ -604,8 +606,8 @@ export default function AdminDashboard() {
   if (!data) return null;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-foreground">{t('adminTitle')}</h1>
+    <div className="space-y-4 lg:space-y-6">
+      <h1 className="text-xl font-bold text-foreground lg:text-2xl">{t('adminTitle')}</h1>
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
@@ -613,23 +615,23 @@ export default function AdminDashboard() {
       )}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:col-span-2">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:col-span-2">
           {summaryTiles.map((stat) => (
             <Link
               key={stat.label}
               href={stat.href}
-              className={`group rounded-2xl border bg-gradient-to-br p-4 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-950 ${stat.tone}`}
+              className={`group rounded-xl border bg-gradient-to-br p-2.5 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-950 sm:rounded-2xl sm:p-4 ${stat.tone}`}
             >
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] opacity-80">{stat.label}</p>
-              <p className="mt-2 text-3xl font-bold leading-none">{stat.value}</p>
-              <p className="mt-2 text-xs font-medium opacity-75">{stat.hint}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] opacity-80 sm:text-xs sm:tracking-[0.12em]">{stat.label}</p>
+              <p className="mt-1.5 text-xl font-bold leading-none sm:mt-2 sm:text-3xl">{stat.value}</p>
+              <p className="mt-1 text-[10px] font-medium opacity-75 sm:mt-2 sm:text-xs">{stat.hint}</p>
             </Link>
           ))}
         </div>
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm xl:col-span-3">
+        <div className="rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4 xl:col-span-3">
           <div className="mb-3 flex items-end justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold text-foreground">Movement Trend</h2>
+              <h2 className="text-sm font-semibold text-foreground sm:text-base">Movement Trend</h2>
               <p className="text-xs text-muted-foreground">Quantity vs Date for recent arrivals and dispatches</p>
             </div>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -638,7 +640,7 @@ export default function AdminDashboard() {
             </div>
           </div>
           {movementTrend.length ? (
-            <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-56 w-full rounded-xl border border-border bg-muted/20">
+            <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-40 w-full rounded-xl border border-border bg-muted/20 sm:h-56">
               {[0, 0.5, 1].map((tick) => {
                 const value = Math.round(maxChartValue * tick);
                 const y = pointY(value);
@@ -693,7 +695,7 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm xl:col-span-2">
+        <div className="rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4 xl:col-span-2">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-foreground">Operational Alerts</h3>
             <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
@@ -726,7 +728,7 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm xl:col-span-3">
+        <div className="rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4 xl:col-span-3">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-foreground">Recent Activity</h3>
             <span className="text-xs text-muted-foreground">Live operations snapshot</span>
@@ -758,226 +760,250 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div id="approval-queue" className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <div className="border-b border-border p-4">
-          <h2 className="text-lg font-semibold text-foreground">{t('pendingArrivals')}</h2>
+      <div className="lg:hidden rounded-xl border border-border bg-card/80 p-1 shadow-sm">
+        <div className="grid grid-cols-3 gap-1">
+          {[{ id: 'approvals', label: 'Approvals' }, { id: 'changes', label: 'Changes' }, { id: 'users', label: 'Users' }].map((tab) => {
+            const isActive = mobileSection === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setMobileSection(tab.id)}
+                className={`rounded-lg px-2 py-2 text-xs font-semibold transition ${isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left whitespace-nowrap">
-            <thead className="border-b border-border bg-muted/70 font-medium text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2">{t('shipmentNo')}</th>
-                <th className="px-3 py-2">Maintainer</th>
-                <th className="px-3 py-2">{t('truck')}</th>
-                <th className="px-3 py-2">{t('driver')}</th>
-                <th className="px-3 py-2">{t('boxesQty')}</th>
-                <th className="px-3 py-2">{t('brokenQty')}</th>
-                <th className="px-3 py-2 text-right">{t('actions')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {arrivalPagination.rows.map((item) => (
-                <tr
-                  key={item.id}
-                  className="cursor-pointer transition hover:bg-primary/5 focus-within:bg-primary/5"
-                  onClick={() => openShipmentPreview('arrival', item)}
-                  tabIndex={0}
-                  role="button"
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      openShipmentPreview('arrival', item);
-                    }
-                  }}
-                  title="Click to preview"
-                >
-                  <td className="px-3 py-2 font-medium text-primary">{item.shipment_number}</td>
-                  <td className="px-3 py-2 text-foreground/80">{item.maintainer_name || '-'}</td>
-                  <td className="px-3 py-2">{item.truck_license_plate}</td>
-                  <td className="px-3 py-2">{item.driver_name}</td>
-                  <td className="px-3 py-2">{item.total_whole_qty}</td>
-                  <td className="px-3 py-2">{item.total_broken_qty}</td>
-                  <td className="px-3 py-2 text-right">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleShipmentAction('inbound-shipments', item.id, 'approve');
-                      }}
-                      disabled={actionLoading === `inbound-shipments-${item.id}-approve`}
-                      className="text-green-600 hover:text-green-800 px-2 py-1 bg-green-50 rounded mr-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      aria-label="Approve"
-                    >
-                      ✓
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleShipmentAction('inbound-shipments', item.id, 'reject', 'Rejected from admin hub');
-                      }}
-                      disabled={actionLoading === `inbound-shipments-${item.id}-reject`}
-                      className="text-red-600 hover:text-red-800 px-2 py-1 bg-red-50 rounded disabled:cursor-not-allowed disabled:opacity-50"
-                      aria-label="Reject"
-                    >
-                      ✗
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {arrivalPagination.total === 0 && (
-                <tr><td colSpan="8" className="px-3 py-4 text-center text-muted-foreground">{t('noPending')}</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        <PaginationControls
-          page={arrivalPagination.page}
-          pageCount={arrivalPagination.pageCount}
-          total={arrivalPagination.total}
-          pageSize={DEFAULT_PAGE_SIZE}
-          onPageChange={setArrivalPage}
-        />
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <div className="border-b border-border p-4">
-          <h2 className="text-lg font-semibold text-foreground">{t('pendingDispatches')}</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left whitespace-nowrap">
-            <thead className="border-b border-border bg-muted/70 font-medium text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2">{t('dispatchNo')}</th>
-                <th className="px-3 py-2">{t('truck')}</th>
-                <th className="px-3 py-2">{t('driver')}</th>
-                <th className="px-3 py-2">{t('boxesQty')}</th>
-                <th className="px-3 py-2">{t('brokenQty')}</th>
-                <th className="px-3 py-2 text-right">{t('actions')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {dispatchPagination.rows.map((item) => (
-                <tr
-                  key={item.id}
-                  className="cursor-pointer transition hover:bg-primary/5 focus-within:bg-primary/5"
-                  onClick={() => openShipmentPreview('dispatch', item)}
-                  tabIndex={0}
-                  role="button"
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      openShipmentPreview('dispatch', item);
-                    }
-                  }}
-                  title="Click to preview"
-                >
-                  <td className="px-3 py-2 font-medium text-primary">{item.shipment_number}</td>
-                  <td className="px-3 py-2">{item.truck_license_plate}</td>
-                  <td className="px-3 py-2">{item.driver_name}</td>
-                  <td className="px-3 py-2">{item.total_whole_qty}</td>
-                  <td className="px-3 py-2">{item.total_broken_qty}</td>
-                  <td className="px-3 py-2 text-right">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleShipmentAction('outbound-shipments', item.id, 'approve');
+      <div className="grid grid-cols-1 gap-4 2xl:grid-cols-2">
+        <div id="approval-queue" className={`space-y-4 ${mobileSection === 'approvals' ? '' : 'hidden lg:block'}`}>
+          <div className="flex h-[460px] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+            <div className="border-b border-border p-4">
+              <h2 className="text-base font-semibold text-foreground">{t('pendingArrivals')}</h2>
+            </div>
+            <div className="flex-1 overflow-auto">
+              <table className="w-full text-xs text-left whitespace-nowrap">
+                <thead className="sticky top-0 z-10 border-b border-border bg-muted/80 font-medium text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2">{t('shipmentNo')}</th>
+                    <th className="px-3 py-2">Maintainer</th>
+                    <th className="px-3 py-2">{t('truck')}</th>
+                    <th className="px-3 py-2">{t('driver')}</th>
+                    <th className="px-3 py-2">{t('boxesQty')}</th>
+                    <th className="px-3 py-2">{t('brokenQty')}</th>
+                    <th className="px-3 py-2 text-right">{t('actions')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {arrivalPagination.rows.map((item) => (
+                    <tr
+                      key={item.id}
+                      className="cursor-pointer transition hover:bg-primary/5 focus-within:bg-primary/5"
+                      onClick={() => openShipmentPreview('arrival', item)}
+                      tabIndex={0}
+                      role="button"
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          openShipmentPreview('arrival', item);
+                        }
                       }}
-                      disabled={actionLoading === `outbound-shipments-${item.id}-approve`}
-                      className="text-green-600 hover:text-green-800 px-2 py-1 bg-green-50 rounded mr-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      aria-label="Approve"
+                      title="Click to preview"
                     >
-                      ✓
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleShipmentAction('outbound-shipments', item.id, 'reject', 'Rejected from admin hub');
+                      <td className="px-3 py-2 font-medium text-primary">{item.shipment_number}</td>
+                      <td className="px-3 py-2 text-foreground/80">{item.maintainer_name || '-'}</td>
+                      <td className="px-3 py-2">{item.truck_license_plate}</td>
+                      <td className="px-3 py-2">{item.driver_name}</td>
+                      <td className="px-3 py-2">{item.total_whole_qty}</td>
+                      <td className="px-3 py-2">{item.total_broken_qty}</td>
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleShipmentAction('inbound-shipments', item.id, 'approve');
+                          }}
+                          disabled={actionLoading === `inbound-shipments-${item.id}-approve`}
+                          className="mr-2 rounded bg-green-50 px-2 py-1 text-green-600 hover:text-green-800 disabled:cursor-not-allowed disabled:opacity-50"
+                          aria-label="Approve"
+                        >
+                          ✓
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleShipmentAction('inbound-shipments', item.id, 'reject', 'Rejected from admin hub');
+                          }}
+                          disabled={actionLoading === `inbound-shipments-${item.id}-reject`}
+                          className="rounded bg-red-50 px-2 py-1 text-red-600 hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-50"
+                          aria-label="Reject"
+                        >
+                          ✗
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {arrivalPagination.total === 0 && (
+                    <tr><td colSpan="8" className="px-3 py-4 text-center text-muted-foreground">{t('noPending')}</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <PaginationControls
+              page={arrivalPagination.page}
+              pageCount={arrivalPagination.pageCount}
+              total={arrivalPagination.total}
+              pageSize={DEFAULT_PAGE_SIZE}
+              onPageChange={setArrivalPage}
+            />
+          </div>
+
+          <div className="flex h-[460px] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+            <div className="border-b border-border p-4">
+              <h2 className="text-base font-semibold text-foreground">{t('pendingDispatches')}</h2>
+            </div>
+            <div className="flex-1 overflow-auto">
+              <table className="w-full text-xs text-left whitespace-nowrap">
+                <thead className="sticky top-0 z-10 border-b border-border bg-muted/80 font-medium text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2">{t('dispatchNo')}</th>
+                    <th className="px-3 py-2">{t('truck')}</th>
+                    <th className="px-3 py-2">{t('driver')}</th>
+                    <th className="px-3 py-2">{t('boxesQty')}</th>
+                    <th className="px-3 py-2">{t('brokenQty')}</th>
+                    <th className="px-3 py-2 text-right">{t('actions')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {dispatchPagination.rows.map((item) => (
+                    <tr
+                      key={item.id}
+                      className="cursor-pointer transition hover:bg-primary/5 focus-within:bg-primary/5"
+                      onClick={() => openShipmentPreview('dispatch', item)}
+                      tabIndex={0}
+                      role="button"
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          openShipmentPreview('dispatch', item);
+                        }
                       }}
-                      disabled={actionLoading === `outbound-shipments-${item.id}-reject`}
-                      className="text-red-600 hover:text-red-800 px-2 py-1 bg-red-50 rounded disabled:cursor-not-allowed disabled:opacity-50"
-                      aria-label="Reject"
+                      title="Click to preview"
                     >
-                      ✗
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {dispatchPagination.total === 0 && (
-                <tr><td colSpan="7" className="px-3 py-4 text-center text-muted-foreground">{t('noPending')}</td></tr>
-              )}
-            </tbody>
-          </table>
+                      <td className="px-3 py-2 font-medium text-primary">{item.shipment_number}</td>
+                      <td className="px-3 py-2">{item.truck_license_plate}</td>
+                      <td className="px-3 py-2">{item.driver_name}</td>
+                      <td className="px-3 py-2">{item.total_whole_qty}</td>
+                      <td className="px-3 py-2">{item.total_broken_qty}</td>
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleShipmentAction('outbound-shipments', item.id, 'approve');
+                          }}
+                          disabled={actionLoading === `outbound-shipments-${item.id}-approve`}
+                          className="mr-2 rounded bg-green-50 px-2 py-1 text-green-600 hover:text-green-800 disabled:cursor-not-allowed disabled:opacity-50"
+                          aria-label="Approve"
+                        >
+                          ✓
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleShipmentAction('outbound-shipments', item.id, 'reject', 'Rejected from admin hub');
+                          }}
+                          disabled={actionLoading === `outbound-shipments-${item.id}-reject`}
+                          className="rounded bg-red-50 px-2 py-1 text-red-600 hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-50"
+                          aria-label="Reject"
+                        >
+                          ✗
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {dispatchPagination.total === 0 && (
+                    <tr><td colSpan="7" className="px-3 py-4 text-center text-muted-foreground">{t('noPending')}</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <PaginationControls
+              page={dispatchPagination.page}
+              pageCount={dispatchPagination.pageCount}
+              total={dispatchPagination.total}
+              pageSize={DEFAULT_PAGE_SIZE}
+              onPageChange={setDispatchPage}
+            />
+          </div>
         </div>
-        <PaginationControls
-          page={dispatchPagination.page}
-          pageCount={dispatchPagination.pageCount}
-          total={dispatchPagination.total}
-          pageSize={DEFAULT_PAGE_SIZE}
-          onPageChange={setDispatchPage}
-        />
+
+        <div className={`space-y-4 ${mobileSection === 'changes' ? '' : 'hidden lg:block'}`}>
+          <div id="change-requests-panel" className="flex h-[460px] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+            <div className="border-b border-border p-4">
+              <h2 className="text-base font-semibold text-foreground">Change Requests</h2>
+            </div>
+            <div className="flex-1 overflow-auto">
+              <table className="w-full text-xs text-left whitespace-nowrap">
+                <thead className="sticky top-0 z-10 border-b border-border bg-muted/80 font-medium text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2">Request No</th>
+                    <th className="px-3 py-2">Source</th>
+                    <th className="px-3 py-2">Type</th>
+                    <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2">Priority</th>
+                    <th className="px-3 py-2">Requested By</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {changeRequestPagination.rows.map((requestRow) => (
+                    <tr
+                      key={requestRow.id}
+                      className={`cursor-pointer transition hover:bg-primary/5 focus-within:bg-primary/5 ${
+                        highlightedChangeRequestId === requestRow.id ? 'bg-primary/10 ring-1 ring-primary/40' : ''
+                      }`}
+                      onClick={() => openChangeRequestPreview(requestRow)}
+                      tabIndex={0}
+                      role="button"
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          openChangeRequestPreview(requestRow);
+                        }
+                      }}
+                      title="Click to preview"
+                    >
+                      <td className="px-3 py-2 font-medium text-primary">{requestRow.request_number || `CR-${requestRow.id}`}</td>
+                      <td className="px-3 py-2 text-foreground/80">{requestRow.source_entity_type} #{requestRow.source_entity_id}</td>
+                      <td className="px-3 py-2">{requestRow.request_type}</td>
+                      <td className="px-3 py-2"><span className="rounded bg-muted px-2 py-0.5 text-xs text-foreground/80">{requestRow.status}</span></td>
+                      <td className="px-3 py-2">{requestRow.priority || 'normal'}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{requestRow.requested_by_name || '—'}</td>
+                    </tr>
+                  ))}
+                  {changeRequestPagination.total === 0 && (
+                    <tr><td colSpan="6" className="px-3 py-4 text-center text-muted-foreground">No change requests found.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <PaginationControls
+              page={changeRequestPagination.page}
+              pageCount={changeRequestPagination.pageCount}
+              total={changeRequestPagination.total}
+              pageSize={DEFAULT_PAGE_SIZE}
+              onPageChange={setChangeRequestPage}
+            />
+          </div>
+        </div>
       </div>
 
-      <div id="change-requests-panel" className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <div className="border-b border-border p-4">
-          <h2 className="text-lg font-semibold text-foreground">Change Requests</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left whitespace-nowrap">
-            <thead className="border-b border-border bg-muted/70 font-medium text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2">Request No</th>
-                <th className="px-3 py-2">Source</th>
-                <th className="px-3 py-2">Type</th>
-                <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Priority</th>
-                <th className="px-3 py-2">Requested By</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {changeRequestPagination.rows.map((requestRow) => (
-                <tr
-                  key={requestRow.id}
-                  className={`cursor-pointer transition hover:bg-primary/5 focus-within:bg-primary/5 ${
-                    highlightedChangeRequestId === requestRow.id ? 'bg-primary/10 ring-1 ring-primary/40' : ''
-                  }`}
-                  onClick={() => openChangeRequestPreview(requestRow)}
-                  tabIndex={0}
-                  role="button"
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      openChangeRequestPreview(requestRow);
-                    }
-                  }}
-                  title="Click to preview"
-                >
-                  <td className="px-3 py-2 font-medium text-primary">{requestRow.request_number || `CR-${requestRow.id}`}</td>
-                  <td className="px-3 py-2 text-foreground/80">{requestRow.source_entity_type} #{requestRow.source_entity_id}</td>
-                  <td className="px-3 py-2">{requestRow.request_type}</td>
-                  <td className="px-3 py-2"><span className="rounded bg-muted px-2 py-0.5 text-xs text-foreground/80">{requestRow.status}</span></td>
-                  <td className="px-3 py-2">{requestRow.priority || 'normal'}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{requestRow.requested_by_name || '—'}</td>
-                </tr>
-              ))}
-              {changeRequestPagination.total === 0 && (
-                <tr><td colSpan="6" className="px-3 py-4 text-center text-muted-foreground">No change requests found.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        <PaginationControls
-          page={changeRequestPagination.page}
-          pageCount={changeRequestPagination.pageCount}
-          total={changeRequestPagination.total}
-          pageSize={DEFAULT_PAGE_SIZE}
-          onPageChange={setChangeRequestPage}
-        />
-      </div>
-
-      <div id="users-contacts" className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+      <div id="users-contacts" className={`overflow-hidden rounded-xl border border-border bg-card shadow-sm ${mobileSection === 'users' ? '' : 'hidden lg:block'}`}>
         <div className="flex items-center justify-between border-b border-border p-4">
           <h2 className="text-lg font-semibold text-foreground">{t('usersSalespersons')}</h2>
           <button
@@ -1121,9 +1147,9 @@ export default function AdminDashboard() {
             <input type="hidden" value={userDraft.status} readOnly />
           </form>
         )}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left whitespace-nowrap">
-            <thead className="border-b border-border bg-muted/70 font-medium text-muted-foreground">
+        <div className="max-h-[360px] overflow-auto">
+          <table className="w-full text-xs text-left whitespace-nowrap">
+            <thead className="sticky top-0 z-10 border-b border-border bg-muted/80 font-medium text-muted-foreground">
               <tr>
                 <th className="px-3 py-2">{t('name')}</th>
                 <th className="px-3 py-2">{t('email')}</th>

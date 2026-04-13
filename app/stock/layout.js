@@ -284,43 +284,43 @@ export default function StockLayout({ children }) {
         <div className="absolute -right-24 bottom-24 h-72 w-72 rounded-full bg-secondary/60 blur-3xl" />
       </div>
       <aside className={`relative z-10 border-b border-border bg-card/95 backdrop-blur lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:border-b-0 lg:border-r lg:border-border ${collapsed ? 'lg:w-[92px]' : 'lg:w-[280px]'}`}>
-        <div className={`flex items-center gap-3 px-3 py-3 lg:border-b lg:border-border ${collapsed ? 'lg:justify-center' : ''}`}>
+        <div className={`flex items-center gap-2 px-3 py-2 lg:gap-3 lg:py-3 lg:border-b lg:border-border ${collapsed ? 'lg:justify-center' : ''}`}>
           <Link href="/stock" className={`flex items-center gap-3 ${collapsed ? 'lg:justify-center' : ''}`} aria-label="Hanumant Marble stock dashboard">
-            <div className="relative h-16 w-16 overflow-hidden rounded-2xl border border-border bg-muted/40">
+            <div className="relative h-10 w-10 overflow-hidden rounded-xl border border-border bg-muted/40 lg:h-16 lg:w-16 lg:rounded-2xl">
               <Image
                 src="/logo.png"
                 alt="Hanumant Marble logo"
                 fill
-                sizes="64px"
+                sizes="(max-width: 1024px) 40px, 64px"
                 className="object-contain p-1.5"
                 priority
               />
             </div>
             <div className={collapsed ? 'lg:hidden' : ''}>
-              <p className="text-sm font-semibold tracking-[0.2em] text-muted-foreground">HANUMANT</p>
-              <p className="text-lg font-bold leading-tight text-foreground">{t('brand')}</p>
+              <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground lg:text-sm lg:tracking-[0.2em]">HANUMANT</p>
+              <p className="text-sm font-bold leading-tight text-foreground lg:text-lg">{t('brand')}</p>
             </div>
           </Link>
 
           
         </div>
 
-        <div className={`px-5 pb-5 lg:flex lg:flex-1 lg:flex-col lg:justify-between ${collapsed ? 'lg:px-3' : ''}`}>
+        <div className={`px-3 pb-3 lg:px-5 lg:pb-5 lg:flex lg:flex-1 lg:flex-col lg:justify-between ${collapsed ? 'lg:px-3' : ''}`}>
           <div className="space-y-8">
-            <div className="mt-4 flex items-center justify-between gap-1 ">
+            <div className={`mt-2 flex items-center gap-1 lg:mt-4 ${collapsed ? 'lg:justify-center' : 'justify-between'} lg:flex-nowrap`}>
             <button
               type="button"
               onClick={toggleLanguage}
-              className={`inline-flex items-center gap-2 rounded-full border border-border bg-muted/60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground transition hover:bg-primary/10 hover:text-primary ${collapsed ? 'lg:px-2' : ''}`}
+              className={`inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-muted/60 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition hover:bg-primary/10 hover:text-primary lg:px-3 lg:py-2 lg:text-xs lg:tracking-[0.15em] ${collapsed ? 'lg:px-2' : ''}`}
               aria-label={language === 'en' ? t('switchToHindi') : t('switchToEnglish')}
             >
               <Languages className="h-4 w-4" />
-              <span className={collapsed ? 'lg:hidden' : ''}>{language.toUpperCase()}</span>
+              <span className={collapsed ? 'lg:hidden' : 'inline'}>{language.toUpperCase()}</span>
             </button>
             <button
               type="button"
               onClick={() => setNotificationOpen(true)}
-              className="relative inline-flex rounded-full border border-border bg-muted/60 p-2 text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
+              className="relative inline-flex shrink-0 rounded-full border border-border bg-muted/60 p-2 text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
               aria-label="Open notifications"
             >
               <Bell className="h-4 w-4" />
@@ -333,19 +333,19 @@ export default function StockLayout({ children }) {
                <button
               type="button"
               onClick={() => setCollapsed((current) => !current)}
-              className="inline-flex rounded-full border border-border bg-muted/60 p-2 text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
+              className="hidden shrink-0 lg:inline-flex rounded-full border border-border bg-muted/60 p-2 text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
               aria-label={collapsed ? t('openSidebar') : t('closeSidebar')}
             >
               {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </button>
             </div>
-            <div className={`rounded-3xl border border-border bg-muted/40 p-4 ${collapsed ? 'lg:hidden' : ''}`}>
+            <div className={`hidden rounded-3xl border border-border bg-muted/40 p-4 lg:block ${collapsed ? 'lg:hidden' : ''}`}>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t('workspace')}</p>
               <h1 className="mt-2 text-xl font-bold text-foreground">{t('internalDashboard')}</h1>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">{t('workspaceHelp')}</p>
             </div>
 
-            <nav className="space-y-1">
+            <nav className="flex gap-1 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible lg:pb-0">
               {navigationItems.map((item) => {
                 const Icon = item.icon;
                 const active = isActiveRoute(item.href);
@@ -356,7 +356,7 @@ export default function StockLayout({ children }) {
                     href={item.href}
                     title={item.label}
                     aria-label={item.label}
-                    className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition ${collapsed ? 'lg:justify-center lg:px-3' : ''} ${active ? 'bg-primary/10 text-primary shadow-sm' : 'text-foreground/75 hover:bg-primary/10 hover:text-primary'}`}
+                    className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-xs font-medium transition lg:gap-3 lg:rounded-2xl lg:px-4 lg:py-3 lg:text-sm ${collapsed ? 'lg:justify-center lg:px-3' : ''} ${active ? 'bg-primary/10 text-primary shadow-sm' : 'text-foreground/75 hover:bg-primary/10 hover:text-primary'}`}
                   >
                     <Icon className={`h-4 w-4 ${active ? 'text-primary' : 'text-foreground/60'}`} />
                     <span className={collapsed ? 'lg:hidden' : ''}>{item.label}</span>
@@ -366,8 +366,8 @@ export default function StockLayout({ children }) {
             </nav>
           </div>
 
-          <div className="mt-8 space-y-4 border-t border-border pt-5 text-sm">
-            <div className={`rounded-2xl border border-border bg-muted/40 px-4 py-3 ${collapsed ? 'lg:hidden' : ''}`}>
+          <div className="mt-4 space-y-2 border-t border-border pt-3 text-sm lg:mt-8 lg:space-y-4 lg:pt-5">
+            <div className={`hidden rounded-2xl border border-border bg-muted/40 px-4 py-3 lg:block ${collapsed ? 'lg:hidden' : ''}`}>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t('signedInAs')}</p>
               <p className="mt-2 break-words text-sm text-foreground">{user?.email}</p>
             </div>
@@ -375,16 +375,16 @@ export default function StockLayout({ children }) {
               <button
                 type="button"
                 onClick={() => setTheme(isDarkTheme ? 'light' : 'dark')}
-                className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-foreground/75 transition hover:bg-primary/10 hover:text-primary ${collapsed ? 'lg:justify-center lg:px-3' : ''}`}
+                className={`flex items-center gap-2 rounded-xl px-3 py-2 text-foreground/75 transition hover:bg-primary/10 hover:text-primary lg:gap-3 lg:rounded-2xl lg:px-4 lg:py-3 ${collapsed ? 'lg:justify-center lg:px-3' : ''}`}
                 title={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
                 aria-label={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
               >
                 {isDarkTheme ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
-                <span className={collapsed ? 'lg:hidden' : ''}>{isDarkTheme ? 'Light' : 'Dark'}</span>
+                <span className={`hidden lg:inline ${collapsed ? 'lg:hidden' : ''}`}>{isDarkTheme ? 'Light' : 'Dark'}</span>
               </button>
-              <button type="button" onClick={handleStockLogout} className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-foreground/75 transition hover:bg-primary/10 hover:text-primary ${collapsed ? 'lg:justify-center lg:px-3' : ''}`} title={t('logout')} aria-label={t('logout')}>
+              <button type="button" onClick={handleStockLogout} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-foreground/75 transition hover:bg-primary/10 hover:text-primary lg:gap-3 lg:rounded-2xl lg:px-4 lg:py-3 ${collapsed ? 'lg:justify-center lg:px-3' : ''}`} title={t('logout')} aria-label={t('logout')}>
                 <LogOut className="h-4 w-4" />
-                <span className={collapsed ? 'lg:hidden' : ''}>{t('logout')}</span>
+                <span className={`hidden lg:inline ${collapsed ? 'lg:hidden' : ''}`}>{t('logout')}</span>
               </button>
             </div>
           </div>
