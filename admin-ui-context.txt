@@ -1,3 +1,9 @@
+Admin UI Context Bundle
+Generated: 2026-04-14T06:01:40.626Z
+
+=== Main Admin view ===
+File: app/stock/admin/page.js
+
 'use client';
 
 import Link from 'next/link';
@@ -10,8 +16,7 @@ import EntryPreviewSheet, { PreviewKeyValueGrid } from '@/components/ui/entry-pr
 import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { validateStockPassword } from '@/lib/auth0-management';
-import { Badge } from '@/components/ui/badge';
-import { ArrowRightLeft, ChevronDown, Eye, EyeOff, PackageSearch, ShieldAlert, UsersRound } from 'lucide-react';
+import { ChevronDown, Eye, EyeOff } from 'lucide-react';
 
 function formatDateTime(value) {
   if (!value) {
@@ -48,62 +53,6 @@ const FORM_LABEL_CLASS = 'block text-[11px] font-semibold uppercase tracking-[0.
 const FORM_INPUT_CLASS = 'mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground shadow-sm outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20';
 const FORM_SELECT_CLASS = `${FORM_INPUT_CLASS} appearance-none pr-10`;
 const FORM_PANEL_CLASS = 'rounded-2xl border border-border/80 bg-background/80 p-4';
-
-const CLASSES = {
-  heroGrid: 'grid grid-cols-2 lg:grid-cols-4 gap-6',
-  heroCard: 'rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md dark:border-slate-700 dark:bg-slate-900',
-  heroLabel: 'text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400',
-  heroValue: 'mt-2 text-3xl font-bold text-slate-900 dark:text-white',
-  heroBadgeBase: 'text-[10px] px-2 py-0.5 rounded-full font-semibold',
-  sectionCard: 'rounded-2xl border border-slate-200/60 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900',
-  sectionHeader: 'flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800',
-  avatar: 'h-10 w-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 font-semibold text-xs',
-  actionButton: 'active:scale-95 transition-transform',
-};
-
-function getInitials(name, email) {
-  const source = (name || email || '').trim();
-  if (!source) {
-    return 'NA';
-  }
-
-  const parts = source.split(/\s+/).filter(Boolean);
-  if (parts.length === 1) {
-    return parts[0].slice(0, 2).toUpperCase();
-  }
-
-  return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
-}
-
-function getUserRoleBadgeClass(role) {
-  if (role === 'admin') {
-    return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200';
-  }
-
-  if (role === 'salesperson' || role === 'sales') {
-    return 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300';
-  }
-
-  if (role === 'stock_maintainer' || role === 'manager') {
-    return 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300';
-  }
-
-  return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200';
-}
-
-function getStatusVariant(status) {
-  const normalized = String(status || '').toLowerCase();
-  if (normalized.includes('approved') || normalized.includes('active') || normalized.includes('complete')) {
-    return 'approved';
-  }
-  if (normalized.includes('pending') || normalized.includes('review') || normalized.includes('warning')) {
-    return 'pending';
-  }
-  if (normalized.includes('rejected') || normalized.includes('failed') || normalized.includes('critical')) {
-    return 'rejected';
-  }
-  return 'neutral';
-}
 
 export default function AdminDashboard() {
   const { language } = useLanguage();
@@ -500,54 +449,35 @@ export default function AdminDashboard() {
   const pendingReviews = Number(analyticsData?.summary?.pending_inbound_reviews || 0) + Number(analyticsData?.summary?.pending_outbound_reviews || 0);
   const totalIncoming = Number(analyticsData?.summary?.total_incoming || 0);
   const totalOutgoing = Number(analyticsData?.summary?.total_outgoing || 0);
-  const totalUsers = Number(data?.users?.length || 0);
-  const activeUsers = (data?.users || []).filter((entry) => Boolean(entry?.is_active)).length;
-  const pendingUsers = Math.max(totalUsers - activeUsers, 0);
 
   const summaryTiles = [
     {
-      label: 'Team Accounts',
-      value: totalUsers,
+      label: 'Available Whole Stock',
+      value: Number(analyticsData?.summary?.total_whole_stored || 0),
       href: '/stock?view=items',
-      icon: UsersRound,
-      trend: activeUsers - pendingUsers,
-      subMetrics: [
-        { label: 'Active', value: activeUsers },
-        { label: 'Pending', value: pendingUsers },
-      ],
+      tone: 'from-blue-500/15 to-cyan-500/5 border-blue-100 text-blue-700',
+      hint: 'Ready to dispatch',
     },
     {
-      label: 'Approval Queue',
+      label: 'Damaged / Broken Stock',
+      value: Number(analyticsData?.summary?.total_broken_stored || 0),
+      href: '/stock?view=items',
+      tone: 'from-amber-500/15 to-orange-500/5 border-amber-100 text-amber-700',
+      hint: 'Needs action',
+    },
+    {
+      label: 'Pending Reviews',
       value: pendingReviews,
       href: '#approval-queue',
-      icon: ShieldAlert,
-      trend: pendingReviews > 0 ? -pendingReviews : 1,
-      subMetrics: [
-        { label: 'Inbound', value: Number(analyticsData?.summary?.pending_inbound_reviews || 0) },
-        { label: 'Outbound', value: Number(analyticsData?.summary?.pending_outbound_reviews || 0) },
-      ],
-    },
-    {
-      label: 'Stored Units',
-      value: Number(analyticsData?.summary?.total_whole_stored || 0) + Number(analyticsData?.summary?.total_broken_stored || 0),
-      href: '/stock?view=items',
-      icon: PackageSearch,
-      trend: Number(analyticsData?.summary?.total_whole_stored || 0) - Number(analyticsData?.summary?.total_broken_stored || 0),
-      subMetrics: [
-        { label: 'Whole', value: Number(analyticsData?.summary?.total_whole_stored || 0) },
-        { label: 'Broken', value: Number(analyticsData?.summary?.total_broken_stored || 0) },
-      ],
+      tone: 'from-rose-500/15 to-orange-500/5 border-rose-100 text-rose-700',
+      hint: 'Arrivals + dispatches',
     },
     {
       label: 'Net Movement',
       value: totalIncoming - totalOutgoing,
       href: '/stock?view=arrivals',
-      icon: ArrowRightLeft,
-      trend: totalIncoming - totalOutgoing,
-      subMetrics: [
-        { label: 'Incoming', value: totalIncoming },
-        { label: 'Outgoing', value: totalOutgoing },
-      ],
+      tone: 'from-emerald-500/15 to-teal-500/5 border-emerald-100 text-emerald-700',
+      hint: 'Incoming - outgoing',
     },
   ];
 
@@ -688,23 +618,12 @@ export default function AdminDashboard() {
     .sort((left, right) => new Date(right.at || 0).getTime() - new Date(left.at || 0).getTime())
     .slice(0, 8);
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className={CLASSES.heroGrid}>
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div key={`hero-skeleton-${index}`} className="animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800 h-32" />
-          ))}
-        </div>
-        <div className="animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800 h-64" />
-      </div>
-    );
-  }
+  if (loading) return <div className="p-8 text-center">{t('loading')}</div>;
   if (!data && error) return <div className="p-8 text-red-500">{error}</div>;
   if (!data) return null;
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-4 lg:space-y-6">
+    <div className="space-y-4 lg:space-y-6">
       <h1 className="text-xl font-bold text-foreground lg:text-2xl">{t('adminTitle')}</h1>
 
       {actionNotice ? (
@@ -724,36 +643,21 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-1">
-        <div className={CLASSES.heroGrid}>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:col-span-2">
           {summaryTiles.map((stat) => (
             <Link
               key={stat.label}
               href={stat.href}
-              className={`${CLASSES.heroCard} ${CLASSES.actionButton}`}
+              className={`group rounded-xl border bg-gradient-to-br p-2.5 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-950 sm:rounded-2xl sm:p-4 ${stat.tone}`}
             >
-              <div className="flex items-start justify-between">
-                <p className={CLASSES.heroLabel}>{stat.label}</p>
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#E07A00]/10 text-[#E07A00]">
-                  <stat.icon className="h-4 w-4" />
-                </span>
-              </div>
-              <p className={`${CLASSES.heroValue} font-mono`}>{stat.value}</p>
-              <div className="mt-3 flex items-center justify-between gap-3">
-                {stat.subMetrics.map((item) => (
-                  <span key={`${stat.label}-${item.label}`} className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
-                    <span>{item.label}</span>
-                    <span className="font-mono text-slate-700 dark:text-slate-200">{item.value}</span>
-                  </span>
-                ))}
-                <span className={`${CLASSES.heroBadgeBase} ${stat.trend > 0 ? 'bg-[#E07A00]/10 text-[#E07A00]' : 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-300'}`}>
-                  {stat.trend > 0 ? 'Up' : 'Down'}
-                </span>
-              </div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] opacity-80 sm:text-xs sm:tracking-[0.12em]">{stat.label}</p>
+              <p className="mt-1.5 text-xl font-bold leading-none sm:mt-2 sm:text-3xl">{stat.value}</p>
+              <p className="mt-1 text-[10px] font-medium opacity-75 sm:mt-2 sm:text-xs">{stat.hint}</p>
             </Link>
           ))}
         </div>
-        <div className="rounded-2xl border border-slate-200/60 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-4">
+        <div className="rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4 xl:col-span-3">
           <div className="mb-3 flex items-end justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold text-foreground sm:text-base">Movement Trend</h2>
@@ -956,7 +860,7 @@ export default function AdminDashboard() {
                       }}
                       title="Click to preview"
                     >
-                      <td className="px-3 py-2 font-mono font-medium text-primary">{item.shipment_number}</td>
+                      <td className="px-3 py-2 font-medium text-primary">{item.shipment_number}</td>
                       <td className="px-3 py-2 text-foreground/80">{item.maintainer_name || '-'}</td>
                       <td className="px-3 py-2">{item.truck_license_plate}</td>
                       <td className="px-3 py-2">{item.driver_name}</td>
@@ -1037,7 +941,7 @@ export default function AdminDashboard() {
                       }}
                       title="Click to preview"
                     >
-                      <td className="px-3 py-2 font-mono font-medium text-primary">{item.shipment_number}</td>
+                      <td className="px-3 py-2 font-medium text-primary">{item.shipment_number}</td>
                       <td className="px-3 py-2">{item.truck_license_plate}</td>
                       <td className="px-3 py-2">{item.driver_name}</td>
                       <td className="px-3 py-2">{item.total_whole_qty}</td>
@@ -1121,10 +1025,10 @@ export default function AdminDashboard() {
                       }}
                       title="Click to preview"
                     >
-                      <td className="px-3 py-2 font-mono font-medium text-primary">{requestRow.request_number || `CR-${requestRow.id}`}</td>
+                      <td className="px-3 py-2 font-medium text-primary">{requestRow.request_number || `CR-${requestRow.id}`}</td>
                       <td className="px-3 py-2 text-foreground/80">{requestRow.source_entity_type} #{requestRow.source_entity_id}</td>
                       <td className="px-3 py-2">{requestRow.request_type}</td>
-                      <td className="px-3 py-2"><Badge variant={getStatusVariant(requestRow.status)}>{requestRow.status}</Badge></td>
+                      <td className="px-3 py-2"><span className="rounded bg-muted px-2 py-0.5 text-xs text-foreground/80">{requestRow.status}</span></td>
                       <td className="px-3 py-2">{requestRow.priority || 'normal'}</td>
                       <td className="px-3 py-2 text-muted-foreground">{requestRow.requested_by_name || '—'}</td>
                     </tr>
@@ -1146,13 +1050,13 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div id="users-contacts" className={`${CLASSES.sectionCard} overflow-hidden ${mobileSection === 'users' ? '' : 'hidden'}`}>
-        <div className={CLASSES.sectionHeader}>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('usersSalespersons')}</h2>
+      <div id="users-contacts" className={`overflow-hidden rounded-xl border border-border bg-card shadow-sm ${mobileSection === 'users' ? '' : 'hidden'}`}>
+        <div className="flex items-center justify-between border-b border-border p-4">
+          <h2 className="text-lg font-semibold text-foreground">{t('usersSalespersons')}</h2>
           <button
             type="button"
             onClick={() => setShowUserForm((current) => !current)}
-            className={`${CLASSES.actionButton} rounded-lg bg-[#E07A00] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#c96d00]`}
+            className="rounded-lg bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
           >
             {t('addUserContact')}
           </button>
@@ -1281,7 +1185,7 @@ export default function AdminDashboard() {
               <button
                 type="submit"
                 disabled={actionLoading === 'user-save'}
-                className={`${CLASSES.actionButton} rounded-xl bg-[#E07A00] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c96d00] disabled:cursor-not-allowed disabled:opacity-50`}
+                className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {actionLoading === 'user-save' ? 'Saving...' : 'Save User'}
               </button>
@@ -1294,7 +1198,7 @@ export default function AdminDashboard() {
                   setShowPrimaryPassword(false);
                   setShowConfirmPassword(false);
                 }}
-                className={`${CLASSES.actionButton} rounded-xl border border-border px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted`}
+                className="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
               >
                 Cancel
               </button>
@@ -1302,22 +1206,23 @@ export default function AdminDashboard() {
             <input type="hidden" value={userDraft.status} readOnly />
           </form>
         )}
-        <div className="max-h-[420px] overflow-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="sticky top-0 z-10 border-b border-slate-100 bg-slate-50/90 text-slate-500 dark:border-slate-800 dark:bg-slate-900/90 dark:text-slate-400">
+        <div className="max-h-[360px] overflow-auto">
+          <table className="w-full text-xs text-left whitespace-nowrap">
+            <thead className="sticky top-0 z-10 border-b border-border bg-muted/80 font-medium text-muted-foreground">
               <tr>
-                <th className="px-6 py-3 font-semibold">User</th>
-                <th className="px-6 py-3 font-semibold">Role</th>
-                <th className="px-6 py-3 font-semibold">Department</th>
-                <th className="px-6 py-3 font-semibold">Status</th>
-                <th className="px-6 py-3 text-right font-semibold">Actions</th>
+                <th className="px-3 py-2">{t('name')}</th>
+                <th className="px-3 py-2">{t('email')}</th>
+                <th className="px-3 py-2">{t('phone')}</th>
+                <th className="px-3 py-2">{t('role')}</th>
+                <th className="px-3 py-2">Department</th>
+                <th className="px-3 py-2">{t('status')}</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-border">
               {userPagination.rows.map((u) => (
                 <tr
                   key={u.id}
-                  className="cursor-pointer border-b border-slate-100 transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40"
+                  className="cursor-pointer transition hover:bg-primary/5 focus-within:bg-primary/5"
                   onClick={() => openUserPreview(u)}
                   tabIndex={0}
                   role="button"
@@ -1329,47 +1234,14 @@ export default function AdminDashboard() {
                   }}
                   title="Click to preview"
                 >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className={CLASSES.avatar}>{getInitials(u.full_name, u.email)}</div>
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-slate-900 dark:text-white">{u.full_name || 'N/A'}</p>
-                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">{u.email}</p>
-                        <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400">ID #{u.id} • {u.phone_number || 'N/A'}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`rounded-full px-2 py-1 text-xs font-semibold ${getUserRoleBadgeClass(u.role)}`}>
-                      {u.role}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{u.department || 'General'}</td>
-                  <td className="px-6 py-4">
-                    <span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      {u.is_active ? (
-                        <span className="relative flex h-2 w-2">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                        </span>
-                      ) : (
-                        <span className="inline-flex h-2 w-2 rounded-full bg-rose-500" />
-                      )}
-                      {u.is_active ? t('active') : t('inactive')}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="inline-flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          openUserPreview(u);
-                        }}
-                        className={`${CLASSES.actionButton} rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800`}
-                      >
-                        View
-                      </button>
+                  <td className="px-3 py-2 font-medium text-foreground">{u.full_name || 'N/A'}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{u.email}</td>
+                  <td className="px-3 py-2">{u.phone_number || 'N/A'}</td>
+                  <td className="px-3 py-2"><span className="rounded bg-muted px-2 py-0.5 text-xs text-foreground/80">{u.role}</span></td>
+                  <td className="px-3 py-2 text-muted-foreground">{u.department || 'General'}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center justify-end gap-2">
+                      {u.is_active ? <span className="text-green-600 text-xs font-semibold">{t('active')}</span> : <span className="text-red-600 text-xs font-semibold">{t('inactive')}</span>}
                       <button
                         type="button"
                         onClick={(event) => {
@@ -1377,7 +1249,7 @@ export default function AdminDashboard() {
                           handleDeleteUser(u.id);
                         }}
                         disabled={actionLoading === `user-${u.id}-delete`}
-                        className={`${CLASSES.actionButton} rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50`}
+                        className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-semibold text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         Remove
                       </button>
@@ -1385,11 +1257,6 @@ export default function AdminDashboard() {
                   </td>
                 </tr>
               ))}
-              {userPagination.total === 0 ? (
-                <tr>
-                  <td colSpan="5" className="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">No users found.</td>
-                </tr>
-              ) : null}
             </tbody>
           </table>
         </div>
@@ -1500,7 +1367,7 @@ export default function AdminDashboard() {
                               <tbody className="divide-y divide-border bg-card">
                                 {previewItemPagination.rows.map((item) => (
                                   <tr key={item.id}>
-                                    <td className="px-3 py-2 font-mono font-medium text-foreground">{item.sku}</td>
+                                    <td className="px-3 py-2 font-medium text-foreground">{item.sku}</td>
                                     <td className="px-3 py-2 text-foreground/80">{item.item_name}</td>
                                     <td className="px-3 py-2 text-right">{item.loaded_whole_qty ?? item.received_whole_qty ?? 0}</td>
                                     <td className="px-3 py-2 text-right">{item.loaded_broken_qty ?? item.received_broken_qty ?? 0}</td>
@@ -1547,4 +1414,1202 @@ export default function AdminDashboard() {
       />
     </div>
   );
+}
+
+=== Navigation and global wrapper ===
+File: app/stock/layout.js
+
+'use client';
+
+import Link from 'next/link';
+import Image from 'next/image';
+import { Bell, CheckCheck, ChevronLeft, ChevronRight, ClipboardList, FileText, Home, Languages, MoonStar, PackagePlus, SunMedium, Users, LogOut } from 'lucide-react';
+import { useUser } from '@auth0/nextjs-auth0/client';
+import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useTheme } from 'next-themes';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { getTranslation } from '@/lib/translations';
+import BrandedLoginPage from '@/components/BrandedLoginPage';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+
+/**
+ * Layout for internal stock management routes
+ * Enforces authentication and internal-only access
+ */
+export default function StockLayout({ children }) {
+  const { user, isLoading, error } = useUser();
+  const { language, toggleLanguage } = useLanguage();
+  const { resolvedTheme, setTheme } = useTheme();
+  const pathname = usePathname();
+  const [accessLoading, setAccessLoading] = useState(true);
+  const [accessApproved, setAccessApproved] = useState(false);
+  const [accessMessage, setAccessMessage] = useState('');
+  const [accessRole, setAccessRole] = useState('stock_maintainer');
+  const [collapsed, setCollapsed] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationLoading, setNotificationLoading] = useState(false);
+  const [notificationError, setNotificationError] = useState(null);
+  const [notificationUpdating, setNotificationUpdating] = useState(false);
+  const [showNotificationDebug, setShowNotificationDebug] = useState(false);
+
+  const t = (key) => getTranslation(`stock.layout.${key}`, language);
+  const isDarkTheme = resolvedTheme === 'dark';
+  const isUnauthorizedError = error?.message === 'Unauthorized' || error?.status === 401;
+  function handleStockLogout() {
+    document.cookie = `hm-login-return-to=${encodeURIComponent('/stock')}; Path=/; Max-Age=300; SameSite=Lax`;
+    window.location.href = `/auth/logout?returnTo=${encodeURIComponent(window.location.origin)}`;
+  }
+
+  const navigationItems = [
+    { href: '/stock', label: t('dashboard'), icon: Home },
+  ];
+
+  if (accessRole === 'admin' || accessRole === 'manager') {
+    navigationItems.push({ href: '/stock/admin', label: t('adminDashboard'), icon: Users });
+  }
+
+  const isActiveRoute = (href) => {
+    const cleanHref = href.split('#')[0];
+
+    if (cleanHref === '/stock') {
+      return pathname === '/stock';
+    }
+
+    return pathname?.startsWith(cleanHref);
+  };
+
+  useEffect(() => {
+    const storedCollapsed = window.localStorage.getItem('stock-sidebar-collapsed');
+    if (storedCollapsed !== null) {
+      setCollapsed(storedCollapsed === 'true');
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem('stock-sidebar-collapsed', String(collapsed));
+  }, [collapsed]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function checkAccess() {
+      if (!user) {
+        return;
+      }
+
+      setAccessLoading(true);
+      try {
+        const response = await fetch('/api/stock/access', { cache: 'no-store' });
+        const result = await response.json();
+
+        if (!mounted) {
+          return;
+        }
+
+        if (!response.ok) {
+          setAccessApproved(false);
+          setAccessMessage(result.error || t('accessFallback'));
+          return;
+        }
+
+        setAccessApproved(Boolean(result.approved));
+        setAccessMessage(result.message || t('accessPendingFallback'));
+        setAccessRole(result.role || 'stock_maintainer');
+      } catch (accessError) {
+        if (!mounted) {
+          return;
+        }
+
+        setAccessApproved(false);
+        setAccessMessage(accessError.message || t('accessFallback'));
+      } finally {
+        if (mounted) {
+          setAccessLoading(false);
+        }
+      }
+    }
+
+    checkAccess();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
+
+  async function loadNotifications({ silent = false } = {}) {
+    if (!silent) {
+      setNotificationLoading(true);
+    }
+
+    try {
+      const response = await fetch('/api/stock/notifications?limit=25', { cache: 'no-store' });
+      const json = await response.json();
+
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to load notifications');
+      }
+
+      setNotifications(json.notifications || []);
+      setUnreadCount(Number(json.unreadCount || 0));
+      setNotificationError(null);
+    } catch (err) {
+      setNotificationError(err.message);
+    } finally {
+      if (!silent) {
+        setNotificationLoading(false);
+      }
+    }
+  }
+
+  async function markAllNotificationsRead() {
+    setNotificationUpdating(true);
+
+    try {
+      const response = await fetch('/api/stock/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'markAllRead' }),
+      });
+
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to mark notifications read');
+      }
+
+      await loadNotifications({ silent: true });
+    } catch (err) {
+      setNotificationError(err.message);
+    } finally {
+      setNotificationUpdating(false);
+    }
+  }
+
+  async function markNotificationRead(notificationId) {
+    try {
+      const response = await fetch('/api/stock/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'markRead', id: notificationId }),
+      });
+
+      if (!response.ok) {
+        const json = await response.json();
+        throw new Error(json.error || 'Failed to mark notification read');
+      }
+
+      await loadNotifications({ silent: true });
+    } catch (err) {
+      setNotificationError(err.message);
+    }
+  }
+
+  function handleNotificationNavigate(notification) {
+    if (!notification?.is_read) {
+      markNotificationRead(notification.id);
+    }
+    setNotificationOpen(false);
+  }
+
+  useEffect(() => {
+    if (!accessApproved || !user) {
+      return;
+    }
+
+    loadNotifications();
+
+    const intervalId = setInterval(() => {
+      loadNotifications({ silent: true });
+    }, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [accessApproved, user]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
+  if (error && !isUnauthorizedError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600">{t('accessError')}</h1>
+          <p className="text-gray-600 mt-2">{error.message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <BrandedLoginPage returnTo="/stock" />;
+  }
+
+  if (accessLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="text-gray-600 mt-4">{t('loadingAccess')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!accessApproved) {
+    return (
+      <div className="relative min-h-screen overflow-hidden bg-background px-4 py-10 text-foreground">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+          <div className="absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-secondary/60 blur-3xl" />
+        </div>
+        <div className="relative z-10 flex min-h-[calc(100vh-5rem)] items-center justify-center">
+          <div className="max-w-xl rounded-3xl border border-border bg-card p-8 shadow-sm">
+            <div className="mb-5 flex items-center gap-3">
+              <div className="relative h-12 w-12 overflow-hidden rounded-2xl border border-border bg-muted/40">
+                <Image
+                  src="/logo.png"
+                  alt="Hanumant Marble logo"
+                  fill
+                  sizes="48px"
+                  className="object-contain p-1.5"
+                  priority
+                />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Hanumant Marble</p>
+                <p className="text-sm text-muted-foreground">Stock management access</p>
+              </div>
+            </div>
+            <h1 className="text-2xl font-bold text-foreground">{t('waitingApproval')}</h1>
+            <p className="mt-3 text-muted-foreground">{accessMessage}</p>
+            <p className="mt-3 text-sm text-muted-foreground">{t('waitingDetails')}</p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button type="button" onClick={handleStockLogout} className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted/60">{t('logout')}</button>
+              <Link href="/" className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90">{t('goWebsite')}</Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative min-h-screen bg-background text-foreground lg:flex">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -left-24 top-16 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute -right-24 bottom-24 h-72 w-72 rounded-full bg-secondary/60 blur-3xl" />
+      </div>
+      <aside className={`relative z-10 border-b border-border bg-card/95 backdrop-blur lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:border-b-0 lg:border-r lg:border-border ${collapsed ? 'lg:w-[92px]' : 'lg:w-[280px]'}`}>
+        <div className={`flex items-center gap-2 px-3 py-2 lg:gap-3 lg:py-3 lg:border-b lg:border-border ${collapsed ? 'lg:justify-center' : ''}`}>
+          <Link href="/stock" className={`flex items-center gap-3 ${collapsed ? 'lg:justify-center' : ''}`} aria-label="Hanumant Marble stock dashboard">
+            <div className="relative h-10 w-10 overflow-hidden rounded-xl border border-border bg-muted/40 lg:h-16 lg:w-16 lg:rounded-2xl">
+              <Image
+                src="/logo.png"
+                alt="Hanumant Marble logo"
+                fill
+                sizes="(max-width: 1024px) 40px, 64px"
+                className="object-contain p-1.5"
+                priority
+              />
+            </div>
+            <div className={collapsed ? 'lg:hidden' : ''}>
+              <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground lg:text-sm lg:tracking-[0.2em]">HANUMANT</p>
+              <p className="text-sm font-bold leading-tight text-foreground lg:text-lg">{t('brand')}</p>
+            </div>
+          </Link>
+
+          
+        </div>
+
+        <div className={`px-3 pb-3 lg:px-5 lg:pb-5 lg:flex lg:flex-1 lg:flex-col lg:justify-between ${collapsed ? 'lg:px-3' : ''}`}>
+          <div className="space-y-8">
+            <div className={`mt-2 flex items-center gap-1 lg:mt-4 ${collapsed ? 'lg:justify-center' : 'justify-between'} lg:flex-nowrap`}>
+            <button
+              type="button"
+              onClick={toggleLanguage}
+              className={`inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-muted/60 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition hover:bg-primary/10 hover:text-primary lg:px-3 lg:py-2 lg:text-xs lg:tracking-[0.15em] ${collapsed ? 'lg:px-2' : ''}`}
+              aria-label={language === 'en' ? t('switchToHindi') : t('switchToEnglish')}
+            >
+              <Languages className="h-4 w-4" />
+              <span className={collapsed ? 'lg:hidden' : 'inline'}>{language.toUpperCase()}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setNotificationOpen(true)}
+              className="relative inline-flex shrink-0 rounded-full border border-border bg-muted/60 p-2 text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
+              aria-label="Open notifications"
+            >
+              <Bell className="h-4 w-4" />
+              {unreadCount > 0 ? (
+                <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              ) : null}
+            </button>
+               <button
+              type="button"
+              onClick={() => setCollapsed((current) => !current)}
+              className="hidden shrink-0 lg:inline-flex rounded-full border border-border bg-muted/60 p-2 text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
+              aria-label={collapsed ? t('openSidebar') : t('closeSidebar')}
+            >
+              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </button>
+            </div>
+            <div className={`hidden rounded-3xl border border-border bg-muted/40 p-4 lg:block ${collapsed ? 'lg:hidden' : ''}`}>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t('workspace')}</p>
+              <h1 className="mt-2 text-xl font-bold text-foreground">{t('internalDashboard')}</h1>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{t('workspaceHelp')}</p>
+            </div>
+
+            <nav className="flex gap-1 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible lg:pb-0">
+              {navigationItems.map((item) => {
+                const Icon = item.icon;
+                const active = isActiveRoute(item.href);
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    title={item.label}
+                    aria-label={item.label}
+                    className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-xs font-medium transition lg:gap-3 lg:rounded-2xl lg:px-4 lg:py-3 lg:text-sm ${collapsed ? 'lg:justify-center lg:px-3' : ''} ${active ? 'bg-primary/10 text-primary shadow-sm' : 'text-foreground/75 hover:bg-primary/10 hover:text-primary'}`}
+                  >
+                    <Icon className={`h-4 w-4 ${active ? 'text-primary' : 'text-foreground/60'}`} />
+                    <span className={collapsed ? 'lg:hidden' : ''}>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+
+          <div className="mt-4 space-y-2 border-t border-border pt-3 text-sm lg:mt-8 lg:space-y-4 lg:pt-5">
+            <div className={`hidden rounded-2xl border border-border bg-muted/40 px-4 py-3 lg:block ${collapsed ? 'lg:hidden' : ''}`}>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t('signedInAs')}</p>
+              <p className="mt-2 break-words text-sm text-foreground">{user?.email}</p>
+            </div>
+            <div className={`flex items-center gap-2 ${collapsed ? 'lg:justify-center' : ''}`}>
+              <button
+                type="button"
+                onClick={() => setTheme(isDarkTheme ? 'light' : 'dark')}
+                className={`flex items-center gap-2 rounded-xl px-3 py-2 text-foreground/75 transition hover:bg-primary/10 hover:text-primary lg:gap-3 lg:rounded-2xl lg:px-4 lg:py-3 ${collapsed ? 'lg:justify-center lg:px-3' : ''}`}
+                title={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
+                aria-label={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
+              >
+                {isDarkTheme ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
+                <span className={`hidden lg:inline ${collapsed ? 'lg:hidden' : ''}`}>{isDarkTheme ? 'Light' : 'Dark'}</span>
+              </button>
+              <button type="button" onClick={handleStockLogout} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-foreground/75 transition hover:bg-primary/10 hover:text-primary lg:gap-3 lg:rounded-2xl lg:px-4 lg:py-3 ${collapsed ? 'lg:justify-center lg:px-3' : ''}`} title={t('logout')} aria-label={t('logout')}>
+                <LogOut className="h-4 w-4" />
+                <span className={`hidden lg:inline ${collapsed ? 'lg:hidden' : ''}`}>{t('logout')}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          {children}
+        </main>
+        <footer className="border-t border-border bg-card px-4 py-4 text-center text-sm text-muted-foreground sm:px-6 lg:px-8">
+          <p>{t('footerTitle')} • {t('footerUpdated')}: {new Date().toLocaleString()}</p>
+        </footer>
+      </div>
+
+      <Sheet open={notificationOpen} onOpenChange={setNotificationOpen}>
+        <SheetContent side="right" className="w-full max-w-none overflow-y-auto md:w-[420px]">
+          <SheetHeader>
+            <SheetTitle>Notifications</SheetTitle>
+            <SheetDescription>Operational alerts and shipment updates from stock workflow.</SheetDescription>
+          </SheetHeader>
+
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <div className="text-xs text-muted-foreground">
+              {unreadCount} unread
+            </div>
+            <div className="flex items-center gap-2">
+              {accessRole === 'admin' ? (
+                <button
+                  type="button"
+                  onClick={() => setShowNotificationDebug((current) => !current)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted"
+                >
+                  {showNotificationDebug ? 'Hide Debug' : 'Debug'}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={markAllNotificationsRead}
+                disabled={notificationUpdating || unreadCount === 0}
+                className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <CheckCheck className="h-3.5 w-3.5" />
+                Mark all read
+              </button>
+            </div>
+          </div>
+
+          {notificationError ? (
+            <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {notificationError}
+            </div>
+          ) : null}
+
+          {notificationLoading ? (
+            <div className="mt-4 text-sm text-muted-foreground">Loading notifications...</div>
+          ) : notifications.length === 0 ? (
+            <div className="mt-4 rounded-lg border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
+              No notifications yet.
+            </div>
+          ) : (
+            <div className="mt-4 space-y-2">
+              {notifications.map((notification) => (
+                (() => {
+                  const recipients = Array.isArray(notification.recipients)
+                    ? notification.recipients
+                    : (() => {
+                        try {
+                          const parsed = JSON.parse(notification.recipients || '[]');
+                          return Array.isArray(parsed) ? parsed : [];
+                        } catch {
+                          return [];
+                        }
+                      })();
+
+                  const departments = [...new Set(
+                    recipients
+                      .map((recipient) => String(recipient?.department || '').trim())
+                      .filter(Boolean)
+                  )];
+
+                  const departmentLabel = departments.length === 0
+                    ? null
+                    : departments.length === 1
+                      ? departments[0]
+                      : `${departments.length} departments`;
+
+                  const firstWhatsappPayload = recipients.find((recipient) => recipient?.whatsappPayload)?.whatsappPayload || null;
+
+                  return (
+                    <Link
+                      key={notification.id}
+                      href={notification.actionHref || '/stock'}
+                      onClick={() => handleNotificationNavigate(notification)}
+                      className={`block w-full rounded-xl border px-3 py-2 text-left transition hover:border-primary/30 hover:bg-primary/5 ${
+                        notification.is_read ? 'border-border bg-card' : 'border-primary/25 bg-primary/5'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-sm font-semibold text-foreground">{notification.event_type.replace(/_/g, ' ')}</p>
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                          {notification.channel}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-foreground/85">{notification.message_text}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                        {departmentLabel ? (
+                          <span className="rounded-full border border-border bg-muted px-2 py-0.5 font-semibold">
+                            Target: {departmentLabel}
+                          </span>
+                        ) : null}
+                        {departments.length > 0 ? (
+                          <span>{recipients.length} recipients • {departments.length} dept</span>
+                        ) : null}
+                      </div>
+                      {showNotificationDebug && accessRole === 'admin' && firstWhatsappPayload ? (
+                        <pre className="mt-2 overflow-auto rounded-lg border border-border bg-muted/40 p-2 text-[10px] text-foreground/80">
+{JSON.stringify(firstWhatsappPayload, null, 2)}
+                        </pre>
+                      ) : null}
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <p className="text-[11px] text-muted-foreground">{new Date(notification.created_at).toLocaleString()}</p>
+                        <span className="text-[11px] font-semibold text-primary">Open</span>
+                      </div>
+                    </Link>
+                  );
+                })()
+              ))}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+=== Admin dashboard API data structure ===
+File: app/api/stock/admin/dashboard/route.js
+
+import { NextResponse } from 'next/server';
+import { ensureDatabaseAvailable, getStockContext, normalizeStockRole } from '@/lib/stock-workflow';
+import { sql } from '@/lib/db';
+
+export async function GET(request) {
+  const { session, appUser } = await getStockContext(request);
+  const userRole = normalizeStockRole(appUser?.role);
+
+  if (!session || (userRole !== 'admin' && userRole !== 'manager')) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  if (!(await ensureDatabaseAvailable())) {
+    return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+  }
+
+  try {
+    const [pendingArrivals, pendingDispatches, users] = await Promise.all([
+      sql(
+        `SELECT
+           s.id,
+           s.shipment_number,
+           s.truck_license_plate,
+           s.driver_name,
+           s.arrival_date,
+           s.status,
+           s.total_whole_qty,
+           s.total_broken_qty,
+           s.created_at,
+           COALESCE(u.name, u.email, s.created_by) AS maintainer_name
+         FROM stock_inbound_shipments s
+         LEFT JOIN stock_app_users u ON u.id = s.submitted_by_user_id
+         WHERE approval_status = 'pending'
+         ORDER BY s.created_at DESC`,
+        []
+      ),
+      sql(
+        `SELECT sos.id, sos.shipment_number, sos.truck_license_plate, sos.driver_name, sos.created_at AS dispatch_date, sos.status, 
+                COALESCE(SUM(soi.loaded_whole_qty), 0) as total_whole_qty, COALESCE(SUM(soi.loaded_broken_qty), 0) as total_broken_qty
+         FROM stock_outbound_shipments sos
+         LEFT JOIN stock_outbound_shipment_items soi ON sos.id = soi.outbound_shipment_id
+         WHERE sos.approval_status = 'pending'
+         GROUP BY sos.id
+         ORDER BY sos.created_at DESC`,
+        []
+      ),
+      sql(
+        `SELECT
+           id,
+           auth0_sub,
+           email,
+           name AS full_name,
+           phone AS phone_number,
+           role,
+           department,
+           (status = 'active') AS is_active,
+           last_login_at
+         FROM stock_app_users
+         ORDER BY created_at DESC`,
+        []
+      ),
+    ]);
+
+    return NextResponse.json({
+      pendingArrivals,
+      pendingDispatches,
+      users,
+    });
+  } catch (error) {
+    console.error('Failed to load admin dashboard:', error);
+    return NextResponse.json({ error: 'Failed to load admin dashboard', detail: error.message }, { status: 500 });
+  }
+}
+
+=== Tailwind theme and palette ===
+File: tailwind.config.js
+
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  darkMode: ["class"],
+  content: [
+    './pages/**/*.{js,jsx}',
+    './components/**/*.{js,jsx}',
+    './app/**/*.{js,jsx}',
+    './src/**/*.{js,jsx}',
+  ],
+  theme: {
+    container: {
+      center: true,
+      padding: "2rem",
+      screens: {
+        "2xl": "1400px",
+      },
+    },
+    extend: {
+      colors: {
+        border: "var(--border)",
+        input: "var(--input)",
+        ring: "var(--ring)",
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+        primary: {
+          DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
+        },
+        secondary: {
+          DEFAULT: "var(--secondary)",
+          foreground: "var(--secondary-foreground)",
+        },
+        destructive: {
+          DEFAULT: "var(--destructive)",
+          foreground: "var(--destructive-foreground)",
+        },
+        muted: {
+          DEFAULT: "var(--muted)",
+          foreground: "var(--muted-foreground)",
+        },
+        accent: {
+          DEFAULT: "var(--accent)",
+          foreground: "var(--accent-foreground)",
+        },
+        popover: {
+          DEFAULT: "var(--popover)",
+          foreground: "var(--popover-foreground)",
+        },
+        card: {
+          DEFAULT: "var(--card)",
+          foreground: "var(--card-foreground)",
+        },
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+      },
+      keyframes: {
+        "accordion-down": {
+          from: { height: 0 },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: 0 },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-15px)" },
+        },
+        "slide-up": {
+          from: { transform: "translateY(50px)", opacity: "0" },
+          to: { transform: "translateY(0)", opacity: "1" },
+        },
+        "scale-in": {
+          from: { transform: "scale(0.95)", opacity: "0" },
+          to: { transform: "scale(1)", opacity: "1" },
+        },
+        "fade-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "gradient-shift": {
+          "0%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+          "100%": { backgroundPosition: "0% 50%" },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-1000px 0" },
+          "100%": { backgroundPosition: "1000px 0" },
+        },
+      },
+      animation: {
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
+        float: "float 6s ease-in-out infinite",
+        "slide-up": "slide-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both",
+        "scale-in": "scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both",
+        "fade-in": "fade-in 0.3s ease-out both",
+        "gradient-shift": "gradient-shift 4s ease infinite",
+        shimmer: "shimmer 3s linear infinite",
+      },
+    },
+  },
+  plugins: [require("tailwindcss-animate")],
+}
+
+=== Base styles ===
+File: styles/globals.css
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+/* Keyframe Definitions */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-15px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(50px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.3); }
+  50% { box-shadow: 0 0 40px rgba(var(--primary-rgb), 0.5); }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes stock-tab-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Animations */
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 4s ease infinite;
+}
+
+.stock-tab-panel {
+  animation: stock-tab-panel-enter 220ms ease-out;
+}
+
+@layer components {
+  /* Base animation states with no animation */
+  .animate-on-scroll {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  /* Applied when element comes into view */
+  .animate-on-scroll.in-view {
+    opacity: 1;
+    transform: translateY(0);
+    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .float-on-scroll {
+    opacity: 0;
+  }
+
+  .float-on-scroll.in-view {
+    opacity: 1;
+    animation: float 6s ease-in-out;
+  }
+
+  .scale-on-scroll {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  .scale-on-scroll.in-view {
+    opacity: 1;
+    transform: scale(1);
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .fade-on-scroll {
+    opacity: 0;
+  }
+
+  .fade-on-scroll.in-view {
+    opacity: 1;
+    transition: opacity 0.5s ease-out;
+  }
+
+  /* Interactive animations (these don't need scroll triggering) */
+  .hover-scale {
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
+  .hover-scale:hover {
+    transform: scale(1.05);
+  }
+
+  .hover-lift {
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(26, 26, 26, 0) 0%,
+      rgb(255, 125, 50) 50%,
+      rgba(9, 9, 9, 0) 100%
+    );
+    background-size: 1000px 100%;
+    animation: shimmer 3s linear;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-foreground) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Modern button styles */
+  .btn-modern {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .btn-modern::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+  }
+
+  .btn-modern:hover::before {
+    left: 100%;
+  }
+
+  /* Card shine effect */
+  .card-shine {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card-shine::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+      to bottom right,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0) 40%,
+      rgba(255, 255, 255, 0.1) 50%,
+      rgba(255, 255, 255, 0) 60%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    transform: rotate(45deg);
+    transition: all 0.5s;
+    opacity: 0;
+  }
+
+  .card-shine:hover::after {
+    opacity: 1;
+    transform: rotate(45deg) translate(50%, 50%);
+  }
+}
+ 
+@layer base {
+  :root {
+    --background: #ffffff;
+    --foreground: #020817;
+ 
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
+ 
+    --popover: #ffffff;
+    --popover-foreground: #020817;
+ 
+    --card: #ffffff;
+    --card-foreground: #020817;
+ 
+    --border: #e2e8f0;
+    --input: #e2e8f0;
+ 
+    --primary: #343434;
+    --primary-foreground: #f8fafc;
+ 
+    --secondary: #f1f5f9;
+    --secondary-foreground: #232323;
+ 
+    --accent: #f1f5f9;
+    --accent-foreground: #343434;
+ 
+    --destructive: #ef4444;
+    --destructive-foreground: #f8fafc;
+ 
+    --ring: #94a3b8;
+ 
+    --radius: 0.5rem;
+  }
+ 
+  .dark {
+    --background: #121212;
+    --foreground: #f8fafc;
+ 
+    --muted: #343434;
+    --muted-foreground: #94a3b8;
+ 
+    --popover: #020817;
+    --popover-foreground: #f8fafc;
+ 
+    --card: #121212;
+    --card-foreground: #f8fafc;
+ 
+    --border: #343434;
+    --input: #343434;
+ 
+    --primary: #f8fafc;
+    --primary-foreground: #343434;
+ 
+    --secondary: #575757;
+    --secondary-foreground: #f8fafc;
+ 
+    --accent: #575757;
+    --accent-foreground: #f8fafc;
+ 
+    --destructive: #7f1d1d;
+    --destructive-foreground: #f8fafc;
+ 
+    --ring: #343434;
+  }
+}
+ 
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+
+
+
+
+.loading-state, .error-state {
+  background-color: #2d313c;
+  border-radius: 15px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+  padding: 3rem;
+  text-align: center;
+}
+
+.loading-text {
+  font-size: 1.8rem;
+  font-weight: 500;
+  color: #a0aec0;
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+.main-card-wrapper {
+  background-color: #262a33;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  padding: 3rem;
+  max-width: 500px;
+  width: 90%;
+  animation: fadeInScale 0.8s ease-out forwards;
+}
+
+.auth0-logo {
+  width: 0px;
+  margin-bottom: 1.5rem;
+  opacity: 0;
+  animation: slideInDown 1s ease-out forwards 0.2s;
+}
+
+.action-card {
+  background-color: #2d313c;
+  border-radius: 15px;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3), 0 5px 15px rgba(0, 0, 0, 0.3);
+  padding: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.8rem;
+  width: calc(100% - 2rem);
+  opacity: 0;
+  animation: fadeIn 1s ease-out forwards 0.6s;
+}
+
+.action-text {
+  font-size: 1.25rem;
+  color: #cbd5e0;
+  text-align: center;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+.button {
+  padding: 1.1rem 2.8rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  outline: none;
+}
+
+.button:focus {
+  box-shadow: 0 0 0 4px rgba(99, 179, 237, 0.5);
+}
+
+.button.login {
+  background-color: #63b3ed;
+  color: #1a1e27;
+}
+
+.button.login:hover {
+  background-color: #4299e1;
+  transform: translateY(-5px) scale(1.03);
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.5);
+}
+
+.button.logout {
+  background-color: #fc8181;
+  color: #1a1e27;
+}
+
+.button.logout:hover {
+  background-color: #e53e3e;
+  transform: translateY(-5px) scale(1.03);
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.5);
+}
+
+.logged-in-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.logged-in-message {
+  font-size: 1.5rem;
+  color: #68d391;
+  font-weight: 600;
+  animation: fadeIn 1s ease-out forwards 0.8s;
+}
+
+.profile-card {
+  padding: 2.2rem;
+  animation: scaleIn 0.8s ease-out forwards 1.2s;
+}
+
+.profile-picture {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  transition: transform 0.3s ease-in-out;
+  object-fit: cover;
+}
+
+.profile-picture:hover {
+  transform: scale(1.05);
+}
+
+.profile-name {
+  font-size: 2rem;
+  margin-top: 0.5rem;
+}
+
+.profile-email {
+  font-size: 1.15rem;
+  text-align: center;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideInDown {
+  from { opacity: 0; transform: translateY(-70px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (max-width: 600px) {
+  .main-card-wrapper {
+    padding: 2rem;
+    gap: 1.5rem;
+  }
+  
+  .main-title {
+    font-size: 2.2rem;
+  }
+  
+  .button {
+    padding: 0.9rem 2rem;
+    font-size: 1rem;
+  }
+  
+  .auth0-logo {
+    width: 0px;
+  }
 }

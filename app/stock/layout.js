@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Bell, CheckCheck, ChevronLeft, ChevronRight, ClipboardList, FileText, Home, Languages, MoonStar, PackagePlus, SunMedium, Users, LogOut } from 'lucide-react';
+import { Bell, CheckCheck, ChevronLeft, ChevronRight, ClipboardList, FileText, Home, Languages, MoonStar, PackagePlus, Search, SunMedium, Users, LogOut } from 'lucide-react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -11,6 +11,31 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import BrandedLoginPage from '@/components/BrandedLoginPage';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+
+function SidebarNavItem({ Icon, Label, Href, IsActive }) {
+  return (
+    <Link
+      href={Href}
+      title={Label}
+      aria-label={Label}
+      className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all ${
+        IsActive
+          ? 'bg-[#E07A00]/10 text-[#E07A00] border-r-4 border-[#E07A00] shadow-[inset_-4px_0_12px_rgba(224,122,0,0.1)]'
+          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100'
+      }`}
+    >
+      <Icon className="h-4 w-4" />
+      <span>{Label}</span>
+    </Link>
+  );
+}
+
+const CLASSES = {
+  shell: 'relative min-h-screen bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100',
+  sidebar: 'fixed inset-y-0 left-0 z-30 hidden h-screen w-64 overflow-y-auto border-r border-slate-200 bg-white lg:block dark:border-white/10 dark:bg-slate-950',
+  topbar: 'sticky top-0 z-20 border-b border-slate-200/20 bg-white/80 px-4 py-3 backdrop-blur-md dark:border-white/10 dark:bg-slate-950/80 sm:px-6 lg:px-8',
+  actionIconButton: 'h-9 w-9 rounded-xl hover:bg-slate-100 transition-all active:scale-95 dark:hover:bg-slate-800',
+};
 
 /**
  * Layout for internal stock management routes
@@ -279,49 +304,45 @@ export default function StockLayout({ children }) {
   }
 
   return (
-    <div className="relative min-h-screen bg-background text-foreground lg:flex">
+    <div className={CLASSES.shell}>
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -left-24 top-16 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
-        <div className="absolute -right-24 bottom-24 h-72 w-72 rounded-full bg-secondary/60 blur-3xl" />
+        <div className="absolute -left-24 top-16 h-72 w-72 rounded-full bg-[#E07A00]/10 blur-3xl" />
+        <div className="absolute -right-24 bottom-24 h-72 w-72 rounded-full bg-blue-500/10 blur-3xl" />
       </div>
-      <aside className={`relative z-10 border-b border-border bg-card/95 backdrop-blur lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:border-b-0 lg:border-r lg:border-border ${collapsed ? 'lg:w-[92px]' : 'lg:w-[280px]'}`}>
-        <div className={`flex items-center gap-2 px-3 py-2 lg:gap-3 lg:py-3 lg:border-b lg:border-border ${collapsed ? 'lg:justify-center' : ''}`}>
-          <Link href="/stock" className={`flex items-center gap-3 ${collapsed ? 'lg:justify-center' : ''}`} aria-label="Hanumant Marble stock dashboard">
-            <div className="relative h-10 w-10 overflow-hidden rounded-xl border border-border bg-muted/40 lg:h-16 lg:w-16 lg:rounded-2xl">
-              <Image
-                src="/logo.png"
-                alt="Hanumant Marble logo"
-                fill
-                sizes="(max-width: 1024px) 40px, 64px"
-                className="object-contain p-1.5"
-                priority
-              />
-            </div>
-            <div className={collapsed ? 'lg:hidden' : ''}>
-              <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground lg:text-sm lg:tracking-[0.2em]">HANUMANT</p>
-              <p className="text-sm font-bold leading-tight text-foreground lg:text-lg">{t('brand')}</p>
-            </div>
-          </Link>
 
-          
+      <aside className={CLASSES.sidebar}>
+        <div className="flex items-center gap-3 border-b border-slate-200 px-4 py-4 dark:border-white/10">
+          <div className="relative h-16 w-16 overflow-hidden ">
+            <Image
+              src="/logo.png"
+              alt="Hanumant Marble logo"
+              fill
+              sizes="48px"
+              className="object-contain p-1.5"
+              priority
+            />
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold tracking-[0.2em] text-slate-500 dark:text-slate-400">HANUMANT</p>
+            <p className="text-base font-semibold text-slate-900 dark:text-slate-100">{t('brand')}</p>
+          </div>
         </div>
 
-        <div className={`px-3 pb-3 lg:px-5 lg:pb-5 lg:flex lg:flex-1 lg:flex-col lg:justify-between ${collapsed ? 'lg:px-3' : ''}`}>
-          <div className="space-y-8">
-            <div className={`mt-2 flex items-center gap-1 lg:mt-4 ${collapsed ? 'lg:justify-center' : 'justify-between'} lg:flex-nowrap`}>
+        <div className="space-y-4 px-3 py-4">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={toggleLanguage}
-              className={`inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-muted/60 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition hover:bg-primary/10 hover:text-primary lg:px-3 lg:py-2 lg:text-xs lg:tracking-[0.15em] ${collapsed ? 'lg:px-2' : ''}`}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-700 transition hover:bg-[#E07A00]/10 hover:text-[#E07A00] dark:border-white/10 dark:bg-slate-900 dark:text-slate-300"
               aria-label={language === 'en' ? t('switchToHindi') : t('switchToEnglish')}
             >
               <Languages className="h-4 w-4" />
-              <span className={collapsed ? 'lg:hidden' : 'inline'}>{language.toUpperCase()}</span>
+              <span>{language.toUpperCase()}</span>
             </button>
             <button
               type="button"
               onClick={() => setNotificationOpen(true)}
-              className="relative inline-flex shrink-0 rounded-full border border-border bg-muted/60 p-2 text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
+              className="relative inline-flex rounded-full border border-slate-200 bg-white p-2 text-slate-700 transition hover:bg-[#E07A00]/10 hover:text-[#E07A00] dark:border-white/10 dark:bg-slate-900 dark:text-slate-300"
               aria-label="Open notifications"
             >
               <Bell className="h-4 w-4" />
@@ -331,72 +352,150 @@ export default function StockLayout({ children }) {
                 </span>
               ) : null}
             </button>
-               <button
-              type="button"
-              onClick={() => setCollapsed((current) => !current)}
-              className="hidden shrink-0 lg:inline-flex rounded-full border border-border bg-muted/60 p-2 text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
-              aria-label={collapsed ? t('openSidebar') : t('closeSidebar')}
-            >
-              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-            </button>
-            </div>
-            <div className={`hidden rounded-3xl border border-border bg-muted/40 p-4 lg:block ${collapsed ? 'lg:hidden' : ''}`}>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t('workspace')}</p>
-              <h1 className="mt-2 text-xl font-bold text-foreground">{t('internalDashboard')}</h1>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">{t('workspaceHelp')}</p>
-            </div>
-
-            <nav className="flex gap-1 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible lg:pb-0">
-              {navigationItems.map((item) => {
-                const Icon = item.icon;
-                const active = isActiveRoute(item.href);
-
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    title={item.label}
-                    aria-label={item.label}
-                    className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-xs font-medium transition lg:gap-3 lg:rounded-2xl lg:px-4 lg:py-3 lg:text-sm ${collapsed ? 'lg:justify-center lg:px-3' : ''} ${active ? 'bg-primary/10 text-primary shadow-sm' : 'text-foreground/75 hover:bg-primary/10 hover:text-primary'}`}
-                  >
-                    <Icon className={`h-4 w-4 ${active ? 'text-primary' : 'text-foreground/60'}`} />
-                    <span className={collapsed ? 'lg:hidden' : ''}>{item.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
           </div>
 
-          <div className="mt-4 space-y-2 border-t border-border pt-3 text-sm lg:mt-8 lg:space-y-4 lg:pt-5">
-            <div className={`hidden rounded-2xl border border-border bg-muted/40 px-4 py-3 lg:block ${collapsed ? 'lg:hidden' : ''}`}>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t('signedInAs')}</p>
-              <p className="mt-2 break-words text-sm text-foreground">{user?.email}</p>
-            </div>
-            <div className={`flex items-center gap-2 ${collapsed ? 'lg:justify-center' : ''}`}>
-              <button
-                type="button"
-                onClick={() => setTheme(isDarkTheme ? 'light' : 'dark')}
-                className={`flex items-center gap-2 rounded-xl px-3 py-2 text-foreground/75 transition hover:bg-primary/10 hover:text-primary lg:gap-3 lg:rounded-2xl lg:px-4 lg:py-3 ${collapsed ? 'lg:justify-center lg:px-3' : ''}`}
-                title={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
-                aria-label={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
-              >
-                {isDarkTheme ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
-                <span className={`hidden lg:inline ${collapsed ? 'lg:hidden' : ''}`}>{isDarkTheme ? 'Light' : 'Dark'}</span>
-              </button>
-              <button type="button" onClick={handleStockLogout} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-foreground/75 transition hover:bg-primary/10 hover:text-primary lg:gap-3 lg:rounded-2xl lg:px-4 lg:py-3 ${collapsed ? 'lg:justify-center lg:px-3' : ''}`} title={t('logout')} aria-label={t('logout')}>
-                <LogOut className="h-4 w-4" />
-                <span className={`hidden lg:inline ${collapsed ? 'lg:hidden' : ''}`}>{t('logout')}</span>
-              </button>
-            </div>
+          <nav className="space-y-1">
+            {navigationItems.map((item) => (
+              <SidebarNavItem
+                key={item.href}
+                Icon={item.icon}
+                Label={item.label}
+                Href={item.href}
+                IsActive={isActiveRoute(item.href)}
+              />
+            ))}
+          </nav>
+        </div>
+
+        <div className="mt-auto space-y-3 border-t border-slate-200 px-3 py-4 dark:border-white/10">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-white/10 dark:bg-slate-900/70">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{t('signedInAs')}</p>
+            <p className="mt-1 break-words text-xs text-slate-700 dark:text-slate-200">{user?.email}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setTheme(isDarkTheme ? 'light' : 'dark')}
+              className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-slate-700 transition hover:bg-[#E07A00]/10 hover:text-[#E07A00] dark:text-slate-300"
+              title={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
+              aria-label={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
+            >
+              {isDarkTheme ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
+              <span className="text-xs">{isDarkTheme ? 'Light' : 'Dark'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleStockLogout}
+              className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-slate-700 transition hover:bg-[#E07A00]/10 hover:text-[#E07A00] dark:text-slate-300"
+              title={t('logout')}
+              aria-label={t('logout')}
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="text-xs">{t('logout')}</span>
+            </button>
           </div>
         </div>
       </aside>
 
-      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          {children}
+      <div className="relative z-10 flex min-h-screen flex-col lg:pl-64">
+        <header className="sticky top-0 z-20 border-b border-slate-200/20 bg-white/80 px-4 py-3 backdrop-blur-md dark:border-white/10 dark:bg-slate-950/80 sm:px-6 lg:px-8">
+          <div className="mx-auto w-full max-w-[1600px] space-y-2">
+            <div className="hidden items-center justify-between gap-4 md:flex">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">ERP Workspace</p>
+                <p className="text-sm text-slate-700 dark:text-slate-200">Stock operations and approvals</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Search className="h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search Hub (CMD+K)"
+                  className="w-80 rounded-xl border-none bg-slate-100 px-4 py-2.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-[#E07A00]/20 dark:bg-slate-900 dark:text-slate-200"
+                  readOnly
+                />
+                <span className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500 dark:border-white/10 dark:bg-slate-900 dark:text-slate-400">CMD+K</span>
+              </div>
+            </div>
+
+            <div className="space-y-2 md:hidden">
+              <div className="flex items-center justify-between gap-3">
+                <Link href="/stock" className="inline-flex min-w-0 items-center gap-2" aria-label="Hanumant Marble stock dashboard">
+                  <div className="relative h-8 w-8 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 dark:border-white/10 dark:bg-slate-900">
+                    <Image src="/logo.png" alt="Hanumant Marble logo" fill sizes="32px" className="object-contain p-1" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-[10px] font-semibold tracking-[0.16em] text-slate-500 dark:text-slate-400">HANUMANT</p>
+                    <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-100">{t('brand')}</p>
+                  </div>
+                </Link>
+
+                <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={toggleLanguage}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition-all active:scale-95 hover:bg-[#E07A00]/10 hover:text-[#E07A00] focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                  aria-label={language === 'en' ? t('switchToHindi') : t('switchToEnglish')}
+                  title={language.toUpperCase()}
+                >
+                  <Languages className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNotificationOpen(true)}
+                  className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition-all active:scale-95 hover:bg-[#E07A00]/10 hover:text-[#E07A00] focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                  aria-label="Open notifications"
+                >
+                  <Bell className="h-4 w-4" />
+                  {unreadCount > 0 ? (
+                    <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  ) : null}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTheme(isDarkTheme ? 'light' : 'dark')}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition-all active:scale-95 hover:bg-[#E07A00]/10 hover:text-[#E07A00] focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                  aria-label={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
+                >
+                  {isDarkTheme ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStockLogout}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition-all active:scale-95 hover:bg-[#E07A00]/10 hover:text-[#E07A00] focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                  aria-label={t('logout')}
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+                </div>
+              </div>
+
+              <nav className="flex items-center gap-2" aria-label="Mobile stock navigation">
+                {navigationItems.map((item) => {
+                  const active = isActiveRoute(item.href);
+                  return (
+                    <Link
+                      key={`mobile-top-${item.href}`}
+                      href={item.href}
+                      aria-label={item.label}
+                      title={item.label}
+                      className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20 ${active ? 'border-[#E07A00]/30 bg-[#E07A00]/10 text-[#E07A00]' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'}`}
+                    >
+                      <item.icon className="h-4 w-4" />
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+          </div>
+        </header>
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          <div className="mx-auto w-full max-w-[1600px]">
+            {children}
+          </div>
         </main>
-        <footer className="border-t border-border bg-card px-4 py-4 text-center text-sm text-muted-foreground sm:px-6 lg:px-8">
+        <footer className="border-t border-white/10 bg-slate-900/60 px-4 py-4 text-center text-sm text-slate-400 sm:px-6 lg:px-8">
           <p>{t('footerTitle')} • {t('footerUpdated')}: {new Date().toLocaleString()}</p>
         </footer>
       </div>

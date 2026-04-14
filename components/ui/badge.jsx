@@ -5,6 +5,10 @@ const badgeVariants = {
   secondary: "border-transparent bg-secondary text-secondary-foreground",
   destructive: "border-transparent bg-destructive text-destructive-foreground",
   outline: "text-foreground",
+  approved: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
+  pending: "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-300",
+  rejected: "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-300",
+  neutral: "border-slate-500/20 bg-slate-500/10 text-slate-600 dark:text-slate-300",
 }
 
 export function Badge({ className, variant = "default", ...props }) {

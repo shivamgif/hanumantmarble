@@ -17,6 +17,13 @@ module.exports = {
     },
     extend: {
       colors: {
+        brand: {
+          primary: "#E07A00",
+          secondary: "#1A1A54",
+          accent: "#F59E0B",
+          slateSidebar: "#0f172a",
+          slateCanvas: "#f8fafc",
+        },
         border: "var(--border)",
         input: "var(--input)",
         ring: "var(--ring)",
