@@ -32,6 +32,7 @@ export default function StockLayout({ children }) {
   const [notificationLoading, setNotificationLoading] = useState(false);
   const [notificationError, setNotificationError] = useState(null);
   const [notificationUpdating, setNotificationUpdating] = useState(false);
+  const [showNotificationDebug, setShowNotificationDebug] = useState(false);
 
   const t = (key) => getTranslation(`stock.layout.${key}`, language);
   const isDarkTheme = resolvedTheme === 'dark';
@@ -411,15 +412,26 @@ export default function StockLayout({ children }) {
             <div className="text-xs text-muted-foreground">
               {unreadCount} unread
             </div>
-            <button
-              type="button"
-              onClick={markAllNotificationsRead}
-              disabled={notificationUpdating || unreadCount === 0}
-              className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <CheckCheck className="h-3.5 w-3.5" />
-              Mark all read
-            </button>
+            <div className="flex items-center gap-2">
+              {accessRole === 'admin' ? (
+                <button
+                  type="button"
+                  onClick={() => setShowNotificationDebug((current) => !current)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted"
+                >
+                  {showNotificationDebug ? 'Hide Debug' : 'Debug'}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={markAllNotificationsRead}
+                disabled={notificationUpdating || unreadCount === 0}
+                className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <CheckCheck className="h-3.5 w-3.5" />
+                Mark all read
+              </button>
+            </div>
           </div>
 
           {notificationError ? (
@@ -437,26 +449,70 @@ export default function StockLayout({ children }) {
           ) : (
             <div className="mt-4 space-y-2">
               {notifications.map((notification) => (
-                <Link
-                  key={notification.id}
-                  href={notification.actionHref || '/stock'}
-                  onClick={() => handleNotificationNavigate(notification)}
-                  className={`block w-full rounded-xl border px-3 py-2 text-left transition hover:border-primary/30 hover:bg-primary/5 ${
-                    notification.is_read ? 'border-border bg-card' : 'border-primary/25 bg-primary/5'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-sm font-semibold text-foreground">{notification.event_type.replace(/_/g, ' ')}</p>
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      {notification.channel}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm text-foreground/85">{notification.message_text}</p>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <p className="text-[11px] text-muted-foreground">{new Date(notification.created_at).toLocaleString()}</p>
-                    <span className="text-[11px] font-semibold text-primary">Open</span>
-                  </div>
-                </Link>
+                (() => {
+                  const recipients = Array.isArray(notification.recipients)
+                    ? notification.recipients
+                    : (() => {
+                        try {
+                          const parsed = JSON.parse(notification.recipients || '[]');
+                          return Array.isArray(parsed) ? parsed : [];
+                        } catch {
+                          return [];
+                        }
+                      })();
+
+                  const departments = [...new Set(
+                    recipients
+                      .map((recipient) => String(recipient?.department || '').trim())
+                      .filter(Boolean)
+                  )];
+
+                  const departmentLabel = departments.length === 0
+                    ? null
+                    : departments.length === 1
+                      ? departments[0]
+                      : `${departments.length} departments`;
+
+                  const firstWhatsappPayload = recipients.find((recipient) => recipient?.whatsappPayload)?.whatsappPayload || null;
+
+                  return (
+                    <Link
+                      key={notification.id}
+                      href={notification.actionHref || '/stock'}
+                      onClick={() => handleNotificationNavigate(notification)}
+                      className={`block w-full rounded-xl border px-3 py-2 text-left transition hover:border-primary/30 hover:bg-primary/5 ${
+                        notification.is_read ? 'border-border bg-card' : 'border-primary/25 bg-primary/5'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-sm font-semibold text-foreground">{notification.event_type.replace(/_/g, ' ')}</p>
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                          {notification.channel}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-foreground/85">{notification.message_text}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                        {departmentLabel ? (
+                          <span className="rounded-full border border-border bg-muted px-2 py-0.5 font-semibold">
+                            Target: {departmentLabel}
+                          </span>
+                        ) : null}
+                        {departments.length > 0 ? (
+                          <span>{recipients.length} recipients • {departments.length} dept</span>
+                        ) : null}
+                      </div>
+                      {showNotificationDebug && accessRole === 'admin' && firstWhatsappPayload ? (
+                        <pre className="mt-2 overflow-auto rounded-lg border border-border bg-muted/40 p-2 text-[10px] text-foreground/80">
+{JSON.stringify(firstWhatsappPayload, null, 2)}
+                        </pre>
+                      ) : null}
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <p className="text-[11px] text-muted-foreground">{new Date(notification.created_at).toLocaleString()}</p>
+                        <span className="text-[11px] font-semibold text-primary">Open</span>
+                      </div>
+                    </Link>
+                  );
+                })()
               ))}
             </div>
           )}

@@ -2,31 +2,45 @@ import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole, queueNotification, recordTimelineEvent } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 
-async function applyShipmentApproval(shipmentId, session, appUser) {
-  const shipmentRows = await sql(
-    `SELECT * FROM stock_inbound_shipments WHERE id = $1 LIMIT 1`,
-    [shipmentId]
-  );
-
-  const shipment = shipmentRows[0];
-  if (!shipment) {
-    throw new Error('Shipment not found');
-  }
-
-  if (shipment.approval_status === 'approved') {
-    return shipment;
-  }
-
+async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKey) {
   await sql('BEGIN', []);
 
   try {
-    const itemRows = await sql(
-      `SELECT isi.*, i.sku, i.current_whole_qty, i.current_broken_qty
-       FROM stock_inbound_shipment_items isi
-       JOIN stock_items i ON i.id = isi.item_id
-       WHERE isi.inbound_shipment_id = $1`,
+    // Serialize approval for the same shipment to avoid concurrent double increments.
+    await sql(
+      `SELECT pg_advisory_xact_lock(hashtext($1)::bigint)`,
+      [`stock_inbound_approval:${shipmentId}`]
+    );
+
+    const shipmentRows = await sql(
+      `SELECT *
+       FROM stock_inbound_shipments
+       WHERE id = $1
+       LIMIT 1
+       FOR UPDATE`,
       [shipmentId]
     );
+
+    const shipment = shipmentRows[0] || null;
+    if (!shipment) {
+      throw new Error('Shipment not found');
+    }
+
+    const itemRows = await sql(
+      `SELECT isi.*, i.sku, i.name AS item_name, b.name AS brand_name, i.current_whole_qty, i.current_broken_qty,
+              COALESCE(NULLIF(TRIM(i.department), ''), 'General') AS department
+       FROM stock_inbound_shipment_items isi
+       JOIN stock_items i ON i.id = isi.item_id
+       LEFT JOIN stock_brands b ON b.id = i.brand_id
+       WHERE isi.inbound_shipment_id = $1
+       FOR UPDATE OF i`,
+      [shipmentId]
+    );
+
+    if (shipment.approval_status === 'approved') {
+      await sql('COMMIT', []);
+      return { shipment, items: itemRows, idempotent: true, idempotencyKey };
+    }
 
     for (const item of itemRows) {
       if (item.received_whole_qty > 0) {
@@ -196,28 +210,34 @@ async function applyShipmentApproval(shipmentId, session, appUser) {
       [appUser?.id || null, session.user.email, shipmentId]
     );
 
+    const departments = [...new Set(
+      itemRows
+        .filter((item) => Number(item.received_whole_qty || 0) > 0 || Number(item.received_broken_qty || 0) > 0)
+        .map((item) => String(item.department || 'General').trim() || 'General')
+    )];
+
+    const salespersonRecipients = departments.length > 0
+      ? await sql(
+          `SELECT id, name, email, phone,
+                  COALESCE(NULLIF(TRIM(department), ''), 'General') AS department
+           FROM stock_app_users
+           WHERE status = 'active'
+             AND role = 'salesperson'
+             AND COALESCE(NULLIF(TRIM(department), ''), 'General') = ANY($1::text[])
+           ORDER BY id ASC`,
+          [departments]
+        )
+      : [];
+
     await sql('COMMIT', []);
-
-    await recordTimelineEvent({
-      eventType: 'inbound_approved',
-      entityType: 'inbound_shipment',
-      entityId: shipmentId,
-      summary: `Inbound shipment ${shipment.shipment_number} approved and added to inventory`,
-      details: { shipmentId },
-      userId: appUser?.id || null,
-    });
-
-    await queueNotification({
-      channel: 'whatsapp',
-      eventType: 'inbound_received',
-      messageText: `Stock arrival approved: ${shipment.shipment_number} is now in inventory.`,
-      recipients: [],
-      sourceTable: 'stock_inbound_shipments',
-      sourceId: shipmentId,
-      createdBy: session.user.email,
-    });
-
-    return updatedRows[0];
+    return {
+      shipment: updatedRows[0],
+      items: itemRows,
+      idempotent: false,
+      idempotencyKey,
+      departments,
+      salespersonRecipients,
+    };
   } catch (error) {
     await sql('ROLLBACK', []);
     throw error;
@@ -277,8 +297,89 @@ export async function PATCH(request, context) {
     const action = body.action || 'update';
 
     if (action === 'approve') {
-      const shipment = await applyShipmentApproval(id, session, appUser);
-      return NextResponse.json({ shipment });
+      const requestIdempotencyKey = String(
+        body?.idempotencyKey || request.headers.get('x-idempotency-key') || `inbound-shipment-${id}`
+      ).trim();
+
+      const result = await applyShipmentApproval(id, session, appUser, requestIdempotencyKey);
+      const warnings = [];
+
+      try {
+        await recordTimelineEvent({
+          eventType: 'inbound_approved',
+          entityType: 'inbound_shipment',
+          entityId: id,
+          summary: `Inbound shipment ${result.shipment.shipment_number} approved and added to inventory`,
+          details: { shipmentId: id },
+          userId: appUser?.id || null,
+        });
+      } catch (timelineError) {
+        console.error('Failed to record inbound approval timeline event:', timelineError);
+        warnings.push('Timeline entry could not be saved.');
+      }
+
+      try {
+        if (!result.idempotent) {
+          const recipientsByDepartment = Array.isArray(result.salespersonRecipients)
+            ? result.salespersonRecipients
+            : [];
+
+          const receivedItems = (Array.isArray(result.items) ? result.items : []).filter(
+            (item) => Number(item.received_whole_qty || 0) > 0 || Number(item.received_broken_qty || 0) > 0
+          );
+          const primaryItem = receivedItems[0] || null;
+          const totalReceived = receivedItems.reduce(
+            (sum, item) => sum + Number(item.received_whole_qty || 0) + Number(item.received_broken_qty || 0),
+            0
+          );
+
+          for (const recipient of recipientsByDepartment) {
+            const department = String(recipient.department || 'General').trim() || 'General';
+            const messageText = `Stock arrival approved: ${result.shipment.shipment_number}. New ${department} inventory is available.`;
+
+            await queueNotification({
+              channel: 'whatsapp',
+              eventType: 'inbound_received',
+              messageText,
+              recipients: [
+                {
+                  kind: 'salesperson',
+                  userId: recipient.id,
+                  name: recipient.name,
+                  email: recipient.email,
+                  phone: recipient.phone,
+                  department,
+                  whatsappPayload: {
+                    to: recipient.phone || recipient.email,
+                    template: 'stock_department_arrival',
+                    variables: {
+                      shipmentNumber: result.shipment.shipment_number,
+                      department,
+                      brandName: primaryItem?.brand_name || 'Generic',
+                      itemName: primaryItem?.item_name || 'Stock',
+                      totalQty: String(totalReceived),
+                    },
+                  },
+                },
+              ],
+              sourceTable: 'stock_inbound_shipments',
+              sourceId: id,
+              createdBy: session.user.email,
+            });
+          }
+        }
+      } catch (notificationError) {
+        console.error('Failed to queue inbound approval notification:', notificationError);
+        warnings.push('Notification could not be queued.');
+      }
+
+      return NextResponse.json({
+        shipment: result.shipment,
+        items: result.items,
+        warnings,
+        idempotent: Boolean(result.idempotent),
+        idempotencyKey: result.idempotencyKey,
+      });
     }
 
     if (action === 'reject') {

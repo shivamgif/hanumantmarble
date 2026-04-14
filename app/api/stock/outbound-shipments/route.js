@@ -5,6 +5,7 @@ import {
   generateReference,
   getStockContext,
   hasAnyStockRole,
+  normalizeStockRole,
   normalizeText,
   queueNotification,
   recordTimelineEvent,
@@ -192,7 +193,7 @@ export async function GET(request) {
     return NextResponse.json({ shipments: [], message: 'Database not configured yet.' }, { status: 503 });
   }
 
-  if (!hasAnyStockRole(appUser, ['admin', 'manager', 'stock_maintainer'])) {
+  if (!hasAnyStockRole(appUser, ['admin', 'manager', 'stock_maintainer', 'salesperson'])) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -225,7 +226,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Database not configured yet.' }, { status: 503 });
   }
 
-  if (!hasAnyStockRole(appUser, ['admin', 'manager', 'stock_maintainer'])) {
+  if (!hasAnyStockRole(appUser, ['admin', 'manager', 'stock_maintainer', 'salesperson'])) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -252,6 +253,7 @@ export async function POST(request) {
     const dispatchDate = body.dispatchDate || body.dispatchAt || null;
     const approvalStatus = 'pending';
     const status = 'submitted';
+    const submitterRole = normalizeStockRole(appUser?.role);
 
     if (!customerName) {
       return NextResponse.json({ error: 'customerName is required' }, { status: 400 });
@@ -403,6 +405,8 @@ export async function POST(request) {
         shipmentNumber: shipment.shipment_number,
         customerName,
         truckLicensePlate: truckLicensePlate || null,
+        submitterRole,
+        submitterType: submitterRole === 'salesperson' ? 'salesperson' : 'stock_manager',
       },
       userId: appUser?.id || null,
     });

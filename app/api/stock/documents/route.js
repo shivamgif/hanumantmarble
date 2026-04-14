@@ -7,6 +7,7 @@ import {
   insertStockDocument,
   linkDocumentToEntity,
   normalizeText,
+  normalizeStockRole,
   readUploadFile,
   recordTimelineEvent,
 } from '@/lib/stock-workflow';
@@ -48,7 +49,7 @@ export async function GET(request) {
     return NextResponse.json({ documents: [], message: 'Database not configured yet.' }, { status: 503 });
   }
 
-  if (!hasAnyStockRole(appUser, ['admin', 'manager', 'stock_maintainer'])) {
+  if (!hasAnyStockRole(appUser, ['admin', 'manager', 'stock_maintainer', 'salesperson'])) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -105,7 +106,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Database not configured yet.' }, { status: 503 });
   }
 
-  if (!hasAnyStockRole(appUser, ['admin', 'manager', 'stock_maintainer'])) {
+  if (!hasAnyStockRole(appUser, ['admin', 'manager', 'stock_maintainer', 'salesperson'])) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -117,6 +118,7 @@ export async function POST(request) {
     const entityId = formData.get('entityId');
     const documentNumber = normalizeText(formData.get('documentNumber')) || generateReference('DOC');
     const notes = normalizeText(formData.get('notes')) || null;
+    const normalizedRole = normalizeStockRole(appUser?.role);
 
     if (!uploadedFile || typeof uploadedFile === 'string') {
       return NextResponse.json({ error: 'A file is required' }, { status: 400 });
@@ -128,6 +130,10 @@ export async function POST(request) {
 
     if (!allowedEntityTypes.has(entityType)) {
       return NextResponse.json({ error: 'Invalid entity type' }, { status: 400 });
+    }
+
+    if (normalizedRole === 'salesperson' && entityType !== 'outbound_shipment') {
+      return NextResponse.json({ error: 'Salesperson can upload documents only for outbound shipments' }, { status: 403 });
     }
 
     const numericEntityId = entityId ? Number(entityId) : null;

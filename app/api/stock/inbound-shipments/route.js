@@ -73,6 +73,8 @@ async function upsertItemMaster(item) {
     },
   });
 
+  const department = normalizeText(item.department) || normalizeText(item.brandName) || 'General';
+
   const sku = normalizeText(item.sku) || generateSku({ brandName: brand.name, typeName: type.name, sizeLabel: size.label, itemName: item.itemName });
   const rows = await sql(
     `INSERT INTO stock_items (
@@ -80,6 +82,7 @@ async function upsertItemMaster(item) {
       brand_id,
       type_id,
       size_id,
+      department,
       name,
       unit_of_measure,
       tiles_per_box,
@@ -90,11 +93,12 @@ async function upsertItemMaster(item) {
       landed_cost,
       selling_price,
       description
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
     ON CONFLICT (sku) DO UPDATE SET
       brand_id = EXCLUDED.brand_id,
       type_id = EXCLUDED.type_id,
       size_id = EXCLUDED.size_id,
+      department = EXCLUDED.department,
       name = EXCLUDED.name,
       unit_of_measure = EXCLUDED.unit_of_measure,
       tiles_per_box = EXCLUDED.tiles_per_box,
@@ -112,6 +116,7 @@ async function upsertItemMaster(item) {
       brand.id,
       type.id,
       size.id,
+      department,
       normalizeText(item.itemName),
       item.unitOfMeasure || 'box',
       item.tilesPerBox || null,

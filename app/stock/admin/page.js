@@ -64,6 +64,7 @@ export default function AdminDashboard() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [userFormNotice, setUserFormNotice] = useState(null);
+  const [actionNotice, setActionNotice] = useState(null);
   const [arrivalPage, setArrivalPage] = useState(1);
   const [dispatchPage, setDispatchPage] = useState(1);
   const [changeRequestPage, setChangeRequestPage] = useState(1);
@@ -89,6 +90,7 @@ export default function AdminDashboard() {
     email: '',
     password: '',
     role: 'stock_maintainer',
+    department: '',
     status: 'active',
   });
 
@@ -143,6 +145,7 @@ export default function AdminDashboard() {
     }
 
     setActionLoading(`${type}-${id}-${action}`);
+    setActionNotice(null);
     try {
       const response = await fetch(`/api/stock/${type}/${id}`, {
         method: 'PATCH',
@@ -157,6 +160,14 @@ export default function AdminDashboard() {
       const json = await response.json();
       if (!response.ok) {
         throw new Error(json.error || 'Failed to update shipment');
+      }
+
+      if (action === 'approve') {
+        if (json?.idempotent) {
+          setActionNotice({ type: 'success', message: 'Already approved; no duplicate stock movement applied' });
+        } else {
+          setActionNotice({ type: 'success', message: 'Shipment approved successfully.' });
+        }
       }
 
       await refreshDashboard();
@@ -324,7 +335,7 @@ export default function AdminDashboard() {
         throw new Error(json.error || 'Failed to save user');
       }
 
-      setUserDraft({ name: '', phone: '', email: '', password: '', role: 'stock_maintainer', status: 'active' });
+      setUserDraft({ name: '', phone: '', email: '', password: '', role: 'stock_maintainer', department: '', status: 'active' });
       setConfirmPassword('');
       setShowPrimaryPassword(false);
       setShowConfirmPassword(false);
@@ -608,6 +619,18 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-4 lg:space-y-6">
       <h1 className="text-xl font-bold text-foreground lg:text-2xl">{t('adminTitle')}</h1>
+
+      {actionNotice ? (
+        <div
+          className={`rounded-xl border px-3 py-2 text-sm ${
+            actionNotice.type === 'success'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+              : 'border-red-200 bg-red-50 text-red-700'
+          }`}
+        >
+          {actionNotice.message}
+        </div>
+      ) : null}
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
@@ -778,8 +801,26 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 2xl:grid-cols-2">
-        <div id="approval-queue" className={`space-y-4 ${mobileSection === 'approvals' ? '' : 'hidden lg:block'}`}>
+      <div className="hidden rounded-xl border border-border bg-card/80 p-1 shadow-sm lg:block">
+        <div className="grid grid-cols-3 gap-1">
+          {[{ id: 'approvals', label: 'Approvals' }, { id: 'changes', label: 'Changes' }, { id: 'users', label: 'Users' }].map((tab) => {
+            const isActive = mobileSection === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setMobileSection(tab.id)}
+                className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        <div id="approval-queue" className={`space-y-4 ${mobileSection === 'approvals' ? '' : 'hidden'}`}>
           <div className="flex h-[460px] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
             <div className="border-b border-border p-4">
               <h2 className="text-base font-semibold text-foreground">{t('pendingArrivals')}</h2>
@@ -943,7 +984,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className={`space-y-4 ${mobileSection === 'changes' ? '' : 'hidden lg:block'}`}>
+        <div className={`space-y-4 ${mobileSection === 'changes' ? '' : 'hidden'}`}>
           <div id="change-requests-panel" className="flex h-[460px] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
             <div className="border-b border-border p-4">
               <h2 className="text-base font-semibold text-foreground">Change Requests</h2>
@@ -1003,7 +1044,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div id="users-contacts" className={`overflow-hidden rounded-xl border border-border bg-card shadow-sm ${mobileSection === 'users' ? '' : 'hidden lg:block'}`}>
+      <div id="users-contacts" className={`overflow-hidden rounded-xl border border-border bg-card shadow-sm ${mobileSection === 'users' ? '' : 'hidden'}`}>
         <div className="flex items-center justify-between border-b border-border p-4">
           <h2 className="text-lg font-semibold text-foreground">{t('usersSalespersons')}</h2>
           <button
@@ -1068,11 +1109,23 @@ export default function AdminDashboard() {
                     className={FORM_SELECT_CLASS}
                   >
                     <option value="stock_maintainer">stock_maintainer</option>
+                    <option value="salesperson">salesperson</option>
                     <option value="manager">manager</option>
                     <option value="admin">admin</option>
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 </div>
+              </label>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label>
+                <span className={FORM_LABEL_CLASS}>Department</span>
+                <input
+                  value={userDraft.department}
+                  onChange={(event) => setUserDraft((current) => ({ ...current, department: event.target.value }))}
+                  className={FORM_INPUT_CLASS}
+                  placeholder="General"
+                />
               </label>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
@@ -1155,6 +1208,7 @@ export default function AdminDashboard() {
                 <th className="px-3 py-2">{t('email')}</th>
                 <th className="px-3 py-2">{t('phone')}</th>
                 <th className="px-3 py-2">{t('role')}</th>
+                <th className="px-3 py-2">Department</th>
                 <th className="px-3 py-2">{t('status')}</th>
               </tr>
             </thead>
@@ -1178,6 +1232,7 @@ export default function AdminDashboard() {
                   <td className="px-3 py-2 text-muted-foreground">{u.email}</td>
                   <td className="px-3 py-2">{u.phone_number || 'N/A'}</td>
                   <td className="px-3 py-2"><span className="rounded bg-muted px-2 py-0.5 text-xs text-foreground/80">{u.role}</span></td>
+                  <td className="px-3 py-2 text-muted-foreground">{u.department || 'General'}</td>
                   <td className="px-3 py-2">
                     <div className="flex items-center justify-end gap-2">
                       {u.is_active ? <span className="text-green-600 text-xs font-semibold">{t('active')}</span> : <span className="text-red-600 text-xs font-semibold">{t('inactive')}</span>}
@@ -1261,6 +1316,7 @@ export default function AdminDashboard() {
                         { label: 'Email', value: previewState.record?.email },
                         { label: 'Phone', value: previewState.record?.phone_number },
                         { label: 'Role', value: previewState.record?.role },
+                        { label: 'Department', value: previewState.record?.department || 'General' },
                         { label: 'Active', value: previewState.record?.is_active ? 'Yes' : 'No' },
                         { label: 'Auth0 Sub', value: previewState.record?.auth0_sub },
                         { label: 'Last Login', value: previewState.record?.last_login_at },

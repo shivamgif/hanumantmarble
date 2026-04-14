@@ -56,6 +56,7 @@ export async function GET(request) {
            s.total_whole_qty,
            s.total_broken_qty,
            COALESCE(submitter.name, submitter.email, s.created_by, '—') AS generated_by,
+           COALESCE(submitter.role, 'stock_maintainer') AS generated_by_role,
            CASE
              WHEN s.approval_status = 'approved' THEN COALESCE(approver.name, approver.email, '—')
              ELSE '—'
@@ -101,6 +102,7 @@ export async function GET(request) {
             COALESCE(SUM(soi.loaded_whole_qty), 0) as total_whole_qty,
             COALESCE(SUM(soi.loaded_broken_qty), 0) as total_broken_qty,
             COALESCE(MAX(submitter.name), MAX(submitter.email), MAX(sos.created_by), '—') AS generated_by,
+            COALESCE(MAX(submitter.role), 'stock_maintainer') AS generated_by_role,
             CASE
               WHEN sos.approval_status = 'approved' THEN COALESCE(MAX(approver.name), MAX(approver.email), '—')
               ELSE '—'

@@ -52,6 +52,7 @@ export async function GET(request) {
            name AS full_name,
            phone AS phone_number,
            role,
+           department,
            (status = 'active') AS is_active,
            last_login_at
          FROM stock_app_users

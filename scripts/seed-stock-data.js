@@ -5,7 +5,7 @@
  * 
  * This script seeds the stock database with comprehensive test data including:
  * - Master data (brands, types, sizes, locations, suppliers, customers, transporters)
- * - Users with different roles (admin, manager, stock_maintainer)
+ * - Users with different roles (admin, manager, stock_maintainer, salesperson)
  * - Stock items (marble/tile products)
  * - Purchase orders and inbound shipments with various statuses
  * - Sales orders and outbound shipments
@@ -49,7 +49,7 @@ async function seedStockDatabase() {
 
   try {
     // ===== FIX ROLE CONSTRAINT FIRST =====
-    console.log('🔧 Fixing role constraint to allow new 3-role model...');
+    console.log('🔧 Fixing role constraint to allow current 4-role model...');
     try {
       await sql`
         DO $$
@@ -73,6 +73,7 @@ async function seedStockDatabase() {
           SET role = CASE
             WHEN role = 'admin' THEN 'admin'
             WHEN role IN ('manager', 'stock_approver') THEN 'manager'
+            WHEN role IN ('salesperson', 'sales_person', 'sales') THEN 'salesperson'
             ELSE 'stock_maintainer'
           END;
 
@@ -83,7 +84,7 @@ async function seedStockDatabase() {
 
           ALTER TABLE stock_app_users
           ADD CONSTRAINT stock_app_users_role_check
-          CHECK (role IN ('admin', 'manager', 'stock_maintainer'));
+          CHECK (role IN ('admin', 'manager', 'stock_maintainer', 'salesperson'));
         END $$;
       `;
       console.log('✅ Role constraint fixed\n');
@@ -290,6 +291,9 @@ async function seedStockDatabase() {
       { name: 'Stock Maintainer A', phone: '9333333331', email: 'maintainer1@stock.com', role: 'stock_maintainer', status: 'active' },
       { name: 'Stock Maintainer B', phone: '9333333332', email: 'maintainer2@stock.com', role: 'stock_maintainer', status: 'active' },
       { name: 'Stock Maintainer C', phone: '9333333333', email: 'maintainer3@stock.com', role: 'stock_maintainer', status: 'active' },
+      // Salesperson users
+      { name: 'Salesperson One', phone: '9444444441', email: 'salesperson1@stock.com', role: 'salesperson', status: 'active' },
+      { name: 'Salesperson Two', phone: '9444444442', email: 'salesperson2@stock.com', role: 'salesperson', status: 'active' },
     ];
 
     const userIds = [];
@@ -307,7 +311,7 @@ async function seedStockDatabase() {
         console.log(`⏭️  Skipping user ${user.email} (may already exist)`);
       }
     }
-    console.log(`✅ Created/found ${userIds.length} users (2 admins, 2 managers, 3 maintainers)`);
+    console.log(`✅ Created/found ${userIds.length} users (2 admins, 2 managers, 3 maintainers, 2 salespeople)`);
 
     // ===== SEED STOCK ITEMS =====
     console.log('\n📦 Seeding stock items...');
@@ -564,71 +568,11 @@ async function seedStockDatabase() {
     // ===== SEED SALES ORDERS & OUTBOUND SHIPMENTS =====
     console.log('\n📤 Seeding sales orders and outbound shipments...');
 
-    let soCount = 0, outboundCount = 0;
-
-    for (const scenario of salesScenarios) {
-      try {
-        const soResult = await sql`
-          INSERT INTO stock_sales_orders (
-            order_number, customer_id, order_date, status, total_amount, created_by
-          ) VALUES (
-            ${scenario.order_number}, ${scenario.customer_id}, ${scenario.order_date},
-            ${scenario.status}, ${scenario.total_amount}, 'seed-script'
-          )
-          RETURNING id
-        `;
-        soCount++;
-
-        const soId = soResult[0].id;
-        const truckPlate = 'TRK-' + scenario.shipment_number.slice(-3);
-
-        const outboundResult = await sql`
-          INSERT INTO stock_outbound_shipments (
-            shipment_number, sales_order_id, vehicle_id, customer_name, customer_phone,
-            truck_license_plate, driver_name, driver_phone,
-            submitted_at, submitted_by_user_id, reviewed_at, reviewed_by_user_id,
-            approval_status, approval_notes, approved_at, approved_by_user_id,
-            dispatch_date, status, created_by
-          ) VALUES (
-            ${scenario.shipment_number}, ${soId}, ${vehicleIds[0]},
-            'Customer Name', '9876543360', ${truckPlate},
-            'Driver', '9876543361',
-            ${scenario.submitted_date}, ${scenario.submitted_by},
-            ${scenario.reviewed_date || null}, ${scenario.reviewed_by || null},
-            ${scenario.approval_status}, ${scenario.approval_notes || null},
-            ${scenario.approved_date || null}, ${scenario.approved_by || null},
-            ${scenario.dispatch_date}, ${scenario.dispatch_status}, 'seed-script'
-          )
-          RETURNING id
-        `;
-        outboundCount++;
-
-        const outboundId = outboundResult[0].id;
-
-        for (const item of scenario.items) {
-          await sql`
-            INSERT INTO stock_outbound_shipment_items (
-              outbound_shipment_id, item_id, loaded_whole_qty, loaded_broken_qty
-            ) VALUES (
-              ${outboundId}, ${item.item_id}, ${item.loaded_whole}, ${item.loaded_broken}
-            )
-          `;
-        }
-      } catch (err) {
-        if (err.code === '23505') {
-          soCount = -1;
-          break;
-        } else {
-          throw err;
-        }
-      }
-    }
-
-    if (soCount === -1) {
-      console.log(`⏭️  Skipping outbound shipment seeding (data already exists)`);
-      soCount = 0;
-      outboundCount = 0;
-    }
+    const existingOutboundShipments = await sql`SELECT COUNT(*) as count FROM stock_outbound_shipments`;
+    if (existingOutboundShipments[0].count > 0) {
+      console.log(`⏭️  Skipping outbound shipment seeding (${existingOutboundShipments[0].count} shipments already exist)`);
+    } else {
+    const salesScenarios = [
       // Delivered (3 days ago)
       {
         order_number: 'SO-2026-001',

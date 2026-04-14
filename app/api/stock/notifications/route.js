@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 
-const STOCK_NOTIFICATION_ROLES = ['admin', 'manager', 'stock_maintainer'];
+const STOCK_NOTIFICATION_ROLES = ['admin', 'manager', 'stock_maintainer', 'salesperson'];
 
 function buildNotificationActionHref(notification) {
   const sourceTable = String(notification.source_table || '');
@@ -32,19 +32,6 @@ function buildNotificationActionHref(notification) {
   return '/stock';
 }
 
-async function ensureNotificationReadColumns() {
-  await sql(
-    `ALTER TABLE stock_notifications
-     ADD COLUMN IF NOT EXISTS is_read BOOLEAN NOT NULL DEFAULT FALSE`,
-    []
-  );
-
-  await sql(
-    `ALTER TABLE stock_notifications
-     ADD COLUMN IF NOT EXISTS read_at TIMESTAMP`,
-    []
-  );
-}
 
 export async function GET(request) {
   const { session, appUser } = await getStockContext(request);
@@ -62,7 +49,7 @@ export async function GET(request) {
   }
 
   try {
-    await ensureNotificationReadColumns();
+    // Removed per-request schema alteration
 
     const { searchParams } = new URL(request.url);
     const limit = Math.min(Number(searchParams.get('limit') || 25), 100);
@@ -127,7 +114,7 @@ export async function PATCH(request) {
   }
 
   try {
-    await ensureNotificationReadColumns();
+    // Removed per-request schema alteration
 
     const body = await request.json();
     const action = body?.action;

@@ -27,83 +27,143 @@ function toPositiveInteger(value) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
-async function applyShipmentApproval(shipmentId, session, appUser) {
-  const { shipment, items } = await loadShipmentWithItems(shipmentId);
+async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKey) {
+  await sql('BEGIN', []);
 
-  if (!shipment) {
-    throw new Error('Shipment not found');
-  }
+  try {
+    // Serialize approval for the same shipment to prevent concurrent decrements.
+    await sql(
+      `SELECT pg_advisory_xact_lock(hashtext($1)::bigint)`,
+      [`stock_outbound_approval:${shipmentId}`]
+    );
 
-  if (shipment.approval_status === 'approved') {
-    return { shipment, items };
-  }
+    const shipmentRows = await sql(
+      `SELECT *
+       FROM stock_outbound_shipments
+       WHERE id = $1
+       LIMIT 1
+       FOR UPDATE`,
+      [shipmentId]
+    );
 
-  for (const item of items) {
-    const wholeToIssue = toPositiveInteger(item.loaded_whole_qty);
-    const brokenToIssue = toPositiveInteger(item.loaded_broken_qty);
+    const shipment = shipmentRows[0] || null;
 
-    if (wholeToIssue > 0) {
-      if (Number(item.current_whole_qty || 0) < wholeToIssue) {
-        throw new Error(`Insufficient whole stock for ${item.sku}`);
-      }
-
-      await sql('UPDATE stock_items SET current_whole_qty = current_whole_qty - $1, updated_at = NOW() WHERE id = $2', [wholeToIssue, item.item_id]);
-      await sql(
-        `INSERT INTO stock_movements (
-          movement_number, movement_type, direction, item_id, quantity, tile_condition,
-          source_type, source_id, reference_number, notes, created_by
-        ) VALUES ($1, 'sale_issue', 'out', $2, $3, 'whole', 'outbound_shipment', $4, $5, $6, $7)`,
-        [
-          `MOV-${shipment.shipment_number}-${item.item_id}-W`,
-          item.item_id,
-          wholeToIssue,
-          shipment.id,
-          shipment.invoice_number || shipment.gatepass_number || shipment.shipment_number,
-          `Dispatch approved for ${shipment.shipment_number}`,
-          session.user.email,
-        ]
-      );
+    if (!shipment) {
+      throw new Error('Shipment not found');
     }
 
-    if (brokenToIssue > 0) {
-      if (Number(item.current_broken_qty || 0) < brokenToIssue) {
-        throw new Error(`Insufficient broken stock for ${item.sku}`);
+    const items = await sql(
+      `SELECT soi.*, i.sku, i.name AS item_name, i.current_whole_qty, i.current_broken_qty
+       FROM stock_outbound_shipment_items soi
+       JOIN stock_items i ON i.id = soi.item_id
+       WHERE soi.outbound_shipment_id = $1
+       ORDER BY soi.created_at ASC
+       FOR UPDATE OF i`,
+      [shipmentId]
+    );
+
+    if (shipment.approval_status === 'approved') {
+      await sql('COMMIT', []);
+      return { shipment, items, idempotent: true, idempotencyKey };
+    }
+
+    for (const item of items) {
+      const wholeToIssue = toPositiveInteger(item.loaded_whole_qty);
+      const brokenToIssue = toPositiveInteger(item.loaded_broken_qty);
+
+      if (wholeToIssue > 0) {
+        if (Number(item.current_whole_qty || 0) < wholeToIssue) {
+          throw new Error(`Insufficient whole stock for ${item.sku}`);
+        }
+
+        const wholeUpdateRows = await sql(
+          `UPDATE stock_items
+           SET current_whole_qty = current_whole_qty - $1,
+               updated_at = NOW()
+           WHERE id = $2
+             AND current_whole_qty >= $1
+           RETURNING id`,
+          [wholeToIssue, item.item_id]
+        );
+
+        if (!wholeUpdateRows[0]) {
+          throw new Error(`Insufficient whole stock for ${item.sku}`);
+        }
+
+        await sql(
+          `INSERT INTO stock_movements (
+            movement_number, movement_type, direction, item_id, quantity, tile_condition,
+            source_type, source_id, reference_number, notes, created_by
+          ) VALUES ($1, 'sale_issue', 'out', $2, $3, 'whole', 'outbound_shipment', $4, $5, $6, $7)`,
+          [
+            `MOV-${shipment.shipment_number}-${item.item_id}-W`,
+            item.item_id,
+            wholeToIssue,
+            shipment.id,
+            shipment.invoice_number || shipment.gatepass_number || shipment.shipment_number,
+            `Dispatch approved for ${shipment.shipment_number}`,
+            session.user.email,
+          ]
+        );
       }
 
-      await sql('UPDATE stock_items SET current_broken_qty = current_broken_qty - $1, updated_at = NOW() WHERE id = $2', [brokenToIssue, item.item_id]);
-      await sql(
-        `INSERT INTO stock_movements (
-          movement_number, movement_type, direction, item_id, quantity, tile_condition,
-          source_type, source_id, reference_number, notes, created_by
-        ) VALUES ($1, 'sale_issue', 'out', $2, $3, 'broken', 'outbound_shipment', $4, $5, $6, $7)`,
-        [
-          `MOV-${shipment.shipment_number}-${item.item_id}-B`,
-          item.item_id,
-          brokenToIssue,
-          shipment.id,
-          shipment.invoice_number || shipment.gatepass_number || shipment.shipment_number,
-          `Dispatch approved for ${shipment.shipment_number}`,
-          session.user.email,
-        ]
-      );
+      if (brokenToIssue > 0) {
+        if (Number(item.current_broken_qty || 0) < brokenToIssue) {
+          throw new Error(`Insufficient broken stock for ${item.sku}`);
+        }
+
+        const brokenUpdateRows = await sql(
+          `UPDATE stock_items
+           SET current_broken_qty = current_broken_qty - $1,
+               updated_at = NOW()
+           WHERE id = $2
+             AND current_broken_qty >= $1
+           RETURNING id`,
+          [brokenToIssue, item.item_id]
+        );
+
+        if (!brokenUpdateRows[0]) {
+          throw new Error(`Insufficient broken stock for ${item.sku}`);
+        }
+
+        await sql(
+          `INSERT INTO stock_movements (
+            movement_number, movement_type, direction, item_id, quantity, tile_condition,
+            source_type, source_id, reference_number, notes, created_by
+          ) VALUES ($1, 'sale_issue', 'out', $2, $3, 'broken', 'outbound_shipment', $4, $5, $6, $7)`,
+          [
+            `MOV-${shipment.shipment_number}-${item.item_id}-B`,
+            item.item_id,
+            brokenToIssue,
+            shipment.id,
+            shipment.invoice_number || shipment.gatepass_number || shipment.shipment_number,
+            `Dispatch approved for ${shipment.shipment_number}`,
+            session.user.email,
+          ]
+        );
+      }
     }
+
+    const updatedRows = await sql(
+      `UPDATE stock_outbound_shipments
+       SET approval_status = 'approved',
+           status = 'dispatched',
+           approved_at = NOW(),
+           approved_by_user_id = $1,
+           reviewed_at = COALESCE(reviewed_at, NOW()),
+           reviewed_by_user_id = COALESCE(reviewed_by_user_id, $1),
+           updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [appUser?.id || null, shipmentId]
+    );
+
+    await sql('COMMIT', []);
+    return { shipment: updatedRows[0], items, idempotent: false, idempotencyKey };
+  } catch (error) {
+    await sql('ROLLBACK', []);
+    throw error;
   }
-
-  const updatedRows = await sql(
-    `UPDATE stock_outbound_shipments
-     SET approval_status = 'approved',
-         status = 'dispatched',
-         approved_at = NOW(),
-         approved_by_user_id = $1,
-         reviewed_at = COALESCE(reviewed_at, NOW()),
-         reviewed_by_user_id = COALESCE(reviewed_by_user_id, $1),
-         updated_at = NOW()
-     WHERE id = $2
-     RETURNING *`,
-    [appUser?.id || null, shipmentId]
-  );
-
-  return { shipment: updatedRows[0], items };
 }
 
 export async function GET(request, context) {
@@ -111,7 +171,7 @@ export async function GET(request, context) {
 
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!(await ensureDatabaseAvailable())) return NextResponse.json({ error: 'Database not configured yet.' }, { status: 503 });
-  if (!hasAnyStockRole(appUser, ['admin', 'manager', 'stock_maintainer'])) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!hasAnyStockRole(appUser, ['admin', 'manager', 'stock_maintainer', 'salesperson'])) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   try {
     const { id } = await context.params;
@@ -135,7 +195,11 @@ export async function PATCH(request, context) {
     const action = body.action || 'update';
 
     if (action === 'approve') {
-      const result = await applyShipmentApproval(id, session, appUser);
+      const requestIdempotencyKey = String(
+        body?.idempotencyKey || request.headers.get('x-idempotency-key') || `outbound-shipment-${id}`
+      ).trim();
+
+      const result = await applyShipmentApproval(id, session, appUser, requestIdempotencyKey);
       const warnings = [];
 
       try {
@@ -167,7 +231,13 @@ export async function PATCH(request, context) {
         warnings.push('Notification could not be queued.');
       }
 
-      return NextResponse.json({ shipment: result.shipment, items: result.items, warnings });
+      return NextResponse.json({
+        shipment: result.shipment,
+        items: result.items,
+        warnings,
+        idempotent: Boolean(result.idempotent),
+        idempotencyKey: result.idempotencyKey,
+      });
     }
 
     if (action === 'reject') {

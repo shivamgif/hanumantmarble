@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getRoleFlags, getStockContext, hasAnyStockRole, normalizeStockRole, recordTimelineEvent } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getRoleFlags, getStockContext, hasAnyStockRole, normalizeStockRole, recordTimelineEvent, STOCK_ROLES } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { upsertAuth0DatabaseUser, validateStockPassword } from '@/lib/auth0-management';
+
+function normalizeDepartment(value, fallback = null) {
+  const normalized = String(value || '').trim();
+  return normalized || fallback;
+}
 
 export async function GET(request) {
   const { session, appUser } = await getStockContext(request);
@@ -48,7 +53,14 @@ export async function POST(request) {
   }
 
   const body = await request.json();
-  const roleFlags = getRoleFlags(body.role || 'stock_maintainer');
+  const normalizedRole = normalizeStockRole(body.role || 'stock_maintainer');
+  const department = normalizeDepartment(body.department, normalizedRole === 'salesperson' ? 'General' : null);
+
+  if (!STOCK_ROLES.includes(normalizedRole)) {
+    return NextResponse.json({ error: 'Invalid role supplied' }, { status: 400 });
+  }
+
+  const roleFlags = getRoleFlags(normalizedRole);
 
   const passwordError = validateStockPassword(body.password);
   if (passwordError) {
@@ -70,17 +82,19 @@ export async function POST(request) {
         phone,
         email,
         role,
+        department,
         status,
         can_manage_users,
         can_approve_changes,
         can_view_dashboard,
         created_by
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
       ON CONFLICT (email) DO UPDATE SET
         auth0_sub = EXCLUDED.auth0_sub,
         name = EXCLUDED.name,
         phone = EXCLUDED.phone,
         role = EXCLUDED.role,
+        department = COALESCE(EXCLUDED.department, stock_app_users.department),
         status = EXCLUDED.status,
         can_manage_users = EXCLUDED.can_manage_users,
         can_approve_changes = EXCLUDED.can_approve_changes,
@@ -93,6 +107,7 @@ export async function POST(request) {
         body.phone,
         body.email || null,
         roleFlags.role,
+        department,
         body.status || 'active',
         roleFlags.canManageUsers,
         roleFlags.canApproveChanges,
@@ -113,6 +128,17 @@ export async function POST(request) {
     return NextResponse.json({ user: rows[0] }, { status: 201 });
   } catch (error) {
     console.error('Failed to save user:', error);
+
+    if (String(error.message || '').includes('stock_app_users_role_check')) {
+      return NextResponse.json(
+        {
+          error: 'Role constraint is not updated for salesperson yet. Run: npm run db:migrate-salesperson-role',
+          detail: error.message,
+        },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({ error: 'Failed to save user', detail: error.message }, { status: 500 });
   }
 }
@@ -136,6 +162,10 @@ export async function PATCH(request) {
   const hasRoleInPayload = Object.prototype.hasOwnProperty.call(body, 'role');
   const normalizedRole = hasRoleInPayload ? normalizeStockRole(body.role) : null;
   const roleFlags = hasRoleInPayload ? getRoleFlags(body.role) : null;
+  const hasDepartmentInPayload = Object.prototype.hasOwnProperty.call(body, 'department');
+  const department = hasDepartmentInPayload
+    ? normalizeDepartment(body.department, normalizedRole === 'salesperson' ? 'General' : null)
+    : null;
 
   try {
     const rows = await sql(
@@ -148,8 +178,9 @@ export async function PATCH(request) {
            can_manage_users = COALESCE($6, can_manage_users),
            can_approve_changes = COALESCE($7, can_approve_changes),
            can_view_dashboard = COALESCE($8, can_view_dashboard),
+           department = COALESCE($9, department),
            updated_at = NOW()
-       WHERE id = $9
+       WHERE id = $10
        RETURNING *`,
       [
         body.name || null,
@@ -160,6 +191,7 @@ export async function PATCH(request) {
         hasRoleInPayload ? roleFlags.canManageUsers : body.canManageUsers,
         hasRoleInPayload ? roleFlags.canApproveChanges : body.canApproveChanges,
         body.canViewDashboard,
+        department,
         body.id,
       ]
     );

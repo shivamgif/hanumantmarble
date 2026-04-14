@@ -104,6 +104,41 @@ function formatDateTime(value) {
   }).format(date);
 }
 
+function normalizeGeneratedByRole(role) {
+  const normalized = String(role || '').trim().toLowerCase();
+
+  if (normalized === 'admin') return 'admin';
+  if (normalized === 'manager') return 'manager';
+  if (normalized === 'salesperson' || normalized === 'sales_person' || normalized === 'sales') return 'salesperson';
+  if (normalized === 'stock_maintainer') return 'stock_maintainer';
+  return 'unknown';
+}
+
+function getGeneratedByRoleBadgeClass(role) {
+  switch (normalizeGeneratedByRole(role)) {
+    case 'admin':
+      return 'border-rose-200 bg-rose-50 text-rose-700';
+    case 'manager':
+      return 'border-blue-200 bg-blue-50 text-blue-700';
+    case 'salesperson':
+      return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+    case 'stock_maintainer':
+      return 'border-slate-200 bg-slate-50 text-slate-700';
+    default:
+      return 'border-border bg-muted text-muted-foreground';
+  }
+}
+
+function getGeneratedByRoleLabel(role) {
+  const normalized = normalizeGeneratedByRole(role);
+
+  if (normalized === 'admin') return 'Admin';
+  if (normalized === 'manager') return 'Manager';
+  if (normalized === 'salesperson') return 'Salesperson';
+  if (normalized === 'stock_maintainer') return 'Maintainer';
+  return 'Legacy';
+}
+
 const FORM_LABEL_CLASS = 'block text-[11px] font-semibold uppercase tracking-[0.08em] text-foreground/75';
 const FORM_INPUT_CLASS = 'mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground shadow-sm outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20';
 const FORM_CARD_CLASS = 'rounded-2xl border border-border/80 bg-muted/20 p-4';
@@ -215,6 +250,7 @@ export default function StockDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [accessRole, setAccessRole] = useState('stock_maintainer');
   const [arrivalSubmitting, setArrivalSubmitting] = useState(false);
   const [dispatchSubmitting, setDispatchSubmitting] = useState(false);
   const [arrivalNotice, setArrivalNotice] = useState(null);
@@ -254,6 +290,8 @@ export default function StockDashboard() {
     return json;
   }
 
+  const canCreateArrival = accessRole !== 'salesperson';
+
   useEffect(() => {
     let mounted = true;
 
@@ -287,6 +325,37 @@ export default function StockDashboard() {
 
     return () => { mounted = false; };
   }, [user, userLoading]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadAccessRole() {
+      if (!user) {
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/stock/access', { cache: 'no-store' });
+        const json = await response.json();
+
+        if (!mounted) {
+          return;
+        }
+
+        if (response.ok) {
+          setAccessRole(String(json.role || 'stock_maintainer'));
+        }
+      } catch {
+        // Keep fallback role for UI-only gating if access lookup fails.
+      }
+    }
+
+    loadAccessRole();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
 
   function updateArrivalDraft(field, value) {
     setArrivalDraft((current) => ({
@@ -540,6 +609,15 @@ export default function StockDashboard() {
     event.preventDefault();
     setArrivalNotice(null);
     setArrivalSubmitting(true);
+
+    if (!canCreateArrival) {
+      setArrivalNotice({
+        type: 'warning',
+        message: 'Insufficient permission: salespeople can review stock and create dispatches, but cannot log new arrivals.',
+      });
+      setArrivalSubmitting(false);
+      return;
+    }
 
     try {
       const items = arrivalDraft.items
@@ -1073,7 +1151,9 @@ export default function StockDashboard() {
                 <button
                   type="button"
                   onClick={() => setArrivalNotice(null)}
-                  className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+                  className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-55"
+                  disabled={!canCreateArrival}
+                  title={!canCreateArrival ? 'Insufficient permission for New Arrival' : undefined}
                 >
                   + {t('newArrival')}
                 </button>
@@ -1351,6 +1431,11 @@ export default function StockDashboard() {
               </SheetContent>
             </Sheet>
           </div>
+          {!canCreateArrival ? (
+            <div className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Insufficient permission: salespeople can create dispatches but cannot create arrivals.
+            </div>
+          ) : null}
           <div className="border-b border-border bg-card px-3 py-2">
             <input
               type="search"
@@ -1422,7 +1507,14 @@ export default function StockDashboard() {
                       {Number(a.total_whole_qty || 0)} whole / {Number(a.total_broken_qty || 0)} broken
                     </td>
                     <td className="px-3 py-2"><span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">{a.status}</span></td>
-                    <td className="px-3 py-2 text-muted-foreground">{a.generated_by || '—'}</td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <span>{a.generated_by || '—'}</span>
+                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getGeneratedByRoleBadgeClass(a.generated_by_role)}`}>
+                          {getGeneratedByRoleLabel(a.generated_by_role)}
+                        </span>
+                      </div>
+                    </td>
                     <td className="px-3 py-2 text-muted-foreground">{a.approved_by || '—'}</td>
                   </tr>
                 ))}
@@ -1729,7 +1821,14 @@ export default function StockDashboard() {
                       {Number(d.total_whole_qty || 0)} whole / {Number(d.total_broken_qty || 0)} broken
                     </td>
                     <td className="px-3 py-2"><span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">{d.status}</span></td>
-                    <td className="px-3 py-2 text-muted-foreground">{d.generated_by || '—'}</td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <span>{d.generated_by || '—'}</span>
+                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getGeneratedByRoleBadgeClass(d.generated_by_role)}`}>
+                          {getGeneratedByRoleLabel(d.generated_by_role)}
+                        </span>
+                      </div>
+                    </td>
                     <td className="px-3 py-2 text-muted-foreground">{d.approved_by || '—'}</td>
                   </tr>
                 ))}

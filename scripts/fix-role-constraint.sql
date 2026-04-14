@@ -1,4 +1,4 @@
--- Fix role constraint to allow new 3-role model
+-- Fix role constraint to allow the current 4-role model
 -- Run this before seeding if constraint still has old values
 
 BEGIN;
@@ -28,9 +28,10 @@ UPDATE stock_app_users
 SET role = CASE
   WHEN role = 'admin' THEN 'admin'
   WHEN role IN ('manager', 'stock_approver') THEN 'manager'
+  WHEN role IN ('salesperson', 'sales_person', 'sales') THEN 'salesperson'
   ELSE 'stock_maintainer'
 END
-WHERE role NOT IN ('admin', 'manager', 'stock_maintainer');
+WHERE role NOT IN ('admin', 'manager', 'stock_maintainer', 'salesperson');
 
 -- Update permission flags based on normalized role
 UPDATE stock_app_users
@@ -42,7 +43,7 @@ WHERE status = 'active';
 -- Add new constraint
 ALTER TABLE stock_app_users
 ADD CONSTRAINT stock_app_users_role_check
-CHECK (role IN ('admin', 'manager', 'stock_maintainer'));
+CHECK (role IN ('admin', 'manager', 'stock_maintainer', 'salesperson'));
 
 COMMIT;
 
@@ -50,5 +51,6 @@ COMMIT;
 SELECT COUNT(*) as total_users, 
        COUNT(CASE WHEN role = 'admin' THEN 1 END) as admin_count,
        COUNT(CASE WHEN role = 'manager' THEN 1 END) as manager_count,
-       COUNT(CASE WHEN role = 'stock_maintainer' THEN 1 END) as maintainer_count
+  COUNT(CASE WHEN role = 'stock_maintainer' THEN 1 END) as maintainer_count,
+  COUNT(CASE WHEN role = 'salesperson' THEN 1 END) as salesperson_count
 FROM stock_app_users;
