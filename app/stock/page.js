@@ -149,10 +149,10 @@ const CLASSES = {
   contentWrap: 'mx-auto w-full max-w-[1600px] space-y-6',
   topCard: 'rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900',
   interactiveCard: 'rounded-2xl border border-slate-200/60 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900',
-  statGrid: 'grid grid-cols-2 gap-6 lg:grid-cols-4',
-  statCard: 'rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-md dark:border-slate-700 dark:bg-slate-900',
+  statGrid: 'grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-6',
+  statCard: 'min-w-0 rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-md sm:p-6 dark:border-slate-700 dark:bg-slate-900',
   statLabel: 'text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400',
-  statValue: 'mt-2 text-3xl font-bold text-slate-900 dark:text-white',
+  statValue: 'mt-2 break-all text-2xl font-bold text-slate-900 sm:text-3xl dark:text-white',
   iconButton: 'h-9 w-9 rounded-xl hover:bg-slate-100 transition-all active:scale-95 dark:hover:bg-slate-800',
 };
 
@@ -1071,7 +1071,7 @@ export default function StockDashboard() {
       trend: pendingArrivals === 0 ? 100 : -Math.min(pendingArrivals * 10, 100),
       trendLabel: 'Queue health',
       icon: PackageCheck,
-      accent: 'from-blue-500/20 to-blue-500/5',
+      accent: 'from-[#1A1A54]/25 to-[#1A1A54]/10',
     },
     {
       label: 'Pending Dispatches',
@@ -1079,7 +1079,7 @@ export default function StockDashboard() {
       trend: pendingDispatches === 0 ? 100 : -Math.min(pendingDispatches * 10, 100),
       trendLabel: 'Dispatch readiness',
       icon: BarChart3,
-      accent: 'from-amber-500/20 to-amber-500/5',
+      accent: 'from-[#F59E0B]/25 to-[#F59E0B]/10',
     },
     {
       label: 'Reorder Risks',
@@ -1087,7 +1087,7 @@ export default function StockDashboard() {
       trend: riskItems === 0 ? 100 : -Math.min(riskItems * 12, 100),
       trendLabel: 'Safety score',
       icon: CircleAlert,
-      accent: 'from-rose-500/20 to-rose-500/5',
+      accent: 'from-[#1A1A54]/20 to-[#E07A00]/15',
     },
   ];
 
@@ -1121,16 +1121,16 @@ export default function StockDashboard() {
           return (
             <div key={stat.label} className={CLASSES.statCard}>
               <div className="flex items-start justify-between">
-                <div>
-                  <p className={CLASSES.statLabel}>{stat.label}</p>
+                <div className="min-w-0">
+                  <p className={`${CLASSES.statLabel} truncate`}>{stat.label}</p>
                   <p className={`${CLASSES.statValue} font-mono`}>{stat.value}</p>
                 </div>
                 <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${stat.accent} text-slate-700 dark:text-slate-100`}>
                   <Icon className="h-5 w-5" />
                 </span>
               </div>
-              <div className="mt-3 flex items-center justify-between">
-                <span className="text-xs text-slate-500 dark:text-slate-400">{stat.trendLabel}</span>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{stat.trendLabel}</span>
                 <Badge variant={isPositive ? 'approved' : 'rejected'}>{isPositive ? '+' : ''}{stat.trend}%</Badge>
               </div>
             </div>

@@ -50,10 +50,10 @@ const FORM_SELECT_CLASS = `${FORM_INPUT_CLASS} appearance-none pr-10`;
 const FORM_PANEL_CLASS = 'rounded-2xl border border-border/80 bg-background/80 p-4';
 
 const CLASSES = {
-  heroGrid: 'grid grid-cols-2 lg:grid-cols-4 gap-6',
-  heroCard: 'rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md dark:border-slate-700 dark:bg-slate-900',
+  heroGrid: 'grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-6',
+  heroCard: 'min-w-0 rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md sm:p-6 dark:border-slate-700 dark:bg-slate-900',
   heroLabel: 'text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400',
-  heroValue: 'mt-2 text-3xl font-bold text-slate-900 dark:text-white',
+  heroValue: 'mt-2 break-all text-2xl font-bold text-slate-900 sm:text-3xl dark:text-white',
   heroBadgeBase: 'text-[10px] px-2 py-0.5 rounded-full font-semibold',
   sectionCard: 'rounded-2xl border border-slate-200/60 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900',
   sectionHeader: 'flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800',
@@ -511,6 +511,7 @@ export default function AdminDashboard() {
       href: '/stock?view=items',
       icon: UsersRound,
       trend: activeUsers - pendingUsers,
+      iconAccent: 'bg-[#1A1A54]/10 text-[#1A1A54]',
       subMetrics: [
         { label: 'Active', value: activeUsers },
         { label: 'Pending', value: pendingUsers },
@@ -522,6 +523,7 @@ export default function AdminDashboard() {
       href: '#approval-queue',
       icon: ShieldAlert,
       trend: pendingReviews > 0 ? -pendingReviews : 1,
+      iconAccent: 'bg-[#F59E0B]/15 text-[#E07A00]',
       subMetrics: [
         { label: 'Inbound', value: Number(analyticsData?.summary?.pending_inbound_reviews || 0) },
         { label: 'Outbound', value: Number(analyticsData?.summary?.pending_outbound_reviews || 0) },
@@ -533,6 +535,7 @@ export default function AdminDashboard() {
       href: '/stock?view=items',
       icon: PackageSearch,
       trend: Number(analyticsData?.summary?.total_whole_stored || 0) - Number(analyticsData?.summary?.total_broken_stored || 0),
+      iconAccent: 'bg-[#E07A00]/10 text-[#E07A00]',
       subMetrics: [
         { label: 'Whole', value: Number(analyticsData?.summary?.total_whole_stored || 0) },
         { label: 'Broken', value: Number(analyticsData?.summary?.total_broken_stored || 0) },
@@ -544,6 +547,7 @@ export default function AdminDashboard() {
       href: '/stock?view=arrivals',
       icon: ArrowRightLeft,
       trend: totalIncoming - totalOutgoing,
+      iconAccent: 'bg-[#1A1A54]/10 text-[#1A1A54]',
       subMetrics: [
         { label: 'Incoming', value: totalIncoming },
         { label: 'Outgoing', value: totalOutgoing },
@@ -733,20 +737,20 @@ export default function AdminDashboard() {
               className={`${CLASSES.heroCard} ${CLASSES.actionButton}`}
             >
               <div className="flex items-start justify-between">
-                <p className={CLASSES.heroLabel}>{stat.label}</p>
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#E07A00]/10 text-[#E07A00]">
+                <p className={`${CLASSES.heroLabel} min-w-0 truncate`}>{stat.label}</p>
+                <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${stat.iconAccent || 'bg-[#E07A00]/10 text-[#E07A00]'}`}>
                   <stat.icon className="h-4 w-4" />
                 </span>
               </div>
               <p className={`${CLASSES.heroValue} font-mono`}>{stat.value}</p>
-              <div className="mt-3 flex items-center justify-between gap-3">
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 {stat.subMetrics.map((item) => (
-                  <span key={`${stat.label}-${item.label}`} className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                  <span key={`${stat.label}-${item.label}`} className="inline-flex min-w-0 items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
                     <span>{item.label}</span>
                     <span className="font-mono text-slate-700 dark:text-slate-200">{item.value}</span>
                   </span>
                 ))}
-                <span className={`${CLASSES.heroBadgeBase} ${stat.trend > 0 ? 'bg-[#E07A00]/10 text-[#E07A00]' : 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-300'}`}>
+                <span className={`${CLASSES.heroBadgeBase} shrink-0 ${stat.trend > 0 ? 'bg-[#E07A00]/10 text-[#E07A00]' : 'bg-[#1A1A54]/10 text-[#1A1A54] dark:bg-[#1A1A54]/20 dark:text-slate-100'}`}>
                   {stat.trend > 0 ? 'Up' : 'Down'}
                 </span>
               </div>
@@ -760,8 +764,8 @@ export default function AdminDashboard() {
               <p className="text-xs text-muted-foreground">Quantity vs Date for recent arrivals and dispatches</p>
             </div>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />Incoming</span>
-              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-violet-500" />Outgoing</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[#E07A00]" />Incoming</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[#1A1A54]" />Outgoing</span>
             </div>
           </div>
           {movementTrend.length ? (
@@ -793,13 +797,13 @@ export default function AdminDashboard() {
                 );
               })}
 
-              <path d={inboundPath} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-              <path d={outboundPath} fill="none" stroke="#8b5cf6" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+              <path d={inboundPath} fill="none" stroke="#E07A00" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+              <path d={outboundPath} fill="none" stroke="#1A1A54" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
 
               {movementTrend.map((point, index) => (
                 <g key={`dots-${point.date}`}>
-                  <circle cx={pointX(index)} cy={pointY(point.inbound)} r="3.5" fill="#10b981" />
-                  <circle cx={pointX(index)} cy={pointY(point.outbound)} r="3.5" fill="#8b5cf6" />
+                  <circle cx={pointX(index)} cy={pointY(point.inbound)} r="3.5" fill="#E07A00" />
+                  <circle cx={pointX(index)} cy={pointY(point.outbound)} r="3.5" fill="#1A1A54" />
                   <text
                     x={pointX(index)}
                     y={chartHeight - 10}
@@ -871,7 +875,7 @@ export default function AdminDashboard() {
                     <p className="truncate text-xs text-muted-foreground">{event.subtitle}</p>
                     <p className="mt-0.5 text-[11px] text-muted-foreground">By {event.by} • {formatDateTime(event.at)}</p>
                   </div>
-                  <span className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${event.kind === 'arrival' ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700'}`}>
+                  <span className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${event.kind === 'arrival' ? 'bg-[#E07A00]/10 text-[#E07A00]' : 'bg-[#1A1A54]/10 text-[#1A1A54] dark:bg-[#1A1A54]/20 dark:text-slate-100'}`}>
                     {event.status || event.kind}
                   </span>
                 </Link>
