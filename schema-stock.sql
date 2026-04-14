@@ -31,6 +31,15 @@ CREATE TABLE IF NOT EXISTS stock_types (
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS stock_divisions (
+  id BIGSERIAL PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS stock_sizes (
   id BIGSERIAL PRIMARY KEY,
   label TEXT NOT NULL UNIQUE,
@@ -117,6 +126,7 @@ CREATE TABLE IF NOT EXISTS stock_app_users (
   phone TEXT NOT NULL,
   email TEXT UNIQUE,
   role TEXT NOT NULL DEFAULT 'stock_maintainer' CHECK (role IN ('admin', 'manager', 'stock_maintainer')),
+  division_id BIGINT REFERENCES stock_divisions(id),
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended')),
   can_manage_users BOOLEAN NOT NULL DEFAULT FALSE,
   can_approve_changes BOOLEAN NOT NULL DEFAULT FALSE,
@@ -183,6 +193,7 @@ CREATE TABLE IF NOT EXISTS stock_items (
   sku TEXT NOT NULL UNIQUE,
   brand_id BIGINT REFERENCES stock_brands(id),
   type_id BIGINT REFERENCES stock_types(id),
+  division_id BIGINT REFERENCES stock_divisions(id),
   size_id BIGINT REFERENCES stock_sizes(id),
   name TEXT NOT NULL,
   finish TEXT,
@@ -289,7 +300,15 @@ CREATE TABLE IF NOT EXISTS stock_inbound_shipments (
   locked_at TIMESTAMP,
   locked_by_user_id BIGINT REFERENCES stock_app_users(id),
   invoice_number TEXT,
+  invoice_date DATE,
   invoice_document_id BIGINT,
+  origin_city TEXT,
+  destination_warehouse_name TEXT,
+  payment_status TEXT NOT NULL DEFAULT 'unpaid' CHECK (payment_status IN ('unpaid', 'partial', 'paid')),
+  paid_amount NUMERIC(14, 2),
+  payment_date DATE,
+  payment_reference TEXT,
+  payment_mode TEXT,
   transporter_bill_number TEXT,
   transporter_bill_document_id BIGINT,
   transporter_bill_amount NUMERIC(14, 2) NOT NULL DEFAULT 0,
@@ -317,6 +336,10 @@ CREATE TABLE IF NOT EXISTS stock_inbound_shipment_items (
   rejected_qty INTEGER NOT NULL DEFAULT 0,
   unit_cost NUMERIC(12, 2) NOT NULL DEFAULT 0,
   landed_cost NUMERIC(12, 2) NOT NULL DEFAULT 0,
+  hsn_code TEXT,
+  qty_sqm NUMERIC(14, 3),
+  cost_per_sqm NUMERIC(12, 2),
+  thickness_mm_snapshot NUMERIC(10, 2),
   whole_inventory_lot_id BIGINT,
   broken_inventory_lot_id BIGINT,
   notes TEXT,
@@ -538,6 +561,33 @@ ALTER TABLE IF EXISTS stock_sales_orders ADD COLUMN IF NOT EXISTS currency_code 
 ALTER TABLE IF EXISTS stock_outbound_shipments ADD COLUMN IF NOT EXISTS currency_code TEXT NOT NULL DEFAULT 'INR';
 ALTER TABLE IF EXISTS stock_movements ADD COLUMN IF NOT EXISTS currency_code TEXT NOT NULL DEFAULT 'INR';
 
+ALTER TABLE IF EXISTS stock_items ADD COLUMN IF NOT EXISTS division_id BIGINT REFERENCES stock_divisions(id);
+ALTER TABLE IF EXISTS stock_app_users ADD COLUMN IF NOT EXISTS division_id BIGINT REFERENCES stock_divisions(id);
+ALTER TABLE IF EXISTS stock_inbound_shipments ADD COLUMN IF NOT EXISTS invoice_date DATE;
+ALTER TABLE IF EXISTS stock_inbound_shipments ADD COLUMN IF NOT EXISTS origin_city TEXT;
+ALTER TABLE IF EXISTS stock_inbound_shipments ADD COLUMN IF NOT EXISTS destination_warehouse_name TEXT;
+ALTER TABLE IF EXISTS stock_inbound_shipments ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'unpaid';
+ALTER TABLE IF EXISTS stock_inbound_shipments ADD COLUMN IF NOT EXISTS paid_amount NUMERIC(14, 2);
+ALTER TABLE IF EXISTS stock_inbound_shipments ADD COLUMN IF NOT EXISTS payment_date DATE;
+ALTER TABLE IF EXISTS stock_inbound_shipments ADD COLUMN IF NOT EXISTS payment_reference TEXT;
+ALTER TABLE IF EXISTS stock_inbound_shipments ADD COLUMN IF NOT EXISTS payment_mode TEXT;
+ALTER TABLE IF EXISTS stock_inbound_shipment_items ADD COLUMN IF NOT EXISTS hsn_code TEXT;
+ALTER TABLE IF EXISTS stock_inbound_shipment_items ADD COLUMN IF NOT EXISTS qty_sqm NUMERIC(14, 3);
+ALTER TABLE IF EXISTS stock_inbound_shipment_items ADD COLUMN IF NOT EXISTS cost_per_sqm NUMERIC(12, 2);
+ALTER TABLE IF EXISTS stock_inbound_shipment_items ADD COLUMN IF NOT EXISTS thickness_mm_snapshot NUMERIC(10, 2);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'stock_inbound_shipments_payment_status_check'
+  ) THEN
+    ALTER TABLE stock_inbound_shipments
+      ADD CONSTRAINT stock_inbound_shipments_payment_status_check
+      CHECK (payment_status IN ('unpaid', 'partial', 'paid'));
+  END IF;
+END $$;
+
 -- ====== NOTIFICATIONS ======
 
 CREATE TABLE IF NOT EXISTS stock_notifications (
@@ -625,9 +675,11 @@ CREATE TABLE IF NOT EXISTS stock_timeline_events (
 CREATE INDEX IF NOT EXISTS idx_stock_brands_name ON stock_brands(name);
 CREATE INDEX IF NOT EXISTS idx_stock_types_name ON stock_types(name);
 CREATE INDEX IF NOT EXISTS idx_stock_sizes_label ON stock_sizes(label);
+CREATE INDEX IF NOT EXISTS idx_stock_divisions_name ON stock_divisions(name);
 
 CREATE INDEX IF NOT EXISTS idx_stock_items_brand_id ON stock_items(brand_id);
 CREATE INDEX IF NOT EXISTS idx_stock_items_type_id ON stock_items(type_id);
+CREATE INDEX IF NOT EXISTS idx_stock_items_division_id ON stock_items(division_id);
 CREATE INDEX IF NOT EXISTS idx_stock_items_size_id ON stock_items(size_id);
 CREATE INDEX IF NOT EXISTS idx_stock_items_sku ON stock_items(sku);
 CREATE INDEX IF NOT EXISTS idx_stock_items_name ON stock_items(name);
@@ -640,8 +692,11 @@ CREATE INDEX IF NOT EXISTS idx_stock_purchase_order_items_item_id ON stock_purch
 CREATE INDEX IF NOT EXISTS idx_stock_inbound_shipments_po_id ON stock_inbound_shipments(purchase_order_id);
 CREATE INDEX IF NOT EXISTS idx_stock_inbound_shipments_supplier_id ON stock_inbound_shipments(supplier_id);
 CREATE INDEX IF NOT EXISTS idx_stock_inbound_shipments_status ON stock_inbound_shipments(status);
+CREATE INDEX IF NOT EXISTS idx_stock_inbound_shipments_payment_status ON stock_inbound_shipments(payment_status);
+CREATE INDEX IF NOT EXISTS idx_stock_inbound_shipments_invoice_date ON stock_inbound_shipments(invoice_date);
 CREATE INDEX IF NOT EXISTS idx_stock_inbound_items_shipment_id ON stock_inbound_shipment_items(inbound_shipment_id);
 CREATE INDEX IF NOT EXISTS idx_stock_inbound_items_item_id ON stock_inbound_shipment_items(item_id);
+CREATE INDEX IF NOT EXISTS idx_stock_inbound_items_hsn_code ON stock_inbound_shipment_items(hsn_code);
 
 CREATE INDEX IF NOT EXISTS idx_stock_sales_orders_customer_id ON stock_sales_orders(customer_id);
 CREATE INDEX IF NOT EXISTS idx_stock_sales_orders_status ON stock_sales_orders(status);
@@ -675,6 +730,7 @@ CREATE INDEX IF NOT EXISTS idx_stock_notifications_created_at ON stock_notificat
 
 CREATE INDEX IF NOT EXISTS idx_stock_app_users_role ON stock_app_users(role);
 CREATE INDEX IF NOT EXISTS idx_stock_app_users_status ON stock_app_users(status);
+CREATE INDEX IF NOT EXISTS idx_stock_app_users_division_id ON stock_app_users(division_id);
 CREATE INDEX IF NOT EXISTS idx_stock_sales_people_name ON stock_sales_people(name);
 
 CREATE INDEX IF NOT EXISTS idx_stock_change_requests_source ON stock_change_requests(source_entity_type, source_entity_id);

@@ -10,7 +10,7 @@ function buildNotificationActionHref(notification) {
   const eventType = String(notification.event_type || '');
 
   if (sourceTable === 'stock_inbound_shipments' && sourceId > 0) {
-    return `/stock?view=arrivals&entityType=inbound_shipment&entityId=${sourceId}`;
+    return `/stock?view=purchases&entityType=inbound_shipment&entityId=${sourceId}`;
   }
 
   if (sourceTable === 'stock_outbound_shipments' && sourceId > 0) {
@@ -22,7 +22,7 @@ function buildNotificationActionHref(notification) {
   }
 
   if (eventType.startsWith('inbound_')) {
-    return '/stock?view=arrivals';
+    return '/stock?view=purchases';
   }
 
   if (eventType.startsWith('outbound_')) {

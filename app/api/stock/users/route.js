@@ -8,6 +8,23 @@ function normalizeDepartment(value, fallback = null) {
   return normalized || fallback;
 }
 
+async function resolveDivisionId(value) {
+  const divisionName = String(value || '').trim();
+  if (!divisionName) {
+    return null;
+  }
+
+  const rows = await sql(
+    `INSERT INTO stock_divisions (name)
+     VALUES ($1)
+     ON CONFLICT (name) DO UPDATE SET updated_at = NOW()
+     RETURNING id`,
+    [divisionName]
+  );
+
+  return rows[0]?.id || null;
+}
+
 export async function GET(request) {
   const { session, appUser } = await getStockContext(request);
 
@@ -55,6 +72,7 @@ export async function POST(request) {
   const body = await request.json();
   const normalizedRole = normalizeStockRole(body.role || 'stock_maintainer');
   const department = normalizeDepartment(body.department, normalizedRole === 'salesperson' ? 'General' : null);
+  const divisionName = normalizeDepartment(body.division || body.department, normalizedRole === 'salesperson' ? 'General' : null);
 
   if (!STOCK_ROLES.includes(normalizedRole)) {
     return NextResponse.json({ error: 'Invalid role supplied' }, { status: 400 });
@@ -68,6 +86,8 @@ export async function POST(request) {
   }
 
   try {
+    const divisionId = await resolveDivisionId(divisionName);
+
     const auth0User = await upsertAuth0DatabaseUser({
       email: body.email,
       password: body.password,
@@ -83,18 +103,20 @@ export async function POST(request) {
         email,
         role,
         department,
+        division_id,
         status,
         can_manage_users,
         can_approve_changes,
         can_view_dashboard,
         created_by
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
       ON CONFLICT (email) DO UPDATE SET
         auth0_sub = EXCLUDED.auth0_sub,
         name = EXCLUDED.name,
         phone = EXCLUDED.phone,
         role = EXCLUDED.role,
         department = COALESCE(EXCLUDED.department, stock_app_users.department),
+        division_id = COALESCE(EXCLUDED.division_id, stock_app_users.division_id),
         status = EXCLUDED.status,
         can_manage_users = EXCLUDED.can_manage_users,
         can_approve_changes = EXCLUDED.can_approve_changes,
@@ -108,6 +130,7 @@ export async function POST(request) {
         body.email || null,
         roleFlags.role,
         department,
+        divisionId,
         body.status || 'active',
         roleFlags.canManageUsers,
         roleFlags.canApproveChanges,
@@ -163,11 +186,19 @@ export async function PATCH(request) {
   const normalizedRole = hasRoleInPayload ? normalizeStockRole(body.role) : null;
   const roleFlags = hasRoleInPayload ? getRoleFlags(body.role) : null;
   const hasDepartmentInPayload = Object.prototype.hasOwnProperty.call(body, 'department');
+  const hasDivisionInPayload = Object.prototype.hasOwnProperty.call(body, 'division');
   const department = hasDepartmentInPayload
     ? normalizeDepartment(body.department, normalizedRole === 'salesperson' ? 'General' : null)
     : null;
 
   try {
+    const divisionInput = hasDivisionInPayload
+      ? body.division
+      : hasDepartmentInPayload
+        ? department
+        : null;
+    const divisionId = divisionInput ? await resolveDivisionId(divisionInput) : null;
+
     const rows = await sql(
       `UPDATE stock_app_users
        SET name = COALESCE($1, name),
@@ -179,8 +210,9 @@ export async function PATCH(request) {
            can_approve_changes = COALESCE($7, can_approve_changes),
            can_view_dashboard = COALESCE($8, can_view_dashboard),
            department = COALESCE($9, department),
-           updated_at = NOW()
-       WHERE id = $10
+             division_id = COALESCE($10, division_id),
+             updated_at = NOW()
+           WHERE id = $11
        RETURNING *`,
       [
         body.name || null,
@@ -192,6 +224,7 @@ export async function PATCH(request) {
         hasRoleInPayload ? roleFlags.canApproveChanges : body.canApproveChanges,
         body.canViewDashboard,
         department,
+        divisionId,
         body.id,
       ]
     );

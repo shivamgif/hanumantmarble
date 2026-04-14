@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { useSearchParams } from 'next/navigation';
 import EntryPreviewSheet, { PreviewKeyValueGrid } from '@/components/ui/entry-preview-sheet';
@@ -105,6 +105,136 @@ function getStatusVariant(status) {
   return 'neutral';
 }
 
+function formatCompactNumber(value) {
+  return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(Number(value || 0));
+}
+
+function formatPercent(value) {
+  return `${(Number(value || 0) * 100).toFixed(1)}%`;
+}
+
+function formatCurrencyInr(value) {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
+}
+
+function formatMonthLabel(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
+
+  return new Intl.DateTimeFormat(undefined, { month: 'short' }).format(date);
+}
+
+function AnalyticsCard({ title, subtitle, index = 0, children, chips = [] }) {
+  return (
+    <section className="analytics-card rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900" style={{ animationDelay: `${index * 80}ms` }}>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{subtitle}</p>
+        </div>
+        {chips.length ? (
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
+            {chips.map((chip) => (
+              <span key={`${title}-${chip.label}`} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
+                {chip.label}: <span className="font-mono">{chip.value}</span>
+              </span>
+            ))}
+          </div>
+        ) : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function AnimatedStackedBars({ rows, keys, colors, maxValue }) {
+  if (!rows.length) {
+    return <div className="rounded-xl border border-dashed border-border px-3 py-8 text-center text-xs text-muted-foreground">No period data.</div>;
+  }
+
+  const max = Math.max(maxValue || 0, 1);
+
+  return (
+    <div className="space-y-2">
+      {rows.map((row, rowIndex) => {
+        let cumulative = 0;
+        const total = keys.reduce((sum, key) => sum + Number(row[key] || 0), 0);
+
+        return (
+          <div key={`stack-${row.bucket}`} className="grid grid-cols-[38px_1fr_48px] items-center gap-2">
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">{formatMonthLabel(row.bucket)}</span>
+            <div className="relative h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              {keys.map((key, index) => {
+                const value = Number(row[key] || 0);
+                const width = (value / max) * 100;
+                const left = (cumulative / max) * 100;
+                cumulative += value;
+
+                if (!value) {
+                  return null;
+                }
+
+                return (
+                  <span
+                    key={`${row.bucket}-${key}`}
+                    className="absolute top-0 h-full rounded-[2px]"
+                    style={{
+                      left: `${left}%`,
+                      width: `${width}%`,
+                      backgroundColor: colors[index],
+                      animation: `growWidth 700ms ease ${120 + rowIndex * 80}ms both`,
+                    }}
+                  />
+                );
+              })}
+            </div>
+            <span className="text-right text-[10px] font-mono text-slate-500 dark:text-slate-400">{total}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MiniDonut({ values, colors }) {
+  const total = values.reduce((sum, value) => sum + Number(value || 0), 0) || 1;
+  const radius = 30;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
+
+  return (
+    <svg viewBox="0 0 90 90" className="h-24 w-24">
+      <g transform="translate(45,45)">
+        {values.map((value, index) => {
+          const segment = (Number(value || 0) / total) * circumference;
+          const node = (
+            <circle
+              key={`donut-${index}`}
+              r={radius}
+              fill="none"
+              stroke={colors[index]}
+              strokeWidth="10"
+              strokeDasharray={`${segment} ${circumference - segment}`}
+              strokeDashoffset={-offset}
+              transform="rotate(-90)"
+              style={{ animation: `drawStroke 800ms ease ${index * 120}ms both` }}
+            />
+          );
+          offset += segment;
+          return node;
+        })}
+        <text textAnchor="middle" y="3" className="fill-slate-700 text-[9px] font-semibold dark:fill-slate-100">{formatCompactNumber(total)}</text>
+      </g>
+    </svg>
+  );
+}
+
 export default function AdminDashboard() {
   const { language } = useLanguage();
   const searchParams = useSearchParams();
@@ -112,6 +242,8 @@ export default function AdminDashboard() {
   const { user } = useUser();
   const [data, setData] = useState(null);
   const [analyticsData, setAnalyticsData] = useState(null);
+  const [adminAnalytics, setAdminAnalytics] = useState(null);
+  const [analyticsRangeMonths, setAnalyticsRangeMonths] = useState(6);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
@@ -155,15 +287,17 @@ export default function AdminDashboard() {
     let mounted = true;
     async function loadData() {
       try {
-        const [dashboardResponse, analyticsResponse, changeRequestResponse] = await Promise.all([
+        const [dashboardResponse, analyticsResponse, changeRequestResponse, adminAnalyticsResponse] = await Promise.all([
           fetch('/api/stock/admin/dashboard'),
           fetch('/api/stock/dashboard'),
           fetch('/api/stock/change-requests', { cache: 'no-store' }),
+          fetch(`/api/stock/admin/analytics?months=${analyticsRangeMonths}`, { cache: 'no-store' }),
         ]);
 
         const dashboardJson = await dashboardResponse.json();
         const analyticsJson = await analyticsResponse.json();
         const changeRequestJson = await changeRequestResponse.json();
+        const adminAnalyticsJson = await adminAnalyticsResponse.json();
 
         if (!dashboardResponse.ok) {
           throw new Error(dashboardJson.error || 'Fetch failed');
@@ -177,9 +311,14 @@ export default function AdminDashboard() {
           throw new Error(changeRequestJson.error || 'Failed to load change requests');
         }
 
+        if (!adminAnalyticsResponse.ok) {
+          throw new Error(adminAnalyticsJson.error || 'Failed to load admin analytics');
+        }
+
         if (mounted) {
           setData(dashboardJson);
           setAnalyticsData(analyticsJson);
+          setAdminAnalytics(adminAnalyticsJson);
           setChangeRequests(changeRequestJson.requests || []);
         }
       } catch (err) {
@@ -190,7 +329,7 @@ export default function AdminDashboard() {
     }
     if (user) loadData();
     return () => { mounted = false; };
-  }, [user]);
+  }, [user, analyticsRangeMonths]);
 
   async function handleShipmentAction(type, id, action, notes = null) {
     const confirmMessage = action === 'reject'
@@ -236,15 +375,17 @@ export default function AdminDashboard() {
   }
 
   async function refreshDashboard() {
-    const [refreshResponse, analyticsResponse, changeRequestResponse] = await Promise.all([
+    const [refreshResponse, analyticsResponse, changeRequestResponse, adminAnalyticsResponse] = await Promise.all([
       fetch('/api/stock/admin/dashboard'),
       fetch('/api/stock/dashboard'),
       fetch('/api/stock/change-requests', { cache: 'no-store' }),
+      fetch(`/api/stock/admin/analytics?months=${analyticsRangeMonths}`, { cache: 'no-store' }),
     ]);
 
     const refreshJson = await refreshResponse.json();
     const analyticsJson = await analyticsResponse.json();
     const changeRequestJson = await changeRequestResponse.json();
+    const adminAnalyticsJson = await adminAnalyticsResponse.json();
 
     if (!refreshResponse.ok) {
       throw new Error(refreshJson.error || 'Failed to refresh dashboard');
@@ -258,8 +399,13 @@ export default function AdminDashboard() {
       throw new Error(changeRequestJson.error || 'Failed to refresh change requests');
     }
 
+    if (!adminAnalyticsResponse.ok) {
+      throw new Error(adminAnalyticsJson.error || 'Failed to refresh admin analytics');
+    }
+
     setData(refreshJson);
     setAnalyticsData(analyticsJson);
+    setAdminAnalytics(adminAnalyticsJson);
     setChangeRequests(changeRequestJson.requests || []);
   }
 
@@ -692,6 +838,40 @@ export default function AdminDashboard() {
     .sort((left, right) => new Date(right.at || 0).getTime() - new Date(left.at || 0).getTime())
     .slice(0, 8);
 
+  const purchaseTrendRows = adminAnalytics?.purchasePerformance?.trend || [];
+  const purchaseFunnel = adminAnalytics?.purchasePerformance?.funnel || {};
+  const dispatchTrendRows = adminAnalytics?.dispatchPerformance?.trend || [];
+  const costTrendRows = adminAnalytics?.costAndPayment?.trend || [];
+  const paymentMixRows = adminAnalytics?.costAndPayment?.paymentMix || [];
+  const paymentExposure = adminAnalytics?.costAndPayment?.exposure || {};
+  const inventoryDivisionRisk = adminAnalytics?.inventoryHealth?.divisionRisk || [];
+  const inventoryRiskTrend = adminAnalytics?.inventoryHealth?.trend || [];
+  const salespersonTrendRows = adminAnalytics?.salespersonPerformance?.trend || [];
+  const salespersonRanking = adminAnalytics?.salespersonPerformance?.ranking || [];
+
+  const topSalespeople = salespersonRanking.slice(0, 3).map((row) => row.salesperson);
+  const salespersonTrendByMonth = useMemo(() => {
+    const map = new Map();
+
+    for (const row of salespersonTrendRows) {
+      const bucket = row.bucket;
+      const current = map.get(bucket) || { bucket };
+      current[row.salesperson] = Number(row.total_qty || 0);
+      map.set(bucket, current);
+    }
+
+    return Array.from(map.values()).sort((a, b) => String(a.bucket).localeCompare(String(b.bucket)));
+  }, [salespersonTrendRows]);
+
+  const funnelMax = Math.max(
+    Number(purchaseFunnel.pending || 0),
+    Number(purchaseFunnel.reviewed || 0),
+    Number(purchaseFunnel.approved || 0),
+    Number(purchaseFunnel.rejected || 0),
+    Number(purchaseFunnel.changes_requested || 0),
+    1
+  );
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -728,8 +908,8 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-1">
-        <div className={CLASSES.heroGrid}>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <div className={`${CLASSES.heroGrid} xl:col-span-2`}>
           {summaryTiles.map((stat) => (
             <Link
               key={stat.label}
@@ -820,6 +1000,323 @@ export default function AdminDashboard() {
               No movement data available yet.
             </div>
           )}
+        </div>
+      </div>
+
+      <div className="space-y-4 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white">Admin Hub Analytics</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Process intelligence view powered by stock workflows</p>
+          </div>
+          <label className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">
+            Date Range
+            <select
+              value={analyticsRangeMonths}
+              onChange={(event) => setAnalyticsRangeMonths(Number(event.target.value))}
+              className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-[#E07A00] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            >
+              <option value={3}>Last 3 months</option>
+              <option value={6}>Last 6 months</option>
+              <option value={12}>Last 12 months</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <AnalyticsCard
+            title="Movement Trend"
+            subtitle="Quantity trend for recent arrivals and dispatches"
+            index={0}
+            chips={[
+              { label: 'Incoming', value: formatCompactNumber(movementTrend.reduce((sum, point) => sum + Number(point.inbound || 0), 0)) },
+              { label: 'Outgoing', value: formatCompactNumber(movementTrend.reduce((sum, point) => sum + Number(point.outbound || 0), 0)) },
+            ]}
+          >
+            <div className="flex items-center gap-4 pb-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[#E07A00]" />Incoming</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[#1A1A54]" />Outgoing</span>
+            </div>
+            {movementTrend.length ? (
+              <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-44 w-full rounded-xl border border-border bg-muted/20 sm:h-56">
+                {[0, 0.5, 1].map((tick) => {
+                  const value = Math.round(maxChartValue * tick);
+                  const y = pointY(value);
+
+                  return (
+                    <g key={`analytics-grid-${tick}`}>
+                      <line
+                        x1={chartPadding.left}
+                        y1={y}
+                        x2={chartWidth - chartPadding.right}
+                        y2={y}
+                        stroke="currentColor"
+                        className="text-border"
+                        strokeDasharray="3 4"
+                      />
+                      <text
+                        x={chartPadding.left - 8}
+                        y={y + 4}
+                        textAnchor="end"
+                        className="fill-muted-foreground text-[10px]"
+                      >
+                        {value}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                <path d={inboundPath} fill="none" stroke="#E07A00" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+                <path d={outboundPath} fill="none" stroke="#1A1A54" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+
+                {movementTrend.map((point, index) => (
+                  <g key={`analytics-dots-${point.date}`}>
+                    <circle cx={pointX(index)} cy={pointY(point.inbound)} r="3.5" fill="#E07A00" />
+                    <circle cx={pointX(index)} cy={pointY(point.outbound)} r="3.5" fill="#1A1A54" />
+                    <text
+                      x={pointX(index)}
+                      y={chartHeight - 10}
+                      textAnchor="middle"
+                      className="fill-muted-foreground text-[10px]"
+                    >
+                      {formatChartDate(point.date)}
+                    </text>
+                  </g>
+                ))}
+              </svg>
+            ) : (
+              <div className="flex h-56 items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 text-sm text-muted-foreground">
+                No movement data available yet.
+              </div>
+            )}
+          </AnalyticsCard>
+
+          <AnalyticsCard
+            title="Purchase Throughput & Approval Funnel"
+            subtitle="Monthly approvals progression"
+            index={1}
+            chips={[
+              { label: 'Total', value: adminAnalytics?.purchasePerformance?.kpis?.totalPurchases || 0 },
+              { label: 'Approval', value: formatPercent(adminAnalytics?.purchasePerformance?.kpis?.approvalRate || 0) },
+            ]}
+          >
+            <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
+              <div>
+                <AnimatedStackedBars
+                  rows={purchaseTrendRows}
+                  keys={['pending', 'reviewed', 'approved', 'changes_requested', 'rejected']}
+                  colors={['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444']}
+                  maxValue={Math.max(...purchaseTrendRows.map((row) => Number(row.total || 0)), 1)}
+                />
+                <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-semibold uppercase tracking-[0.08em]">
+                  <span className="rounded-full bg-blue-50 px-2 py-1 text-blue-700">Pending</span>
+                  <span className="rounded-full bg-violet-50 px-2 py-1 text-violet-700">Reviewed</span>
+                  <span className="rounded-full bg-emerald-50 px-2 py-1 text-emerald-700">Approved</span>
+                  <span className="rounded-full bg-amber-50 px-2 py-1 text-amber-700">Changes</span>
+                  <span className="rounded-full bg-rose-50 px-2 py-1 text-rose-700">Rejected</span>
+                </div>
+              </div>
+              <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/60 p-3 dark:border-slate-700 dark:bg-slate-800/40">
+                {[
+                  ['Pending', purchaseFunnel.pending, '#3B82F6'],
+                  ['Reviewed', purchaseFunnel.reviewed, '#8B5CF6'],
+                  ['Approved', purchaseFunnel.approved, '#10B981'],
+                  ['Changes', purchaseFunnel.changes_requested, '#F59E0B'],
+                  ['Rejected', purchaseFunnel.rejected, '#EF4444'],
+                ].map(([label, value, color]) => (
+                  <div key={label}>
+                    <div className="mb-1 flex items-center justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                      <span>{label}</span>
+                      <span className="font-mono">{value}</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                      <span className="block h-full rounded-full" style={{ width: `${(Number(value || 0) / funnelMax) * 100}%`, backgroundColor: color, animation: 'growWidth 700ms ease both' }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </AnalyticsCard>
+
+          <AnalyticsCard
+            title="Dispatch Fulfillment & Delay Trend"
+            subtitle="Status mix with delay and on-time service"
+            index={2}
+            chips={[
+              { label: 'On-time', value: formatPercent(adminAnalytics?.dispatchPerformance?.kpis?.onTimeRatio || 0) },
+              { label: 'Avg Delay', value: `${adminAnalytics?.dispatchPerformance?.kpis?.avgDelayDays || 0}d` },
+              { label: 'Volume', value: formatCompactNumber(dispatchTrendRows.reduce((sum, row) => sum + Number(row.dispatched_volume || 0), 0)) },
+            ]}
+          >
+            <div className="space-y-2">
+              {dispatchTrendRows.map((row, index) => {
+                const maxTotal = Math.max(...dispatchTrendRows.map((item) => Number(item.total || 0)), 1);
+                const maxDelay = Math.max(...dispatchTrendRows.map((item) => Number(item.avg_delay_days || 0)), 1);
+                return (
+                  <div key={`dispatch-${row.bucket}`} className="grid grid-cols-[34px_1fr_62px_58px] items-center gap-2">
+                    <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">{formatMonthLabel(row.bucket)}</span>
+                    <div className="relative h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                      <span className="absolute left-0 top-0 h-full rounded-full bg-[#1A1A54]" style={{ width: `${(Number(row.total || 0) / maxTotal) * 100}%`, animation: `growWidth 700ms ease ${index * 70}ms both` }} />
+                    </div>
+                    <span className="text-right text-[10px] font-mono text-slate-600 dark:text-slate-300">{row.total}</span>
+                    <span className="text-right text-[10px] font-mono text-[#E07A00]" style={{ opacity: 0.65 + (Number(row.avg_delay_days || 0) / maxDelay) * 0.35 }}>{Number(row.avg_delay_days || 0).toFixed(1)}d</span>
+                  </div>
+                );
+              })}
+            </div>
+          </AnalyticsCard>
+
+          <AnalyticsCard
+            title="Inbound Cost & Payment Exposure"
+            subtitle="Cost efficiency and working-capital pressure"
+            index={3}
+            chips={[
+              { label: 'Outstanding', value: formatCurrencyInr(paymentExposure.outstanding_exposure || 0) },
+              { label: 'Gross', value: formatCurrencyInr(paymentExposure.estimated_gross || 0) },
+            ]}
+          >
+            <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+              <div className="space-y-2">
+                {costTrendRows.map((row, index) => {
+                  const maxSqm = Math.max(...costTrendRows.map((item) => Number(item.total_qty_sqm || 0)), 1);
+                  const maxCost = Math.max(...costTrendRows.map((item) => Number(item.avg_cost_per_sqm || 0)), 1);
+                  return (
+                    <div key={`cost-${row.bucket}`} className="grid grid-cols-[34px_1fr_56px_66px] items-center gap-2">
+                      <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">{formatMonthLabel(row.bucket)}</span>
+                      <div className="relative h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                        <span className="absolute left-0 top-0 h-full rounded-full bg-[#0EA5E9]" style={{ width: `${(Number(row.total_qty_sqm || 0) / maxSqm) * 100}%`, animation: `growWidth 700ms ease ${index * 80}ms both` }} />
+                      </div>
+                      <span className="text-right text-[10px] font-mono text-slate-700 dark:text-slate-200">{Number(row.total_qty_sqm || 0).toFixed(0)}</span>
+                      <span className="text-right text-[10px] font-mono text-[#E07A00]" style={{ opacity: 0.65 + (Number(row.avg_cost_per_sqm || 0) / maxCost) * 0.35 }}>{Number(row.avg_cost_per_sqm || 0).toFixed(0)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-800/40">
+                <MiniDonut
+                  values={[
+                    Number(paymentMixRows.find((row) => row.payment_status === 'paid')?.count || 0),
+                    Number(paymentMixRows.find((row) => row.payment_status === 'partial')?.count || 0),
+                    Number(paymentMixRows.find((row) => row.payment_status === 'unpaid')?.count || 0),
+                  ]}
+                  colors={['#10B981', '#F59E0B', '#EF4444']}
+                />
+                <div className="space-y-1 text-[10px] font-semibold uppercase tracking-[0.08em]">
+                  <div className="text-emerald-700">Paid: {paymentMixRows.find((row) => row.payment_status === 'paid')?.count || 0}</div>
+                  <div className="text-amber-700">Partial: {paymentMixRows.find((row) => row.payment_status === 'partial')?.count || 0}</div>
+                  <div className="text-rose-700">Unpaid: {paymentMixRows.find((row) => row.payment_status === 'unpaid')?.count || 0}</div>
+                </div>
+              </div>
+            </div>
+          </AnalyticsCard>
+
+          <AnalyticsCard
+            title="Inventory Health & Reorder Risk"
+            subtitle="Risk pressure by month and division"
+            index={4}
+            chips={[
+              { label: 'At Risk', value: adminAnalytics?.inventoryHealth?.kpis?.atRiskItems || 0 },
+              { label: 'Items', value: adminAnalytics?.inventoryHealth?.kpis?.totalItems || 0 },
+            ]}
+          >
+            <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+              <div className="space-y-2">
+                {inventoryRiskTrend.map((row, index) => {
+                  const maxPressure = Math.max(...inventoryRiskTrend.map((item) => Math.abs(Number(item.pressure || 0))), 1);
+                  const pressure = Number(row.pressure || 0);
+                  const width = (Math.abs(pressure) / maxPressure) * 100;
+                  const color = pressure >= 0 ? '#DC2626' : '#10B981';
+                  return (
+                    <div key={`risk-${row.bucket}`} className="grid grid-cols-[34px_1fr_54px] items-center gap-2">
+                      <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">{formatMonthLabel(row.bucket)}</span>
+                      <div className="relative h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                        <span className="absolute top-0 h-full rounded-full" style={{ left: pressure >= 0 ? '50%' : `${50 - width / 2}%`, width: `${width / 2}%`, backgroundColor: color, animation: `growWidth 700ms ease ${index * 70}ms both` }} />
+                      </div>
+                      <span className="text-right text-[10px] font-mono text-slate-700 dark:text-slate-200">{pressure.toFixed(0)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="space-y-1">
+                {inventoryDivisionRisk.slice(0, 6).map((row, index) => {
+                  const ratio = Number(row.total_items || 0) > 0 ? (Number(row.at_risk || 0) / Number(row.total_items || 0)) * 100 : 0;
+                  return (
+                    <div key={`div-risk-${row.division}`} className="rounded-lg border border-slate-200 bg-slate-50/70 p-2 dark:border-slate-700 dark:bg-slate-800/40">
+                      <div className="mb-1 flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+                        <span className="truncate pr-2">{row.division}</span>
+                        <span className="font-mono">{row.at_risk}/{row.total_items}</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                        <span className="block h-full rounded-full bg-[#E07A00]" style={{ width: `${ratio}%`, animation: `growWidth 700ms ease ${index * 60}ms both` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </AnalyticsCard>
+
+          <AnalyticsCard
+            title="Salesperson Performance Trend"
+            subtitle="Dispatch contribution, growth, and consistency"
+            index={5}
+            chips={[
+              { label: 'Tracked', value: salespersonRanking.length },
+              { label: 'Top Qty', value: formatCompactNumber(salespersonRanking[0]?.quantity || 0) },
+            ]}
+          >
+            <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
+              <div className="space-y-2">
+                {salespersonTrendByMonth.map((row, rowIndex) => (
+                  <div key={`sales-row-${row.bucket}`} className="grid grid-cols-[34px_1fr] items-center gap-2">
+                    <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">{formatMonthLabel(row.bucket)}</span>
+                    <div className="space-y-1">
+                      {topSalespeople.map((name, index) => {
+                        const value = Number(row[name] || 0);
+                        const maxForPerson = Math.max(...salespersonTrendByMonth.map((point) => Number(point[name] || 0)), 1);
+                        const palette = ['#1A1A54', '#E07A00', '#0EA5E9'];
+                        return (
+                          <div key={`${row.bucket}-${name}`} className="flex items-center gap-2">
+                            <span className="w-16 truncate text-[10px] text-slate-500 dark:text-slate-400">{name}</span>
+                            <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                              <span className="absolute left-0 top-0 h-full rounded-full" style={{ width: `${(value / maxForPerson) * 100}%`, backgroundColor: palette[index], animation: `growWidth 700ms ease ${100 + rowIndex * 70}ms both` }} />
+                            </div>
+                            <span className="w-10 text-right text-[10px] font-mono text-slate-700 dark:text-slate-200">{value.toFixed(0)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-900 text-[10px] uppercase tracking-widest text-white">
+                    <tr>
+                      <th className="px-2 py-2 text-left">Salesperson</th>
+                      <th className="px-2 py-2 text-right">Qty</th>
+                      <th className="px-2 py-2 text-right">Growth</th>
+                      <th className="px-2 py-2 text-right">Cons.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {salespersonRanking.slice(0, 6).map((row) => (
+                      <tr key={`rank-${row.salesperson}`} className="border-b border-slate-100 text-[11px] hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40">
+                        <td className="px-2 py-2 font-medium text-slate-700 dark:text-slate-200">{row.salesperson}</td>
+                        <td className="px-2 py-2 text-right font-mono text-slate-700 dark:text-slate-200">{formatCompactNumber(row.quantity)}</td>
+                        <td className="px-2 py-2 text-right font-mono">
+                          <span className={Number(row.growth_ratio || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'}>
+                            {row.growth_ratio == null ? '—' : `${(Number(row.growth_ratio) * 100).toFixed(1)}%`}
+                          </span>
+                        </td>
+                        <td className="px-2 py-2 text-right font-mono text-[#E07A00]">{Number(row.consistency_score || 0).toFixed(0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </AnalyticsCard>
         </div>
       </div>
 
@@ -1549,6 +2046,42 @@ export default function AdminDashboard() {
               ]
         }
       />
+      <style jsx global>{`
+        @keyframes cardLiftIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes growWidth {
+          from {
+            opacity: 0.55;
+            transform: scaleX(0);
+          }
+          to {
+            opacity: 1;
+            transform: scaleX(1);
+          }
+        }
+
+        @keyframes drawStroke {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        .analytics-card {
+          animation: cardLiftIn 520ms ease both;
+        }
+      `}</style>
     </div>
   );
 }

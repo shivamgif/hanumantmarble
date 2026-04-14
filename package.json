@@ -9,7 +9,9 @@
     "lint": "next lint",
     "db:migrate-notification-read-columns": "node scripts/migrate-notification-read-columns.js",
     "db:migrate-salesperson-role": "node scripts/migrate-salesperson-role.mjs",
-    "db:migrate-department-columns": "node scripts/migrate-department-columns.mjs"
+    "db:migrate-department-columns": "node scripts/migrate-department-columns.mjs",
+    "db:migrate-purchase-capabilities": "node scripts/migrate-purchase-capabilities.mjs",
+    "db:reset-seed-stock-ops": "node scripts/reset-and-seed-stock-ops.mjs"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.14.0",

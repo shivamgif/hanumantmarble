@@ -73,6 +73,11 @@ async function upsertItemMaster(item) {
     },
   });
 
+  const division = await upsertNamedRecord({
+    table: 'stock_divisions',
+    value: item.divisionName || item.division || item.department || item.brandName,
+  });
+
   const department = normalizeText(item.department) || normalizeText(item.brandName) || 'General';
 
   const sku = normalizeText(item.sku) || generateSku({ brandName: brand.name, typeName: type.name, sizeLabel: size.label, itemName: item.itemName });
@@ -81,28 +86,32 @@ async function upsertItemMaster(item) {
       sku,
       brand_id,
       type_id,
+      division_id,
       size_id,
       department,
       name,
       unit_of_measure,
       tiles_per_box,
       pieces_per_box,
+      thickness_mm,
       reorder_level,
       safety_stock,
       purchase_price,
       landed_cost,
       selling_price,
       description
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
     ON CONFLICT (sku) DO UPDATE SET
       brand_id = EXCLUDED.brand_id,
       type_id = EXCLUDED.type_id,
+      division_id = EXCLUDED.division_id,
       size_id = EXCLUDED.size_id,
       department = EXCLUDED.department,
       name = EXCLUDED.name,
       unit_of_measure = EXCLUDED.unit_of_measure,
       tiles_per_box = EXCLUDED.tiles_per_box,
       pieces_per_box = EXCLUDED.pieces_per_box,
+      thickness_mm = COALESCE(EXCLUDED.thickness_mm, stock_items.thickness_mm),
       reorder_level = EXCLUDED.reorder_level,
       safety_stock = EXCLUDED.safety_stock,
       purchase_price = EXCLUDED.purchase_price,
@@ -115,12 +124,14 @@ async function upsertItemMaster(item) {
       sku,
       brand.id,
       type.id,
+      division.id,
       size.id,
       department,
       normalizeText(item.itemName),
       item.unitOfMeasure || 'box',
       item.tilesPerBox || null,
       item.piecesPerBox || null,
+      item.thicknessMm || null,
       item.reorderLevel || 10,
       item.safetyStock || 0,
       item.purchasePrice || null,
@@ -155,7 +166,7 @@ export async function GET(request) {
 
     return NextResponse.json({ shipments });
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to fetch arrivals', detail: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch purchases', detail: error.message }, { status: 500 });
   }
 }
 
@@ -197,7 +208,20 @@ export async function POST(request) {
       [body.vehicleNumber, body.vehicleType || null, body.driverName || null, body.driverPhone || null, transporter?.id || null]
     ) : [];
 
-    const shipmentNumber = normalizeText(body.shipmentNumber) || generateReference('INB');
+    const shipmentNumber = normalizeText(body.purchaseNumber || body.shipmentNumber) || generateReference('PUR');
+
+    const paymentStatusRaw = normalizeText(body.paymentStatus).toLowerCase();
+    const paymentStatus = paymentStatusRaw === 'paid' || paymentStatusRaw === 'partial'
+      ? paymentStatusRaw
+      : 'unpaid';
+    const paidAmount = body.paidAmount != null && body.paidAmount !== '' ? Number(body.paidAmount) : null;
+    const paymentDate = body.paymentDate || null;
+    const paymentReference = normalizeText(body.paymentReference || body.paymentModeReference) || null;
+    const paymentMode = normalizeText(body.paymentMode) || null;
+
+    if ((paymentStatus === 'partial' || paymentStatus === 'paid') && (!Number.isFinite(paidAmount) || paidAmount < 0)) {
+      return NextResponse.json({ error: 'Valid paid amount is required when payment status is partial or paid' }, { status: 400 });
+    }
 
     const shipmentRows = await sql(
       `INSERT INTO stock_inbound_shipments (
@@ -216,6 +240,14 @@ export async function POST(request) {
         approval_status,
         status,
         invoice_number,
+        invoice_date,
+        origin_city,
+        destination_warehouse_name,
+        payment_status,
+        paid_amount,
+        payment_date,
+        payment_reference,
+        payment_mode,
         transporter_bill_number,
         transporter_bill_amount,
         delivery_cost,
@@ -233,17 +265,17 @@ export async function POST(request) {
         $11,
         'pending',
         'submitted',
-        $12,
-        $13,
-        $14,
-        $15,
-        $16,
-        $17,
-        $18,
-        $19,
+        $12,$13,$14,$15,$16,$17,$18,$19,
         $20,
         $21,
-        $22
+        $22,
+        $23,
+        $24,
+        $25,
+        $26,
+        $27,
+        $28,
+        $29
       )
       RETURNING *`,
       [
@@ -256,13 +288,21 @@ export async function POST(request) {
         normalizeText(body.truckNumber) || null,
         normalizeText(body.driverName) || null,
         normalizeText(body.driverPhone) || null,
-        body.arrivalDate || null,
+        body.purchaseDate || body.arrivalDate || null,
         appUser?.id || null,
         normalizeText(body.invoiceNumber) || null,
+        body.invoiceDate || null,
+        normalizeText(body.originCity) || null,
+        normalizeText(body.destinationWarehouseName) || null,
+        paymentStatus,
+        Number.isFinite(paidAmount) ? paidAmount : null,
+        paymentDate,
+        paymentReference,
+        paymentMode,
         normalizeText(body.transporterBillNumber) || null,
         body.transporterBillAmount || 0,
-        body.deliveryCost || 0,
-        body.unloadingLabourCost || 0,
+        body.deliveryCost || body.transportCost || 0,
+        body.unloadingLabourCost || body.laborCost || 0,
         items.reduce((total, item) => total + Number(item.wholeQty || 0), 0),
         items.reduce((total, item) => total + Number(item.brokenQty || 0), 0),
         normalizeText(body.receivedBy) || session.user.name || session.user.email,
@@ -287,8 +327,12 @@ export async function POST(request) {
           rejected_qty,
           unit_cost,
           landed_cost,
+          hsn_code,
+          qty_sqm,
+          cost_per_sqm,
+          thickness_mm_snapshot,
           notes
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
         [
           shipment.id,
           item.id,
@@ -298,6 +342,10 @@ export async function POST(request) {
           Number(row.rejectedQty || 0),
           Number(row.unitPrice || 0),
           Number(row.landedCost || row.unitPrice || 0),
+          normalizeText(row.hsnCode) || null,
+          row.qtySqm != null && row.qtySqm !== '' ? Number(row.qtySqm) : null,
+          row.costPerSqm != null && row.costPerSqm !== '' ? Number(row.costPerSqm) : null,
+          row.thicknessMm != null && row.thicknessMm !== '' ? Number(row.thicknessMm) : null,
           row.notes || null,
         ]
       );
@@ -307,7 +355,7 @@ export async function POST(request) {
     await queueNotification({
       channel: 'whatsapp',
       eventType: 'inbound_arrival',
-      messageText: `New stock arrival submitted: ${shipment.shipment_number}. Review and approve to add to inventory.`,
+      messageText: `New stock purchase submitted: ${shipment.shipment_number}. Review and approve to add to inventory.`,
       recipients,
       sourceTable: 'stock_inbound_shipments',
       sourceId: shipment.id,
@@ -318,7 +366,7 @@ export async function POST(request) {
       eventType: 'inbound_submitted',
       entityType: 'inbound_shipment',
       entityId: shipment.id,
-      summary: `Inbound shipment ${shipment.shipment_number} submitted for review`,
+      summary: `Purchase shipment ${shipment.shipment_number} submitted for review`,
       details: { shipmentNumber: shipment.shipment_number, truckLicensePlate: body.truckLicensePlate || null },
       userId: appUser?.id || null,
     });
@@ -326,6 +374,6 @@ export async function POST(request) {
     return NextResponse.json({ shipment }, { status: 201 });
   } catch (error) {
     console.error('Failed to create inbound shipment:', error);
-    return NextResponse.json({ error: 'Failed to submit arrival', detail: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to submit purchase', detail: error.message }, { status: 500 });
   }
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { useSearchParams } from 'next/navigation';
-import { BarChart3, Boxes, CircleAlert, PackageCheck } from 'lucide-react';
+import { BarChart3, Boxes, Calendar, CircleAlert, Hash, PackageCheck, Truck } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
@@ -18,9 +18,14 @@ function createArrivalItemRow() {
     sku: '',
     itemName: '',
     brandName: '',
+    divisionName: '',
     typeName: '',
     sizeLabel: '',
     sizeUnit: 'mm',
+    hsnCode: '',
+    thicknessMm: '',
+    qtySqm: '',
+    costPerSqm: '',
     tilesPerBox: '',
     piecesPerBox: '',
     reorderLevel: '',
@@ -47,6 +52,14 @@ function createInitialArrivalDraft() {
     truckLicensePlate: '',
     driverName: '',
     invoiceNumber: '',
+    invoiceDate: '',
+    originCity: '',
+    destinationWarehouseName: '',
+    paymentStatus: 'unpaid',
+    paidAmount: '',
+    paymentDate: '',
+    paymentReference: '',
+    paymentMode: '',
     transportCost: '',
     laborCost: '',
     notes: '',
@@ -85,6 +98,26 @@ function toNumber(value) {
 
 function trimText(value) {
   return String(value ?? '').trim();
+}
+
+function parseSizeLabelSqm(sizeLabel) {
+  const clean = trimText(sizeLabel).toLowerCase().replace(/\s+/g, '');
+  const match = clean.match(/^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)(mm)?$/);
+  if (!match) {
+    return null;
+  }
+
+  const widthMm = Number(match[1]);
+  const lengthMm = Number(match[2]);
+  if (!Number.isFinite(widthMm) || !Number.isFinite(lengthMm) || widthMm <= 0 || lengthMm <= 0) {
+    return null;
+  }
+
+  return (widthMm / 1000) * (lengthMm / 1000);
+}
+
+function round3(value) {
+  return Math.round(value * 1000) / 1000;
 }
 
 function formatDateTime(value) {
@@ -154,6 +187,29 @@ const CLASSES = {
   statLabel: 'text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400',
   statValue: 'mt-2 break-all text-2xl font-bold text-slate-900 sm:text-3xl dark:text-white',
   iconButton: 'h-9 w-9 rounded-xl hover:bg-slate-100 transition-all active:scale-95 dark:hover:bg-slate-800',
+};
+
+const INVOICE_CLASSES = {
+  surface: 'rounded-2xl border border-slate-200/70 bg-white dark:border-slate-800 dark:bg-slate-950',
+  commandCard: 'rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950',
+  supplierTitle: 'text-xl font-bold text-slate-900 dark:text-white',
+  supplierMeta: 'mt-1 text-xs text-slate-500 dark:text-slate-400',
+  logisticsGrid: 'grid grid-cols-2 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800',
+  logisticsCell: 'border-b border-r border-slate-200 bg-slate-50/50 p-3 last:border-r-0 dark:border-slate-800 dark:bg-slate-900/50',
+  logisticsLabel: 'flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400',
+  logisticsValue: 'mt-1 text-sm font-mono font-semibold text-slate-900 dark:text-slate-100',
+  subBar: 'flex flex-wrap gap-6 rounded-lg bg-slate-100 px-4 py-2 text-[10px] font-mono text-slate-500 dark:bg-slate-800/50 dark:text-slate-300',
+  tableWrap: 'overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800',
+  tableHead: 'bg-slate-900 text-white text-[10px] uppercase tracking-widest',
+  tableHeadCell: 'px-4 py-3 font-semibold',
+  tableRow: 'border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900/40',
+  tableCell: 'px-4 py-3 text-sm text-slate-700 dark:text-slate-200',
+  monoCell: 'font-mono text-sm text-slate-800 dark:text-slate-100',
+  mobileGrid: 'grid grid-cols-2 gap-3 md:hidden',
+  mobileCard: 'rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950',
+  mobileCardHeader: 'rounded-lg bg-slate-900 px-2.5 py-1.5 text-[10px] uppercase tracking-[0.14em] text-white',
+  mobileKey: 'text-[10px] uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400',
+  mobileValue: 'font-mono text-xs text-slate-900 dark:text-slate-100',
 };
 
 function getStatusVariant(status) {
@@ -445,7 +501,7 @@ export default function StockDashboard() {
       open: true,
       loading: true,
       kind,
-      title: `${kind === 'arrival' ? 'Arrival' : 'Dispatch'} ${row.shipment_number}`,
+      title: `${kind === 'arrival' ? 'Purchase' : 'Dispatch'} ${row.shipment_number}`,
       description: 'Loading full shipment details…',
       record: row,
       items: [],
@@ -474,8 +530,8 @@ export default function StockDashboard() {
         open: true,
         loading: false,
         kind,
-        title: `${kind === 'arrival' ? 'Arrival' : 'Dispatch'} ${shipmentJson.shipment?.shipment_number || row.shipment_number}`,
-        description: kind === 'arrival' ? 'Inbound shipment detail preview' : 'Outbound shipment detail preview',
+        title: `${kind === 'arrival' ? 'Purchase' : 'Dispatch'} ${shipmentJson.shipment?.shipment_number || row.shipment_number}`,
+        description: kind === 'arrival' ? 'Inbound purchase detail preview' : 'Outbound shipment detail preview',
         record: shipmentJson.shipment || row,
         items: shipmentJson.items || [],
         documents: documentsJson.documents || [],
@@ -486,7 +542,7 @@ export default function StockDashboard() {
         open: true,
         loading: false,
         kind,
-        title: `${kind === 'arrival' ? 'Arrival' : 'Dispatch'} ${row.shipment_number}`,
+        title: `${kind === 'arrival' ? 'Purchase' : 'Dispatch'} ${row.shipment_number}`,
         description: 'Unable to load full details',
         record: row,
         items: [],
@@ -534,9 +590,11 @@ export default function StockDashboard() {
           itemName: matchedItem.name || item.itemName,
           sku: matchedItem.sku || item.sku,
           brandName: matchedItem.brand_name || item.brandName,
+          divisionName: matchedItem.division_name || matchedItem.department || item.divisionName,
           typeName: matchedItem.type_name || item.typeName,
           sizeLabel: matchedItem.size_label || item.sizeLabel,
           sizeUnit: matchedItem.size_unit || item.sizeUnit || 'mm',
+          thicknessMm: matchedItem.thickness_mm != null ? String(matchedItem.thickness_mm) : item.thicknessMm,
           tilesPerBox: matchedItem.tiles_per_box != null ? String(matchedItem.tiles_per_box) : item.tilesPerBox,
           piecesPerBox: matchedItem.pieces_per_box != null ? String(matchedItem.pieces_per_box) : item.piecesPerBox,
           reorderLevel: matchedItem.reorder_level != null ? String(matchedItem.reorder_level) : item.reorderLevel,
@@ -642,7 +700,7 @@ export default function StockDashboard() {
     if (!canCreateArrival) {
       setArrivalNotice({
         type: 'warning',
-        message: 'Insufficient permission: salespeople can review stock and create dispatches, but cannot log new arrivals.',
+        message: 'Insufficient permission: salespeople can review stock and create dispatches, but cannot log new purchases.',
       });
       setArrivalSubmitting(false);
       return;
@@ -650,26 +708,44 @@ export default function StockDashboard() {
 
     try {
       const items = arrivalDraft.items
-        .map((item) => ({
-          itemId: trimText(item.itemId),
-          sku: trimText(item.sku),
-          itemName: trimText(item.itemName),
-          brandName: trimText(item.brandName),
-          typeName: trimText(item.typeName),
-          sizeLabel: trimText(item.sizeLabel),
-          sizeUnit: trimText(item.sizeUnit) || 'mm',
-          tilesPerBox: toNumber(item.tilesPerBox),
-          piecesPerBox: toNumber(item.piecesPerBox),
-          reorderLevel: toNumber(item.reorderLevel),
-          description: trimText(item.description),
-          wholeQty: toNumber(item.wholeQty),
-          brokenQty: toNumber(item.brokenQty),
-          notes: trimText(item.notes),
-        }))
+        .map((item) => {
+          const piecesPerBox = toNumber(item.piecesPerBox);
+          const wholeQty = toNumber(item.wholeQty);
+          const brokenQty = toNumber(item.brokenQty);
+          const sizeSqm = parseSizeLabelSqm(item.sizeLabel);
+          const sqmPerBox = sizeSqm && piecesPerBox > 0 ? sizeSqm * piecesPerBox : null;
+          const inferredQtySqm = sqmPerBox != null ? round3((wholeQty + brokenQty) * sqmPerBox) : null;
+          const qtySqm = item.qtySqm === '' ? inferredQtySqm : toNumber(item.qtySqm);
+          const costPerSqm = item.costPerSqm === '' ? null : toNumber(item.costPerSqm);
+          const unitPrice = costPerSqm != null && qtySqm != null ? Number((costPerSqm * qtySqm).toFixed(2)) : 0;
+
+          return {
+            itemId: trimText(item.itemId),
+            sku: trimText(item.sku),
+            itemName: trimText(item.itemName),
+            brandName: trimText(item.brandName),
+            divisionName: trimText(item.divisionName),
+            typeName: trimText(item.typeName),
+            sizeLabel: trimText(item.sizeLabel),
+            sizeUnit: trimText(item.sizeUnit) || 'mm',
+            hsnCode: trimText(item.hsnCode),
+            thicknessMm: item.thicknessMm === '' ? null : toNumber(item.thicknessMm),
+            tilesPerBox: toNumber(item.tilesPerBox),
+            piecesPerBox,
+            reorderLevel: toNumber(item.reorderLevel),
+            description: trimText(item.description),
+            wholeQty,
+            brokenQty,
+            qtySqm,
+            costPerSqm,
+            unitPrice,
+            notes: trimText(item.notes),
+          };
+        })
         .filter((item) => item.itemId || item.itemName || item.wholeQty > 0 || item.brokenQty > 0 || item.notes);
 
       if (items.length === 0) {
-        throw new Error('Add at least one arrival item.');
+        throw new Error('Add at least one purchase item.');
       }
 
       if (items.some((item) => !item.itemId && (!item.itemName || !item.brandName || !item.typeName || !item.sizeLabel))) {
@@ -677,7 +753,7 @@ export default function StockDashboard() {
       }
 
       if (items.some((item) => item.wholeQty === 0 && item.brokenQty === 0)) {
-        throw new Error('Enter whole or broken quantity for each arrival row.');
+        throw new Error('Enter whole or broken quantity for each purchase row.');
       }
 
       const response = await fetch('/api/stock/inbound-shipments', {
@@ -686,12 +762,22 @@ export default function StockDashboard() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          purchaseNumber: trimText(arrivalDraft.shipmentNumber) || undefined,
+          purchaseDate: arrivalDraft.invoiceDate || undefined,
           shipmentNumber: trimText(arrivalDraft.shipmentNumber) || undefined,
           supplierName: trimText(arrivalDraft.supplierName) || undefined,
           truckLicensePlate: trimText(arrivalDraft.truckLicensePlate) || undefined,
           truckNumber: trimText(arrivalDraft.truckLicensePlate) || undefined,
           driverName: trimText(arrivalDraft.driverName) || undefined,
           invoiceNumber: trimText(arrivalDraft.invoiceNumber) || undefined,
+          invoiceDate: arrivalDraft.invoiceDate || undefined,
+          originCity: trimText(arrivalDraft.originCity) || undefined,
+          destinationWarehouseName: trimText(arrivalDraft.destinationWarehouseName) || undefined,
+          paymentStatus: trimText(arrivalDraft.paymentStatus) || 'unpaid',
+          paidAmount: arrivalDraft.paidAmount === '' ? undefined : toNumber(arrivalDraft.paidAmount),
+          paymentDate: arrivalDraft.paymentDate || undefined,
+          paymentReference: trimText(arrivalDraft.paymentReference) || undefined,
+          paymentMode: trimText(arrivalDraft.paymentMode) || undefined,
           deliveryCost: toNumber(arrivalDraft.transportCost),
           unloadingLabourCost: toNumber(arrivalDraft.laborCost),
           notes: trimText(arrivalDraft.notes) || undefined,
@@ -700,13 +786,20 @@ export default function StockDashboard() {
             sku: item.sku || undefined,
             itemName: item.itemName || undefined,
             brandName: item.brandName || undefined,
+            divisionName: item.divisionName || undefined,
+            department: item.divisionName || item.brandName || undefined,
             typeName: item.typeName || undefined,
             sizeLabel: item.sizeLabel || undefined,
             sizeUnit: item.sizeUnit || undefined,
+            hsnCode: item.hsnCode || undefined,
+            thicknessMm: item.thicknessMm ?? undefined,
             tilesPerBox: item.tilesPerBox || undefined,
             piecesPerBox: item.piecesPerBox || undefined,
             reorderLevel: item.reorderLevel || undefined,
             description: item.description || undefined,
+            qtySqm: item.qtySqm ?? undefined,
+            costPerSqm: item.costPerSqm ?? undefined,
+            unitPrice: item.unitPrice || undefined,
             wholeQty: item.wholeQty,
             brokenQty: item.brokenQty,
             notes: item.notes || undefined,
@@ -716,14 +809,14 @@ export default function StockDashboard() {
 
       const json = await response.json();
       if (!response.ok) {
-        throw new Error(json.error || json.detail || 'Failed to submit arrival');
+        throw new Error(json.error || json.detail || 'Failed to submit purchase');
       }
 
       setArrivalDraft(createInitialArrivalDraft());
       setArrivalAttachments(createInitialAttachmentState());
       setArrivalNotice({
         type: 'success',
-        message: `Arrival ${json.shipment?.shipment_number || 'submitted'} sent for review.`,
+        message: `Purchase ${json.shipment?.shipment_number || 'submitted'} sent for review.`,
       });
       try {
         const linkedInvoice = await uploadShipmentDocument({
@@ -735,7 +828,7 @@ export default function StockDashboard() {
           notes: trimText(arrivalDraft.notes) || undefined,
         });
         if (linkedInvoice) {
-          setArrivalNotice({ type: 'success', message: `Arrival ${json.shipment?.shipment_number || 'submitted'} sent for review and invoice attached.` });
+          setArrivalNotice({ type: 'success', message: `Purchase ${json.shipment?.shipment_number || 'submitted'} sent for review and invoice attached.` });
         }
 
         const linkedBill = await uploadShipmentDocument({
@@ -747,12 +840,12 @@ export default function StockDashboard() {
           notes: trimText(arrivalDraft.notes) || undefined,
         });
         if (linkedBill) {
-          setArrivalNotice({ type: 'success', message: `Arrival ${json.shipment?.shipment_number || 'submitted'} sent for review and documents attached.` });
+          setArrivalNotice({ type: 'success', message: `Purchase ${json.shipment?.shipment_number || 'submitted'} sent for review and documents attached.` });
         }
       } catch (uploadError) {
         setArrivalNotice({
           type: 'warning',
-          message: `Arrival saved, but one or more document uploads failed: ${uploadError.message}`,
+          message: `Purchase saved, but one or more document uploads failed: ${uploadError.message}`,
         });
       }
 
@@ -761,7 +854,7 @@ export default function StockDashboard() {
       } catch (refreshError) {
         setArrivalNotice({
           type: 'warning',
-          message: `Arrival saved, but dashboard refresh failed: ${refreshError.message}`,
+          message: `Purchase saved, but dashboard refresh failed: ${refreshError.message}`,
         });
       }
     } catch (submitError) {
@@ -888,12 +981,14 @@ export default function StockDashboard() {
 
   const tableViewTabs = [
     { id: 'items', label: t('currentStock') },
-    { id: 'arrivals', label: t('arrivals') },
+    { id: 'purchases', label: 'Purchases' },
     { id: 'dispatches', label: t('dispatches') },
   ];
 
+  const purchaseSourceRows = data?.recentPurchases || data?.recentArrivals || [];
+
   const arrivalRows = getSortedRows(
-    (data?.recentArrivals || []).filter((shipment) => {
+    purchaseSourceRows.filter((shipment) => {
       const query = normalizeSearchValue(arrivalSearch);
       if (!query) {
         return true;
@@ -979,6 +1074,23 @@ export default function StockDashboard() {
   const arrivalPagination = paginateRows(arrivalRows, arrivalPage, DEFAULT_PAGE_SIZE);
   const dispatchPagination = paginateRows(dispatchRows, dispatchPage, DEFAULT_PAGE_SIZE);
   const previewItemPagination = paginateRows(previewState.items || [], previewItemsPage, DEFAULT_PAGE_SIZE);
+  const isInboundPreview = previewState.kind === 'arrival';
+  const inboundMetaItems = [
+    { label: 'Status', value: previewState.record?.status },
+    { label: 'Approval', value: previewState.record?.approval_status },
+    { label: 'Datetime', value: formatDateTime(previewState.record?.arrival_date || previewState.record?.created_at) },
+    { label: 'Driver', value: previewState.record?.driver_name },
+    { label: 'Origin City', value: previewState.record?.origin_city },
+    { label: 'Destination Warehouse', value: previewState.record?.destination_warehouse_name },
+    { label: 'Payment Status', value: previewState.record?.payment_status },
+    { label: 'Paid Amount', value: previewState.record?.paid_amount },
+    { label: 'Payment Date', value: previewState.record?.payment_date },
+    { label: 'Payment Ref', value: previewState.record?.payment_reference || previewState.record?.payment_mode },
+    { label: 'Total Whole', value: previewState.record?.total_whole_qty },
+    { label: 'Total Broken', value: previewState.record?.total_broken_qty },
+    { label: 'Notes', value: previewState.record?.notes },
+  ];
+  const hasTechnicalSubBar = Boolean(previewState.record?.eway_bill_number || previewState.record?.irn_number);
 
   useEffect(() => {
     setStockPage((current) => Math.min(current, stockPagination.pageCount));
@@ -1006,8 +1118,8 @@ export default function StockDashboard() {
     const entityIdRaw = searchParams.get('entityId');
     const entityId = Number(entityIdRaw);
 
-    if (view === 'items' || view === 'arrivals' || view === 'dispatches') {
-      setActiveTableView(view);
+    if (view === 'items' || view === 'arrivals' || view === 'purchases' || view === 'dispatches') {
+      setActiveTableView(view === 'arrivals' ? 'purchases' : view);
     }
 
     if (!entityType || !entityId || Number.isNaN(entityId)) {
@@ -1020,8 +1132,8 @@ export default function StockDashboard() {
     }
 
     if (entityType === 'inbound_shipment') {
-      const target = (data.recentArrivals || []).find((item) => Number(item.id) === entityId);
-      setActiveTableView('arrivals');
+      const target = (data.recentPurchases || data.recentArrivals || []).find((item) => Number(item.id) === entityId);
+      setActiveTableView('purchases');
       setHighlightedShipmentKey(`arrival-${entityId}`);
       openShipmentPreview('arrival', target || { id: entityId, shipment_number: `INB-${entityId}` });
       setProcessedDeepLink(deepLinkKey);
@@ -1052,7 +1164,7 @@ export default function StockDashboard() {
   const totalWholeStock = (data?.activeItems || []).reduce((sum, item) => sum + Number(item.current_whole_qty || 0), 0);
   const totalBrokenStock = (data?.activeItems || []).reduce((sum, item) => sum + Number(item.current_broken_qty || 0), 0);
   const totalStockUnits = totalWholeStock + totalBrokenStock;
-  const pendingArrivals = (data?.recentArrivals || []).filter((item) => String(item.status || '').toLowerCase().includes('pending')).length;
+  const pendingArrivals = (data?.recentPurchases || data?.recentArrivals || []).filter((item) => String(item.status || '').toLowerCase().includes('pending')).length;
   const pendingDispatches = (data?.recentDispatches || []).filter((item) => String(item.status || '').toLowerCase().includes('pending')).length;
   const riskItems = (data?.activeItems || []).filter((item) => Number(item.reorder_level || 0) > 0 && (Number(item.current_whole_qty || 0) + Number(item.current_broken_qty || 0)) <= Number(item.reorder_level || 0)).length;
 
@@ -1066,7 +1178,7 @@ export default function StockDashboard() {
       accent: 'from-[#E07A00]/20 to-[#E07A00]/5',
     },
     {
-      label: 'Pending Arrivals',
+      label: 'Pending Purchases',
       value: pendingArrivals,
       trend: pendingArrivals === 0 ? 100 : -Math.min(pendingArrivals * 10, 100),
       trendLabel: 'Queue health',
@@ -1110,7 +1222,7 @@ export default function StockDashboard() {
     <div className={CLASSES.contentWrap}>
       <div className={CLASSES.topCard}>
         <h1 className="text-lg font-semibold text-foreground">Stock Operations</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Focused view for maintainers: current stock, arrivals, and dispatches.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Focused view for maintainers: current stock, purchases, and dispatches.</p>
       </div>
 
       <div className={CLASSES.statGrid}>
@@ -1267,11 +1379,11 @@ export default function StockDashboard() {
       </div>
         </div>
       )}
-      {activeTableView === 'arrivals' && (
-        <div className="stock-tab-panel" key="stock-panel-arrivals">
-        <section id="arrivals" className="flex h-full flex-col overflow-hidden scroll-mt-6 rounded-2xl border border-slate-200/60 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+      {activeTableView === 'purchases' && (
+        <div className="stock-tab-panel" key="stock-panel-purchases">
+        <section id="purchases" className="flex h-full flex-col overflow-hidden scroll-mt-6 rounded-2xl border border-slate-200/60 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-900/40">
-            <h2 className="text-base font-semibold text-foreground">{t('arrivals')}</h2>
+            <h2 className="text-base font-semibold text-foreground">Purchases</h2>
               <Sheet>
               <SheetTrigger asChild>
                 <button
@@ -1279,21 +1391,21 @@ export default function StockDashboard() {
                   onClick={() => setArrivalNotice(null)}
                   className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-55"
                   disabled={!canCreateArrival}
-                  title={!canCreateArrival ? 'Insufficient permission for New Arrival' : undefined}
+                  title={!canCreateArrival ? 'Insufficient permission for New Purchase' : undefined}
                 >
-                  + {t('newArrival')}
+                  + New Purchase
                 </button>
               </SheetTrigger>
               <SheetContent side="right" className="w-full max-w-none overflow-y-auto md:w-[50vw]">
                 <SheetHeader>
-                  <SheetTitle>{t('logNewArrival')}</SheetTitle>
-                  <SheetDescription>{t('logNewArrivalDesc')}</SheetDescription>
+                  <SheetTitle>Log New Purchase</SheetTitle>
+                  <SheetDescription>Record an inbound purchase delivery and invoice details.</SheetDescription>
                 </SheetHeader>
                 <form className="mt-6 space-y-5" onSubmit={handleArrivalSubmit}>
                   <InlineNotice notice={arrivalNotice} />
                   <div className={FORM_CARD_CLASS}>
-                    <h3 className="text-sm font-semibold text-foreground">Shipment Basics</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">Enter core details for this inbound shipment.</p>
+                    <h3 className="text-sm font-semibold text-foreground">Purchase Basics</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">Enter core details for this stock purchase.</p>
                     <div className="mt-3 grid gap-4 md:grid-cols-2">
                     <div>
                       <label className={FORM_LABEL_CLASS}>{t('shipmentNo')}</label>
@@ -1319,7 +1431,7 @@ export default function StockDashboard() {
                   </div>
                   </div>
                   <div className={FORM_CARD_CLASS}>
-                    <h3 className="text-sm font-semibold text-foreground">Vehicle And Invoice</h3>
+                    <h3 className="text-sm font-semibold text-foreground">Transport And Invoice</h3>
                     <div className="mt-3 grid gap-4 md:grid-cols-2">
                     <div>
                       <label className={FORM_LABEL_CLASS}>{t('truck')}</label>
@@ -1349,6 +1461,35 @@ export default function StockDashboard() {
                         type="text"
                         className={FORM_INPUT_CLASS}
                         placeholder="INV-..."
+                      />
+                    </div>
+                    <div>
+                      <label className={FORM_LABEL_CLASS}>Invoice Date</label>
+                      <input
+                        value={arrivalDraft.invoiceDate}
+                        onChange={(event) => updateArrivalDraft('invoiceDate', event.target.value)}
+                        type="date"
+                        className={FORM_INPUT_CLASS}
+                      />
+                    </div>
+                    <div>
+                      <label className={FORM_LABEL_CLASS}>Origin City</label>
+                      <input
+                        value={arrivalDraft.originCity}
+                        onChange={(event) => updateArrivalDraft('originCity', event.target.value)}
+                        type="text"
+                        className={FORM_INPUT_CLASS}
+                        placeholder="Source city"
+                      />
+                    </div>
+                    <div>
+                      <label className={FORM_LABEL_CLASS}>Destination Warehouse</label>
+                      <input
+                        value={arrivalDraft.destinationWarehouseName}
+                        onChange={(event) => updateArrivalDraft('destinationWarehouseName', event.target.value)}
+                        type="text"
+                        className={FORM_INPUT_CLASS}
+                        placeholder="Warehouse name"
                       />
                     </div>
                     <AttachmentField
@@ -1384,6 +1525,63 @@ export default function StockDashboard() {
                   </div>
                   <div className={FORM_CARD_CLASS}>
                     <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className={FORM_LABEL_CLASS}>Payment Status</label>
+                      <select
+                        value={arrivalDraft.paymentStatus}
+                        onChange={(event) => updateArrivalDraft('paymentStatus', event.target.value)}
+                        className={FORM_INPUT_CLASS}
+                      >
+                        <option value="unpaid">Unpaid</option>
+                        <option value="partial">Partial</option>
+                        <option value="paid">Paid</option>
+                      </select>
+                    </div>
+                    {(arrivalDraft.paymentStatus === 'partial' || arrivalDraft.paymentStatus === 'paid') ? (
+                      <>
+                        <div>
+                          <label className={FORM_LABEL_CLASS}>Paid Amount (INR)</label>
+                          <input
+                            value={arrivalDraft.paidAmount}
+                            onChange={(event) => updateArrivalDraft('paidAmount', event.target.value)}
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className={FORM_INPUT_CLASS}
+                            placeholder="0.00"
+                          />
+                        </div>
+                        <div>
+                          <label className={FORM_LABEL_CLASS}>Payment Date</label>
+                          <input
+                            value={arrivalDraft.paymentDate}
+                            onChange={(event) => updateArrivalDraft('paymentDate', event.target.value)}
+                            type="date"
+                            className={FORM_INPUT_CLASS}
+                          />
+                        </div>
+                        <div>
+                          <label className={FORM_LABEL_CLASS}>Payment Mode</label>
+                          <input
+                            value={arrivalDraft.paymentMode}
+                            onChange={(event) => updateArrivalDraft('paymentMode', event.target.value)}
+                            type="text"
+                            className={FORM_INPUT_CLASS}
+                            placeholder="NEFT / UPI / Cash"
+                          />
+                        </div>
+                        <div>
+                          <label className={FORM_LABEL_CLASS}>Payment Reference</label>
+                          <input
+                            value={arrivalDraft.paymentReference}
+                            onChange={(event) => updateArrivalDraft('paymentReference', event.target.value)}
+                            type="text"
+                            className={FORM_INPUT_CLASS}
+                            placeholder="Txn reference"
+                          />
+                        </div>
+                      </>
+                    ) : null}
                     <div>
                       <label className={FORM_LABEL_CLASS}>{t('laborCost')}</label>
                       <div className="relative mt-1">
@@ -1472,6 +1670,12 @@ export default function StockDashboard() {
                               disabled={Boolean(item.itemId)}
                             />
                             <input
+                              value={item.divisionName}
+                              onChange={(event) => updateArrivalItem(index, 'divisionName', event.target.value)}
+                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                              placeholder="Division"
+                            />
+                            <input
                               value={item.typeName}
                               onChange={(event) => updateArrivalItem(index, 'typeName', event.target.value)}
                               className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
@@ -1526,6 +1730,39 @@ export default function StockDashboard() {
                               disabled={Boolean(item.itemId)}
                             />
                             <input
+                              value={item.hsnCode}
+                              onChange={(event) => updateArrivalItem(index, 'hsnCode', event.target.value)}
+                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                              placeholder="HSN Code"
+                            />
+                            <input
+                              value={item.thicknessMm}
+                              onChange={(event) => updateArrivalItem(index, 'thicknessMm', event.target.value)}
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                              placeholder="Thickness (mm)"
+                            />
+                            <input
+                              value={item.qtySqm}
+                              onChange={(event) => updateArrivalItem(index, 'qtySqm', event.target.value)}
+                              type="number"
+                              min="0"
+                              step="0.001"
+                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                              placeholder="Quantity (sqm)"
+                            />
+                            <input
+                              value={item.costPerSqm}
+                              onChange={(event) => updateArrivalItem(index, 'costPerSqm', event.target.value)}
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                              placeholder="Cost / sqm"
+                            />
+                            <input
                               value={item.description}
                               onChange={(event) => updateArrivalItem(index, 'description', event.target.value)}
                               className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 lg:col-span-2"
@@ -1551,7 +1788,7 @@ export default function StockDashboard() {
                     disabled={arrivalSubmitting}
                     className="mt-4 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {arrivalSubmitting ? 'Submitting...' : t('submitArrival')}
+                    {arrivalSubmitting ? 'Submitting...' : 'Submit Purchase'}
                   </button>
                 </form>
               </SheetContent>
@@ -1559,7 +1796,7 @@ export default function StockDashboard() {
           </div>
           {!canCreateArrival ? (
             <div className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              Insufficient permission: salespeople can create dispatches but cannot create arrivals.
+              Insufficient permission: salespeople can create dispatches but cannot create purchases.
             </div>
           ) : null}
           <div className="sticky top-0 z-10 border-b border-slate-100 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
@@ -1567,7 +1804,7 @@ export default function StockDashboard() {
               type="search"
               value={arrivalSearch}
               onChange={(event) => setArrivalSearch(event.target.value)}
-              placeholder="Search arrivals by date, product, qty, truck, or status"
+              placeholder="Search purchases by date, product, qty, truck, or status"
               className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
             />
           </div>
@@ -1581,7 +1818,7 @@ export default function StockDashboard() {
                       type="button"
                       onClick={() => openShipmentPreview('arrival', a)}
                       className="min-w-0 flex-1 text-left"
-                      aria-label={`Open arrival ${a.shipment_number}`}
+                      aria-label={`Open purchase ${a.shipment_number}`}
                     >
                       <p className="break-all font-mono text-xs font-semibold text-primary">{a.shipment_number}</p>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400">{formatDateTime(a.arrival_date || a.created_at)}</p>
@@ -1589,9 +1826,17 @@ export default function StockDashboard() {
                     <Badge variant={getStatusVariant(a.status)}>{a.status}</Badge>
                   </div>
                   <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">{Number(a.total_whole_qty || 0)} whole / {Number(a.total_broken_qty || 0)} broken</p>
+                  <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                    Invoice: {a.invoice_number || '—'} {a.invoice_date ? `(${formatDateTime(a.invoice_date)})` : ''}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                    {a.origin_city || '—'} to {a.destination_warehouse_name || '—'} • {a.payment_status || 'unpaid'}
+                  </p>
                   {expanded ? (
                     <div className="mt-2 space-y-1 text-[11px] text-slate-500 dark:text-slate-400">
                       <p className="truncate">{a.product_names || a.product_skus || '—'}</p>
+                      <p>Division: {a.divisions || 'General'}</p>
+                      <p>SQM: {Number(a.total_qty_sqm || 0).toFixed(3)} • Avg cost/sqm: {Number(a.avg_cost_per_sqm || 0).toFixed(2)}</p>
                       <p>By: {a.generated_by || '—'}</p>
                     </div>
                   ) : null}
@@ -1599,7 +1844,7 @@ export default function StockDashboard() {
                     type="button"
                     onClick={() => setArrivalExpandedId((current) => (current === a.id ? null : a.id))}
                     className="mt-2 rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                    aria-label={expanded ? 'Collapse arrival details' : 'Expand arrival details'}
+                    aria-label={expanded ? 'Collapse purchase details' : 'Expand purchase details'}
                   >
                     {expanded ? 'Collapse' : 'Expand'}
                   </button>
@@ -1621,6 +1866,9 @@ export default function StockDashboard() {
                       {t('shipmentNo')}
                     </button>
                   </th>
+                  <th className="px-3 py-2">Invoice</th>
+                  <th className="px-3 py-2">Route</th>
+                  <th className="px-3 py-2">Payment</th>
                   <th className="px-3 py-2">
                     <button type="button" onClick={() => toggleSort(arrivalSort, setArrivalSort, 'products')} className="font-medium hover:text-foreground">
                       Products
@@ -1660,13 +1908,28 @@ export default function StockDashboard() {
                   >
                     <td className="px-3 py-2 text-muted-foreground">{formatDateTime(a.arrival_date || a.created_at)}</td>
                     <td className="px-3 py-2 font-mono font-medium text-primary">{a.shipment_number}</td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      <div>{a.invoice_number || '—'}</div>
+                      <div className="text-[10px]">{a.invoice_date ? formatDateTime(a.invoice_date) : '—'}</div>
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      <div className="max-w-[170px] truncate" title={`${a.origin_city || '—'} to ${a.destination_warehouse_name || '—'}`}>
+                        {a.origin_city || '—'} to {a.destination_warehouse_name || '—'}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      <div className="uppercase text-[10px] font-semibold">{a.payment_status || 'unpaid'}</div>
+                      {a.paid_amount != null ? <div className="text-[10px]">INR {Number(a.paid_amount).toFixed(2)}</div> : null}
+                    </td>
                     <td className="px-3 py-2">
                       <div className="max-w-[260px] truncate" title={a.product_names || a.product_skus || ''}>
                         {a.product_names || a.product_skus || '—'}
                       </div>
+                      <div className="mt-0.5 text-[10px] text-muted-foreground">{a.divisions || 'General'}</div>
                     </td>
                     <td className="px-3 py-2 text-right">
                       {Number(a.total_whole_qty || 0)} whole / {Number(a.total_broken_qty || 0)} broken
+                      <div className="text-[10px] text-muted-foreground">{Number(a.total_qty_sqm || 0).toFixed(3)} sqm</div>
                     </td>
                     <td className="px-3 py-2"><Badge variant={getStatusVariant(a.status)}>{a.status}</Badge></td>
                     <td className="px-3 py-2 text-muted-foreground">
@@ -1680,10 +1943,10 @@ export default function StockDashboard() {
                 ))}
                 {arrivalPagination.total === 0 ? (
                   <tr>
-                    <td colSpan="7" className="px-3 py-10">
+                    <td colSpan="10" className="px-3 py-10">
                       <div className="flex flex-col items-center justify-center gap-3 text-center">
                         <PackageCheck className="h-6 w-6 text-slate-400" />
-                        <p className="text-sm text-slate-500 dark:text-slate-400">No arrivals logged yet.</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">No purchases logged yet.</p>
                         <button
                           type="button"
                           onClick={() => setArrivalSearch('')}
@@ -2112,50 +2375,163 @@ export default function StockDashboard() {
               ]
             : [
                 {
-                  title: 'Shipment Details',
+                  title: isInboundPreview ? 'ERP Header' : 'Shipment Details',
                   children: (
-                    <PreviewKeyValueGrid
-                      items={[
-                        { label: 'Shipment No.', value: previewState.record?.shipment_number },
-                        { label: 'Status', value: previewState.record?.status },
-                        { label: 'Approval', value: previewState.record?.approval_status },
-                        { label: 'Datetime', value: formatDateTime(previewState.record?.arrival_date || previewState.record?.dispatch_date || previewState.record?.created_at) },
-                        { label: 'Truck', value: previewState.record?.truck_license_plate || previewState.record?.truck_number },
-                        { label: 'Driver', value: previewState.record?.driver_name },
-                        { label: 'Invoice No.', value: previewState.record?.invoice_number },
-                        { label: 'Gatepass No.', value: previewState.record?.gatepass_number },
-                        { label: 'Customer / Supplier', value: previewState.record?.customer_name || previewState.record?.supplier_name },
-                        { label: 'Total Whole', value: previewState.record?.total_whole_qty },
-                        { label: 'Total Broken', value: previewState.record?.total_broken_qty },
-                        { label: 'Notes', value: previewState.record?.notes },
-                      ]}
-                    />
+                    isInboundPreview ? (
+                      <div className={INVOICE_CLASSES.surface}>
+                        <div className={INVOICE_CLASSES.commandCard}>
+                          <div className="grid gap-4 md:grid-cols-[1.15fr_1fr] md:items-start">
+                            <div>
+                              <div className={INVOICE_CLASSES.supplierTitle}>{previewState.record?.supplier_name || 'Supplier'}</div>
+                              <div className={INVOICE_CLASSES.supplierMeta}>GSTIN: {previewState.record?.supplier_gst_number || '—'}</div>
+                              <div className={INVOICE_CLASSES.supplierMeta}>{previewState.record?.supplier_address || 'Address not available'}</div>
+                              <div className="mt-3 font-mono text-xs font-semibold text-[#E07A00]">{previewState.record?.shipment_number || '—'}</div>
+                            </div>
+                            <div className={INVOICE_CLASSES.logisticsGrid}>
+                              <div className={INVOICE_CLASSES.logisticsCell}>
+                                <div className={INVOICE_CLASSES.logisticsLabel}><Hash className="h-3 w-3" />Invoice No</div>
+                                <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.invoice_number || '—'}</div>
+                              </div>
+                              <div className={INVOICE_CLASSES.logisticsCell}>
+                                <div className={INVOICE_CLASSES.logisticsLabel}><Calendar className="h-3 w-3" />Date</div>
+                                <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.invoice_date ? formatDateTime(previewState.record?.invoice_date) : '—'}</div>
+                              </div>
+                              <div className={INVOICE_CLASSES.logisticsCell}>
+                                <div className={INVOICE_CLASSES.logisticsLabel}><Truck className="h-3 w-3" />Vehicle No</div>
+                                <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.truck_license_plate || previewState.record?.truck_number || '—'}</div>
+                              </div>
+                              <div className={INVOICE_CLASSES.logisticsCell}>
+                                <div className={INVOICE_CLASSES.logisticsLabel}><Truck className="h-3 w-3" />Transporter</div>
+                                <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.transporter_name || '—'}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        {hasTechnicalSubBar ? (
+                          <div className="px-4 pb-4">
+                            <div className={INVOICE_CLASSES.subBar}>
+                              {previewState.record?.eway_bill_number ? <span>E-WAY: {previewState.record?.eway_bill_number}</span> : null}
+                              {previewState.record?.irn_number ? <span>IRN: {previewState.record?.irn_number}</span> : null}
+                            </div>
+                          </div>
+                        ) : null}
+                        <div className="px-4 pb-4">
+                          <PreviewKeyValueGrid items={inboundMetaItems} />
+                        </div>
+                      </div>
+                    ) : (
+                      <PreviewKeyValueGrid
+                        items={[
+                          { label: 'Shipment No.', value: previewState.record?.shipment_number },
+                          { label: 'Status', value: previewState.record?.status },
+                          { label: 'Approval', value: previewState.record?.approval_status },
+                          { label: 'Datetime', value: formatDateTime(previewState.record?.arrival_date || previewState.record?.dispatch_date || previewState.record?.created_at) },
+                          { label: 'Truck', value: previewState.record?.truck_license_plate || previewState.record?.truck_number },
+                          { label: 'Driver', value: previewState.record?.driver_name },
+                          { label: 'Invoice No.', value: previewState.record?.invoice_number },
+                          { label: 'Gatepass No.', value: previewState.record?.gatepass_number },
+                          { label: 'Customer', value: previewState.record?.customer_name },
+                          { label: 'Total Whole', value: previewState.record?.total_whole_qty },
+                          { label: 'Total Broken', value: previewState.record?.total_broken_qty },
+                          { label: 'Notes', value: previewState.record?.notes },
+                        ]}
+                      />
+                    )
                   ),
                 },
                 previewState.items?.length
                   ? {
-                      title: 'Line Items',
+                      title: isInboundPreview ? 'Industrial Line Items' : 'Line Items',
                       children: (
                         <>
-                          <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                          {isInboundPreview ? (
+                            <div className={INVOICE_CLASSES.mobileGrid}>
+                              {previewItemPagination.rows.map((item, index) => (
+                                <article key={`inbound-mobile-item-${item.id || index}`} className={INVOICE_CLASSES.mobileCard}>
+                                  <div className={INVOICE_CLASSES.mobileCardHeader}>Line {index + 1}</div>
+                                  <div className="mt-2 grid grid-cols-2 gap-2">
+                                    <div>
+                                      <div className={INVOICE_CLASSES.mobileKey}>Description</div>
+                                      <div className={INVOICE_CLASSES.mobileValue}>{item.item_name || item.sku || '—'}</div>
+                                    </div>
+                                    <div>
+                                      <div className={INVOICE_CLASSES.mobileKey}>HSN</div>
+                                      <div className={INVOICE_CLASSES.mobileValue}>{item.hsn_code || '—'}</div>
+                                    </div>
+                                    <div>
+                                      <div className={INVOICE_CLASSES.mobileKey}>Size</div>
+                                      <div className={INVOICE_CLASSES.mobileValue}>{item.size_label || '—'}</div>
+                                    </div>
+                                    <div>
+                                      <div className={INVOICE_CLASSES.mobileKey}>Boxes (Whole)</div>
+                                      <div className={INVOICE_CLASSES.mobileValue}>{item.received_whole_qty ?? item.loaded_whole_qty ?? 0}</div>
+                                    </div>
+                                    <div className="col-span-2">
+                                      <div className={INVOICE_CLASSES.mobileKey}>Total SQM / Qty</div>
+                                      <div className={INVOICE_CLASSES.mobileValue}>
+                                        {item.qty_sqm != null ? Number(item.qty_sqm).toFixed(3) : Number((item.received_whole_qty ?? 0) + (item.received_broken_qty ?? 0)).toFixed(0)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </article>
+                              ))}
+                            </div>
+                          ) : null}
+                          <div className={isInboundPreview ? `hidden md:block ${INVOICE_CLASSES.tableWrap}` : 'overflow-hidden rounded-2xl border border-border bg-card'}>
                             <table className="w-full text-left text-sm">
-                              <thead className="bg-muted/70 text-muted-foreground">
+                              <thead className={isInboundPreview ? INVOICE_CLASSES.tableHead : 'bg-muted/70 text-muted-foreground'}>
                                 <tr>
-                                  <th className="px-3 py-2">SKU</th>
-                                  <th className="px-3 py-2">Name</th>
-                                  <th className="px-3 py-2 text-right">Whole</th>
-                                  <th className="px-3 py-2 text-right">Broken</th>
-                                  <th className="px-3 py-2">Notes</th>
+                                  {isInboundPreview ? (
+                                    <>
+                                      <th className={INVOICE_CLASSES.tableHeadCell}>Sr. No</th>
+                                      <th className={INVOICE_CLASSES.tableHeadCell}>Description</th>
+                                      <th className={INVOICE_CLASSES.tableHeadCell}>HSN</th>
+                                      <th className={INVOICE_CLASSES.tableHeadCell}>Size</th>
+                                      <th className={`${INVOICE_CLASSES.tableHeadCell} text-right`}>Boxes (Whole)</th>
+                                      <th className={`${INVOICE_CLASSES.tableHeadCell} text-right`}>Total SQM / Qty</th>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <th className="px-3 py-2">SKU</th>
+                                      <th className="px-3 py-2">Name</th>
+                                      <th className="px-3 py-2">HSN</th>
+                                      <th className="px-3 py-2">Division</th>
+                                      <th className="px-3 py-2 text-right">SQM</th>
+                                      <th className="px-3 py-2 text-right">Cost / SQM</th>
+                                      <th className="px-3 py-2 text-right">Whole</th>
+                                      <th className="px-3 py-2 text-right">Broken</th>
+                                      <th className="px-3 py-2">Notes</th>
+                                    </>
+                                  )}
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-border bg-card">
-                                {previewItemPagination.rows.map((item) => (
-                                  <tr key={item.id}>
-                                    <td className="px-3 py-2 font-medium text-foreground">{item.sku}</td>
-                                    <td className="px-3 py-2 text-foreground/80">{item.item_name}</td>
-                                    <td className="px-3 py-2 text-right">{item.loaded_whole_qty ?? item.received_whole_qty ?? 0}</td>
-                                    <td className="px-3 py-2 text-right">{item.loaded_broken_qty ?? item.received_broken_qty ?? 0}</td>
-                                    <td className="px-3 py-2 text-muted-foreground">{item.notes || '—'}</td>
+                              <tbody className={isInboundPreview ? 'bg-white dark:bg-slate-950' : 'divide-y divide-border bg-card'}>
+                                {previewItemPagination.rows.map((item, index) => (
+                                  <tr key={item.id || `preview-item-${index}`} className={isInboundPreview ? INVOICE_CLASSES.tableRow : ''}>
+                                    {isInboundPreview ? (
+                                      <>
+                                        <td className={`${INVOICE_CLASSES.tableCell} ${INVOICE_CLASSES.monoCell}`}>{index + 1}</td>
+                                        <td className={INVOICE_CLASSES.tableCell}>{item.item_name || item.sku || '—'}</td>
+                                        <td className={`${INVOICE_CLASSES.tableCell} ${INVOICE_CLASSES.monoCell}`}>{item.hsn_code || '—'}</td>
+                                        <td className={`${INVOICE_CLASSES.tableCell} ${INVOICE_CLASSES.monoCell}`}>{item.size_label || '—'}</td>
+                                        <td className={`${INVOICE_CLASSES.tableCell} ${INVOICE_CLASSES.monoCell} text-right`}>{item.received_whole_qty ?? item.loaded_whole_qty ?? 0}</td>
+                                        <td className={`${INVOICE_CLASSES.tableCell} ${INVOICE_CLASSES.monoCell} text-right`}>
+                                          {item.qty_sqm != null ? Number(item.qty_sqm).toFixed(3) : Number((item.received_whole_qty ?? 0) + (item.received_broken_qty ?? 0)).toFixed(0)}
+                                        </td>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <td className="px-3 py-2 font-medium text-foreground">{item.sku}</td>
+                                        <td className="px-3 py-2 text-foreground/80">{item.item_name}</td>
+                                        <td className="px-3 py-2 text-muted-foreground">{item.hsn_code || '—'}</td>
+                                        <td className="px-3 py-2 text-muted-foreground">{item.division_name || item.department || '—'}</td>
+                                        <td className="px-3 py-2 text-right">{item.qty_sqm != null ? Number(item.qty_sqm).toFixed(3) : '—'}</td>
+                                        <td className="px-3 py-2 text-right">{item.cost_per_sqm != null ? Number(item.cost_per_sqm).toFixed(2) : '—'}</td>
+                                        <td className="px-3 py-2 text-right">{item.loaded_whole_qty ?? item.received_whole_qty ?? 0}</td>
+                                        <td className="px-3 py-2 text-right">{item.loaded_broken_qty ?? item.received_broken_qty ?? 0}</td>
+                                        <td className="px-3 py-2 text-muted-foreground">{item.notes || '—'}</td>
+                                      </>
+                                    )}
                                   </tr>
                                 ))}
                               </tbody>

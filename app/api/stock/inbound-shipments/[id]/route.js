@@ -28,10 +28,11 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
 
     const itemRows = await sql(
       `SELECT isi.*, i.sku, i.name AS item_name, b.name AS brand_name, i.current_whole_qty, i.current_broken_qty,
-              COALESCE(NULLIF(TRIM(i.department), ''), 'General') AS department
+              COALESCE(d.name, NULLIF(TRIM(i.department), ''), 'General') AS department
        FROM stock_inbound_shipment_items isi
        JOIN stock_items i ON i.id = isi.item_id
        LEFT JOIN stock_brands b ON b.id = i.brand_id
+       LEFT JOIN stock_divisions d ON d.id = i.division_id
        WHERE isi.inbound_shipment_id = $1
        FOR UPDATE OF i`,
       [shipmentId]
@@ -218,13 +219,14 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
 
     const salespersonRecipients = departments.length > 0
       ? await sql(
-          `SELECT id, name, email, phone,
-                  COALESCE(NULLIF(TRIM(department), ''), 'General') AS department
+          `SELECT u.id, u.name, u.email, u.phone,
+                  COALESCE(d.name, NULLIF(TRIM(u.department), ''), 'General') AS department
            FROM stock_app_users
-           WHERE status = 'active'
-             AND role = 'salesperson'
-             AND COALESCE(NULLIF(TRIM(department), ''), 'General') = ANY($1::text[])
-           ORDER BY id ASC`,
+           u LEFT JOIN stock_divisions d ON d.id = u.division_id
+           WHERE u.status = 'active'
+             AND u.role = 'salesperson'
+             AND COALESCE(d.name, NULLIF(TRIM(u.department), ''), 'General') = ANY($1::text[])
+           ORDER BY u.id ASC`,
           [departments]
         )
       : [];
@@ -263,9 +265,12 @@ export async function GET(request, context) {
     );
 
     const items = await sql(
-      `SELECT isi.*, i.name, i.sku
+      `SELECT isi.*, i.name, i.sku,
+              COALESCE(d.name, NULLIF(TRIM(i.department), ''), 'General') AS division_name,
+              COALESCE(NULLIF(TRIM(i.department), ''), 'General') AS department
        FROM stock_inbound_shipment_items isi
        JOIN stock_items i ON i.id = isi.item_id
+       LEFT JOIN stock_divisions d ON d.id = i.division_id
        WHERE isi.inbound_shipment_id = $1`,
       [id]
     );
@@ -335,7 +340,7 @@ export async function PATCH(request, context) {
 
           for (const recipient of recipientsByDepartment) {
             const department = String(recipient.department || 'General').trim() || 'General';
-            const messageText = `Stock arrival approved: ${result.shipment.shipment_number}. New ${department} inventory is available.`;
+            const messageText = `Stock purchase approved: ${result.shipment.shipment_number}. New ${department} inventory is available.`;
 
             await queueNotification({
               channel: 'whatsapp',

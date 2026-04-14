@@ -30,14 +30,18 @@ export async function GET(request) {
            i.reorder_level,
            i.tiles_per_box,
            i.pieces_per_box,
+           i.thickness_mm,
+           i.department,
            i.unit_of_measure,
            b.name AS brand_name,
            t.name AS type_name,
+           d.name AS division_name,
            s.label AS size_label,
            s.unit AS size_unit
          FROM stock_items i
          LEFT JOIN stock_brands b ON b.id = i.brand_id
          LEFT JOIN stock_types t ON t.id = i.type_id
+         LEFT JOIN stock_divisions d ON d.id = i.division_id
          LEFT JOIN stock_sizes s ON s.id = i.size_id
          WHERE i.is_active = true
          ORDER BY COALESCE(i.current_whole_qty, 0) + COALESCE(i.current_broken_qty, 0) ASC, i.name ASC
@@ -51,6 +55,15 @@ export async function GET(request) {
            s.truck_license_plate,
            s.driver_name,
            s.arrival_date,
+           s.invoice_number,
+           s.invoice_date,
+           s.origin_city,
+           s.destination_warehouse_name,
+           s.payment_status,
+           s.paid_amount,
+           s.payment_date,
+           s.payment_reference,
+           s.payment_mode,
            s.status,
            s.approval_status,
            s.total_whole_qty,
@@ -73,8 +86,12 @@ export async function GET(request) {
            isi.inbound_shipment_id,
            STRING_AGG(DISTINCT i.name, ', ' ORDER BY i.name) AS product_names,
            STRING_AGG(DISTINCT i.sku, ', ' ORDER BY i.sku) AS product_skus
+           ,COALESCE(SUM(isi.qty_sqm), 0) AS total_qty_sqm
+           ,COALESCE(AVG(NULLIF(isi.cost_per_sqm, 0)), 0) AS avg_cost_per_sqm
+           ,STRING_AGG(DISTINCT COALESCE(d.name, NULLIF(TRIM(i.department), ''), 'General'), ', ' ORDER BY COALESCE(d.name, NULLIF(TRIM(i.department), ''), 'General')) AS divisions
          FROM stock_inbound_shipment_items isi
          JOIN stock_items i ON i.id = isi.item_id
+         LEFT JOIN stock_divisions d ON d.id = i.division_id
          GROUP BY isi.inbound_shipment_id`,
         []
       ),
@@ -129,6 +146,9 @@ export async function GET(request) {
         ...shipment,
         product_names: details.product_names || '',
         product_skus: details.product_skus || '',
+        total_qty_sqm: details.total_qty_sqm || 0,
+        avg_cost_per_sqm: details.avg_cost_per_sqm || 0,
+        divisions: details.divisions || '',
       };
     });
 
@@ -149,6 +169,7 @@ export async function GET(request) {
     return NextResponse.json({
       summary: summaryRows[0] || {},
       activeItems,
+      recentPurchases: recentArrivals,
       recentArrivals,
       recentDispatches,
     });
