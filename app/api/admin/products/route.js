@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-server';
 import { isAdmin } from '@/lib/admin-config';
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
@@ -75,6 +74,7 @@ export async function GET() {
 // PUT - Update products on GitHub
 export async function PUT(request) {
   try {
+    const { auth } = await import('@/lib/auth-server');
     const session = await auth.getSession(request);
     
     if (!session?.user) {
