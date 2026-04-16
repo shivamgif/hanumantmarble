@@ -2,6 +2,55 @@ import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getStockContext, normalizeStockRole } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 
+function isMissingExternalAuthColumnError(error) {
+  const message = String(error?.message || '').toLowerCase();
+  return message.includes('external_auth_provider') || message.includes('external_auth_id');
+}
+
+async function fetchDashboardUsers() {
+  try {
+    return await sql(
+      `SELECT
+         id,
+         auth0_sub,
+         external_auth_provider,
+         external_auth_id,
+         email,
+         name AS full_name,
+         phone AS phone_number,
+         role,
+         department,
+         (status = 'active') AS is_active,
+         last_login_at
+       FROM stock_app_users
+       ORDER BY created_at DESC`,
+      []
+    );
+  } catch (error) {
+    if (!isMissingExternalAuthColumnError(error)) {
+      throw error;
+    }
+
+    return sql(
+      `SELECT
+         id,
+         auth0_sub,
+         NULL::TEXT AS external_auth_provider,
+         NULL::TEXT AS external_auth_id,
+         email,
+         name AS full_name,
+         phone AS phone_number,
+         role,
+         department,
+         (status = 'active') AS is_active,
+         last_login_at
+       FROM stock_app_users
+       ORDER BY created_at DESC`,
+      []
+    );
+  }
+}
+
 export async function GET(request) {
   const { session, appUser } = await getStockContext(request);
   const userRole = normalizeStockRole(appUser?.role);
@@ -44,21 +93,7 @@ export async function GET(request) {
          ORDER BY sos.created_at DESC`,
         []
       ),
-      sql(
-        `SELECT
-           id,
-           auth0_sub,
-           email,
-           name AS full_name,
-           phone AS phone_number,
-           role,
-           department,
-           (status = 'active') AS is_active,
-           last_login_at
-         FROM stock_app_users
-         ORDER BY created_at DESC`,
-        []
-      ),
+      fetchDashboardUsers(),
     ]);
 
     return NextResponse.json({

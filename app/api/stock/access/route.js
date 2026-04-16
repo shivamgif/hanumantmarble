@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getRoleFlags, getStockContext, normalizeStockRole, normalizeText } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
+import { normalizeIdentity } from '@/lib/auth-server';
 
 const superAdminEmails = (process.env.STOCK_SUPER_ADMIN_EMAILS || '')
   .split(',')
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean);
+
+function isMissingExternalAuthColumnError(error) {
+  const message = String(error?.message || '').toLowerCase();
+  return message.includes('external_auth_provider') || message.includes('external_auth_id');
+}
 
 export async function GET(request) {
   const { session, appUser } = await getStockContext(request);
@@ -20,14 +26,20 @@ export async function GET(request) {
 
   try {
     const currentEmail = normalizeText(session.user.email).toLowerCase();
+    const identity = normalizeIdentity(session.user);
     const isSuperAdmin = superAdminEmails.includes(currentEmail);
     let userRecord = appUser;
 
     if (!userRecord && !isSuperAdmin) {
       const roleFlags = getRoleFlags('stock_maintainer');
-      const rows = await sql(
+      let rows = [];
+
+      try {
+        rows = await sql(
         `INSERT INTO stock_app_users (
           auth0_sub,
+          external_auth_provider,
+          external_auth_id,
           name,
           phone,
           email,
@@ -37,13 +49,17 @@ export async function GET(request) {
           can_approve_changes,
           can_view_dashboard,
           created_by
-        ) VALUES ($1,$2,$3,$4,$5,'inactive',$6,$7,FALSE,$8)
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'inactive',$8,$9,FALSE,$10)
         ON CONFLICT (email) DO UPDATE SET
           auth0_sub = EXCLUDED.auth0_sub,
+          external_auth_provider = EXCLUDED.external_auth_provider,
+          external_auth_id = EXCLUDED.external_auth_id,
           updated_at = NOW()
         RETURNING *`,
         [
           session.user.sub || null,
+          identity.provider,
+          identity.externalAuthId,
           normalizeText(session.user.name) || session.user.email || 'Pending User',
           normalizeText(session.user.phone_number) || 'Not provided',
           normalizeText(session.user.email) || null,
@@ -53,15 +69,54 @@ export async function GET(request) {
           session.user.email || 'system',
         ]
       );
+      } catch (insertError) {
+        if (!isMissingExternalAuthColumnError(insertError)) {
+          throw insertError;
+        }
+
+        rows = await sql(
+          `INSERT INTO stock_app_users (
+            auth0_sub,
+            name,
+            phone,
+            email,
+            role,
+            status,
+            can_manage_users,
+            can_approve_changes,
+            can_view_dashboard,
+            created_by
+          ) VALUES ($1,$2,$3,$4,$5,'inactive',$6,$7,FALSE,$8)
+          ON CONFLICT (email) DO UPDATE SET
+            auth0_sub = EXCLUDED.auth0_sub,
+            updated_at = NOW()
+          RETURNING *`,
+          [
+            session.user.sub || null,
+            normalizeText(session.user.name) || session.user.email || 'Pending User',
+            normalizeText(session.user.phone_number) || 'Not provided',
+            normalizeText(session.user.email) || null,
+            roleFlags.role,
+            roleFlags.canManageUsers,
+            roleFlags.canApproveChanges,
+            session.user.email || 'system',
+          ]
+        );
+      }
 
       userRecord = rows[0] || null;
     }
 
     if (isSuperAdmin) {
       const roleFlags = getRoleFlags('admin');
-      const rows = await sql(
+      let rows = [];
+
+      try {
+        rows = await sql(
         `INSERT INTO stock_app_users (
           auth0_sub,
+          external_auth_provider,
+          external_auth_id,
           name,
           phone,
           email,
@@ -71,9 +126,11 @@ export async function GET(request) {
           can_approve_changes,
           can_view_dashboard,
           created_by
-        ) VALUES ($1,$2,$3,$4,$5,'active',$6,$7,$8,$9)
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'active',$8,$9,$10,$11)
         ON CONFLICT (email) DO UPDATE SET
           auth0_sub = EXCLUDED.auth0_sub,
+          external_auth_provider = EXCLUDED.external_auth_provider,
+          external_auth_id = EXCLUDED.external_auth_id,
           name = COALESCE(NULLIF(EXCLUDED.name, ''), stock_app_users.name),
           role = EXCLUDED.role,
           status = 'active',
@@ -84,6 +141,8 @@ export async function GET(request) {
         RETURNING *`,
         [
           session.user.sub || null,
+          identity.provider,
+          identity.externalAuthId,
           normalizeText(session.user.name) || session.user.email || 'Admin User',
           normalizeText(session.user.phone_number) || 'Not provided',
           currentEmail,
@@ -94,6 +153,47 @@ export async function GET(request) {
           currentEmail,
         ]
       );
+      } catch (insertError) {
+        if (!isMissingExternalAuthColumnError(insertError)) {
+          throw insertError;
+        }
+
+        rows = await sql(
+          `INSERT INTO stock_app_users (
+            auth0_sub,
+            name,
+            phone,
+            email,
+            role,
+            status,
+            can_manage_users,
+            can_approve_changes,
+            can_view_dashboard,
+            created_by
+          ) VALUES ($1,$2,$3,$4,$5,'active',$6,$7,$8,$9)
+          ON CONFLICT (email) DO UPDATE SET
+            auth0_sub = EXCLUDED.auth0_sub,
+            name = COALESCE(NULLIF(EXCLUDED.name, ''), stock_app_users.name),
+            role = EXCLUDED.role,
+            status = 'active',
+            can_manage_users = EXCLUDED.can_manage_users,
+            can_approve_changes = EXCLUDED.can_approve_changes,
+            can_view_dashboard = EXCLUDED.can_view_dashboard,
+            updated_at = NOW()
+          RETURNING *`,
+          [
+            session.user.sub || null,
+            normalizeText(session.user.name) || session.user.email || 'Admin User',
+            normalizeText(session.user.phone_number) || 'Not provided',
+            currentEmail,
+            roleFlags.role,
+            roleFlags.canManageUsers,
+            roleFlags.canApproveChanges,
+            roleFlags.canViewDashboard,
+            currentEmail,
+          ]
+        );
+      }
 
       userRecord = rows[0] || userRecord;
     }

@@ -122,6 +122,8 @@ CREATE TABLE IF NOT EXISTS stock_vehicles (
 CREATE TABLE IF NOT EXISTS stock_app_users (
   id BIGSERIAL PRIMARY KEY,
   auth0_sub TEXT UNIQUE,
+  external_auth_provider TEXT,
+  external_auth_id TEXT,
   name TEXT NOT NULL,
   phone TEXT NOT NULL,
   email TEXT UNIQUE,
@@ -563,6 +565,8 @@ ALTER TABLE IF EXISTS stock_movements ADD COLUMN IF NOT EXISTS currency_code TEX
 
 ALTER TABLE IF EXISTS stock_items ADD COLUMN IF NOT EXISTS division_id BIGINT REFERENCES stock_divisions(id);
 ALTER TABLE IF EXISTS stock_app_users ADD COLUMN IF NOT EXISTS division_id BIGINT REFERENCES stock_divisions(id);
+ALTER TABLE IF EXISTS stock_app_users ADD COLUMN IF NOT EXISTS external_auth_provider TEXT;
+ALTER TABLE IF EXISTS stock_app_users ADD COLUMN IF NOT EXISTS external_auth_id TEXT;
 ALTER TABLE IF EXISTS stock_inbound_shipments ADD COLUMN IF NOT EXISTS invoice_date DATE;
 ALTER TABLE IF EXISTS stock_inbound_shipments ADD COLUMN IF NOT EXISTS origin_city TEXT;
 ALTER TABLE IF EXISTS stock_inbound_shipments ADD COLUMN IF NOT EXISTS destination_warehouse_name TEXT;
@@ -613,6 +617,14 @@ CREATE TABLE IF NOT EXISTS stock_notifications (
 
 ALTER TABLE IF EXISTS stock_notifications ADD COLUMN IF NOT EXISTS is_read BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE IF EXISTS stock_notifications ADD COLUMN IF NOT EXISTS read_at TIMESTAMP;
+
+UPDATE stock_app_users
+SET external_auth_provider = COALESCE(NULLIF(TRIM(external_auth_provider), ''), 'auth0'),
+   external_auth_id = COALESCE(NULLIF(TRIM(external_auth_id), ''), NULLIF(TRIM(auth0_sub), ''))
+WHERE external_auth_provider IS NULL
+  OR TRIM(external_auth_provider) = ''
+  OR external_auth_id IS NULL
+  OR TRIM(external_auth_id) = '';
 
 -- ====== AUDIT & LOGGING ======
 
@@ -731,6 +743,11 @@ CREATE INDEX IF NOT EXISTS idx_stock_notifications_created_at ON stock_notificat
 CREATE INDEX IF NOT EXISTS idx_stock_app_users_role ON stock_app_users(role);
 CREATE INDEX IF NOT EXISTS idx_stock_app_users_status ON stock_app_users(status);
 CREATE INDEX IF NOT EXISTS idx_stock_app_users_division_id ON stock_app_users(division_id);
+CREATE INDEX IF NOT EXISTS idx_stock_app_users_external_auth ON stock_app_users(external_auth_provider, external_auth_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_stock_app_users_external_auth
+  ON stock_app_users(external_auth_provider, external_auth_id)
+  WHERE external_auth_provider IS NOT NULL
+    AND external_auth_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_stock_sales_people_name ON stock_sales_people(name);
 
 CREATE INDEX IF NOT EXISTS idx_stock_change_requests_source ON stock_change_requests(source_entity_type, source_entity_id);

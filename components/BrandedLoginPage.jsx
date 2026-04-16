@@ -1,7 +1,7 @@
 'use client';
 
-import { useUser } from '@auth0/nextjs-auth0/client';
-import { useEffect } from 'react';
+import { authClient, getDefaultSocialProvider, getLoginHref, getLogoutHref, useAuthUser } from '@/lib/auth-client';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, LogIn, LogOut, Shield, Sparkles, User } from 'lucide-react';
@@ -10,10 +10,94 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 export default function BrandedLoginPage({ returnTo = '/' }) {
-  const { user, error, isLoading } = useUser();
+  const { user, error, isLoading } = useAuthUser();
   const router = useRouter();
-  const authLoginHref = `/auth/login?returnTo=${encodeURIComponent(returnTo)}`;
+  const [signInError, setSignInError] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [authMode, setAuthMode] = useState('signin');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const socialProvider = getDefaultSocialProvider();
+  const authLoginHref = getLoginHref(returnTo);
   const isUnauthorizedError = error?.message === 'Unauthorized' || error?.status === 401;
+
+  async function startSignIn(event) {
+    event?.preventDefault?.();
+
+    setSignInError('');
+
+    try {
+      await authClient.signIn.social({
+        provider: socialProvider,
+        callbackURL: returnTo || '/',
+      });
+    } catch (signInFailure) {
+      const message = String(signInFailure?.message || '').toLowerCase();
+
+      if (message.includes('provider not found')) {
+        setSignInError(`Sign-in provider "${socialProvider}" is not configured on the server yet.`);
+        return;
+      }
+
+      if (message.includes('invalid origin') || message.includes('forbidden') || message.includes('403')) {
+        setSignInError('This app origin is not trusted by Better Auth. Add the current localhost origin to trusted origins and restart the dev server.');
+        return;
+      }
+
+      setSignInError('Unable to start sign-in. Please try again.');
+    }
+  }
+
+  async function handleEmailPasswordAuth(event) {
+    event.preventDefault();
+
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const cleanPassword = String(password || '');
+    const cleanName = String(name || '').trim();
+
+    if (!cleanEmail || !cleanPassword) {
+      setSignInError('Email and password are required.');
+      return;
+    }
+
+    if (authMode === 'signup' && !cleanName) {
+      setSignInError('Name is required for sign up.');
+      return;
+    }
+
+    setSignInError('');
+    setIsSubmitting(true);
+
+    try {
+      if (authMode === 'signup') {
+        await authClient.signUp.email({
+          email: cleanEmail,
+          password: cleanPassword,
+          name: cleanName,
+        });
+      }
+
+      await authClient.signIn.email({
+        email: cleanEmail,
+        password: cleanPassword,
+      });
+
+      router.replace(returnTo || '/');
+    } catch (authFailure) {
+      const message = String(authFailure?.message || '').toLowerCase();
+
+      if (message.includes('invalid') || message.includes('credentials')) {
+        setSignInError('Invalid email or password.');
+      } else if (message.includes('already exists') || message.includes('user_exists')) {
+        setSignInError('This email is already registered. Try signing in instead.');
+      } else {
+        setSignInError('Unable to complete email/password authentication.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   useEffect(() => {
     if (user && returnTo) {
@@ -60,7 +144,7 @@ export default function BrandedLoginPage({ returnTo = '/' }) {
             <h2 className="mb-2 text-xl font-semibold">Authentication Error</h2>
             <p className="mb-6 text-muted-foreground">{error.message}</p>
             <Button className="rounded-full" asChild>
-              <a href={authLoginHref}>Try Again</a>
+              <a href={authLoginHref} onClick={startSignIn}>Try Again</a>
             </Button>
           </CardContent>
         </Card>
@@ -99,7 +183,7 @@ export default function BrandedLoginPage({ returnTo = '/' }) {
                   Sign in to continue.
                 </p>
                 <p className="max-w-lg text-base leading-7 text-muted-foreground">
-                  You’ll be redirected to Auth0 to authenticate, then returned here automatically.
+                  You’ll be redirected to the secure Better Auth flow, then returned here automatically.
                 </p>
               </div>
             </div>
@@ -116,7 +200,7 @@ export default function BrandedLoginPage({ returnTo = '/' }) {
                   <div className="mb-8">
                     <h2 className="text-2xl font-bold text-foreground">Continue to your account</h2>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      Sign in securely through Auth0 and return to your requested page.
+                      Sign in securely through Better Auth and return to your requested page.
                     </p>
                   </div>
 
@@ -144,7 +228,7 @@ export default function BrandedLoginPage({ returnTo = '/' }) {
                           </Link>
                         </Button>
                         <Button variant="outline" className="flex-1 rounded-full border-border hover:bg-muted/60" asChild>
-                          <a href="/auth/logout" className="flex items-center justify-center gap-2">
+                          <a href={getLogoutHref('/')} className="flex items-center justify-center gap-2">
                             <LogOut className="h-4 w-4" />
                             Log out
                           </a>
@@ -160,17 +244,74 @@ export default function BrandedLoginPage({ returnTo = '/' }) {
                           </div>
                           <div>
                             <p className="text-sm font-semibold text-foreground">Secure sign-in</p>
-                            <p className="text-xs text-muted-foreground">Auth0 keeps credentials and authentication hosted.</p>
+                            <p className="text-xs text-muted-foreground">Better Auth keeps credentials and authentication hosted.</p>
                           </div>
                         </div>
                       </div>
 
                       <Button className="h-12 w-full rounded-full bg-primary text-base text-primary-foreground shadow-lg transition hover:bg-primary/90" asChild>
-                        <a href={authLoginHref} className="flex items-center justify-center gap-2">
+                        <a href={authLoginHref} onClick={startSignIn} className="flex items-center justify-center gap-2">
                           Sign in
                           <ArrowRight className="h-5 w-5" />
                         </a>
                       </Button>
+
+                      <div className="rounded-3xl border border-border bg-background/80 p-4">
+                        <div className="mb-3 flex items-center justify-between">
+                          <p className="text-sm font-semibold text-foreground">Email and password</p>
+                          <button
+                            type="button"
+                            className="text-xs font-medium text-primary hover:underline"
+                            onClick={() => setAuthMode((current) => (current === 'signin' ? 'signup' : 'signin'))}
+                          >
+                            {authMode === 'signin' ? 'Create account' : 'Have an account? Sign in'}
+                          </button>
+                        </div>
+
+                        <form className="space-y-2.5" onSubmit={handleEmailPasswordAuth}>
+                          {authMode === 'signup' ? (
+                            <input
+                              type="text"
+                              value={name}
+                              onChange={(event) => setName(event.target.value)}
+                              placeholder="Full name"
+                              className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary"
+                              autoComplete="name"
+                            />
+                          ) : null}
+                          <input
+                            type="email"
+                            value={email}
+                            onChange={(event) => setEmail(event.target.value)}
+                            placeholder="Email"
+                            className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary"
+                            autoComplete="email"
+                          />
+                          <input
+                            type="password"
+                            value={password}
+                            onChange={(event) => setPassword(event.target.value)}
+                            placeholder="Password"
+                            className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary"
+                            autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
+                          />
+                          <Button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="h-10 w-full rounded-xl bg-primary text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                          >
+                            {isSubmitting
+                              ? 'Please wait...'
+                              : (authMode === 'signin' ? 'Sign in with email' : 'Sign up with email')}
+                          </Button>
+                        </form>
+                      </div>
+
+                      {signInError ? (
+                        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                          {signInError}
+                        </div>
+                      ) : null}
 
                       <p className="text-center text-xs text-muted-foreground">Use the same login for stock access and the rest of the site.</p>
                     </div>

@@ -1,11 +1,47 @@
 import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getRoleFlags, getStockContext, hasAnyStockRole, normalizeStockRole, recordTimelineEvent, STOCK_ROLES } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
-import { upsertAuth0DatabaseUser, validateStockPassword } from '@/lib/auth0-management';
+import { validateStockPassword } from '@/lib/password-policy';
+import { normalizeIdentity } from '@/lib/auth-server';
+import { auth as betterAuth } from '@/lib/auth';
 
 function normalizeDepartment(value, fallback = null) {
   const normalized = String(value || '').trim();
   return normalized || fallback;
+}
+
+function isMissingExternalAuthColumnError(error) {
+  const message = String(error?.message || '').toLowerCase();
+  return message.includes('external_auth_provider') || message.includes('external_auth_id');
+}
+
+function isExistingUserError(error) {
+  const message = String(error?.message || '').toLowerCase();
+  const code = String(error?.code || '').toLowerCase();
+  return (
+    message.includes('already exists') ||
+    message.includes('user_exists') ||
+    message.includes('duplicate') ||
+    code.includes('user_exists')
+  );
+}
+
+async function ensureCredentialIdentity({ email, password, name, request }) {
+  try {
+    await betterAuth.api.signUpEmail({
+      body: {
+        email,
+        password,
+        name: name || email,
+      },
+      headers: request.headers,
+    });
+  } catch (error) {
+    if (isExistingUserError(error)) {
+      return;
+    }
+    throw error;
+  }
 }
 
 async function resolveDivisionId(value) {
@@ -88,56 +124,133 @@ export async function POST(request) {
   try {
     const divisionId = await resolveDivisionId(divisionName);
 
-    const auth0User = await upsertAuth0DatabaseUser({
-      email: body.email,
-      password: body.password,
-      name: body.name,
-      phone: body.phone,
+    const normalizedEmail = String(body.email || '').trim().toLowerCase();
+    if (!normalizedEmail) {
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    }
+
+    const externalAuthId = String(
+      body.externalAuthId ||
+      body.external_auth_id ||
+      normalizedEmail
+    ).trim();
+
+    await ensureCredentialIdentity({
+      email: normalizedEmail,
+      password: String(body.password || ''),
+      name: String(body.name || '').trim(),
+      request,
     });
 
-    const rows = await sql(
-      `INSERT INTO stock_app_users (
-        auth0_sub,
-        name,
-        phone,
-        email,
-        role,
-        department,
-        division_id,
-        status,
-        can_manage_users,
-        can_approve_changes,
-        can_view_dashboard,
-        created_by
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-      ON CONFLICT (email) DO UPDATE SET
-        auth0_sub = EXCLUDED.auth0_sub,
-        name = EXCLUDED.name,
-        phone = EXCLUDED.phone,
-        role = EXCLUDED.role,
-        department = COALESCE(EXCLUDED.department, stock_app_users.department),
-        division_id = COALESCE(EXCLUDED.division_id, stock_app_users.division_id),
-        status = EXCLUDED.status,
-        can_manage_users = EXCLUDED.can_manage_users,
-        can_approve_changes = EXCLUDED.can_approve_changes,
-        can_view_dashboard = EXCLUDED.can_view_dashboard,
-        updated_at = NOW()
-      RETURNING *`,
-      [
-        auth0User?.user_id || auth0User?.id || auth0User?._id || body.auth0Sub || null,
-        body.name,
-        body.phone,
-        body.email || null,
-        roleFlags.role,
-        department,
-        divisionId,
-        body.status || 'active',
-        roleFlags.canManageUsers,
-        roleFlags.canApproveChanges,
-        body.canViewDashboard !== false,
-        session.user.email,
-      ]
-    );
+    const identity = normalizeIdentity({
+      sub: externalAuthId || null,
+      email: normalizedEmail,
+      name: body.name || null,
+      phone_number: body.phone || null,
+      auth_provider: 'better-auth',
+    });
+
+    let rows = [];
+
+    try {
+      rows = await sql(
+        `INSERT INTO stock_app_users (
+          auth0_sub,
+          external_auth_provider,
+          external_auth_id,
+          name,
+          phone,
+          email,
+          role,
+          department,
+          division_id,
+          status,
+          can_manage_users,
+          can_approve_changes,
+          can_view_dashboard,
+          created_by
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+        ON CONFLICT (email) DO UPDATE SET
+          auth0_sub = EXCLUDED.auth0_sub,
+          external_auth_provider = EXCLUDED.external_auth_provider,
+          external_auth_id = EXCLUDED.external_auth_id,
+          name = EXCLUDED.name,
+          phone = EXCLUDED.phone,
+          role = EXCLUDED.role,
+          department = COALESCE(EXCLUDED.department, stock_app_users.department),
+          division_id = COALESCE(EXCLUDED.division_id, stock_app_users.division_id),
+          status = EXCLUDED.status,
+          can_manage_users = EXCLUDED.can_manage_users,
+          can_approve_changes = EXCLUDED.can_approve_changes,
+          can_view_dashboard = EXCLUDED.can_view_dashboard,
+          updated_at = NOW()
+        RETURNING *`,
+        [
+          identity.externalAuthId,
+          identity.provider,
+          identity.externalAuthId,
+          body.name,
+          body.phone,
+          body.email || null,
+          roleFlags.role,
+          department,
+          divisionId,
+          body.status || 'active',
+          roleFlags.canManageUsers,
+          roleFlags.canApproveChanges,
+          body.canViewDashboard !== false,
+          session.user.email,
+        ]
+      );
+    } catch (insertError) {
+      if (!isMissingExternalAuthColumnError(insertError)) {
+        throw insertError;
+      }
+
+      rows = await sql(
+        `INSERT INTO stock_app_users (
+          auth0_sub,
+          name,
+          phone,
+          email,
+          role,
+          department,
+          division_id,
+          status,
+          can_manage_users,
+          can_approve_changes,
+          can_view_dashboard,
+          created_by
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+        ON CONFLICT (email) DO UPDATE SET
+          auth0_sub = EXCLUDED.auth0_sub,
+          name = EXCLUDED.name,
+          phone = EXCLUDED.phone,
+          role = EXCLUDED.role,
+          department = COALESCE(EXCLUDED.department, stock_app_users.department),
+          division_id = COALESCE(EXCLUDED.division_id, stock_app_users.division_id),
+          status = EXCLUDED.status,
+          can_manage_users = EXCLUDED.can_manage_users,
+          can_approve_changes = EXCLUDED.can_approve_changes,
+          can_view_dashboard = EXCLUDED.can_view_dashboard,
+          updated_at = NOW()
+        RETURNING *`,
+        [
+          identity.externalAuthId,
+          body.name,
+          body.phone,
+          body.email || null,
+          roleFlags.role,
+          department,
+          divisionId,
+          body.status || 'active',
+          roleFlags.canManageUsers,
+          roleFlags.canApproveChanges,
+          body.canViewDashboard !== false,
+          session.user.email,
+        ]
+      );
+    }
 
     await recordTimelineEvent({
       eventType: 'user_created',

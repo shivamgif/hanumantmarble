@@ -6,7 +6,7 @@
 ```
 Email: admin@stock.com
 Phone: 9111111111
-Password: [Use Auth0]
+Password: [Use configured auth provider]
 Access: FULL - User management, approvals, all dashboards
 ```
 
@@ -14,7 +14,7 @@ Access: FULL - User management, approvals, all dashboards
 ```
 Email: manager1@stock.com
 Phone: 9222222221
-Password: [Use Auth0]
+Password: [Use configured auth provider]
 Access: APPROVALS - Can approve/reject shipments, help with users
 ```
 
@@ -22,7 +22,7 @@ Access: APPROVALS - Can approve/reject shipments, help with users
 ```
 Email: maintainer1@stock.com
 Phone: 9333333331
-Password: [Use Auth0]
+Password: [Use configured auth provider]
 Access: LIMITED - Log arrivals, upload documents only
 ```
 
@@ -36,6 +36,9 @@ npm install
 
 # 2. Start dev server
 npm run dev
+
+# 2a. (Recommended) apply external auth identity migration
+npm run db:migrate-external-auth-identity
 
 # 3. Open browser
 open http://localhost:3000
@@ -158,7 +161,7 @@ View these on the dashboard at `/stock/approvals`:
 | Can't access `/stock/team` as maintainer | ✅ Expected - link is hidden, access is denied |
 | Database query fails | Ensure `schema-stock.sql` was applied to Neon |
 | Seed script says "already exists" | ✅ Normal - script is idempotent, data already loaded |
-| Missing test users | Check `stock_app_users` table - they should be created by Auth0 |
+| Missing test users | Check `stock_app_users` table - they should be created by current auth provider |
 
 ---
 

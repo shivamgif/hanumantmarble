@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { auth0 } from '@/lib/auth0';
+import { auth } from '@/lib/auth-server';
 
 // Graceful degradation for missing database
 let getAuditLogs = async () => [];
@@ -18,7 +18,7 @@ try {
 
 export async function GET(request) {
   try {
-    const session = await auth0.getSession(request);
+    const session = await auth.getSession(request);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { searchParams } = new URL(request.url);

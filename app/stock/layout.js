@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Bell, CheckCheck, ChevronLeft, ChevronRight, ClipboardList, FileText, Home, Languages, MoonStar, PackagePlus, Search, SunMedium, Users, LogOut } from 'lucide-react';
-import { useUser } from '@auth0/nextjs-auth0/client';
-import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { getLogoutHref, useAuthUser } from '@/lib/auth-client';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { useTheme } from 'next-themes';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
@@ -42,10 +42,12 @@ const CLASSES = {
  * Enforces authentication and internal-only access
  */
 export default function StockLayout({ children }) {
-  const { user, isLoading, error } = useUser();
+  const { user, isLoading, error } = useAuthUser();
   const { language, toggleLanguage } = useLanguage();
   const { resolvedTheme, setTheme } = useTheme();
   const pathname = usePathname();
+  const router = useRouter();
+  const dashboardSearchRef = useRef(null);
   const [accessLoading, setAccessLoading] = useState(true);
   const [accessApproved, setAccessApproved] = useState(false);
   const [accessMessage, setAccessMessage] = useState('');
@@ -58,13 +60,47 @@ export default function StockLayout({ children }) {
   const [notificationError, setNotificationError] = useState(null);
   const [notificationUpdating, setNotificationUpdating] = useState(false);
   const [showNotificationDebug, setShowNotificationDebug] = useState(false);
+  const [dashboardSearchValue, setDashboardSearchValue] = useState('');
+  const [isApplePlatform, setIsApplePlatform] = useState(false);
 
   const t = (key) => getTranslation(`stock.layout.${key}`, language);
+  const tc = {
+    brandFull: language === 'hi' ? 'हनुमंत मार्बल' : 'Hanumant Marble',
+    stockAccess: language === 'hi' ? 'स्टॉक प्रबंधन पहुंच' : 'Stock management access',
+    openNotifications: language === 'hi' ? 'सूचनाएं खोलें' : 'Open notifications',
+    switchToLight: language === 'hi' ? 'लाइट थीम में बदलें' : 'Switch to light theme',
+    switchToDark: language === 'hi' ? 'डार्क थीम में बदलें' : 'Switch to dark theme',
+    light: language === 'hi' ? 'लाइट' : 'Light',
+    dark: language === 'hi' ? 'डार्क' : 'Dark',
+    erpWorkspace: language === 'hi' ? 'ईआरपी कार्यक्षेत्र' : 'ERP Workspace',
+    stockOpsApprovals: language === 'hi' ? 'स्टॉक संचालन और अनुमोदन' : 'Stock operations and approvals',
+    searchHub: language === 'hi' ? 'हब खोजें (CMD+K)' : 'Search Hub (CMD+K)',
+    dashboardAria: language === 'hi' ? 'हनुमंत मार्बल स्टॉक डैशबोर्ड' : 'Hanumant Marble stock dashboard',
+    mobileNav: language === 'hi' ? 'मोबाइल स्टॉक नेविगेशन' : 'Mobile stock navigation',
+    adminHub: language === 'hi' ? 'एडमिन हब' : 'Admin Hub',
+    dashboard: language === 'hi' ? 'डैशबोर्ड' : 'Dashboard',
+    notifications: language === 'hi' ? 'सूचनाएं' : 'Notifications',
+    notificationsSubtitle: language === 'hi' ? 'स्टॉक वर्कफ़्लो से संचालन अलर्ट और शिपमेंट अपडेट।' : 'Operational alerts and shipment updates from stock workflow.',
+    unread: language === 'hi' ? 'अपठित' : 'unread',
+    hideDebug: language === 'hi' ? 'डिबग छिपाएं' : 'Hide Debug',
+    debug: language === 'hi' ? 'डिबग' : 'Debug',
+    markAllRead: language === 'hi' ? 'सभी को पढ़ा हुआ चिन्हित करें' : 'Mark all read',
+    loadingNotifications: language === 'hi' ? 'सूचनाएं लोड हो रही हैं...' : 'Loading notifications...',
+    noNotifications: language === 'hi' ? 'अभी कोई सूचना नहीं है।' : 'No notifications yet.',
+    target: language === 'hi' ? 'लक्ष्य' : 'Target',
+    recipients: language === 'hi' ? 'प्राप्तकर्ता' : 'recipients',
+    departmentsShort: language === 'hi' ? 'विभाग' : 'dept',
+    departmentsCount: language === 'hi' ? 'विभाग' : 'departments',
+    open: language === 'hi' ? 'खोलें' : 'Open',
+    searchHint: language === 'hi' ? 'खोजें या कमांड चलाएं…' : 'Search or run commands…',
+  };
   const isDarkTheme = resolvedTheme === 'dark';
+  const primaryModifierLabel = isApplePlatform ? 'CMD' : 'CTRL';
+  const primaryModifierAriaLabel = isApplePlatform ? 'Command' : 'Control';
   const isUnauthorizedError = error?.message === 'Unauthorized' || error?.status === 401;
   function handleStockLogout() {
     document.cookie = `hm-login-return-to=${encodeURIComponent('/stock')}; Path=/; Max-Age=300; SameSite=Lax`;
-    window.location.href = `/auth/logout?returnTo=${encodeURIComponent(window.location.origin)}`;
+    window.location.href = getLogoutHref(window.location.origin);
   }
 
   const navigationItems = [
@@ -85,11 +121,66 @@ export default function StockLayout({ children }) {
     return pathname?.startsWith(cleanHref);
   };
 
+  function runDashboardSearch(rawQuery) {
+    const query = String(rawQuery || '').trim().toLowerCase();
+    if (!query) {
+      return;
+    }
+
+    if (query.includes('new purchase') || query.includes('new arrival') || query === 'np') {
+      router.push('/stock?view=purchases&new=purchase');
+      return;
+    }
+
+    if (query.includes('new dispatch') || query === 'nd') {
+      router.push('/stock?view=dispatches&new=dispatch');
+      return;
+    }
+
+    if (query.includes('purchase') || query.includes('arrival') || query.includes('inbound')) {
+      router.push('/stock?view=purchases');
+      return;
+    }
+
+    if (query.includes('dispatch') || query.includes('outbound')) {
+      router.push('/stock?view=dispatches');
+      return;
+    }
+
+    if (query.includes('item') || query.includes('stock') || query.includes('inventory')) {
+      router.push('/stock?view=items');
+      return;
+    }
+
+    if (query.includes('document')) {
+      router.push('/stock/documents');
+      return;
+    }
+
+    if (query.includes('approval') || query.includes('change request')) {
+      router.push('/stock/admin?focus=change-requests');
+      return;
+    }
+
+    if (query.includes('admin') || query.includes('analytics') || query.includes('user')) {
+      router.push('/stock/admin');
+      return;
+    }
+
+    router.push('/stock');
+  }
+
   useEffect(() => {
     const storedCollapsed = window.localStorage.getItem('stock-sidebar-collapsed');
     if (storedCollapsed !== null) {
       setCollapsed(storedCollapsed === 'true');
     }
+  }, []);
+
+  useEffect(() => {
+    const platform = typeof navigator !== 'undefined' ? String(navigator.platform || '') : '';
+    const userAgent = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
+    setIsApplePlatform(/mac|iphone|ipad|ipod/i.test(platform) || /mac os|iphone|ipad|ipod/i.test(userAgent));
   }, []);
 
   useEffect(() => {
@@ -231,6 +322,45 @@ export default function StockLayout({ children }) {
     return () => clearInterval(intervalId);
   }, [accessApproved, user]);
 
+  useEffect(() => {
+    function handleGlobalShortcuts(event) {
+      const target = event.target;
+      const isTypingTarget = target instanceof HTMLElement && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable
+      );
+
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        dashboardSearchRef.current?.focus();
+        dashboardSearchRef.current?.select();
+        return;
+      }
+
+      if (isTypingTarget) {
+        return;
+      }
+
+      const hasPrimaryModifier = isApplePlatform ? event.metaKey : event.ctrlKey;
+
+      if (hasPrimaryModifier && event.shiftKey && event.key.toLowerCase() === 'p') {
+        event.preventDefault();
+        router.push('/stock?view=purchases&new=purchase');
+        return;
+      }
+
+      if (hasPrimaryModifier && event.shiftKey && event.key.toLowerCase() === 'd') {
+        event.preventDefault();
+        router.push('/stock?view=dispatches&new=dispatch');
+      }
+    }
+
+    window.addEventListener('keydown', handleGlobalShortcuts);
+    return () => window.removeEventListener('keydown', handleGlobalShortcuts);
+  }, [isApplePlatform, router]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -286,8 +416,8 @@ export default function StockLayout({ children }) {
                 />
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Hanumant Marble</p>
-                <p className="text-sm text-muted-foreground">Stock management access</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{tc.brandFull}</p>
+                <p className="text-sm text-muted-foreground">{tc.stockAccess}</p>
               </div>
             </div>
             <h1 className="text-2xl font-bold text-foreground">{t('waitingApproval')}</h1>
@@ -343,7 +473,7 @@ export default function StockLayout({ children }) {
               type="button"
               onClick={() => setNotificationOpen(true)}
               className="relative inline-flex rounded-full border border-slate-200 bg-white p-2 text-slate-700 transition hover:bg-[#E07A00]/10 hover:text-[#E07A00] dark:border-white/10 dark:bg-slate-900 dark:text-slate-300"
-              aria-label="Open notifications"
+              aria-label={tc.openNotifications}
             >
               <Bell className="h-4 w-4" />
               {unreadCount > 0 ? (
@@ -377,11 +507,11 @@ export default function StockLayout({ children }) {
               type="button"
               onClick={() => setTheme(isDarkTheme ? 'light' : 'dark')}
               className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-slate-700 transition hover:bg-[#E07A00]/10 hover:text-[#E07A00] dark:text-slate-300"
-              title={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
-              aria-label={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
+              title={isDarkTheme ? tc.switchToLight : tc.switchToDark}
+              aria-label={isDarkTheme ? tc.switchToLight : tc.switchToDark}
             >
               {isDarkTheme ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
-              <span className="text-xs">{isDarkTheme ? 'Light' : 'Dark'}</span>
+              <span className="text-xs">{isDarkTheme ? tc.light : tc.dark}</span>
             </button>
             <button
               type="button"
@@ -402,24 +532,35 @@ export default function StockLayout({ children }) {
           <div className="mx-auto w-full max-w-[1600px] space-y-2">
             <div className="hidden items-center justify-between gap-4 md:flex">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">ERP Workspace</p>
-                <p className="text-sm text-slate-700 dark:text-slate-200">Stock operations and approvals</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{tc.erpWorkspace}</p>
+                <p className="text-sm text-slate-700 dark:text-slate-200">{tc.stockOpsApprovals}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Search className="h-4 w-4 text-slate-400" />
                 <input
+                  ref={dashboardSearchRef}
                   type="text"
-                  placeholder="Search Hub (CMD+K)"
+                  placeholder={tc.searchHint}
+                  value={dashboardSearchValue}
+                  onChange={(event) => setDashboardSearchValue(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      runDashboardSearch(dashboardSearchValue);
+                      setDashboardSearchValue('');
+                    }
+                  }}
                   className="w-80 rounded-xl border-none bg-slate-100 px-4 py-2.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-[#E07A00]/20 dark:bg-slate-900 dark:text-slate-200"
-                  readOnly
                 />
-                <span className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500 dark:border-white/10 dark:bg-slate-900 dark:text-slate-400">CMD+K</span>
+                <span className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500 dark:border-white/10 dark:bg-slate-900 dark:text-slate-400" aria-label={`${primaryModifierAriaLabel} K`}>{primaryModifierLabel}+K</span>
+                <span className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500 dark:border-white/10 dark:bg-slate-900 dark:text-slate-400" aria-label={`${primaryModifierAriaLabel} Shift P`}>{primaryModifierLabel}+SHIFT+P</span>
+                <span className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500 dark:border-white/10 dark:bg-slate-900 dark:text-slate-400" aria-label={`${primaryModifierAriaLabel} Shift D`}>{primaryModifierLabel}+SHIFT+D</span>
               </div>
             </div>
 
             <div className="space-y-2 md:hidden">
               <div className="flex items-center justify-between gap-3">
-                <Link href="/stock" className="inline-flex min-w-0 items-center gap-2" aria-label="Hanumant Marble stock dashboard">
+                <Link href="/stock" className="inline-flex min-w-0 items-center gap-2" aria-label={tc.dashboardAria}>
                   <div className="relative h-10 w-10 overflow-hidden">
                     <Image src="/logo.png" alt="Hanumant Marble logo" fill sizes="32px" className="object-contain p-1" />
                   </div>
@@ -443,7 +584,7 @@ export default function StockLayout({ children }) {
                   type="button"
                   onClick={() => setNotificationOpen(true)}
                   className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition-all active:scale-95 hover:bg-[#E07A00]/10 hover:text-[#E07A00] focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
-                  aria-label="Open notifications"
+                  aria-label={tc.openNotifications}
                 >
                   <Bell className="h-4 w-4" />
                   {unreadCount > 0 ? (
@@ -456,7 +597,7 @@ export default function StockLayout({ children }) {
                   type="button"
                   onClick={() => setTheme(isDarkTheme ? 'light' : 'dark')}
                   className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition-all active:scale-95 hover:bg-[#E07A00]/10 hover:text-[#E07A00] focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
-                  aria-label={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
+                  aria-label={isDarkTheme ? tc.switchToLight : tc.switchToDark}
                 >
                   {isDarkTheme ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
                 </button>
@@ -471,10 +612,10 @@ export default function StockLayout({ children }) {
                 </div>
               </div>
 
-              <nav className="flex items-center justify-center gap-2" aria-label="Mobile stock navigation">
+              <nav className="flex items-center justify-center gap-2" aria-label={tc.mobileNav}>
                 {navigationItems.map((item) => {
                   const active = isActiveRoute(item.href);
-                  const mobileLabel = item.href === '/stock/admin' ? 'Admin Hub' : 'Dashboard';
+                  const mobileLabel = item.href === '/stock/admin' ? tc.adminHub : tc.dashboard;
                   return (
                     <Link
                       key={`mobile-top-${item.href}`}
@@ -505,13 +646,13 @@ export default function StockLayout({ children }) {
       <Sheet open={notificationOpen} onOpenChange={setNotificationOpen}>
         <SheetContent side="right" className="w-full max-w-none overflow-y-auto md:w-[420px]">
           <SheetHeader>
-            <SheetTitle>Notifications</SheetTitle>
-            <SheetDescription>Operational alerts and shipment updates from stock workflow.</SheetDescription>
+            <SheetTitle>{tc.notifications}</SheetTitle>
+            <SheetDescription>{tc.notificationsSubtitle}</SheetDescription>
           </SheetHeader>
 
           <div className="mt-4 flex items-center justify-between gap-3">
             <div className="text-xs text-muted-foreground">
-              {unreadCount} unread
+              {unreadCount} {tc.unread}
             </div>
             <div className="flex items-center gap-2">
               {accessRole === 'admin' ? (
@@ -520,7 +661,7 @@ export default function StockLayout({ children }) {
                   onClick={() => setShowNotificationDebug((current) => !current)}
                   className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted"
                 >
-                  {showNotificationDebug ? 'Hide Debug' : 'Debug'}
+                  {showNotificationDebug ? tc.hideDebug : tc.debug}
                 </button>
               ) : null}
               <button
@@ -530,7 +671,7 @@ export default function StockLayout({ children }) {
                 className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
-                Mark all read
+                {tc.markAllRead}
               </button>
             </div>
           </div>
@@ -542,10 +683,10 @@ export default function StockLayout({ children }) {
           ) : null}
 
           {notificationLoading ? (
-            <div className="mt-4 text-sm text-muted-foreground">Loading notifications...</div>
+            <div className="mt-4 text-sm text-muted-foreground">{tc.loadingNotifications}</div>
           ) : notifications.length === 0 ? (
             <div className="mt-4 rounded-lg border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
-              No notifications yet.
+              {tc.noNotifications}
             </div>
           ) : (
             <div className="mt-4 space-y-2">
@@ -572,7 +713,7 @@ export default function StockLayout({ children }) {
                     ? null
                     : departments.length === 1
                       ? departments[0]
-                      : `${departments.length} departments`;
+                      : `${departments.length} ${tc.departmentsCount}`;
 
                   const firstWhatsappPayload = recipients.find((recipient) => recipient?.whatsappPayload)?.whatsappPayload || null;
 
@@ -595,11 +736,11 @@ export default function StockLayout({ children }) {
                       <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
                         {departmentLabel ? (
                           <span className="rounded-full border border-border bg-muted px-2 py-0.5 font-semibold">
-                            Target: {departmentLabel}
+                            {tc.target}: {departmentLabel}
                           </span>
                         ) : null}
                         {departments.length > 0 ? (
-                          <span>{recipients.length} recipients • {departments.length} dept</span>
+                          <span>{recipients.length} {tc.recipients} • {departments.length} {tc.departmentsShort}</span>
                         ) : null}
                       </div>
                       {showNotificationDebug && accessRole === 'admin' && firstWhatsappPayload ? (
@@ -609,7 +750,7 @@ export default function StockLayout({ children }) {
                       ) : null}
                       <div className="mt-2 flex items-center justify-between gap-2">
                         <p className="text-[11px] text-muted-foreground">{new Date(notification.created_at).toLocaleString()}</p>
-                        <span className="text-[11px] font-semibold text-primary">Open</span>
+                        <span className="text-[11px] font-semibold text-primary">{tc.open}</span>
                       </div>
                     </Link>
                   );

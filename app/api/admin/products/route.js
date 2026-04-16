@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth0 } from '@/lib/auth0';
+import { auth } from '@/lib/auth-server';
 import { isAdmin } from '@/lib/admin-config';
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
@@ -75,8 +75,7 @@ export async function GET() {
 // PUT - Update products on GitHub
 export async function PUT(request) {
   try {
-    // Check authentication using Auth0Client
-    const session = await auth0.getSession();
+    const session = await auth.getSession(request);
     
     if (!session?.user) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });

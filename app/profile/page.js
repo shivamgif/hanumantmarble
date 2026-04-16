@@ -1,6 +1,6 @@
 "use client";
 
-import { useUser, withPageAuthRequired } from '@auth0/nextjs-auth0/client';
+import { getLogoutHref, useAuthUser, withPageAuthRequiredCompat } from '@/lib/auth-client';
 import Link from 'next/link';
 import { User, ShoppingBag, Heart, Settings, LogOut, Mail, Calendar, Shield, ChevronRight, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 function ProfilePage() {
-  const { user, isLoading } = useUser();
+  const { user, isLoading } = useAuthUser();
 
   if (isLoading) {
     return (
@@ -98,7 +98,7 @@ function ProfilePage() {
 
                 {/* Edit Profile Button */}
                 <Button variant="outline" className="rounded-full" asChild>
-                  <a href="/auth/logout" className="flex items-center gap-2">
+                  <a href={getLogoutHref('/')} className="flex items-center gap-2">
                     <LogOut className="h-4 w-4" />
                     Sign Out
                   </a>
@@ -175,7 +175,7 @@ function ProfilePage() {
   );
 }
 
-export default withPageAuthRequired(ProfilePage, {
+export default withPageAuthRequiredCompat(ProfilePage, {
   onRedirecting: () => (
     <div className="min-h-screen bg-gradient-to-b from-muted/50 via-background to-muted/30 flex justify-center items-center">
       <div className="relative">

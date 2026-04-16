@@ -7,7 +7,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { auth0 } from '@/lib/auth0';
+import { auth } from '@/lib/auth-server';
 
 // Graceful degradation for missing database
 let sql = null;
@@ -24,7 +24,7 @@ try {
 
 export async function GET(request) {
   try {
-    const session = await auth0.getSession(request);
+    const session = await auth.getSession(request);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     if (!sql) {
@@ -65,7 +65,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const session = await auth0.getSession(request);
+    const session = await auth.getSession(request);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     if (!sql) {
@@ -114,7 +114,7 @@ export async function POST(request) {
 
 export async function PUT(request) {
   try {
-    const session = await auth0.getSession(request);
+    const session = await auth.getSession(request);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
@@ -173,7 +173,7 @@ export async function PUT(request) {
 
 export async function DELETE(request) {
   try {
-    const session = await auth0.getSession(request);
+    const session = await auth.getSession(request);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { searchParams } = new URL(request.url);

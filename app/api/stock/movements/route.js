@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { auth0 } from '@/lib/auth0';
+import { auth } from '@/lib/auth-server';
 
 // Graceful degradation for missing database
 let sql = null;
@@ -23,7 +23,7 @@ const VALID_MOVEMENT_TYPES = ['purchase', 'sale', 'adjustment', 'transfer', 'dam
 
 export async function POST(request) {
   try {
-    const session = await auth0.getSession(request);
+    const session = await auth.getSession(request);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     if (!sql) {
@@ -90,7 +90,7 @@ export async function POST(request) {
 
 export async function GET(request) {
   try {
-    const session = await auth0.getSession(request);
+    const session = await auth.getSession(request);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     if (!sql) {

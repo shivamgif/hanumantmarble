@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useUser } from '@auth0/nextjs-auth0/client';
-import { useSearchParams } from 'next/navigation';
+import { useAuthUser } from '@/lib/auth-client';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { BarChart3, Boxes, Calendar, CircleAlert, Hash, PackageCheck, Truck } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
 import { Badge } from '@/components/ui/badge';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import EntryPreviewSheet, { PreviewKeyValueGrid } from '@/components/ui/entry-preview-sheet';
 import PaginationControls from '@/components/ui/pagination-controls';
 
@@ -328,7 +328,77 @@ async function fetchDashboardData() {
 export default function StockDashboard() {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.dashboard.${key}`, language);
-  const { user, isLoading: userLoading } = useUser();
+  const tc = {
+    stockOperations: language === 'hi' ? 'स्टॉक संचालन' : 'Stock Operations',
+    stockSubtitle: language === 'hi' ? 'मेंटेनर्स के लिए केंद्रित दृश्य: वर्तमान स्टॉक, खरीद और डिस्पैच।' : 'Focused view for maintainers: current stock, purchases, and dispatches.',
+    searchItems: language === 'hi' ? 'SKU, नाम, साइज या मात्रा से आइटम खोजें' : 'Search items by SKU, name, size, or quantities',
+    noStockItems: language === 'hi' ? 'इस फ़िल्टर के लिए कोई स्टॉक आइटम नहीं मिला।' : 'No stock items found for this filter.',
+    resetSearch: language === 'hi' ? 'खोज रीसेट करें' : 'Reset Search',
+    purchases: language === 'hi' ? 'खरीद' : 'Purchases',
+    newPurchase: language === 'hi' ? 'नई खरीद' : 'New Purchase',
+    insufficientNewPurchase: language === 'hi' ? 'नई खरीद के लिए अनुमति अपर्याप्त है' : 'Insufficient permission for New Purchase',
+    logNewPurchase: language === 'hi' ? 'नई खरीद दर्ज करें' : 'Log New Purchase',
+    purchaseSheetDesc: language === 'hi' ? 'आवक खरीद डिलीवरी और इनवॉइस विवरण दर्ज करें।' : 'Record an inbound purchase delivery and invoice details.',
+    purchaseBasics: language === 'hi' ? 'खरीद की मूल जानकारी' : 'Purchase Basics',
+    purchaseBasicsDesc: language === 'hi' ? 'इस स्टॉक खरीद के लिए मुख्य विवरण भरें।' : 'Enter core details for this stock purchase.',
+    transportInvoice: language === 'hi' ? 'परिवहन और इनवॉइस' : 'Transport And Invoice',
+    invoiceDate: language === 'hi' ? 'इनवॉइस तिथि' : 'Invoice Date',
+    originCity: language === 'hi' ? 'मूल शहर' : 'Origin City',
+    destinationWarehouse: language === 'hi' ? 'गंतव्य वेयरहाउस' : 'Destination Warehouse',
+    invoicePhoto: language === 'hi' ? 'इनवॉइस फोटो' : 'Invoice photo',
+    invoicePhotoHint: language === 'hi' ? 'खरीद इनवॉइस की फोटो या PDF।' : 'Purchase invoice photo or PDF.',
+    transporterBillPhoto: language === 'hi' ? 'ट्रांसपोर्टर बिल फोटो' : 'Transporter bill photo',
+    transporterBillHint: language === 'hi' ? 'ट्रक बिल, लॉरी रसीद, या ट्रांसपोर्टर बिल की फोटो।' : 'Truck bill, lorry receipt, or transporter bill photo.',
+    amountInInr: language === 'hi' ? 'राशि INR में।' : 'Amount in INR.',
+    paymentStatus: language === 'hi' ? 'भुगतान स्थिति' : 'Payment Status',
+    unpaid: language === 'hi' ? 'अदेय' : 'Unpaid',
+    partial: language === 'hi' ? 'आंशिक' : 'Partial',
+    paid: language === 'hi' ? 'भुगतान किया गया' : 'Paid',
+    paidAmount: language === 'hi' ? 'भुगतान राशि (INR)' : 'Paid Amount (INR)',
+    paymentDate: language === 'hi' ? 'भुगतान तिथि' : 'Payment Date',
+    paymentMode: language === 'hi' ? 'भुगतान माध्यम' : 'Payment Mode',
+    paymentReference: language === 'hi' ? 'भुगतान संदर्भ' : 'Payment Reference',
+    itemLabel: language === 'hi' ? 'आइटम' : 'Item',
+    autofilledCatalog: language === 'hi' ? 'कैटलॉग से स्वतः भरा गया' : 'Autofilled from catalog',
+    newTileEntry: language === 'hi' ? 'नई टाइल प्रविष्टि' : 'New tile entry',
+    typeTileName: language === 'hi' ? 'टाइल नाम लिखें (मिलने पर ऑटो-फिल होगा)' : 'Type tile name (autocomplete will auto-fill if found)',
+    itemAutofillHint: language === 'hi' ? 'यदि यह किसी मौजूदा टाइल से मेल खाता है तो विवरण स्वतः भर जाएगा। अन्यथा नीचे नई टाइल प्रविष्टि भरें।' : 'If this matches an existing tile, details auto-fill. Otherwise fill details below for new tile entry.',
+    wholeBox: language === 'hi' ? 'संपूर्ण (बॉक्स)' : 'Whole(Box)',
+    brokenTiles: language === 'hi' ? 'टूटी टाइलें' : 'Broken tiles',
+    noPurchases: language === 'hi' ? 'अभी तक कोई खरीद दर्ज नहीं है।' : 'No purchases logged yet.',
+    clearFilters: language === 'hi' ? 'फ़िल्टर साफ़ करें' : 'Clear Filters',
+    generatedBy: language === 'hi' ? 'जनरेट किया गया द्वारा' : 'Generated By',
+    approvedBy: language === 'hi' ? 'मंजूर किया गया द्वारा' : 'Approved By',
+    invoice: language === 'hi' ? 'इनवॉइस' : 'Invoice',
+    route: language === 'hi' ? 'रूट' : 'Route',
+    payment: language === 'hi' ? 'भुगतान' : 'Payment',
+    datetime: language === 'hi' ? 'दिनांक-समय' : 'Datetime',
+    searchDispatches: language === 'hi' ? 'तारीख, उत्पाद, मात्रा, ट्रक या स्थिति से डिस्पैच खोजें' : 'Search dispatches by date, product, qty, truck, or status',
+    salesInvoicePhoto: language === 'hi' ? 'बिक्री इनवॉइस फोटो' : 'Sales invoice photo',
+    salesInvoiceHint: language === 'hi' ? 'बिक्री इनवॉइस की फोटो या PDF।' : 'Sales invoice photo or PDF.',
+    gatepassPhoto: language === 'hi' ? 'गेटपास फोटो' : 'Gatepass photo',
+    gatepassHint: language === 'hi' ? 'डिस्पैच यार्ड से निकलने से पहले का गेटपास फोटो।' : 'Gatepass photo before dispatch leaves the yard.',
+    submitting: language === 'hi' ? 'जमा किया जा रहा है...' : 'Submitting...',
+    noDispatches: language === 'hi' ? 'अभी तक कोई डिस्पैच दर्ज नहीं है।' : 'No dispatches logged yet.',
+    loadingPreview: language === 'hi' ? 'पूर्वावलोकन लोड हो रहा है…' : 'Loading preview…',
+    invoiceNoLabel: language === 'hi' ? 'इनवॉइस नंबर' : 'Invoice No',
+    date: language === 'hi' ? 'तिथि' : 'Date',
+    vehicleNo: language === 'hi' ? 'वाहन नंबर' : 'Vehicle No',
+    transporter: language === 'hi' ? 'ट्रांसपोर्टर' : 'Transporter',
+    description: language === 'hi' ? 'विवरण' : 'Description',
+    totalSqmQty: language === 'hi' ? 'कुल SQM / मात्रा' : 'Total SQM / Qty',
+    srNo: language === 'hi' ? 'क्र. सं.' : 'Sr. No',
+    division: language === 'hi' ? 'डिवीजन' : 'Division',
+    sqm: language === 'hi' ? 'एसक्यूएम' : 'SQM',
+    costPerSqm: language === 'hi' ? 'लागत / SQM' : 'Cost / SQM',
+    paginationShowing: language === 'hi' ? 'दिखाए जा रहे हैं' : 'Showing',
+    paginationOf: language === 'hi' ? 'में से' : 'of',
+    paginationPrevious: language === 'hi' ? 'पिछला' : 'Previous',
+    paginationNext: language === 'hi' ? 'अगला' : 'Next',
+    paginationPage: language === 'hi' ? 'पेज' : 'Page',
+  };
+  const { user, isLoading: userLoading } = useAuthUser();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -353,6 +423,8 @@ export default function StockDashboard() {
   const [arrivalPage, setArrivalPage] = useState(1);
   const [dispatchPage, setDispatchPage] = useState(1);
   const [previewItemsPage, setPreviewItemsPage] = useState(1);
+  const [arrivalSheetOpen, setArrivalSheetOpen] = useState(false);
+  const [dispatchSheetOpen, setDispatchSheetOpen] = useState(false);
   const [arrivalDraft, setArrivalDraft] = useState(() => createInitialArrivalDraft());
   const [dispatchDraft, setDispatchDraft] = useState(() => createInitialDispatchDraft());
   const [arrivalAttachments, setArrivalAttachments] = useState(() => createInitialAttachmentState());
@@ -814,6 +886,7 @@ export default function StockDashboard() {
 
       setArrivalDraft(createInitialArrivalDraft());
       setArrivalAttachments(createInitialAttachmentState());
+      setArrivalSheetOpen(false);
       setArrivalNotice({
         type: 'success',
         message: `Purchase ${json.shipment?.shipment_number || 'submitted'} sent for review.`,
@@ -931,6 +1004,7 @@ export default function StockDashboard() {
 
       setDispatchDraft(createInitialDispatchDraft());
       setDispatchAttachments(createInitialAttachmentState());
+      setDispatchSheetOpen(false);
       setDispatchNotice({
         type: 'success',
         message: `Dispatch ${json.shipment?.shipment_number || 'submitted'} sent for review.`,
@@ -1150,6 +1224,28 @@ export default function StockDashboard() {
   }, [data, processedDeepLink, searchParams]);
 
   useEffect(() => {
+    const requestedNewForm = searchParams.get('new');
+    if (!requestedNewForm) {
+      return;
+    }
+
+    if (requestedNewForm === 'purchase') {
+      setActiveTableView('purchases');
+      setDispatchSheetOpen(false);
+      setArrivalSheetOpen(true);
+    } else if (requestedNewForm === 'dispatch') {
+      setActiveTableView('dispatches');
+      setArrivalSheetOpen(false);
+      setDispatchSheetOpen(true);
+    }
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('new');
+    const nextQuery = params.toString();
+    router.replace(nextQuery ? `/stock?${nextQuery}` : '/stock');
+  }, [router, searchParams]);
+
+  useEffect(() => {
     if (!highlightedShipmentKey) {
       return;
     }
@@ -1221,8 +1317,8 @@ export default function StockDashboard() {
   return (
     <div className={CLASSES.contentWrap}>
       <div className={CLASSES.topCard}>
-        <h1 className="text-lg font-semibold text-foreground">Stock Operations</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Focused view for maintainers: current stock, purchases, and dispatches.</p>
+        <h1 className="text-lg font-semibold text-foreground">{tc.stockOperations}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{tc.stockSubtitle}</p>
       </div>
 
       <div className={CLASSES.statGrid}>
@@ -1285,7 +1381,7 @@ export default function StockDashboard() {
             type="search"
             value={stockSearch}
             onChange={(event) => setStockSearch(event.target.value)}
-            placeholder="Search items by SKU, name, size, or quantities"
+            placeholder={tc.searchItems}
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
           />
         </div>
@@ -1354,13 +1450,13 @@ export default function StockDashboard() {
                   <td colSpan="6" className="px-3 py-10">
                     <div className="flex flex-col items-center justify-center gap-3 text-center">
                       <Boxes className="h-6 w-6 text-slate-400" />
-                      <p className="text-sm text-slate-500 dark:text-slate-400">No stock items found for this filter.</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{tc.noStockItems}</p>
                       <button
                         type="button"
                         onClick={() => setStockSearch('')}
                         className="rounded-xl bg-[#E07A00] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#c96d00] focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20"
                       >
-                        Reset Search
+                        {tc.resetSearch}
                       </button>
                     </div>
                   </td>
@@ -1375,6 +1471,13 @@ export default function StockDashboard() {
           total={stockPagination.total}
           pageSize={DEFAULT_PAGE_SIZE}
           onPageChange={setStockPage}
+          labels={{
+            showing: tc.paginationShowing,
+            of: tc.paginationOf,
+            previous: tc.paginationPrevious,
+            next: tc.paginationNext,
+            page: tc.paginationPage,
+          }}
         />
       </div>
         </div>
@@ -1383,29 +1486,30 @@ export default function StockDashboard() {
         <div className="stock-tab-panel" key="stock-panel-purchases">
         <section id="purchases" className="flex h-full flex-col overflow-hidden scroll-mt-6 rounded-2xl border border-slate-200/60 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-900/40">
-            <h2 className="text-base font-semibold text-foreground">Purchases</h2>
-              <Sheet>
-              <SheetTrigger asChild>
+            <h2 className="text-base font-semibold text-foreground">{tc.purchases}</h2>
+              <Sheet open={arrivalSheetOpen} onOpenChange={setArrivalSheetOpen}>
                 <button
                   type="button"
-                  onClick={() => setArrivalNotice(null)}
+                  onClick={() => {
+                    setArrivalNotice(null);
+                    setArrivalSheetOpen(true);
+                  }}
                   className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-55"
                   disabled={!canCreateArrival}
-                  title={!canCreateArrival ? 'Insufficient permission for New Purchase' : undefined}
+                  title={!canCreateArrival ? tc.insufficientNewPurchase : undefined}
                 >
-                  + New Purchase
+                  + {tc.newPurchase}
                 </button>
-              </SheetTrigger>
               <SheetContent side="right" className="w-full max-w-none overflow-y-auto md:w-[50vw]">
                 <SheetHeader>
-                  <SheetTitle>Log New Purchase</SheetTitle>
-                  <SheetDescription>Record an inbound purchase delivery and invoice details.</SheetDescription>
+                  <SheetTitle>{tc.logNewPurchase}</SheetTitle>
+                  <SheetDescription>{tc.purchaseSheetDesc}</SheetDescription>
                 </SheetHeader>
                 <form className="mt-6 space-y-5" onSubmit={handleArrivalSubmit}>
                   <InlineNotice notice={arrivalNotice} />
                   <div className={FORM_CARD_CLASS}>
-                    <h3 className="text-sm font-semibold text-foreground">Purchase Basics</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">Enter core details for this stock purchase.</p>
+                    <h3 className="text-sm font-semibold text-foreground">{tc.purchaseBasics}</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">{tc.purchaseBasicsDesc}</p>
                     <div className="mt-3 grid gap-4 md:grid-cols-2">
                     <div>
                       <label className={FORM_LABEL_CLASS}>{t('shipmentNo')}</label>
@@ -1431,7 +1535,7 @@ export default function StockDashboard() {
                   </div>
                   </div>
                   <div className={FORM_CARD_CLASS}>
-                    <h3 className="text-sm font-semibold text-foreground">Transport And Invoice</h3>
+                    <h3 className="text-sm font-semibold text-foreground">{tc.transportInvoice}</h3>
                     <div className="mt-3 grid gap-4 md:grid-cols-2">
                     <div>
                       <label className={FORM_LABEL_CLASS}>{t('truck')}</label>
@@ -1464,7 +1568,7 @@ export default function StockDashboard() {
                       />
                     </div>
                     <div>
-                      <label className={FORM_LABEL_CLASS}>Invoice Date</label>
+                      <label className={FORM_LABEL_CLASS}>{tc.invoiceDate}</label>
                       <input
                         value={arrivalDraft.invoiceDate}
                         onChange={(event) => updateArrivalDraft('invoiceDate', event.target.value)}
@@ -1473,7 +1577,7 @@ export default function StockDashboard() {
                       />
                     </div>
                     <div>
-                      <label className={FORM_LABEL_CLASS}>Origin City</label>
+                      <label className={FORM_LABEL_CLASS}>{tc.originCity}</label>
                       <input
                         value={arrivalDraft.originCity}
                         onChange={(event) => updateArrivalDraft('originCity', event.target.value)}
@@ -1483,7 +1587,7 @@ export default function StockDashboard() {
                       />
                     </div>
                     <div>
-                      <label className={FORM_LABEL_CLASS}>Destination Warehouse</label>
+                      <label className={FORM_LABEL_CLASS}>{tc.destinationWarehouse}</label>
                       <input
                         value={arrivalDraft.destinationWarehouseName}
                         onChange={(event) => updateArrivalDraft('destinationWarehouseName', event.target.value)}
@@ -1493,17 +1597,17 @@ export default function StockDashboard() {
                       />
                     </div>
                     <AttachmentField
-                      label="Invoice photo"
+                      label={tc.invoicePhoto}
                       file={arrivalAttachments.purchaseInvoice}
                       onChange={(file) => setArrivalAttachments((current) => ({ ...current, purchaseInvoice: file }))}
-                      hint="Purchase invoice photo or PDF."
+                      hint={tc.invoicePhotoHint}
                     />
                     <AttachmentField
-                      label="Transporter bill photo"
+                      label={tc.transporterBillPhoto}
                       file={arrivalAttachments.transporterBill}
                       onChange={(file) => setArrivalAttachments((current) => ({ ...current, transporterBill: file }))}
                       accept="image/*"
-                      hint="Truck bill, lorry receipt, or transporter bill photo."
+                      hint={tc.transporterBillHint}
                     />
                     <div>
                       <label className={FORM_LABEL_CLASS}>{t('transportCost')}</label>
@@ -1519,28 +1623,28 @@ export default function StockDashboard() {
                           placeholder="0.00"
                         />
                       </div>
-                      <p className="mt-1 text-[11px] text-muted-foreground">Amount in INR.</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">{tc.amountInInr}</p>
                     </div>
                   </div>
                   </div>
                   <div className={FORM_CARD_CLASS}>
                     <div className="grid gap-4 md:grid-cols-2">
                     <div>
-                      <label className={FORM_LABEL_CLASS}>Payment Status</label>
+                      <label className={FORM_LABEL_CLASS}>{tc.paymentStatus}</label>
                       <select
                         value={arrivalDraft.paymentStatus}
                         onChange={(event) => updateArrivalDraft('paymentStatus', event.target.value)}
                         className={FORM_INPUT_CLASS}
                       >
-                        <option value="unpaid">Unpaid</option>
-                        <option value="partial">Partial</option>
-                        <option value="paid">Paid</option>
+                        <option value="unpaid">{tc.unpaid}</option>
+                        <option value="partial">{tc.partial}</option>
+                        <option value="paid">{tc.paid}</option>
                       </select>
                     </div>
                     {(arrivalDraft.paymentStatus === 'partial' || arrivalDraft.paymentStatus === 'paid') ? (
                       <>
                         <div>
-                          <label className={FORM_LABEL_CLASS}>Paid Amount (INR)</label>
+                          <label className={FORM_LABEL_CLASS}>{tc.paidAmount}</label>
                           <input
                             value={arrivalDraft.paidAmount}
                             onChange={(event) => updateArrivalDraft('paidAmount', event.target.value)}
@@ -1552,7 +1656,7 @@ export default function StockDashboard() {
                           />
                         </div>
                         <div>
-                          <label className={FORM_LABEL_CLASS}>Payment Date</label>
+                          <label className={FORM_LABEL_CLASS}>{tc.paymentDate}</label>
                           <input
                             value={arrivalDraft.paymentDate}
                             onChange={(event) => updateArrivalDraft('paymentDate', event.target.value)}
@@ -1561,7 +1665,7 @@ export default function StockDashboard() {
                           />
                         </div>
                         <div>
-                          <label className={FORM_LABEL_CLASS}>Payment Mode</label>
+                          <label className={FORM_LABEL_CLASS}>{tc.paymentMode}</label>
                           <input
                             value={arrivalDraft.paymentMode}
                             onChange={(event) => updateArrivalDraft('paymentMode', event.target.value)}
@@ -1571,7 +1675,7 @@ export default function StockDashboard() {
                           />
                         </div>
                         <div>
-                          <label className={FORM_LABEL_CLASS}>Payment Reference</label>
+                          <label className={FORM_LABEL_CLASS}>{tc.paymentReference}</label>
                           <input
                             value={arrivalDraft.paymentReference}
                             onChange={(event) => updateArrivalDraft('paymentReference', event.target.value)}
@@ -1596,7 +1700,7 @@ export default function StockDashboard() {
                           placeholder="0.00"
                         />
                       </div>
-                      <p className="mt-1 text-[11px] text-muted-foreground">Amount in INR.</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">{tc.amountInInr}</p>
                     </div>
                   </div>
                   </div>
@@ -1622,9 +1726,9 @@ export default function StockDashboard() {
                       {arrivalDraft.items.map((item, index) => (
                         <div key={`arrival-item-${index}`} className="space-y-2 rounded-xl border border-border bg-background/70 p-3">
                           <div className="flex items-center justify-between gap-4 text-xs font-medium text-muted-foreground">
-                            <span>Item {index + 1}</span>
+                            <span>{tc.itemLabel} {index + 1}</span>
                             <span className={`rounded-full border px-2.5 py-1 ${item.itemId ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
-                              {item.itemId ? 'Autofilled from catalog' : 'New tile entry'}
+                              {item.itemId ? tc.autofilledCatalog : tc.newTileEntry}
                             </span>
                           </div>
                           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -1633,13 +1737,13 @@ export default function StockDashboard() {
                                 value={item.itemName}
                                 onChange={(event) => handleArrivalItemNameChange(index, event.target.value)}
                                 className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                placeholder="Type tile name (autocomplete will auto-fill if found)"
+                                placeholder={tc.typeTileName}
                                 list="arrival-item-options"
                               />
-                              <div className="mt-1 text-[11px] text-muted-foreground">If this matches an existing tile, details auto-fill. Otherwise fill details below for new tile entry.</div>
+                              <div className="mt-1 text-[11px] text-muted-foreground">{tc.itemAutofillHint}</div>
                             </div>
                             <div>
-                              <label className="mb-1 block text-xs font-semibold text-muted-foreground">Whole(Box)</label>
+                              <label className="mb-1 block text-xs font-semibold text-muted-foreground">{tc.wholeBox}</label>
                               <input
                                 value={item.wholeQty}
                                 onChange={(event) => updateArrivalItem(index, 'wholeQty', event.target.value)}
@@ -1650,7 +1754,7 @@ export default function StockDashboard() {
                               />
                             </div>
                             <div>
-                              <label className="mb-1 block text-xs font-semibold text-muted-foreground">Broken tiles</label>
+                              <label className="mb-1 block text-xs font-semibold text-muted-foreground">{tc.brokenTiles}</label>
                               <input
                                 value={item.brokenQty}
                                 onChange={(event) => updateArrivalItem(index, 'brokenQty', event.target.value)}
@@ -1788,7 +1892,7 @@ export default function StockDashboard() {
                     disabled={arrivalSubmitting}
                     className="mt-4 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {arrivalSubmitting ? 'Submitting...' : 'Submit Purchase'}
+                    {arrivalSubmitting ? tc.submitting : (language === 'hi' ? 'खरीद जमा करें' : 'Submit Purchase')}
                   </button>
                 </form>
               </SheetContent>
@@ -1858,7 +1962,7 @@ export default function StockDashboard() {
                 <tr>
                   <th className="px-3 py-2">
                     <button type="button" onClick={() => toggleSort(arrivalSort, setArrivalSort, 'datetime')} className="font-medium hover:text-foreground">
-                      Datetime
+                      {tc.datetime}
                     </button>
                   </th>
                   <th className="px-3 py-2">
@@ -1866,9 +1970,9 @@ export default function StockDashboard() {
                       {t('shipmentNo')}
                     </button>
                   </th>
-                  <th className="px-3 py-2">Invoice</th>
-                  <th className="px-3 py-2">Route</th>
-                  <th className="px-3 py-2">Payment</th>
+                  <th className="px-3 py-2">{tc.invoice}</th>
+                  <th className="px-3 py-2">{tc.route}</th>
+                  <th className="px-3 py-2">{tc.payment}</th>
                   <th className="px-3 py-2">
                     <button type="button" onClick={() => toggleSort(arrivalSort, setArrivalSort, 'products')} className="font-medium hover:text-foreground">
                       Products
@@ -1884,8 +1988,8 @@ export default function StockDashboard() {
                       {t('status')}
                     </button>
                   </th>
-                  <th className="px-3 py-2">Generated By</th>
-                  <th className="px-3 py-2">Approved By</th>
+                  <th className="px-3 py-2">{tc.generatedBy}</th>
+                  <th className="px-3 py-2">{tc.approvedBy}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1946,13 +2050,13 @@ export default function StockDashboard() {
                     <td colSpan="10" className="px-3 py-10">
                       <div className="flex flex-col items-center justify-center gap-3 text-center">
                         <PackageCheck className="h-6 w-6 text-slate-400" />
-                        <p className="text-sm text-slate-500 dark:text-slate-400">No purchases logged yet.</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">{tc.noPurchases}</p>
                         <button
                           type="button"
                           onClick={() => setArrivalSearch('')}
                           className="rounded-xl bg-[#E07A00] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#c96d00] focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20"
                         >
-                          Clear Filters
+                          {tc.clearFilters}
                         </button>
                       </div>
                     </td>
@@ -1967,6 +2071,13 @@ export default function StockDashboard() {
             total={arrivalPagination.total}
             pageSize={DEFAULT_PAGE_SIZE}
             onPageChange={setArrivalPage}
+            labels={{
+              showing: tc.paginationShowing,
+              of: tc.paginationOf,
+              previous: tc.paginationPrevious,
+              next: tc.paginationNext,
+              page: tc.paginationPage,
+            }}
           />
         </section>
         </div>
@@ -1977,16 +2088,17 @@ export default function StockDashboard() {
         <section id="dispatches" className="flex h-full flex-col overflow-hidden scroll-mt-6 rounded-2xl border border-slate-200/60 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-900/40">
             <h2 className="text-base font-semibold text-foreground">{t('dispatches')}</h2>
-              <Sheet>
-              <SheetTrigger asChild>
+              <Sheet open={dispatchSheetOpen} onOpenChange={setDispatchSheetOpen}>
                 <button
                   type="button"
-                  onClick={() => setDispatchNotice(null)}
+                  onClick={() => {
+                    setDispatchNotice(null);
+                    setDispatchSheetOpen(true);
+                  }}
                   className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
                 >
                   + {t('newDispatch')}
                 </button>
-              </SheetTrigger>
               <SheetContent side="right" className="w-full max-w-none overflow-y-auto md:w-[50vw]">
                 <SheetHeader>
                   <SheetTitle>{t('logNewDispatch')}</SheetTitle>
@@ -2051,17 +2163,17 @@ export default function StockDashboard() {
                       />
                     </div>
                     <AttachmentField
-                      label="Sales invoice photo"
+                      label={tc.salesInvoicePhoto}
                       file={dispatchAttachments.salesInvoice}
                       onChange={(file) => setDispatchAttachments((current) => ({ ...current, salesInvoice: file }))}
-                      hint="Sales invoice photo or PDF."
+                      hint={tc.salesInvoiceHint}
                     />
                     <AttachmentField
-                      label="Gatepass photo"
+                      label={tc.gatepassPhoto}
                       file={dispatchAttachments.gatepass}
                       onChange={(file) => setDispatchAttachments((current) => ({ ...current, gatepass: file }))}
                       accept="image/*"
-                      hint="Gatepass photo before dispatch leaves the yard."
+                      hint={tc.gatepassHint}
                     />
                     <div>
                       <label className="text-xs font-semibold text-foreground/80">{t('salesperson')}</label>
@@ -2089,7 +2201,7 @@ export default function StockDashboard() {
                           placeholder="0.00"
                         />
                       </div>
-                      <p className="mt-1 text-[11px] text-muted-foreground">Amount in INR.</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">{tc.amountInInr}</p>
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-foreground/80">{t('laborCost')}</label>
@@ -2105,7 +2217,7 @@ export default function StockDashboard() {
                           placeholder="0.00"
                         />
                       </div>
-                      <p className="mt-1 text-[11px] text-muted-foreground">Amount in INR.</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">{tc.amountInInr}</p>
                     </div>
                   </div>
                   <div className="border-t pt-4">
@@ -2184,7 +2296,7 @@ export default function StockDashboard() {
                     disabled={dispatchSubmitting}
                     className="mt-4 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {dispatchSubmitting ? 'Submitting...' : t('submitDispatch')}
+                    {dispatchSubmitting ? tc.submitting : t('submitDispatch')}
                   </button>
                 </form>
               </SheetContent>
@@ -2195,7 +2307,7 @@ export default function StockDashboard() {
               type="search"
               value={dispatchSearch}
               onChange={(event) => setDispatchSearch(event.target.value)}
-              placeholder="Search dispatches by date, product, qty, truck, or status"
+              placeholder={tc.searchDispatches}
               className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
             />
           </div>
@@ -2241,7 +2353,7 @@ export default function StockDashboard() {
                 <tr>
                   <th className="px-3 py-2">
                     <button type="button" onClick={() => toggleSort(dispatchSort, setDispatchSort, 'datetime')} className="font-medium hover:text-foreground">
-                      Datetime
+                      {tc.datetime}
                     </button>
                   </th>
                   <th className="px-3 py-2">
@@ -2264,8 +2376,8 @@ export default function StockDashboard() {
                       {t('status')}
                     </button>
                   </th>
-                  <th className="px-3 py-2">Generated By</th>
-                  <th className="px-3 py-2">Approved By</th>
+                  <th className="px-3 py-2">{tc.generatedBy}</th>
+                  <th className="px-3 py-2">{tc.approvedBy}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -2311,13 +2423,13 @@ export default function StockDashboard() {
                     <td colSpan="7" className="px-3 py-10">
                       <div className="flex flex-col items-center justify-center gap-3 text-center">
                         <PackageCheck className="h-6 w-6 text-slate-400" />
-                        <p className="text-sm text-slate-500 dark:text-slate-400">No dispatches logged yet.</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">{tc.noDispatches}</p>
                         <button
                           type="button"
                           onClick={() => setDispatchSearch('')}
                           className="rounded-xl bg-[#E07A00] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#c96d00] focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20"
                         >
-                          Clear Filters
+                          {tc.clearFilters}
                         </button>
                       </div>
                     </td>
@@ -2332,6 +2444,13 @@ export default function StockDashboard() {
             total={dispatchPagination.total}
             pageSize={DEFAULT_PAGE_SIZE}
             onPageChange={setDispatchPage}
+            labels={{
+              showing: tc.paginationShowing,
+              of: tc.paginationOf,
+              previous: tc.paginationPrevious,
+              next: tc.paginationNext,
+              page: tc.paginationPage,
+            }}
           />
         </section>
         </div>
@@ -2348,7 +2467,7 @@ export default function StockDashboard() {
         description={previewState.description}
         summary={
           previewState.loading ? (
-            <div className="text-sm text-slate-500">Loading preview…</div>
+            <div className="text-sm text-slate-500">{tc.loadingPreview}</div>
           ) : previewState.error ? (
             <div className="text-sm text-red-600">{previewState.error}</div>
           ) : null
@@ -2389,19 +2508,19 @@ export default function StockDashboard() {
                             </div>
                             <div className={INVOICE_CLASSES.logisticsGrid}>
                               <div className={INVOICE_CLASSES.logisticsCell}>
-                                <div className={INVOICE_CLASSES.logisticsLabel}><Hash className="h-3 w-3" />Invoice No</div>
+                                <div className={INVOICE_CLASSES.logisticsLabel}><Hash className="h-3 w-3" />{tc.invoiceNoLabel}</div>
                                 <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.invoice_number || '—'}</div>
                               </div>
                               <div className={INVOICE_CLASSES.logisticsCell}>
-                                <div className={INVOICE_CLASSES.logisticsLabel}><Calendar className="h-3 w-3" />Date</div>
+                                <div className={INVOICE_CLASSES.logisticsLabel}><Calendar className="h-3 w-3" />{tc.date}</div>
                                 <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.invoice_date ? formatDateTime(previewState.record?.invoice_date) : '—'}</div>
                               </div>
                               <div className={INVOICE_CLASSES.logisticsCell}>
-                                <div className={INVOICE_CLASSES.logisticsLabel}><Truck className="h-3 w-3" />Vehicle No</div>
+                                <div className={INVOICE_CLASSES.logisticsLabel}><Truck className="h-3 w-3" />{tc.vehicleNo}</div>
                                 <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.truck_license_plate || previewState.record?.truck_number || '—'}</div>
                               </div>
                               <div className={INVOICE_CLASSES.logisticsCell}>
-                                <div className={INVOICE_CLASSES.logisticsLabel}><Truck className="h-3 w-3" />Transporter</div>
+                                <div className={INVOICE_CLASSES.logisticsLabel}><Truck className="h-3 w-3" />{tc.transporter}</div>
                                 <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.transporter_name || '—'}</div>
                               </div>
                             </div>
@@ -2451,7 +2570,7 @@ export default function StockDashboard() {
                                   <div className={INVOICE_CLASSES.mobileCardHeader}>Line {index + 1}</div>
                                   <div className="mt-2 grid grid-cols-2 gap-2">
                                     <div>
-                                      <div className={INVOICE_CLASSES.mobileKey}>Description</div>
+                                      <div className={INVOICE_CLASSES.mobileKey}>{tc.description}</div>
                                       <div className={INVOICE_CLASSES.mobileValue}>{item.item_name || item.sku || '—'}</div>
                                     </div>
                                     <div>
@@ -2459,15 +2578,15 @@ export default function StockDashboard() {
                                       <div className={INVOICE_CLASSES.mobileValue}>{item.hsn_code || '—'}</div>
                                     </div>
                                     <div>
-                                      <div className={INVOICE_CLASSES.mobileKey}>Size</div>
+                                      <div className={INVOICE_CLASSES.mobileKey}>{t('size')}</div>
                                       <div className={INVOICE_CLASSES.mobileValue}>{item.size_label || '—'}</div>
                                     </div>
                                     <div>
-                                      <div className={INVOICE_CLASSES.mobileKey}>Boxes (Whole)</div>
+                                      <div className={INVOICE_CLASSES.mobileKey}>{tc.wholeBox}</div>
                                       <div className={INVOICE_CLASSES.mobileValue}>{item.received_whole_qty ?? item.loaded_whole_qty ?? 0}</div>
                                     </div>
                                     <div className="col-span-2">
-                                      <div className={INVOICE_CLASSES.mobileKey}>Total SQM / Qty</div>
+                                      <div className={INVOICE_CLASSES.mobileKey}>{tc.totalSqmQty}</div>
                                       <div className={INVOICE_CLASSES.mobileValue}>
                                         {item.qty_sqm != null ? Number(item.qty_sqm).toFixed(3) : Number((item.received_whole_qty ?? 0) + (item.received_broken_qty ?? 0)).toFixed(0)}
                                       </div>
@@ -2483,24 +2602,24 @@ export default function StockDashboard() {
                                 <tr>
                                   {isInboundPreview ? (
                                     <>
-                                      <th className={INVOICE_CLASSES.tableHeadCell}>Sr. No</th>
-                                      <th className={INVOICE_CLASSES.tableHeadCell}>Description</th>
+                                      <th className={INVOICE_CLASSES.tableHeadCell}>{tc.srNo}</th>
+                                      <th className={INVOICE_CLASSES.tableHeadCell}>{tc.description}</th>
                                       <th className={INVOICE_CLASSES.tableHeadCell}>HSN</th>
-                                      <th className={INVOICE_CLASSES.tableHeadCell}>Size</th>
-                                      <th className={`${INVOICE_CLASSES.tableHeadCell} text-right`}>Boxes (Whole)</th>
-                                      <th className={`${INVOICE_CLASSES.tableHeadCell} text-right`}>Total SQM / Qty</th>
+                                      <th className={INVOICE_CLASSES.tableHeadCell}>{t('size')}</th>
+                                      <th className={`${INVOICE_CLASSES.tableHeadCell} text-right`}>{tc.wholeBox}</th>
+                                      <th className={`${INVOICE_CLASSES.tableHeadCell} text-right`}>{tc.totalSqmQty}</th>
                                     </>
                                   ) : (
                                     <>
-                                      <th className="px-3 py-2">SKU</th>
-                                      <th className="px-3 py-2">Name</th>
+                                      <th className="px-3 py-2">{t('sku')}</th>
+                                      <th className="px-3 py-2">{t('name')}</th>
                                       <th className="px-3 py-2">HSN</th>
-                                      <th className="px-3 py-2">Division</th>
-                                      <th className="px-3 py-2 text-right">SQM</th>
-                                      <th className="px-3 py-2 text-right">Cost / SQM</th>
-                                      <th className="px-3 py-2 text-right">Whole</th>
-                                      <th className="px-3 py-2 text-right">Broken</th>
-                                      <th className="px-3 py-2">Notes</th>
+                                      <th className="px-3 py-2">{tc.division}</th>
+                                      <th className="px-3 py-2 text-right">{tc.sqm}</th>
+                                      <th className="px-3 py-2 text-right">{tc.costPerSqm}</th>
+                                      <th className="px-3 py-2 text-right">{t('whole')}</th>
+                                      <th className="px-3 py-2 text-right">{t('broken')}</th>
+                                      <th className="px-3 py-2">{t('notes')}</th>
                                     </>
                                   )}
                                 </tr>
@@ -2543,6 +2662,13 @@ export default function StockDashboard() {
                             total={previewItemPagination.total}
                             pageSize={DEFAULT_PAGE_SIZE}
                             onPageChange={setPreviewItemsPage}
+                            labels={{
+                              showing: tc.paginationShowing,
+                              of: tc.paginationOf,
+                              previous: tc.paginationPrevious,
+                              next: tc.paginationNext,
+                              page: tc.paginationPage,
+                            }}
                           />
                         </>
                       ),

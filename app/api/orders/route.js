@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { auth0 } from '@/lib/auth0';
+import { auth } from '@/lib/auth-server';
 import { ordersDB } from '@/lib/db/orders';
 
 // GET /api/orders - Get all orders for the authenticated user
 export async function GET(request) {
   try {
-    const session = await auth0.getSession(request);
+    const session = await auth.getSession(request);
     
     if (!session) {
       return NextResponse.json(
@@ -30,7 +30,7 @@ export async function GET(request) {
 // POST /api/orders - Create a new order
 export async function POST(request) {
   try {
-    const session = await auth0.getSession(request);
+    const session = await auth.getSession(request);
     
     if (!session) {
       return NextResponse.json(

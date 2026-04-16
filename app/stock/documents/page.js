@@ -24,6 +24,53 @@ const copy = {
     empty: 'No documents found.',
     refresh: 'Refresh',
     recentDocuments: 'Recent Documents',
+    tableType: 'Type',
+    tableEntity: 'Entity',
+    tableNumber: 'No.',
+    tableFile: 'File',
+    tableNotes: 'Notes',
+    shipmentOrOrderId: 'Shipment or order id',
+    invoiceOrGatepassNo: 'Invoice / gatepass no',
+    optionalComments: 'Optional comments',
+    clickToPreview: 'Click to preview',
+    noPreviewAvailable: 'No preview available.',
+    documentPreview: 'Document preview and archive details',
+    documentDetails: 'Document Details',
+    detailDocumentType: 'Document Type',
+    detailEntityType: 'Entity Type',
+    detailEntityId: 'Entity ID',
+    detailDocumentNumber: 'Document Number',
+    detailFileName: 'File Name',
+    detailMimeType: 'Mime Type',
+    detailFileSize: 'File Size',
+    detailCreatedAt: 'Created At',
+    detailNotes: 'Notes',
+    filePreview: 'File Preview',
+    bytes: 'bytes',
+    errorLoad: 'Failed to load documents',
+    errorRequired: 'File and Entity ID are required',
+    errorUpload: 'Failed to upload document',
+    errorRefresh: 'Failed to refresh documents',
+    paginationShowing: 'Showing',
+    paginationOf: 'of',
+    paginationPrevious: 'Previous',
+    paginationNext: 'Next',
+    paginationPage: 'Page',
+    docTypePurchaseInvoice: 'Purchase Invoice',
+    docTypeTransporterBill: 'Transporter Bill',
+    docTypeGatepass: 'Gatepass',
+    docTypeSalesInvoice: 'Sales Invoice',
+    docTypeDeliveryReceipt: 'Delivery Receipt',
+    docTypeCustomerAcknowledgement: 'Customer Acknowledgement',
+    docTypePhotoEvidence: 'Photo Evidence',
+    other: 'Other',
+    entityInboundShipment: 'Inbound Shipment',
+    entityOutboundShipment: 'Outbound Shipment',
+    entityPurchaseOrder: 'Purchase Order',
+    entitySalesOrder: 'Sales Order',
+    entityMovement: 'Movement',
+    entityCustomer: 'Customer',
+    entitySupplier: 'Supplier',
     outboundShipment: 'Outbound Shipment',
     inboundShipment: 'Inbound Shipment',
   },
@@ -43,36 +90,82 @@ const copy = {
     empty: 'कोई दस्तावेज़ नहीं मिला।',
     refresh: 'रीफ्रेश',
     recentDocuments: 'हाल के दस्तावेज़',
+    tableType: 'प्रकार',
+    tableEntity: 'एंटिटी',
+    tableNumber: 'नं.',
+    tableFile: 'फ़ाइल',
+    tableNotes: 'टिप्पणियाँ',
+    shipmentOrOrderId: 'शिपमेंट या ऑर्डर आईडी',
+    invoiceOrGatepassNo: 'इनवॉइस / गेटपास नं.',
+    optionalComments: 'वैकल्पिक टिप्पणियाँ',
+    clickToPreview: 'पूर्वावलोकन के लिए क्लिक करें',
+    noPreviewAvailable: 'कोई पूर्वावलोकन उपलब्ध नहीं है।',
+    documentPreview: 'दस्तावेज़ पूर्वावलोकन और संग्रह विवरण',
+    documentDetails: 'दस्तावेज़ विवरण',
+    detailDocumentType: 'दस्तावेज़ प्रकार',
+    detailEntityType: 'एंटिटी प्रकार',
+    detailEntityId: 'एंटिटी आईडी',
+    detailDocumentNumber: 'दस्तावेज़ नंबर',
+    detailFileName: 'फ़ाइल नाम',
+    detailMimeType: 'माइम प्रकार',
+    detailFileSize: 'फ़ाइल आकार',
+    detailCreatedAt: 'बनाया गया समय',
+    detailNotes: 'टिप्पणियाँ',
+    filePreview: 'फ़ाइल पूर्वावलोकन',
+    bytes: 'बाइट',
+    errorLoad: 'दस्तावेज़ लोड नहीं हो सके',
+    errorRequired: 'फ़ाइल और एंटिटी आईडी आवश्यक हैं',
+    errorUpload: 'दस्तावेज़ अपलोड नहीं हो सका',
+    errorRefresh: 'दस्तावेज़ सूची रीफ्रेश नहीं हो सकी',
+    paginationShowing: 'दिखाए जा रहे हैं',
+    paginationOf: 'में से',
+    paginationPrevious: 'पिछला',
+    paginationNext: 'अगला',
+    paginationPage: 'पेज',
+    docTypePurchaseInvoice: 'खरीद इनवॉइस',
+    docTypeTransporterBill: 'परिवहन बिल',
+    docTypeGatepass: 'गेटपास',
+    docTypeSalesInvoice: 'बिक्री इनवॉइस',
+    docTypeDeliveryReceipt: 'डिलीवरी रसीद',
+    docTypeCustomerAcknowledgement: 'ग्राहक स्वीकृति',
+    docTypePhotoEvidence: 'फोटो प्रमाण',
+    other: 'अन्य',
+    entityInboundShipment: 'आवक शिपमेंट',
+    entityOutboundShipment: 'जावक शिपमेंट',
+    entityPurchaseOrder: 'खरीद आदेश',
+    entitySalesOrder: 'बिक्री आदेश',
+    entityMovement: 'मूवमेंट',
+    entityCustomer: 'ग्राहक',
+    entitySupplier: 'आपूर्तिकर्ता',
     outboundShipment: 'जाने वाला शिपमेंट',
     inboundShipment: 'आने वाला शिपमेंट',
   },
 };
 
-const documentTypeOptions = [
-  { value: 'purchase_invoice', label: 'Purchase Invoice' },
-  { value: 'transporter_bill', label: 'Transporter Bill' },
-  { value: 'gatepass', label: 'Gatepass' },
-  { value: 'sales_invoice', label: 'Sales Invoice' },
-  { value: 'delivery_receipt', label: 'Delivery Receipt' },
-  { value: 'customer_acknowledgement', label: 'Customer Acknowledgement' },
-  { value: 'photo_evidence', label: 'Photo Evidence' },
-  { value: 'other', label: 'Other' },
-];
-
-const entityTypeOptions = [
-  { value: 'inbound_shipment', label: 'Inbound Shipment' },
-  { value: 'outbound_shipment', label: 'Outbound Shipment' },
-  { value: 'purchase_order', label: 'Purchase Order' },
-  { value: 'sales_order', label: 'Sales Order' },
-  { value: 'movement', label: 'Movement' },
-  { value: 'customer', label: 'Customer' },
-  { value: 'supplier', label: 'Supplier' },
-  { value: 'other', label: 'Other' },
-];
-
 export default function StockDocumentsPage() {
   const { language } = useLanguage();
   const t = copy[language] || copy.en;
+  const documentTypeOptions = [
+    { value: 'purchase_invoice', label: t.docTypePurchaseInvoice },
+    { value: 'transporter_bill', label: t.docTypeTransporterBill },
+    { value: 'gatepass', label: t.docTypeGatepass },
+    { value: 'sales_invoice', label: t.docTypeSalesInvoice },
+    { value: 'delivery_receipt', label: t.docTypeDeliveryReceipt },
+    { value: 'customer_acknowledgement', label: t.docTypeCustomerAcknowledgement },
+    { value: 'photo_evidence', label: t.docTypePhotoEvidence },
+    { value: 'other', label: t.other },
+  ];
+
+  const entityTypeOptions = [
+    { value: 'inbound_shipment', label: t.entityInboundShipment },
+    { value: 'outbound_shipment', label: t.entityOutboundShipment },
+    { value: 'purchase_order', label: t.entityPurchaseOrder },
+    { value: 'sales_order', label: t.entitySalesOrder },
+    { value: 'movement', label: t.entityMovement },
+    { value: 'customer', label: t.entityCustomer },
+    { value: 'supplier', label: t.entitySupplier },
+    { value: 'other', label: t.other },
+  ];
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -103,7 +196,7 @@ export default function StockDocumentsPage() {
         const response = await fetch(`/api/stock/documents?${queryString}`, { cache: 'no-store' });
         const json = await response.json();
         if (!response.ok) {
-          throw new Error(json.error || 'Failed to load documents');
+          throw new Error(json.error || t.errorLoad);
         }
         if (mounted) {
           setDocuments(json.documents || []);
@@ -124,12 +217,12 @@ export default function StockDocumentsPage() {
     return () => {
       mounted = false;
     };
-  }, [queryString]);
+  }, [queryString, t.errorLoad]);
 
   async function handleSubmit(event) {
     event.preventDefault();
     if (!form.file || !form.entityId) {
-      setError('File and Entity ID are required');
+      setError(t.errorRequired);
       return;
     }
 
@@ -151,7 +244,7 @@ export default function StockDocumentsPage() {
       });
       const json = await response.json();
       if (!response.ok) {
-        throw new Error(json.error || 'Failed to upload document');
+        throw new Error(json.error || t.errorUpload);
       }
 
       setForm({
@@ -166,7 +259,7 @@ export default function StockDocumentsPage() {
         const refreshResponse = await fetch(`/api/stock/documents?${queryString}`, { cache: 'no-store' });
         const refreshJson = await refreshResponse.json();
         if (!refreshResponse.ok) {
-          throw new Error(refreshJson.error || 'Failed to refresh documents');
+          throw new Error(refreshJson.error || t.errorRefresh);
         }
         setDocuments(refreshJson.documents || []);
       })();
@@ -180,8 +273,8 @@ export default function StockDocumentsPage() {
   function openDocumentPreview(document) {
     setPreviewState({
       open: true,
-      title: `${document.document_type || 'Document'} ${document.document_number || document.file_name || ''}`.trim(),
-      description: 'Document preview and archive details',
+      title: `${document.document_type || t.documentType} ${document.document_number || document.file_name || ''}`.trim(),
+      description: t.documentPreview,
       record: document,
     });
   }
@@ -200,7 +293,7 @@ export default function StockDocumentsPage() {
     if (!document?.file_url) {
       return (
         <div className="rounded-2xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
-          No preview available.
+          {t.noPreviewAvailable}
         </div>
       );
     }
@@ -209,7 +302,7 @@ export default function StockDocumentsPage() {
       return (
         <img
           src={document.file_url}
-          alt={document.file_name || 'Document preview'}
+          alt={document.file_name || t.documentPreview}
           className="max-h-[70vh] w-full rounded-2xl border border-border object-contain bg-background/60"
         />
       );
@@ -218,7 +311,7 @@ export default function StockDocumentsPage() {
     return (
       <iframe
         src={document.file_url}
-        title={document.file_name || 'Document preview'}
+        title={document.file_name || t.documentPreview}
         className="h-[70vh] w-full rounded-2xl border border-border bg-card"
       />
     );
@@ -256,15 +349,15 @@ export default function StockDocumentsPage() {
           </label>
           <label className="block text-sm font-medium text-foreground/80">
             {t.entityId}
-            <input autoFocus className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder="Shipment or order id" value={form.entityId} onChange={(event) => setForm((prev) => ({ ...prev, entityId: event.target.value }))} />
+            <input autoFocus className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder={t.shipmentOrOrderId} value={form.entityId} onChange={(event) => setForm((prev) => ({ ...prev, entityId: event.target.value }))} />
           </label>
           <label className="block text-sm font-medium text-foreground/80">
             {t.documentNumber}
-            <input className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder="Invoice / gatepass no" value={form.documentNumber} onChange={(event) => setForm((prev) => ({ ...prev, documentNumber: event.target.value }))} />
+            <input className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder={t.invoiceOrGatepassNo} value={form.documentNumber} onChange={(event) => setForm((prev) => ({ ...prev, documentNumber: event.target.value }))} />
           </label>
           <label className="block text-sm font-medium text-foreground/80">
             {t.notes}
-            <textarea className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" rows="3" placeholder="Optional comments" value={form.notes} onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))} />
+            <textarea className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" rows="3" placeholder={t.optionalComments} value={form.notes} onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))} />
           </label>
           <label className="block text-sm font-medium text-foreground/80">
             {t.file}
@@ -291,11 +384,11 @@ export default function StockDocumentsPage() {
                 <table className="w-full text-left text-xs whitespace-nowrap">
                   <thead className="bg-muted/70 text-muted-foreground">
                     <tr>
-                      <th className="px-3 py-2">Type</th>
-                      <th className="px-3 py-2">Entity</th>
-                      <th className="px-3 py-2">No.</th>
-                      <th className="px-3 py-2">File</th>
-                      <th className="px-3 py-2">Notes</th>
+                      <th className="px-3 py-2">{t.tableType}</th>
+                      <th className="px-3 py-2">{t.tableEntity}</th>
+                      <th className="px-3 py-2">{t.tableNumber}</th>
+                      <th className="px-3 py-2">{t.tableFile}</th>
+                      <th className="px-3 py-2">{t.tableNotes}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -312,7 +405,7 @@ export default function StockDocumentsPage() {
                             openDocumentPreview(document);
                           }
                         }}
-                        title="Click to preview"
+                        title={t.clickToPreview}
                       >
                         <td className="px-3 py-2">{document.document_type}</td>
                         <td className="px-3 py-2">{document.entity_type} #{document.entity_id}</td>
@@ -330,6 +423,13 @@ export default function StockDocumentsPage() {
                 total={documentPagination.total}
                 pageSize={DEFAULT_PAGE_SIZE}
                 onPageChange={setDocumentPage}
+                labels={{
+                  showing: t.paginationShowing,
+                  of: t.paginationOf,
+                  previous: t.paginationPrevious,
+                  next: t.paginationNext,
+                  page: t.paginationPage,
+                }}
               />
             </>
           )}
@@ -347,26 +447,26 @@ export default function StockDocumentsPage() {
         description={previewState.description}
         sections={[
           {
-            title: 'Document Details',
+            title: t.documentDetails,
             children: (
               <PreviewKeyValueGrid
                 items={[
-                  { label: 'Document Type', value: previewState.record?.document_type },
-                  { label: 'Entity Type', value: previewState.record?.entity_type },
-                  { label: 'Entity ID', value: previewState.record?.entity_id },
-                  { label: 'Document Number', value: previewState.record?.document_number },
-                  { label: 'File Name', value: previewState.record?.file_name },
-                  { label: 'Mime Type', value: previewState.record?.mime_type },
-                  { label: 'File Size', value: previewState.record?.file_size_bytes ? `${previewState.record.file_size_bytes} bytes` : '—' },
-                  { label: 'Created At', value: previewState.record?.created_at },
-                  { label: 'Notes', value: previewState.record?.notes },
+                  { label: t.detailDocumentType, value: previewState.record?.document_type },
+                  { label: t.detailEntityType, value: previewState.record?.entity_type },
+                  { label: t.detailEntityId, value: previewState.record?.entity_id },
+                  { label: t.detailDocumentNumber, value: previewState.record?.document_number },
+                  { label: t.detailFileName, value: previewState.record?.file_name },
+                  { label: t.detailMimeType, value: previewState.record?.mime_type },
+                  { label: t.detailFileSize, value: previewState.record?.file_size_bytes ? `${previewState.record.file_size_bytes} ${t.bytes}` : '—' },
+                  { label: t.detailCreatedAt, value: previewState.record?.created_at },
+                  { label: t.detailNotes, value: previewState.record?.notes },
                 ]}
               />
             ),
           },
           previewState.record
             ? {
-                title: 'File Preview',
+                title: t.filePreview,
                 children: renderDocumentPreview(previewState.record),
               }
             : null,

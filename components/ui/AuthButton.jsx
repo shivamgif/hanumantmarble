@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useUser } from '@auth0/nextjs-auth0/client'
+import { getLoginHref, getLogoutHref, useAuthUser } from '@/lib/auth-client'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button"
 import { User, LogOut, ShoppingBag, Heart, Settings } from "lucide-react"
 
 export function AuthButton() {
-  const { user, error, isLoading } = useUser()
+  const { user, error, isLoading } = useAuthUser()
 
   if (isLoading) {
     return (
@@ -28,7 +28,7 @@ export function AuthButton() {
   if (error) {
     return (
       <Button variant="ghost" asChild className="rounded-full">
-        <Link href="/auth/login">Login</Link>
+        <Link href={getLoginHref('/')}>Login</Link>
       </Button>
     )
   }
@@ -75,7 +75,7 @@ export function AuthButton() {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <a href="/auth/logout" className="cursor-pointer">
+            <a href={getLogoutHref('/')} className="cursor-pointer">
               <LogOut className="mr-2 h-4 w-4" />
               <span>Logout</span>
             </a>
@@ -87,7 +87,7 @@ export function AuthButton() {
 
   return (
     <Button variant="ghost" asChild className="rounded-full">
-      <Link href="/auth/login">Login</Link>
+      <Link href={getLoginHref('/')}>Login</Link>
     </Button>
   )
 }

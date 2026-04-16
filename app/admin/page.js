@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useUser } from '@auth0/nextjs-auth0/client';
+import { getLoginHref, useAuthUser } from '@/lib/auth-client';
 import { isAdmin } from '@/lib/admin-config';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,7 +26,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 export default function AdminPage() {
-  const { user, isLoading: userLoading } = useUser();
+  const { user, isLoading: userLoading } = useAuthUser();
   const [products, setProducts] = useState([]);
   const [sha, setSha] = useState('');
   const [loading, setLoading] = useState(true);
@@ -232,7 +232,7 @@ export default function AdminPage() {
             <h1 className="text-2xl font-bold mb-2">Admin Access Required</h1>
             <p className="text-muted-foreground mb-6">Please login to access the admin panel.</p>
             <Button asChild className="rounded-full">
-              <a href="/auth/login">Login</a>
+              <a href={getLoginHref('/admin')}>Login</a>
             </Button>
           </CardContent>
         </Card>

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth0 } from "./lib/auth0";
+import { authMiddleware } from './lib/auth-server';
 
 const INTERNAL_ROUTES = ['/stock', '/api/stock'];
 const ALLOWED_INTERNAL_EMAILS = (process.env.ALLOWED_INTERNAL_EMAILS || ''  ).split(',').map(e => e.trim());
@@ -21,15 +21,14 @@ export async function proxy(request) {
   const isInternalRoute = INTERNAL_ROUTES.some(route => pathname.startsWith(route));
 
   if (isInternalRoute) {
-    // Auth0 middleware will handle authentication at the route level
-    // For now, allow the request to proceed; route handlers will validate
+    // Route handlers enforce Better Auth session and role checks.
     const response = NextResponse.next();
     response.headers.set('X-Internal-Route', 'true');
     return response;
   }
 
-  // For non-internal routes, use standard Auth0 middleware
-  return await auth0.middleware(request);
+  // For non-internal routes, defer to auth provider middleware adapter.
+  return await authMiddleware(request);
 }
 
 export const config = {

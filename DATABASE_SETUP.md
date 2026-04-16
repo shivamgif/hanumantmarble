@@ -30,7 +30,7 @@ This script will:
 ### 3. Verify the Setup
 
 1. Visit your admin panel at `/admin`
-2. Login with your Auth0 account (must be in `ADMIN_EMAILS`)
+2. Login with your Better Auth account (must be in `ADMIN_EMAILS`)
 3. You should see all products listed
 4. Try editing a product to test the database connection
 
@@ -104,7 +104,7 @@ await sql`UPDATE products SET price = ${newPrice} WHERE id = ${id}`;
 ### Products not showing in admin
 - Check browser console for errors
 - Verify admin email in `lib/admin-config.js`
-- Ensure you're logged in with Auth0
+- Ensure you're logged in with Better Auth
 
 ### Database connection errors
 - Check if `DATABASE_URL` is correct
@@ -117,12 +117,12 @@ await sql`UPDATE products SET price = ${newPrice} WHERE id = ${id}`;
 # Neon Database (auto-added by Netlify)
 DATABASE_URL=postgres://...
 
-# Auth0 (required for admin access)
-AUTH0_SECRET=...
-AUTH0_BASE_URL=https://your-site.netlify.app
-AUTH0_ISSUER_BASE_URL=https://your-tenant.auth0.com
-AUTH0_CLIENT_ID=...
-AUTH0_CLIENT_SECRET=...
+# Better Auth (required for admin access)
+BETTER_AUTH_SECRET=...
+BETTER_AUTH_URL=https://your-site.netlify.app
+NEXT_PUBLIC_BETTER_AUTH_URL=https://your-site.netlify.app
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
 
 # Stripe (for checkout)
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_...

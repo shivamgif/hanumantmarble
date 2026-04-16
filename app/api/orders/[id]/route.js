@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { auth0 } from '@/lib/auth0';
+import { auth } from '@/lib/auth-server';
 import { ordersDB } from '@/lib/db/orders';
 
 // GET /api/orders/[id] - Get a specific order
 export async function GET(request, { params }) {
   try {
-    const session = await auth0.getSession(request);
+    const session = await auth.getSession(request);
     
     if (!session) {
       return NextResponse.json(
@@ -45,7 +45,7 @@ export async function GET(request, { params }) {
 // PATCH /api/orders/[id] - Update order status (admin only for now)
 export async function PATCH(request, { params }) {
   try {
-    const session = await auth0.getSession(request);
+    const session = await auth.getSession(request);
     
     if (!session) {
       return NextResponse.json(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useUser, withPageAuthRequired } from '@auth0/nextjs-auth0/client';
+import { useAuthUser, withPageAuthRequiredCompat } from '@/lib/auth-client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ShoppingBag, Package, Truck, CheckCircle2, Clock, ArrowRight, Sparkles, ChevronRight, Calendar, CreditCard, MapPin } from 'lucide-react';
@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 function OrdersPage() {
-  const { user, isLoading } = useUser();
+  const { user, isLoading } = useAuthUser();
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [expandedOrder, setExpandedOrder] = useState(null);
@@ -277,7 +277,7 @@ function OrdersPage() {
   );
 }
 
-export default withPageAuthRequired(OrdersPage, {
+export default withPageAuthRequiredCompat(OrdersPage, {
   onRedirecting: () => (
     <div className="min-h-screen bg-gradient-to-b from-muted/50 via-background to-muted/30 flex justify-center items-center">
       <div className="relative">

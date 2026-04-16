@@ -1,271 +1,94 @@
-# Backend Setup Guide
+# Backend Setup Guide (Better Auth Only)
 
-## Order Management & Payment Integration
-
-### Environment Variables Required
-
-Add these to your `.env.local` file:
+## Required Environment Variables
 
 ```env
-# Stripe Configuration
+# App URLs
+APP_BASE_URL=http://localhost:3000
+NEXT_PUBLIC_URL=http://localhost:3000
+
+# Better Auth core
+BETTER_AUTH_SECRET=replace-with-32-byte-random-secret
+BETTER_AUTH_URL=http://localhost:3000
+NEXT_PUBLIC_BETTER_AUTH_URL=http://localhost:3000
+
+# Social providers (configure at least one)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+
+# UI default social provider for login links
+NEXT_PUBLIC_BETTER_AUTH_SOCIAL_PROVIDER=google
+
+# Stripe
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 
-# Auth0 Configuration
-AUTH0_SECRET=your-32-byte-hex-secret
-AUTH0_DOMAIN=your-tenant.region.auth0.com
-AUTH0_CLIENT_ID=your-client-id
-AUTH0_CLIENT_SECRET=your-client-secret
-APP_BASE_URL=http://localhost:3000
-
-# Client-side Auth0
-NEXT_PUBLIC_AUTH0_DOMAIN=your-tenant.region.auth0.com
-NEXT_PUBLIC_AUTH0_CLIENT_ID=your-client-id
-
-# Application URLs
-NEXT_PUBLIC_URL=http://localhost:3000
+# Database
+DATABASE_URL=postgresql://user:password@host/database?sslmode=require
 ```
 
-### Stripe Webhook Setup (Local Development)
+## Better Auth App Router Wiring
 
-1. Install Stripe CLI:
-   ```bash
-   brew install stripe/stripe-cli/stripe
-   ```
+The app now uses the official Better Auth Next.js integration:
 
-2. Login to Stripe:
-   ```bash
-   stripe login
-   ```
+- Server instance: `lib/auth.js` exports `auth`
+- API mount: `app/api/auth/[...path]/route.js` using `toNextJsHandler(auth)`
+- Server session source of truth: `auth.api.getSession(...)`
+- Session endpoint: `app/api/auth/session/route.js`
+- Compatibility session endpoint: `app/api/auth/get-session/route.js`
 
-3. Forward webhooks to your local server:
-   ```bash
-   stripe listen --forward-to localhost:3000/api/webhooks/stripe
-   ```
+## Login / Logout / Callback Paths
 
-4. Copy the webhook signing secret (starts with `whsec_`) and add to `.env.local`:
-   ```env
-   STRIPE_WEBHOOK_SECRET=whsec_...
-   ```
+- Login: `/api/auth/sign-in/social?provider=<provider>&callbackURL=<path>`
+- Logout: `/api/auth/sign-out?callbackURL=<path>`
+- Callback: `/api/auth/callback/<provider>`
+- Session: `/api/auth/session`
 
-### Auth0 Callback URLs
+## Identity Mapping
 
-Add these to your Auth0 Application Settings:
+Provider-neutral identity remains active:
 
-**Allowed Callback URLs:**
-- `http://localhost:3000/auth/callback`
-- `https://your-production-domain.com/auth/callback`
+- `external_auth_provider`
+- `external_auth_id`
 
-**Allowed Logout URLs:**
-- `http://localhost:3000`
-- `https://your-production-domain.com`
+Legacy `auth0_sub` is kept as inert historical data and can be removed after retention requirements are met.
 
-**Allowed Web Origins:**
-- `http://localhost:3000`
-- `https://your-production-domain.com`
+## Local / Staging / Production Runbook
 
-## API Routes
+1. Local
+- Set `BETTER_AUTH_URL=http://localhost:3000`
+- Set `NEXT_PUBLIC_BETTER_AUTH_URL=http://localhost:3000`
+- Set `BETTER_AUTH_SECRET`
+- Configure at least one provider client ID/secret
+- Set callback URL in provider console: `http://localhost:3000/api/auth/callback/<provider>`
 
-### Orders API
+2. Staging
+- Set `BETTER_AUTH_URL=https://staging.yourdomain.com`
+- Rotate `BETTER_AUTH_SECRET` to staging-only value
+- Register callback URL: `https://staging.yourdomain.com/api/auth/callback/<provider>`
+- Verify `/api/auth/session` returns authenticated user after login
 
-#### `GET /api/orders`
-Get all orders for the authenticated user.
+3. Production
+- Set `BETTER_AUTH_URL=https://yourdomain.com`
+- Rotate `BETTER_AUTH_SECRET` to production-only value (32+ bytes, high entropy)
+- Register callback URL: `https://yourdomain.com/api/auth/callback/<provider>`
+- Validate login/logout/session before traffic switch
 
-**Response:**
-```json
-{
-  "orders": [
-    {
-      "id": "ORD-1000",
-      "userId": "auth0|123",
-      "userEmail": "user@example.com",
-      "items": [...],
-      "total": 1500.00,
-      "status": "processing",
-      "createdAt": "2025-12-17T..."
-    }
-  ]
-}
-```
+## Validation Commands
 
-#### `POST /api/orders`
-Create a new order.
-
-**Request Body:**
-```json
-{
-  "items": [
-    {
-      "name": "White Marble Slab",
-      "quantity": 2,
-      "price": 150.00
-    }
-  ],
-  "shippingAddress": {
-    "name": "John Doe",
-    "street": "123 Main St",
-    "city": "Mumbai",
-    "state": "Maharashtra",
-    "postalCode": "400001",
-    "country": "India"
-  },
-  "total": 300.00,
-  "subtotal": 254.24,
-  "tax": 45.76,
-  "shipping": 0
-}
-```
-
-#### `GET /api/orders/[id]`
-Get a specific order by ID.
-
-#### `PATCH /api/orders/[id]`
-Update order status.
-
-**Request Body:**
-```json
-{
-  "status": "shipped",
-  "trackingNumber": "TRACK123",
-  "estimatedDelivery": "2025-12-20"
-}
-```
-
-### Checkout API
-
-#### `POST /api/checkout`
-Create a Stripe checkout session and order.
-
-**Request Body:**
-```json
-{
-  "cart": {
-    "item1": {
-      "name": "Product Name",
-      "price": 100,
-      "quantity": 2
-    }
-  },
-  "shippingAddress": {...}
-}
-```
-
-**Response:**
-```json
-{
-  "id": "cs_test_...",
-  "orderId": "ORD-1000"
-}
-```
-
-### Webhooks
-
-#### `POST /api/webhooks/stripe`
-Stripe webhook handler for payment events.
-
-**Events Handled:**
-- `checkout.session.completed` - Updates order to "processing" and "paid"
-- `payment_intent.succeeded` - Logs successful payment
-- `payment_intent.payment_failed` - Updates order to "failed"
-- `charge.refunded` - Updates order to "refunded"
-
-## Database Schema
-
-### Order Object
-```javascript
-{
-  id: "ORD-1000",
-  userId: "auth0|123456",
-  userEmail: "user@example.com",
-  userName: "John Doe",
-  items: [
-    {
-      name: "Product Name",
-      quantity: 2,
-      price: 100.00
-    }
-  ],
-  shippingAddress: {
-    name: "John Doe",
-    street: "123 Main St",
-    city: "Mumbai",
-    state: "Maharashtra",
-    postalCode: "400001",
-    country: "India"
-  },
-  paymentMethod: "stripe",
-  subtotal: 200.00,
-  tax: 36.00,
-  shipping: 0,
-  total: 236.00,
-  status: "processing", // pending, processing, shipped, delivered, cancelled, failed, refunded
-  paymentStatus: "paid", // pending, paid, failed, refunded
-  trackingNumber: null,
-  estimatedDelivery: null,
-  stripeSessionId: "cs_test_...",
-  stripePaymentIntentId: "pi_...",
-  createdAt: "2025-12-17T...",
-  updatedAt: "2025-12-17T..."
-}
-```
-
-## Production Setup
-
-### Database Migration
-
-Replace the in-memory database with a real database:
-
-1. **MongoDB with Mongoose:**
-   ```bash
-   npm install mongoose
-   ```
-
-2. **PostgreSQL with Prisma:**
-   ```bash
-   npm install prisma @prisma/client
-   npx prisma init
-   ```
-
-### Stripe Webhook (Production)
-
-1. Go to Stripe Dashboard → Developers → Webhooks
-2. Add endpoint: `https://your-domain.com/api/webhooks/stripe`
-3. Select events: `checkout.session.completed`, `payment_intent.succeeded`, `payment_intent.payment_failed`, `charge.refunded`
-4. Copy the signing secret and add to production environment variables
-
-### Security Checklist
-
-- [ ] Enable HTTPS in production
-- [ ] Set secure Auth0 callback URLs
-- [ ] Add STRIPE_WEBHOOK_SECRET to production env
-- [ ] Implement rate limiting on API routes
-- [ ] Add admin role checks for order updates
-- [ ] Enable CORS protection
-- [ ] Add request validation middleware
-- [ ] Implement logging and monitoring
-
-## Testing
-
-### Test Order Creation
 ```bash
-curl -X POST http://localhost:3000/api/orders \
-  -H "Content-Type: application/json" \
-  -H "Cookie: appSession=..." \
-  -d '{"items":[{"name":"Test Product","quantity":1,"price":100}],"shippingAddress":{},"total":100}'
+npm run build
+
+curl -i "http://localhost:3000/api/auth/sign-in/social?provider=google&callbackURL=/"
+curl -i "http://localhost:3000/api/auth/sign-out?callbackURL=/"
+curl -i "http://localhost:3000/api/auth/callback/google?code=test&state=test"
+curl -i "http://localhost:3000/api/auth/session"
 ```
 
-### Test Webhook
-```bash
-stripe trigger checkout.session.completed
-```
+## Notes
 
-## Next Steps
-
-1. Implement proper database (MongoDB/PostgreSQL)
-2. Add email notifications for order status changes
-3. Build admin dashboard for order management
-4. Add order tracking page with real-time updates
-5. Implement refund processing
-6. Add order history export (CSV/PDF)
-7. Set up automated backup for order data
+- If callback returns provider-side errors, verify provider credentials and callback registration first.
+- If session is null after login, verify `BETTER_AUTH_URL` and cookie domain/origin behavior.

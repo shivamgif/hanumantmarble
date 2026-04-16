@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { auth0 } from '@/lib/auth0';
+import { auth } from '@/lib/auth-server';
 import { ordersDB } from '@/lib/db/orders';
 
 export async function POST(request) {
@@ -8,7 +8,7 @@ export async function POST(request) {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
     
     // Get user session
-    const session = await auth0.getSession(request);
+    const session = await auth.getSession(request);
 
     const line_items = Object.values(cart || {}).map((item) => ({
       price_data: {

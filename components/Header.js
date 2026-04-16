@@ -7,7 +7,7 @@ import { Menu, Sun, Moon, Languages, ArrowRight, ShoppingCart, User, LogOut, Hea
 import { useTheme } from "next-themes"
 import { useLanguage } from "@/contexts/LanguageContext"
 import { getTranslation } from "@/lib/translations"
-import { useUser } from '@auth0/nextjs-auth0/client'
+import { getLogoutHref, useAuthUser } from '@/lib/auth-client'
 import { isAdmin } from '@/lib/admin-config'
 import { usePathname } from 'next/navigation'
 
@@ -23,7 +23,7 @@ export function Header() {
   const { theme, setTheme } = useTheme()
   const [isOpen, setOpen] = React.useState(false)
   const [scrolled, setScrolled] = React.useState(false)
-  const { user } = useUser()
+  const { user } = useAuthUser()
   const { cartCount } = useCart()
   
   const { language, toggleLanguage } = useLanguage();
@@ -251,7 +251,7 @@ export function Header() {
                   {user && (
                     <div className="mt-6 pt-6 border-t border-border/50">
                       <a
-                        href="/auth/logout"
+                        href={getLogoutHref('/')}
                         className="group flex justify-between items-center py-3 px-4 rounded-xl text-red-500 hover:bg-red-500/10 transition-all"
                         onClick={() => setOpen(false)}
                       >

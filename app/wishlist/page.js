@@ -1,6 +1,6 @@
 "use client";
 
-import { useUser, withPageAuthRequired } from '@auth0/nextjs-auth0/client';
+import { useAuthUser, withPageAuthRequiredCompat } from '@/lib/auth-client';
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -14,7 +14,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useCart } from '@/contexts/CartContext';
 
 function WishlistPage() {
-  const { user, isLoading } = useUser();
+  const { user, isLoading } = useAuthUser();
   const { language } = useLanguage();
   const { addItem } = useCart();
   const allProducts = getAllProducts();
@@ -247,7 +247,7 @@ function WishlistPage() {
   );
 }
 
-export default withPageAuthRequired(WishlistPage, {
+export default withPageAuthRequiredCompat(WishlistPage, {
   onRedirecting: () => (
     <div className="min-h-screen bg-gradient-to-b from-muted/50 via-background to-muted/30 flex justify-center items-center">
       <div className="relative">

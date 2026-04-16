@@ -4,12 +4,12 @@ import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import { useEffect, useMemo, useState } from 'react';
-import { useUser } from '@auth0/nextjs-auth0/client';
+import { useAuthUser } from '@/lib/auth-client';
 import { useSearchParams } from 'next/navigation';
 import EntryPreviewSheet, { PreviewKeyValueGrid } from '@/components/ui/entry-preview-sheet';
 import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
 import PaginationControls from '@/components/ui/pagination-controls';
-import { validateStockPassword } from '@/lib/auth0-management';
+import { validateStockPassword } from '@/lib/password-policy';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRightLeft, ChevronDown, Eye, EyeOff, PackageSearch, ShieldAlert, UsersRound } from 'lucide-react';
 
@@ -42,6 +42,40 @@ function formatChartDate(value) {
     month: 'short',
     day: 'numeric',
   }).format(date);
+}
+
+function formatChartLongDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(date);
+}
+
+function getRoundedAxisScale(maxValue, targetTickCount = 4) {
+  const safeMax = Math.max(Number(maxValue || 0), 1);
+  const roughStep = safeMax / Math.max(targetTickCount, 2);
+  const magnitude = 10 ** Math.floor(Math.log10(roughStep));
+  const normalized = roughStep / magnitude;
+
+  let niceStepFactor = 1;
+  if (normalized > 5) {
+    niceStepFactor = 10;
+  } else if (normalized > 2) {
+    niceStepFactor = 5;
+  } else if (normalized > 1) {
+    niceStepFactor = 2;
+  }
+
+  const step = niceStepFactor * magnitude;
+  const maxRounded = Math.ceil(safeMax / step) * step;
+
+  return { step, maxRounded };
 }
 
 const FORM_LABEL_CLASS = 'block text-[11px] font-semibold uppercase tracking-[0.08em] text-foreground/75';
@@ -130,7 +164,7 @@ function formatMonthLabel(value) {
   return new Intl.DateTimeFormat(undefined, { month: 'short' }).format(date);
 }
 
-function AnalyticsCard({ title, subtitle, index = 0, children, chips = [] }) {
+function AnalyticsCard({ title, subtitle, index = 0, children, chips = [], explanation = '', whatThisMeansLabel = '...' }) {
   return (
     <section className="analytics-card rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900" style={{ animationDelay: `${index * 80}ms` }}>
       <div className="mb-3 flex items-start justify-between gap-3">
@@ -148,14 +182,516 @@ function AnalyticsCard({ title, subtitle, index = 0, children, chips = [] }) {
           </div>
         ) : null}
       </div>
+      {explanation ? (
+        <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300">
+          <span className="font-semibold text-slate-800 dark:text-slate-100">{whatThisMeansLabel} </span>{explanation}
+        </div>
+      ) : null}
       {children}
     </section>
   );
 }
 
-function AnimatedStackedBars({ rows, keys, colors, maxValue }) {
+function InteractiveLineChart({ rows, series, height = 230, xLabel = 'Month', valueFormatter = (value) => Number(value || 0).toFixed(0), emptyText = '—' }) {
+  const [hoverState, setHoverState] = useState(null);
+  const [showSeries, setShowSeries] = useState(() => Object.fromEntries(series.map((entry) => [entry.key, true])));
+
   if (!rows.length) {
-    return <div className="rounded-xl border border-dashed border-border px-3 py-8 text-center text-xs text-muted-foreground">No period data.</div>;
+    return <div className="flex h-56 items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 text-sm text-muted-foreground">{emptyText}</div>;
+  }
+
+  const width = 700;
+  const padding = { top: 18, right: 16, bottom: 34, left: 48 };
+  const innerWidth = width - padding.left - padding.right;
+  const innerHeight = height - padding.top - padding.bottom;
+  const maxValue = Math.max(
+    ...rows.flatMap((row) => series.map((entry) => Number(row[entry.key] || 0))),
+    1
+  );
+
+  const pointX = (index) => {
+    if (rows.length <= 1) {
+      return padding.left + innerWidth / 2;
+    }
+    return padding.left + (index / (rows.length - 1)) * innerWidth;
+  };
+
+  const pointY = (value) => padding.top + innerHeight - (Number(value || 0) / maxValue) * innerHeight;
+
+  const linePath = (key) => rows
+    .map((row, index) => `${index === 0 ? 'M' : 'L'} ${pointX(index)} ${pointY(row[key])}`)
+    .join(' ');
+
+  const areaPath = (key) => {
+    const line = linePath(key);
+    if (!line) {
+      return '';
+    }
+
+    const firstX = pointX(0);
+    const lastX = pointX(rows.length - 1);
+    const baselineY = pointY(0);
+    return `${line} L ${lastX} ${baselineY} L ${firstX} ${baselineY} Z`;
+  };
+
+  const hexToRgba = (hex, alpha) => {
+    const safe = String(hex || '').replace('#', '').trim();
+    if (safe.length !== 6) {
+      return `rgba(148, 163, 184, ${alpha})`;
+    }
+
+    const r = Number.parseInt(safe.slice(0, 2), 16);
+    const g = Number.parseInt(safe.slice(2, 4), 16);
+    const b = Number.parseInt(safe.slice(4, 6), 16);
+
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
+
+  const labelStride = rows.length > 8 ? Math.ceil(rows.length / 8) : 1;
+
+  function handleMouseMove(event) {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const localXPx = event.clientX - bounds.left;
+    const localYPx = event.clientY - bounds.top;
+    const clampedRatio = Math.min(Math.max(localXPx / Math.max(bounds.width, 1), 0), 1);
+    const nearestIndex = Math.round(clampedRatio * (rows.length - 1));
+
+    const tooltipWidth = 220;
+    const tooltipHeight = 92;
+    const tooltipLeft = Math.min(Math.max(localXPx + 14, 8), bounds.width - tooltipWidth - 8);
+    const tooltipTop = Math.min(Math.max(localYPx - tooltipHeight - 10, 8), bounds.height - tooltipHeight - 8);
+
+    setHoverState({
+      index: nearestIndex,
+      tooltipLeft,
+      tooltipTop,
+    });
+  }
+
+  const hoverRow = hoverState ? rows[hoverState.index] : null;
+  const hoverLabelSource = hoverRow ? (hoverRow.bucket || hoverRow.date) : null;
+  const hoverDateLabel = hoverLabelSource ? formatChartLongDate(hoverLabelSource) : '—';
+  const visibleSeries = series.map((entry) => ({ ...entry, shown: showSeries[entry.key] !== false }));
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold">
+        {visibleSeries.map((entry) => (
+          <button
+            key={`legend-${entry.key}`}
+            type="button"
+            onClick={() => setShowSeries((current) => ({ ...current, [entry.key]: !current[entry.key] }))}
+            aria-pressed={entry.shown}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 transition ${entry.shown ? 'border-slate-300 bg-slate-50 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200' : 'border-slate-200 bg-white/50 text-slate-400 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-500'}`}
+          >
+            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+            {entry.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="relative">
+        <svg viewBox={`0 0 ${width} ${height}`} className="h-44 w-full rounded-xl border border-border bg-white/70 sm:h-56 dark:bg-slate-950/40">
+          {[0, 0.5, 1].map((tick) => {
+            const value = Math.round(maxValue * tick);
+            const y = pointY(value);
+            return (
+              <g key={`line-grid-${tick}`}>
+                <line
+                  x1={padding.left}
+                  y1={y}
+                  x2={width - padding.right}
+                  y2={y}
+                  stroke="currentColor"
+                  className="text-border"
+                  strokeDasharray="3 4"
+                />
+                <text x={padding.left - 8} y={y + 4} textAnchor="end" className="fill-muted-foreground text-[10px]">
+                  {valueFormatter(value)}
+                </text>
+              </g>
+            );
+          })}
+
+          {visibleSeries.map((entry, seriesIndex) => (
+            <g key={`series-${entry.key}`}>
+              {entry.shown ? <path d={areaPath(entry.key)} fill={hexToRgba(entry.color, 0.08)} /> : null}
+              <path
+                d={linePath(entry.key)}
+                fill="none"
+                stroke={entry.color}
+                strokeWidth="3"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                vectorEffect="non-scaling-stroke"
+                opacity={entry.shown ? 1 : 0}
+                style={{ animation: `drawStroke 700ms ease ${seriesIndex * 120}ms both` }}
+              />
+              {rows.map((row, index) => (
+                <circle
+                  key={`dot-${entry.key}-${row.bucket || index}`}
+                  cx={pointX(index)}
+                  cy={pointY(row[entry.key])}
+                  r={hoverState?.index === index ? '4.5' : '4'}
+                  fill="white"
+                  stroke={entry.color}
+                  strokeWidth="2"
+                  vectorEffect="non-scaling-stroke"
+                  opacity={entry.shown ? 1 : 0}
+                  className="transition-all duration-150"
+                />
+              ))}
+            </g>
+          ))}
+
+          {rows.map((row, index) => {
+            const showLabel = index % labelStride === 0 || index === rows.length - 1;
+            if (!showLabel) {
+              return null;
+            }
+
+            return (
+              <text key={`x-${row.bucket || index}`} x={pointX(index)} y={height - 10} textAnchor="middle" className="fill-muted-foreground text-[10px]">
+                {formatChartDate(row.bucket || row.date)}
+              </text>
+            );
+          })}
+
+          <rect
+            x={padding.left}
+            y={padding.top}
+            width={innerWidth}
+            height={innerHeight}
+            fill="transparent"
+            onMouseMove={handleMouseMove}
+            onMouseLeave={() => setHoverState(null)}
+          />
+
+          {hoverState ? (
+            <line
+              x1={pointX(hoverState.index)}
+              y1={padding.top}
+              x2={pointX(hoverState.index)}
+              y2={padding.top + innerHeight}
+              stroke="#94A3B8"
+              strokeWidth="1"
+              strokeDasharray="4 4"
+            />
+          ) : null}
+        </svg>
+
+        {hoverRow ? (
+          <div
+            className="pointer-events-none absolute z-10 w-[220px] rounded-lg border border-slate-200 bg-white/95 px-3 py-2 text-xs shadow-md backdrop-blur dark:border-slate-700 dark:bg-slate-900/95"
+            style={{ left: hoverState.tooltipLeft, top: hoverState.tooltipTop }}
+          >
+            <div className="mb-1 font-semibold text-slate-700 dark:text-slate-200">{xLabel}: {hoverDateLabel}</div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              {visibleSeries.filter((entry) => entry.shown).map((entry) => (
+                <span key={`hover-${entry.key}`} className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                  {entry.label}: <span className="font-mono">{valueFormatter(hoverRow[entry.key])}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function MovementTrendChart({ rows, labels = {} }) {
+  const [hoverState, setHoverState] = useState(null);
+  const [showSeries, setShowSeries] = useState({ inbound: true, outbound: true });
+
+  const localLabels = {
+    noData: labels.noData || '—',
+    inbound: labels.inbound || '—',
+    outbound: labels.outbound || '—',
+    netChange: labels.netChange || '—',
+  };
+
+  if (!rows.length) {
+    return <div className="flex h-56 items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 text-sm text-muted-foreground">{localLabels.noData}</div>;
+  }
+
+  const width = 760;
+  const height = 250;
+  const padding = { top: 20, right: 20, bottom: 56, left: 52 };
+  const innerWidth = width - padding.left - padding.right;
+  const innerHeight = height - padding.top - padding.bottom;
+
+  const maxChartValue = Math.max(
+    ...rows.map((point) => Math.max(Number(point.inbound || 0), Number(point.outbound || 0))),
+    1
+  );
+
+  const { step: yStep, maxRounded } = getRoundedAxisScale(maxChartValue, 4);
+  const yTicks = Array.from({ length: Math.floor(maxRounded / yStep) + 1 }, (_, index) => maxRounded - index * yStep);
+
+  const pointX = (index) => {
+    if (rows.length <= 1) {
+      return padding.left + innerWidth / 2;
+    }
+    return padding.left + (index / (rows.length - 1)) * innerWidth;
+  };
+
+  const pointY = (value) => padding.top + innerHeight - (Number(value || 0) / maxRounded) * innerHeight;
+  const baselineY = pointY(0);
+
+  const linePath = (key) => rows
+    .map((point, index) => `${index === 0 ? 'M' : 'L'} ${pointX(index)} ${pointY(point[key])}`)
+    .join(' ');
+
+  const areaPath = (key) => {
+    const line = linePath(key);
+    if (!line) {
+      return '';
+    }
+    const firstX = pointX(0);
+    const lastX = pointX(rows.length - 1);
+    return `${line} L ${lastX} ${baselineY} L ${firstX} ${baselineY} Z`;
+  };
+
+  const getPeak = (key) => rows.reduce((currentPeak, point, index) => {
+    const value = Number(point[key] || 0);
+    if (!currentPeak || value > currentPeak.value) {
+      return { index, value, date: point.date };
+    }
+    return currentPeak;
+  }, null);
+
+  const inboundPeak = getPeak('inbound');
+  const outboundPeak = getPeak('outbound');
+
+  const visibleSeries = [
+    {
+      key: 'inbound',
+      label: 'Incoming',
+      stroke: '#22C55E',
+      fill: 'rgba(34, 197, 94, 0.08)',
+      shown: showSeries.inbound,
+    },
+    {
+      key: 'outbound',
+      label: 'Outgoing',
+      stroke: '#E07A00',
+      fill: 'rgba(249, 115, 22, 0.08)',
+      shown: showSeries.outbound,
+    },
+  ];
+
+  const labelStride = rows.length > 8 ? Math.ceil(rows.length / 8) : 1;
+  const rotateLabels = rows.length > 10;
+
+  const handleMouseMove = (event) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const localXPx = event.clientX - bounds.left;
+    const localYPx = event.clientY - bounds.top;
+    const clampedRatio = Math.min(Math.max(localXPx / Math.max(bounds.width, 1), 0), 1);
+    const nearestIndex = Math.round(clampedRatio * (rows.length - 1));
+
+    const tooltipWidth = 196;
+    const tooltipHeight = 96;
+    const tooltipLeft = Math.min(Math.max(localXPx + 14, 8), bounds.width - tooltipWidth - 8);
+    const tooltipTop = Math.min(Math.max(localYPx - tooltipHeight - 12, 8), bounds.height - tooltipHeight - 8);
+
+    setHoverState({
+      index: nearestIndex,
+      tooltipLeft,
+      tooltipTop,
+    });
+  };
+
+  const handleMouseLeave = () => setHoverState(null);
+
+  const hoverPoint = hoverState ? rows[hoverState.index] : null;
+  const netChange = hoverPoint ? Number(hoverPoint.inbound || 0) - Number(hoverPoint.outbound || 0) : 0;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold">
+        {visibleSeries.map((seriesEntry) => (
+          <button
+            key={`movement-chip-${seriesEntry.key}`}
+            type="button"
+            onClick={() => setShowSeries((current) => ({ ...current, [seriesEntry.key]: !current[seriesEntry.key] }))}
+            aria-pressed={seriesEntry.shown}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 transition ${seriesEntry.shown ? 'border-slate-300 bg-slate-50 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200' : 'border-slate-200 bg-white/50 text-slate-400 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-500'}`}
+          >
+            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: seriesEntry.stroke }} />
+            {seriesEntry.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="relative">
+        <svg viewBox={`0 0 ${width} ${height}`} className="h-40 w-full rounded-xl border border-border bg-white/70 sm:h-56 dark:bg-slate-950/40" preserveAspectRatio="xMidYMid meet">
+          {yTicks.map((value) => {
+            const y = pointY(value);
+            const isZero = value === 0;
+            return (
+              <g key={`movement-grid-${value}`}>
+                <line
+                  x1={padding.left}
+                  y1={y}
+                  x2={width - padding.right}
+                  y2={y}
+                  stroke="currentColor"
+                  className={isZero ? 'text-slate-300 dark:text-slate-600' : 'text-slate-100 dark:text-slate-800'}
+                />
+                <text x={padding.left - 8} y={y + 3} textAnchor="end" className="fill-slate-500 text-[10px] dark:fill-slate-400">
+                  {Math.round(value)}
+                </text>
+              </g>
+            );
+          })}
+
+          {visibleSeries.map((seriesEntry) => {
+            if (!seriesEntry.shown) {
+              return null;
+            }
+            return (
+              <g key={`movement-series-${seriesEntry.key}`}>
+                <path d={areaPath(seriesEntry.key)} fill={seriesEntry.fill} />
+                <path
+                  d={linePath(seriesEntry.key)}
+                  fill="none"
+                  stroke={seriesEntry.stroke}
+                  strokeWidth="3"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  vectorEffect="non-scaling-stroke"
+                />
+                {rows.map((point, index) => (
+                  <circle
+                    key={`movement-point-${seriesEntry.key}-${point.date}`}
+                    cx={pointX(index)}
+                    cy={pointY(point[seriesEntry.key])}
+                    r={hoverState?.index === index ? '4.5' : '4'}
+                    fill="white"
+                    stroke={seriesEntry.stroke}
+                    strokeWidth="2"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                ))}
+              </g>
+            );
+          })}
+
+          {showSeries.inbound && inboundPeak ? (
+            <g>
+              <text
+                x={pointX(inboundPeak.index)}
+                y={Math.max(pointY(inboundPeak.value) - 10, 12)}
+                textAnchor="middle"
+                className="fill-emerald-600 text-[10px] font-semibold"
+              >
+                Peak In
+              </text>
+            </g>
+          ) : null}
+
+          {showSeries.outbound && outboundPeak ? (
+            <g>
+              <text
+                x={pointX(outboundPeak.index)}
+                y={Math.max(pointY(outboundPeak.value) - 10, 12)}
+                textAnchor="middle"
+                className="fill-orange-600 text-[10px] font-semibold"
+              >
+                Peak Out
+              </text>
+            </g>
+          ) : null}
+
+          {rows.map((point, index) => {
+            const shouldRenderLabel = index % labelStride === 0 || index === rows.length - 1;
+            if (!shouldRenderLabel) {
+              return null;
+            }
+            const label = formatChartDate(point.date);
+
+            return (
+              <g key={`movement-x-label-${point.date}`}>
+                {rotateLabels ? (
+                  <text
+                    x={pointX(index)}
+                    y={height - 8}
+                    textAnchor="end"
+                    transform={`rotate(-45 ${pointX(index)} ${height - 8})`}
+                    className="fill-slate-500 text-[10px] dark:fill-slate-400"
+                  >
+                    {label}
+                  </text>
+                ) : (
+                  <text
+                    x={pointX(index)}
+                    y={height - 10}
+                    textAnchor="middle"
+                    className="fill-slate-500 text-[10px] dark:fill-slate-400"
+                  >
+                    {label}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+
+          <rect
+            x={padding.left}
+            y={padding.top}
+            width={innerWidth}
+            height={innerHeight}
+            fill="transparent"
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+          />
+
+          {hoverState ? (
+            <line
+              x1={pointX(hoverState.index)}
+              y1={padding.top}
+              x2={pointX(hoverState.index)}
+              y2={baselineY}
+              stroke="#94A3B8"
+              strokeWidth="1"
+              strokeDasharray="4 4"
+            />
+          ) : null}
+        </svg>
+
+        {hoverPoint ? (
+          <div
+            className="pointer-events-none absolute z-10 w-48 rounded-lg border border-slate-200 bg-white/95 p-2 text-xs shadow-md backdrop-blur dark:border-slate-700 dark:bg-slate-900/95"
+            style={{ left: hoverState.tooltipLeft, top: hoverState.tooltipTop }}
+          >
+            <div className="mb-1 font-semibold text-slate-800 dark:text-slate-100">{formatChartLongDate(hoverPoint.date)}</div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-slate-700 dark:text-slate-200">
+                <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />{localLabels.inbound}</span>
+                <span className="font-mono">{Number(hoverPoint.inbound || 0)}</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-700 dark:text-slate-200">
+                <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#E07A00]" />{localLabels.outbound}</span>
+                <span className="font-mono">{Number(hoverPoint.outbound || 0)}</span>
+              </div>
+              <div className="flex items-center justify-between border-t border-slate-200 pt-1 font-semibold dark:border-slate-700">
+                <span className="text-slate-700 dark:text-slate-200">{localLabels.netChange}</span>
+                <span className={`font-mono ${netChange >= 0 ? 'text-emerald-600' : 'text-orange-600'}`}>{netChange}</span>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function AnimatedStackedBars({ rows, keys, colors, maxValue, emptyText = '—' }) {
+  if (!rows.length) {
+    return <div className="rounded-xl border border-dashed border-border px-3 py-8 text-center text-xs text-muted-foreground">{emptyText}</div>;
   }
 
   const max = Math.max(maxValue || 0, 1);
@@ -202,36 +738,50 @@ function AnimatedStackedBars({ rows, keys, colors, maxValue }) {
   );
 }
 
-function MiniDonut({ values, colors }) {
-  const total = values.reduce((sum, value) => sum + Number(value || 0), 0) || 1;
+function MiniDonut({ segments }) {
+  const [hoveredIndex, setHoveredIndex] = useState(null);
+  const values = segments.map((segment) => Number(segment.value || 0));
+  const colors = segments.map((segment) => segment.color);
+  const total = values.reduce((sum, value) => sum + value, 0) || 1;
   const radius = 30;
   const circumference = 2 * Math.PI * radius;
   let offset = 0;
+  const activeSegment = hoveredIndex != null ? segments[hoveredIndex] : null;
 
   return (
-    <svg viewBox="0 0 90 90" className="h-24 w-24">
-      <g transform="translate(45,45)">
-        {values.map((value, index) => {
-          const segment = (Number(value || 0) / total) * circumference;
-          const node = (
-            <circle
-              key={`donut-${index}`}
-              r={radius}
-              fill="none"
-              stroke={colors[index]}
-              strokeWidth="10"
-              strokeDasharray={`${segment} ${circumference - segment}`}
-              strokeDashoffset={-offset}
-              transform="rotate(-90)"
-              style={{ animation: `drawStroke 800ms ease ${index * 120}ms both` }}
-            />
-          );
-          offset += segment;
-          return node;
-        })}
-        <text textAnchor="middle" y="3" className="fill-slate-700 text-[9px] font-semibold dark:fill-slate-100">{formatCompactNumber(total)}</text>
-      </g>
-    </svg>
+    <div className="space-y-2">
+      <svg viewBox="0 0 90 90" className="h-24 w-24">
+        <g transform="translate(45,45)">
+          {values.map((value, index) => {
+            const segment = (Number(value || 0) / total) * circumference;
+            const node = (
+              <circle
+                key={`donut-${index}`}
+                r={radius}
+                fill="none"
+                stroke={colors[index]}
+                strokeWidth={hoveredIndex === index ? '12' : '10'}
+                strokeDasharray={`${segment} ${circumference - segment}`}
+                strokeDashoffset={-offset}
+                transform="rotate(-90)"
+                style={{ animation: `drawStroke 800ms ease ${index * 120}ms both` }}
+                className="cursor-pointer transition-all duration-150"
+                onMouseEnter={() => setHoveredIndex(index)}
+              />
+            );
+            offset += segment;
+            return node;
+          })}
+          <text textAnchor="middle" y="3" className="fill-slate-700 text-[9px] font-semibold dark:fill-slate-100">{formatCompactNumber(total)}</text>
+        </g>
+      </svg>
+      {activeSegment ? (
+        <div className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] dark:border-slate-700 dark:bg-slate-900">
+          <span className="font-semibold" style={{ color: activeSegment.color }}>{activeSegment.label}: </span>
+          <span className="font-mono text-slate-700 dark:text-slate-200">{activeSegment.value}</span>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -239,7 +789,61 @@ export default function AdminDashboard() {
   const { language } = useLanguage();
   const searchParams = useSearchParams();
   const t = (key) => getTranslation(`stock.admin.${key}`, language);
-  const { user } = useUser();
+  const ta = {
+    adminHubAnalytics: language === 'hi' ? 'एडमिन हब विश्लेषण' : 'Admin Hub Analytics',
+    processView: language === 'hi' ? 'स्टॉक वर्कफ़्लो आधारित प्रोसेस इंटेलिजेंस दृश्य' : 'Process intelligence view powered by stock workflows',
+    dateRange: language === 'hi' ? 'तिथि सीमा' : 'Date Range',
+    last3Months: language === 'hi' ? 'पिछले 3 महीने' : 'Last 3 months',
+    last6Months: language === 'hi' ? 'पिछले 6 महीने' : 'Last 6 months',
+    last12Months: language === 'hi' ? 'पिछले 12 महीने' : 'Last 12 months',
+    operationalAlerts: language === 'hi' ? 'संचालन अलर्ट' : 'Operational Alerts',
+    active: language === 'hi' ? 'सक्रिय' : 'active',
+    recentActivity: language === 'hi' ? 'हाल की गतिविधि' : 'Recent Activity',
+    liveOpsSnapshot: language === 'hi' ? 'लाइव संचालन स्नैपशॉट' : 'Live operations snapshot',
+    approvals: language === 'hi' ? 'अनुमोदन' : 'Approvals',
+    changes: language === 'hi' ? 'परिवर्तन' : 'Changes',
+    users: language === 'hi' ? 'उपयोगकर्ता' : 'Users',
+    maintainer: language === 'hi' ? 'मेंटेनर' : 'Maintainer',
+    changeRequests: language === 'hi' ? 'परिवर्तन अनुरोध' : 'Change Requests',
+    requestNo: language === 'hi' ? 'अनुरोध संख्या' : 'Request No',
+    source: language === 'hi' ? 'स्रोत' : 'Source',
+    type: language === 'hi' ? 'प्रकार' : 'Type',
+    priority: language === 'hi' ? 'प्राथमिकता' : 'Priority',
+    requestedBy: language === 'hi' ? 'अनुरोधकर्ता' : 'Requested By',
+    noChangeRequests: language === 'hi' ? 'कोई परिवर्तन अनुरोध नहीं मिला।' : 'No change requests found.',
+    department: language === 'hi' ? 'विभाग' : 'Department',
+    password: language === 'hi' ? 'पासवर्ड' : 'Password',
+    confirmPassword: language === 'hi' ? 'पासवर्ड की पुष्टि करें' : 'Confirm Password',
+    user: language === 'hi' ? 'उपयोगकर्ता' : 'User',
+    role: language === 'hi' ? 'भूमिका' : 'Role',
+    actions: language === 'hi' ? 'कार्रवाई' : 'Actions',
+    status: language === 'hi' ? 'स्थिति' : 'Status',
+    paid: language === 'hi' ? 'भुगतान' : 'Paid',
+    partial: language === 'hi' ? 'आंशिक' : 'Partial',
+    unpaid: language === 'hi' ? 'अदेय' : 'Unpaid',
+    salesperson: language === 'hi' ? 'सेल्सपर्सन' : 'Salesperson',
+    qty: language === 'hi' ? 'मात्रा' : 'Qty',
+    growth: language === 'hi' ? 'वृद्धि' : 'Growth',
+    consistencyShort: language === 'hi' ? 'स्थिरता' : 'Cons.',
+    sku: language === 'hi' ? 'SKU' : 'SKU',
+    name: language === 'hi' ? 'नाम' : 'Name',
+    whole: language === 'hi' ? 'संपूर्ण' : 'Whole',
+    broken: language === 'hi' ? 'टूटी' : 'Broken',
+    whatThisMeans: language === 'hi' ? 'इसका अर्थ:' : 'What this means:',
+    noChartData: language === 'hi' ? 'अभी कोई चार्ट डेटा उपलब्ध नहीं है।' : 'No chart data available yet.',
+    noMovementData: language === 'hi' ? 'अभी कोई मूवमेंट डेटा उपलब्ध नहीं है।' : 'No movement data available yet.',
+    inbound: language === 'hi' ? 'आवक' : 'Inbound',
+    outbound: language === 'hi' ? 'जावक' : 'Outbound',
+    netChange: language === 'hi' ? 'शुद्ध परिवर्तन' : 'Net Change',
+    noUsersFound: language === 'hi' ? 'कोई उपयोगकर्ता नहीं मिला।' : 'No users found.',
+    loadingPreview: language === 'hi' ? 'पूर्वावलोकन लोड हो रहा है…' : 'Loading preview…',
+    paginationShowing: language === 'hi' ? 'दिखाए जा रहे हैं' : 'Showing',
+    paginationOf: language === 'hi' ? 'में से' : 'of',
+    paginationPrevious: language === 'hi' ? 'पिछला' : 'Previous',
+    paginationNext: language === 'hi' ? 'अगला' : 'Next',
+    paginationPage: language === 'hi' ? 'पेज' : 'Page',
+  };
+  const { user } = useAuthUser();
   const [data, setData] = useState(null);
   const [analyticsData, setAnalyticsData] = useState(null);
   const [adminAnalytics, setAdminAnalytics] = useState(null);
@@ -733,40 +1337,17 @@ export default function AdminDashboard() {
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(-8);
 
-  const chartWidth = 700;
-  const chartHeight = 240;
-  const chartPadding = { top: 18, right: 16, bottom: 34, left: 48 };
-  const chartInnerWidth = chartWidth - chartPadding.left - chartPadding.right;
-  const chartInnerHeight = chartHeight - chartPadding.top - chartPadding.bottom;
-  const maxChartValue = Math.max(
-    ...movementTrend.map((point) => Math.max(point.inbound, point.outbound)),
-    1
-  );
-
-  function pointX(index) {
-    if (movementTrend.length <= 1) {
-      return chartPadding.left + chartInnerWidth / 2;
+  const movementPeak = movementTrend.reduce((peak, point) => {
+    const total = Number(point.inbound || 0) + Number(point.outbound || 0);
+    if (!peak || total > peak.total) {
+      return { ...point, total };
     }
+    return peak;
+  }, null);
 
-    return chartPadding.left + (index / (movementTrend.length - 1)) * chartInnerWidth;
-  }
-
-  function pointY(value) {
-    return chartPadding.top + chartInnerHeight - (value / maxChartValue) * chartInnerHeight;
-  }
-
-  function linePath(key) {
-    if (!movementTrend.length) {
-      return '';
-    }
-
-    return movementTrend
-      .map((point, index) => `${index === 0 ? 'M' : 'L'} ${pointX(index)} ${pointY(point[key])}`)
-      .join(' ');
-  }
-
-  const inboundPath = linePath('inbound');
-  const outboundPath = linePath('outbound');
+  const movementSummary = movementPeak
+    ? `High-volume day detected on ${formatChartLongDate(movementPeak.date)} with ${formatCompactNumber(movementPeak.total)} units moved.`
+    : 'Waiting for enough movement history to identify a high-volume day.';
 
   const lowStockCount = (analyticsData?.activeItems || []).filter((item) => {
     const available = Number(item.current_whole_qty || 0) + Number(item.current_broken_qty || 0);
@@ -937,88 +1518,25 @@ export default function AdminDashboard() {
             </Link>
           ))}
         </div>
-        <div className="rounded-2xl border border-slate-200/60 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-4">
-          <div className="mb-3 flex items-end justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-semibold text-foreground sm:text-base">Movement Trend</h2>
-              <p className="text-xs text-muted-foreground">Quantity vs Date for recent arrivals and dispatches</p>
-            </div>
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[#E07A00]" />Incoming</span>
-              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[#1A1A54]" />Outgoing</span>
-            </div>
-          </div>
-          {movementTrend.length ? (
-            <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-40 w-full rounded-xl border border-border bg-muted/20 sm:h-56">
-              {[0, 0.5, 1].map((tick) => {
-                const value = Math.round(maxChartValue * tick);
-                const y = pointY(value);
 
-                return (
-                  <g key={`grid-${tick}`}>
-                    <line
-                      x1={chartPadding.left}
-                      y1={y}
-                      x2={chartWidth - chartPadding.right}
-                      y2={y}
-                      stroke="currentColor"
-                      className="text-border"
-                      strokeDasharray="3 4"
-                    />
-                    <text
-                      x={chartPadding.left - 8}
-                      y={y + 4}
-                      textAnchor="end"
-                      className="fill-muted-foreground text-[10px]"
-                    >
-                      {value}
-                    </text>
-                  </g>
-                );
-              })}
-
-              <path d={inboundPath} fill="none" stroke="#E07A00" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-              <path d={outboundPath} fill="none" stroke="#1A1A54" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-
-              {movementTrend.map((point, index) => (
-                <g key={`dots-${point.date}`}>
-                  <circle cx={pointX(index)} cy={pointY(point.inbound)} r="3.5" fill="#E07A00" />
-                  <circle cx={pointX(index)} cy={pointY(point.outbound)} r="3.5" fill="#1A1A54" />
-                  <text
-                    x={pointX(index)}
-                    y={chartHeight - 10}
-                    textAnchor="middle"
-                    className="fill-muted-foreground text-[10px]"
-                  >
-                    {formatChartDate(point.date)}
-                  </text>
-                </g>
-              ))}
-            </svg>
-          ) : (
-            <div className="flex h-56 items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 text-sm text-muted-foreground">
-              No movement data available yet.
-            </div>
-          )}
-        </div>
       </div>
 
       <div className="space-y-4 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-slate-900 dark:text-white">Admin Hub Analytics</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Process intelligence view powered by stock workflows</p>
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white">{ta.adminHubAnalytics}</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{ta.processView}</p>
           </div>
           <label className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">
-            Date Range
+            {ta.dateRange}
             <select
               value={analyticsRangeMonths}
               onChange={(event) => setAnalyticsRangeMonths(Number(event.target.value))}
               className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-[#E07A00] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
             >
-              <option value={3}>Last 3 months</option>
-              <option value={6}>Last 6 months</option>
-              <option value={12}>Last 12 months</option>
+              <option value={3}>{ta.last3Months}</option>
+              <option value={6}>{ta.last6Months}</option>
+              <option value={12}>{ta.last12Months}</option>
             </select>
           </label>
         </div>
@@ -1028,73 +1546,23 @@ export default function AdminDashboard() {
             title="Movement Trend"
             subtitle="Quantity trend for recent arrivals and dispatches"
             index={0}
+            explanation="Tracks stock flow direction. When outgoing stays above incoming for many periods, replenishment pressure usually rises."
+            whatThisMeansLabel={ta.whatThisMeans}
             chips={[
               { label: 'Incoming', value: formatCompactNumber(movementTrend.reduce((sum, point) => sum + Number(point.inbound || 0), 0)) },
               { label: 'Outgoing', value: formatCompactNumber(movementTrend.reduce((sum, point) => sum + Number(point.outbound || 0), 0)) },
             ]}
           >
-            <div className="flex items-center gap-4 pb-2 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[#E07A00]" />Incoming</span>
-              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[#1A1A54]" />Outgoing</span>
-            </div>
-            {movementTrend.length ? (
-              <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-44 w-full rounded-xl border border-border bg-muted/20 sm:h-56">
-                {[0, 0.5, 1].map((tick) => {
-                  const value = Math.round(maxChartValue * tick);
-                  const y = pointY(value);
-
-                  return (
-                    <g key={`analytics-grid-${tick}`}>
-                      <line
-                        x1={chartPadding.left}
-                        y1={y}
-                        x2={chartWidth - chartPadding.right}
-                        y2={y}
-                        stroke="currentColor"
-                        className="text-border"
-                        strokeDasharray="3 4"
-                      />
-                      <text
-                        x={chartPadding.left - 8}
-                        y={y + 4}
-                        textAnchor="end"
-                        className="fill-muted-foreground text-[10px]"
-                      >
-                        {value}
-                      </text>
-                    </g>
-                  );
-                })}
-
-                <path d={inboundPath} fill="none" stroke="#E07A00" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-                <path d={outboundPath} fill="none" stroke="#1A1A54" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-
-                {movementTrend.map((point, index) => (
-                  <g key={`analytics-dots-${point.date}`}>
-                    <circle cx={pointX(index)} cy={pointY(point.inbound)} r="3.5" fill="#E07A00" />
-                    <circle cx={pointX(index)} cy={pointY(point.outbound)} r="3.5" fill="#1A1A54" />
-                    <text
-                      x={pointX(index)}
-                      y={chartHeight - 10}
-                      textAnchor="middle"
-                      className="fill-muted-foreground text-[10px]"
-                    >
-                      {formatChartDate(point.date)}
-                    </text>
-                  </g>
-                ))}
-              </svg>
-            ) : (
-              <div className="flex h-56 items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 text-sm text-muted-foreground">
-                No movement data available yet.
-              </div>
-            )}
+            <div className="mb-2 text-xs text-slate-600 dark:text-slate-300">{movementSummary}</div>
+            <MovementTrendChart rows={movementTrend} labels={{ noData: ta.noMovementData, inbound: ta.inbound, outbound: ta.outbound, netChange: ta.netChange }} />
           </AnalyticsCard>
 
           <AnalyticsCard
             title="Purchase Throughput & Approval Funnel"
             subtitle="Monthly approvals progression"
             index={1}
+            explanation="Shows how purchase approvals move through each stage. A widening gap between pending and approved means review latency is increasing."
+            whatThisMeansLabel={ta.whatThisMeans}
             chips={[
               { label: 'Total', value: adminAnalytics?.purchasePerformance?.kpis?.totalPurchases || 0 },
               { label: 'Approval', value: formatPercent(adminAnalytics?.purchasePerformance?.kpis?.approvalRate || 0) },
@@ -1102,19 +1570,17 @@ export default function AdminDashboard() {
           >
             <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
               <div>
-                <AnimatedStackedBars
+                <InteractiveLineChart
                   rows={purchaseTrendRows}
-                  keys={['pending', 'reviewed', 'approved', 'changes_requested', 'rejected']}
-                  colors={['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444']}
-                  maxValue={Math.max(...purchaseTrendRows.map((row) => Number(row.total || 0)), 1)}
+                  emptyText={ta.noChartData}
+                  series={[
+                    { key: 'pending', label: 'Pending', color: '#3B82F6' },
+                    { key: 'reviewed', label: 'Reviewed', color: '#8B5CF6' },
+                    { key: 'approved', label: 'Approved', color: '#10B981' },
+                    { key: 'changes_requested', label: 'Changes', color: '#F59E0B' },
+                    { key: 'rejected', label: 'Rejected', color: '#EF4444' },
+                  ]}
                 />
-                <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-semibold uppercase tracking-[0.08em]">
-                  <span className="rounded-full bg-blue-50 px-2 py-1 text-blue-700">Pending</span>
-                  <span className="rounded-full bg-violet-50 px-2 py-1 text-violet-700">Reviewed</span>
-                  <span className="rounded-full bg-emerald-50 px-2 py-1 text-emerald-700">Approved</span>
-                  <span className="rounded-full bg-amber-50 px-2 py-1 text-amber-700">Changes</span>
-                  <span className="rounded-full bg-rose-50 px-2 py-1 text-rose-700">Rejected</span>
-                </div>
               </div>
               <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/60 p-3 dark:border-slate-700 dark:bg-slate-800/40">
                 {[
@@ -1142,34 +1608,32 @@ export default function AdminDashboard() {
             title="Dispatch Fulfillment & Delay Trend"
             subtitle="Status mix with delay and on-time service"
             index={2}
+            explanation="Compares dispatch workload with delivery quality. If delay rises while throughput rises, last-mile execution is under stress."
+            whatThisMeansLabel={ta.whatThisMeans}
             chips={[
               { label: 'On-time', value: formatPercent(adminAnalytics?.dispatchPerformance?.kpis?.onTimeRatio || 0) },
               { label: 'Avg Delay', value: `${adminAnalytics?.dispatchPerformance?.kpis?.avgDelayDays || 0}d` },
               { label: 'Volume', value: formatCompactNumber(dispatchTrendRows.reduce((sum, row) => sum + Number(row.dispatched_volume || 0), 0)) },
             ]}
           >
-            <div className="space-y-2">
-              {dispatchTrendRows.map((row, index) => {
-                const maxTotal = Math.max(...dispatchTrendRows.map((item) => Number(item.total || 0)), 1);
-                const maxDelay = Math.max(...dispatchTrendRows.map((item) => Number(item.avg_delay_days || 0)), 1);
-                return (
-                  <div key={`dispatch-${row.bucket}`} className="grid grid-cols-[34px_1fr_62px_58px] items-center gap-2">
-                    <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">{formatMonthLabel(row.bucket)}</span>
-                    <div className="relative h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                      <span className="absolute left-0 top-0 h-full rounded-full bg-[#1A1A54]" style={{ width: `${(Number(row.total || 0) / maxTotal) * 100}%`, animation: `growWidth 700ms ease ${index * 70}ms both` }} />
-                    </div>
-                    <span className="text-right text-[10px] font-mono text-slate-600 dark:text-slate-300">{row.total}</span>
-                    <span className="text-right text-[10px] font-mono text-[#E07A00]" style={{ opacity: 0.65 + (Number(row.avg_delay_days || 0) / maxDelay) * 0.35 }}>{Number(row.avg_delay_days || 0).toFixed(1)}d</span>
-                  </div>
-                );
-              })}
-            </div>
+            <InteractiveLineChart
+              rows={dispatchTrendRows}
+              emptyText={ta.noChartData}
+              series={[
+                { key: 'total', label: 'Total Dispatches', color: '#1A1A54' },
+                { key: 'delivered', label: 'Delivered', color: '#10B981' },
+                { key: 'avg_delay_days', label: 'Avg Delay (days)', color: '#E07A00' },
+              ]}
+              valueFormatter={(value) => Number(value || 0).toFixed(1)}
+            />
           </AnalyticsCard>
 
           <AnalyticsCard
             title="Inbound Cost & Payment Exposure"
             subtitle="Cost efficiency and working-capital pressure"
             index={3}
+            explanation="Tracks landed inbound volume versus cost intensity, then shows how much payment is still open across invoices."
+            whatThisMeansLabel={ta.whatThisMeans}
             chips={[
               { label: 'Outstanding', value: formatCurrencyInr(paymentExposure.outstanding_exposure || 0) },
               { label: 'Gross', value: formatCurrencyInr(paymentExposure.estimated_gross || 0) },
@@ -1177,34 +1641,28 @@ export default function AdminDashboard() {
           >
             <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
               <div className="space-y-2">
-                {costTrendRows.map((row, index) => {
-                  const maxSqm = Math.max(...costTrendRows.map((item) => Number(item.total_qty_sqm || 0)), 1);
-                  const maxCost = Math.max(...costTrendRows.map((item) => Number(item.avg_cost_per_sqm || 0)), 1);
-                  return (
-                    <div key={`cost-${row.bucket}`} className="grid grid-cols-[34px_1fr_56px_66px] items-center gap-2">
-                      <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">{formatMonthLabel(row.bucket)}</span>
-                      <div className="relative h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                        <span className="absolute left-0 top-0 h-full rounded-full bg-[#0EA5E9]" style={{ width: `${(Number(row.total_qty_sqm || 0) / maxSqm) * 100}%`, animation: `growWidth 700ms ease ${index * 80}ms both` }} />
-                      </div>
-                      <span className="text-right text-[10px] font-mono text-slate-700 dark:text-slate-200">{Number(row.total_qty_sqm || 0).toFixed(0)}</span>
-                      <span className="text-right text-[10px] font-mono text-[#E07A00]" style={{ opacity: 0.65 + (Number(row.avg_cost_per_sqm || 0) / maxCost) * 0.35 }}>{Number(row.avg_cost_per_sqm || 0).toFixed(0)}</span>
-                    </div>
-                  );
-                })}
+                <InteractiveLineChart
+                  rows={costTrendRows}
+                  emptyText={ta.noChartData}
+                  series={[
+                    { key: 'total_qty_sqm', label: 'Inbound SQM', color: '#0EA5E9' },
+                    { key: 'avg_cost_per_sqm', label: 'Avg Cost/SQM', color: '#E07A00' },
+                  ]}
+                  valueFormatter={(value) => Number(value || 0).toFixed(0)}
+                />
               </div>
               <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-800/40">
                 <MiniDonut
-                  values={[
-                    Number(paymentMixRows.find((row) => row.payment_status === 'paid')?.count || 0),
-                    Number(paymentMixRows.find((row) => row.payment_status === 'partial')?.count || 0),
-                    Number(paymentMixRows.find((row) => row.payment_status === 'unpaid')?.count || 0),
+                  segments={[
+                    { label: 'Paid', value: Number(paymentMixRows.find((row) => row.payment_status === 'paid')?.count || 0), color: '#10B981' },
+                    { label: 'Partial', value: Number(paymentMixRows.find((row) => row.payment_status === 'partial')?.count || 0), color: '#F59E0B' },
+                    { label: 'Unpaid', value: Number(paymentMixRows.find((row) => row.payment_status === 'unpaid')?.count || 0), color: '#EF4444' },
                   ]}
-                  colors={['#10B981', '#F59E0B', '#EF4444']}
                 />
                 <div className="space-y-1 text-[10px] font-semibold uppercase tracking-[0.08em]">
-                  <div className="text-emerald-700">Paid: {paymentMixRows.find((row) => row.payment_status === 'paid')?.count || 0}</div>
-                  <div className="text-amber-700">Partial: {paymentMixRows.find((row) => row.payment_status === 'partial')?.count || 0}</div>
-                  <div className="text-rose-700">Unpaid: {paymentMixRows.find((row) => row.payment_status === 'unpaid')?.count || 0}</div>
+                  <div className="text-emerald-700">{ta.paid}: {paymentMixRows.find((row) => row.payment_status === 'paid')?.count || 0}</div>
+                  <div className="text-amber-700">{ta.partial}: {paymentMixRows.find((row) => row.payment_status === 'partial')?.count || 0}</div>
+                  <div className="text-rose-700">{ta.unpaid}: {paymentMixRows.find((row) => row.payment_status === 'unpaid')?.count || 0}</div>
                 </div>
               </div>
             </div>
@@ -1214,6 +1672,8 @@ export default function AdminDashboard() {
             title="Inventory Health & Reorder Risk"
             subtitle="Risk pressure by month and division"
             index={4}
+            explanation="Shows where stock risk is building. Positive pressure means risky items are moving out faster than they are replenished."
+            whatThisMeansLabel={ta.whatThisMeans}
             chips={[
               { label: 'At Risk', value: adminAnalytics?.inventoryHealth?.kpis?.atRiskItems || 0 },
               { label: 'Items', value: adminAnalytics?.inventoryHealth?.kpis?.totalItems || 0 },
@@ -1221,21 +1681,18 @@ export default function AdminDashboard() {
           >
             <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
               <div className="space-y-2">
-                {inventoryRiskTrend.map((row, index) => {
-                  const maxPressure = Math.max(...inventoryRiskTrend.map((item) => Math.abs(Number(item.pressure || 0))), 1);
-                  const pressure = Number(row.pressure || 0);
-                  const width = (Math.abs(pressure) / maxPressure) * 100;
-                  const color = pressure >= 0 ? '#DC2626' : '#10B981';
-                  return (
-                    <div key={`risk-${row.bucket}`} className="grid grid-cols-[34px_1fr_54px] items-center gap-2">
-                      <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">{formatMonthLabel(row.bucket)}</span>
-                      <div className="relative h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                        <span className="absolute top-0 h-full rounded-full" style={{ left: pressure >= 0 ? '50%' : `${50 - width / 2}%`, width: `${width / 2}%`, backgroundColor: color, animation: `growWidth 700ms ease ${index * 70}ms both` }} />
-                      </div>
-                      <span className="text-right text-[10px] font-mono text-slate-700 dark:text-slate-200">{pressure.toFixed(0)}</span>
-                    </div>
-                  );
-                })}
+                <InteractiveLineChart
+                  rows={inventoryRiskTrend.map((row) => ({
+                    ...row,
+                    pressure_abs: Math.abs(Number(row.pressure || 0)),
+                  }))}
+                  emptyText={ta.noChartData}
+                  series={[
+                    { key: 'inbound_qty', label: 'Inbound Risk Qty', color: '#10B981' },
+                    { key: 'outbound_qty', label: 'Outbound Risk Qty', color: '#DC2626' },
+                    { key: 'pressure_abs', label: 'Pressure (abs)', color: '#E07A00' },
+                  ]}
+                />
               </div>
               <div className="space-y-1">
                 {inventoryDivisionRisk.slice(0, 6).map((row, index) => {
@@ -1260,6 +1717,8 @@ export default function AdminDashboard() {
             title="Salesperson Performance Trend"
             subtitle="Dispatch contribution, growth, and consistency"
             index={5}
+            explanation="Compares top salesperson throughput over time. Rising consistency with positive growth indicates stable, scalable performance."
+            whatThisMeansLabel={ta.whatThisMeans}
             chips={[
               { label: 'Tracked', value: salespersonRanking.length },
               { label: 'Top Qty', value: formatCompactNumber(salespersonRanking[0]?.quantity || 0) },
@@ -1267,36 +1726,24 @@ export default function AdminDashboard() {
           >
             <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
               <div className="space-y-2">
-                {salespersonTrendByMonth.map((row, rowIndex) => (
-                  <div key={`sales-row-${row.bucket}`} className="grid grid-cols-[34px_1fr] items-center gap-2">
-                    <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">{formatMonthLabel(row.bucket)}</span>
-                    <div className="space-y-1">
-                      {topSalespeople.map((name, index) => {
-                        const value = Number(row[name] || 0);
-                        const maxForPerson = Math.max(...salespersonTrendByMonth.map((point) => Number(point[name] || 0)), 1);
-                        const palette = ['#1A1A54', '#E07A00', '#0EA5E9'];
-                        return (
-                          <div key={`${row.bucket}-${name}`} className="flex items-center gap-2">
-                            <span className="w-16 truncate text-[10px] text-slate-500 dark:text-slate-400">{name}</span>
-                            <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                              <span className="absolute left-0 top-0 h-full rounded-full" style={{ width: `${(value / maxForPerson) * 100}%`, backgroundColor: palette[index], animation: `growWidth 700ms ease ${100 + rowIndex * 70}ms both` }} />
-                            </div>
-                            <span className="w-10 text-right text-[10px] font-mono text-slate-700 dark:text-slate-200">{value.toFixed(0)}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+                <InteractiveLineChart
+                  rows={salespersonTrendByMonth}
+                  emptyText={ta.noChartData}
+                  series={topSalespeople.map((name, index) => ({
+                    key: name,
+                    label: name,
+                    color: ['#1A1A54', '#E07A00', '#0EA5E9'][index % 3],
+                  }))}
+                />
               </div>
               <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
                 <table className="w-full text-xs">
                   <thead className="bg-slate-900 text-[10px] uppercase tracking-widest text-white">
                     <tr>
-                      <th className="px-2 py-2 text-left">Salesperson</th>
-                      <th className="px-2 py-2 text-right">Qty</th>
-                      <th className="px-2 py-2 text-right">Growth</th>
-                      <th className="px-2 py-2 text-right">Cons.</th>
+                      <th className="px-2 py-2 text-left">{ta.salesperson}</th>
+                      <th className="px-2 py-2 text-right">{ta.qty}</th>
+                      <th className="px-2 py-2 text-right">{ta.growth}</th>
+                      <th className="px-2 py-2 text-right">{ta.consistencyShort}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1323,9 +1770,9 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
         <div className="rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4 xl:col-span-2">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground">Operational Alerts</h3>
+            <h3 className="text-sm font-semibold text-foreground">{ta.operationalAlerts}</h3>
             <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              {operationalAlerts.length || 0} active
+              {operationalAlerts.length || 0} {ta.active}
             </span>
           </div>
           {operationalAlerts.length ? (
@@ -1356,8 +1803,8 @@ export default function AdminDashboard() {
 
         <div className="rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4 xl:col-span-3">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground">Recent Activity</h3>
-            <span className="text-xs text-muted-foreground">Live operations snapshot</span>
+            <h3 className="text-sm font-semibold text-foreground">{ta.recentActivity}</h3>
+            <span className="text-xs text-muted-foreground">{ta.liveOpsSnapshot}</span>
           </div>
           {recentActivity.length ? (
             <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
@@ -1388,7 +1835,7 @@ export default function AdminDashboard() {
 
       <div className="lg:hidden rounded-xl border border-border bg-card/80 p-1 shadow-sm">
         <div className="grid grid-cols-3 gap-1">
-          {[{ id: 'approvals', label: 'Approvals' }, { id: 'changes', label: 'Changes' }, { id: 'users', label: 'Users' }].map((tab) => {
+          {[{ id: 'approvals', label: ta.approvals }, { id: 'changes', label: ta.changes }, { id: 'users', label: ta.users }].map((tab) => {
             const isActive = mobileSection === tab.id;
             return (
               <button
@@ -1406,7 +1853,7 @@ export default function AdminDashboard() {
 
       <div className="hidden rounded-xl border border-border bg-card/80 p-1 shadow-sm lg:block">
         <div className="grid grid-cols-3 gap-1">
-          {[{ id: 'approvals', label: 'Approvals' }, { id: 'changes', label: 'Changes' }, { id: 'users', label: 'Users' }].map((tab) => {
+          {[{ id: 'approvals', label: ta.approvals }, { id: 'changes', label: ta.changes }, { id: 'users', label: ta.users }].map((tab) => {
             const isActive = mobileSection === tab.id;
             return (
               <button
@@ -1433,7 +1880,7 @@ export default function AdminDashboard() {
                 <thead className="sticky top-0 z-10 border-b border-border bg-muted/80 font-medium text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2">{t('shipmentNo')}</th>
-                    <th className="px-3 py-2">Maintainer</th>
+                    <th className="px-3 py-2">{ta.maintainer}</th>
                     <th className="px-3 py-2">{t('truck')}</th>
                     <th className="px-3 py-2">{t('driver')}</th>
                     <th className="px-3 py-2">{t('boxesQty')}</th>
@@ -1503,6 +1950,7 @@ export default function AdminDashboard() {
               total={arrivalPagination.total}
               pageSize={DEFAULT_PAGE_SIZE}
               onPageChange={setArrivalPage}
+              labels={{ showing: ta.paginationShowing, of: ta.paginationOf, previous: ta.paginationPrevious, next: ta.paginationNext, page: ta.paginationPage }}
             />
           </div>
 
@@ -1583,6 +2031,7 @@ export default function AdminDashboard() {
               total={dispatchPagination.total}
               pageSize={DEFAULT_PAGE_SIZE}
               onPageChange={setDispatchPage}
+              labels={{ showing: ta.paginationShowing, of: ta.paginationOf, previous: ta.paginationPrevious, next: ta.paginationNext, page: ta.paginationPage }}
             />
           </div>
         </div>
@@ -1590,18 +2039,18 @@ export default function AdminDashboard() {
         <div className={`space-y-4 ${mobileSection === 'changes' ? '' : 'hidden'}`}>
           <div id="change-requests-panel" className="flex h-[460px] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
             <div className="border-b border-border p-4">
-              <h2 className="text-base font-semibold text-foreground">Change Requests</h2>
+              <h2 className="text-base font-semibold text-foreground">{ta.changeRequests}</h2>
             </div>
             <div className="flex-1 overflow-auto">
               <table className="w-full text-xs text-left whitespace-nowrap">
                 <thead className="sticky top-0 z-10 border-b border-border bg-muted/80 font-medium text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-2">Request No</th>
-                    <th className="px-3 py-2">Source</th>
-                    <th className="px-3 py-2">Type</th>
-                    <th className="px-3 py-2">Status</th>
-                    <th className="px-3 py-2">Priority</th>
-                    <th className="px-3 py-2">Requested By</th>
+                    <th className="px-3 py-2">{ta.requestNo}</th>
+                    <th className="px-3 py-2">{ta.source}</th>
+                    <th className="px-3 py-2">{ta.type}</th>
+                    <th className="px-3 py-2">{ta.status}</th>
+                    <th className="px-3 py-2">{ta.priority}</th>
+                    <th className="px-3 py-2">{ta.requestedBy}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -1631,7 +2080,7 @@ export default function AdminDashboard() {
                     </tr>
                   ))}
                   {changeRequestPagination.total === 0 && (
-                    <tr><td colSpan="6" className="px-3 py-4 text-center text-muted-foreground">No change requests found.</td></tr>
+                    <tr><td colSpan="6" className="px-3 py-4 text-center text-muted-foreground">{ta.noChangeRequests}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -1642,6 +2091,7 @@ export default function AdminDashboard() {
               total={changeRequestPagination.total}
               pageSize={DEFAULT_PAGE_SIZE}
               onPageChange={setChangeRequestPage}
+              labels={{ showing: ta.paginationShowing, of: ta.paginationOf, previous: ta.paginationPrevious, next: ta.paginationNext, page: ta.paginationPage }}
             />
           </div>
         </div>
@@ -1711,10 +2161,10 @@ export default function AdminDashboard() {
                     onChange={(event) => setUserDraft((current) => ({ ...current, role: event.target.value }))}
                     className={FORM_SELECT_CLASS}
                   >
-                    <option value="stock_maintainer">stock_maintainer</option>
-                    <option value="salesperson">salesperson</option>
-                    <option value="manager">manager</option>
-                    <option value="admin">admin</option>
+                    <option value="stock_maintainer">{language === 'hi' ? 'स्टॉक मेंटेनर' : 'stock_maintainer'}</option>
+                    <option value="salesperson">{language === 'hi' ? 'सेल्सपर्सन' : 'salesperson'}</option>
+                    <option value="manager">{language === 'hi' ? 'प्रबंधक' : 'manager'}</option>
+                    <option value="admin">{language === 'hi' ? 'एडमिन' : 'admin'}</option>
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 </div>
@@ -1722,7 +2172,7 @@ export default function AdminDashboard() {
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <label>
-                <span className={FORM_LABEL_CLASS}>Department</span>
+                <span className={FORM_LABEL_CLASS}>{ta.department}</span>
                 <input
                   value={userDraft.department}
                   onChange={(event) => setUserDraft((current) => ({ ...current, department: event.target.value }))}
@@ -1733,7 +2183,7 @@ export default function AdminDashboard() {
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <label className={FORM_PANEL_CLASS}>
-                <span className={FORM_LABEL_CLASS}>Password</span>
+                <span className={FORM_LABEL_CLASS}>{ta.password}</span>
                 <div className="relative">
                   <input
                     type={showPrimaryPassword ? 'text' : 'password'}
@@ -1756,7 +2206,7 @@ export default function AdminDashboard() {
                 <p className="mt-1 text-xs text-muted-foreground">Use at least 12 characters and include 3 of 4 types: lowercase, uppercase, number, and symbol.</p>
               </label>
               <label className={FORM_PANEL_CLASS}>
-                <span className={FORM_LABEL_CLASS}>Confirm Password</span>
+                <span className={FORM_LABEL_CLASS}>{ta.confirmPassword}</span>
                 <div className="relative">
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
@@ -1807,11 +2257,11 @@ export default function AdminDashboard() {
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 z-10 border-b border-slate-100 bg-slate-50/90 text-slate-500 dark:border-slate-800 dark:bg-slate-900/90 dark:text-slate-400">
               <tr>
-                <th className="px-6 py-3 font-semibold">User</th>
-                <th className="px-6 py-3 font-semibold">Role</th>
-                <th className="px-6 py-3 font-semibold">Department</th>
-                <th className="px-6 py-3 font-semibold">Status</th>
-                <th className="px-6 py-3 text-right font-semibold">Actions</th>
+                <th className="px-6 py-3 font-semibold">{ta.user}</th>
+                <th className="px-6 py-3 font-semibold">{ta.role}</th>
+                <th className="px-6 py-3 font-semibold">{ta.department}</th>
+                <th className="px-6 py-3 font-semibold">{ta.status}</th>
+                <th className="px-6 py-3 text-right font-semibold">{ta.actions}</th>
               </tr>
             </thead>
             <tbody>
@@ -1888,7 +2338,7 @@ export default function AdminDashboard() {
               ))}
               {userPagination.total === 0 ? (
                 <tr>
-                  <td colSpan="5" className="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">No users found.</td>
+                  <td colSpan="5" className="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">{ta.noUsersFound}</td>
                 </tr>
               ) : null}
             </tbody>
@@ -1900,6 +2350,7 @@ export default function AdminDashboard() {
           total={userPagination.total}
           pageSize={DEFAULT_PAGE_SIZE}
           onPageChange={setUserPage}
+          labels={{ showing: ta.paginationShowing, of: ta.paginationOf, previous: ta.paginationPrevious, next: ta.paginationNext, page: ta.paginationPage }}
         />
       </div>
 
@@ -1914,7 +2365,7 @@ export default function AdminDashboard() {
         description={previewState.description}
         summary={
           previewState.loading ? (
-            <div className="text-sm text-slate-500">Loading preview…</div>
+            <div className="text-sm text-slate-500">{ta.loadingPreview}</div>
           ) : previewState.error ? (
             <div className="text-sm text-red-600">{previewState.error}</div>
           ) : null
@@ -1958,7 +2409,9 @@ export default function AdminDashboard() {
                         { label: 'Role', value: previewState.record?.role },
                         { label: 'Department', value: previewState.record?.department || 'General' },
                         { label: 'Active', value: previewState.record?.is_active ? 'Yes' : 'No' },
-                        { label: 'Auth0 Sub', value: previewState.record?.auth0_sub },
+                        { label: 'Auth Provider', value: previewState.record?.external_auth_provider || 'better-auth' },
+                        { label: 'External Auth ID', value: previewState.record?.external_auth_id },
+                        { label: 'Legacy Auth Sub', value: previewState.record?.auth0_sub },
                         { label: 'Last Login', value: previewState.record?.last_login_at },
                       ]}
                     />
@@ -1992,10 +2445,10 @@ export default function AdminDashboard() {
                             <table className="w-full text-left text-sm">
                               <thead className="bg-muted/70 text-muted-foreground">
                                 <tr>
-                                  <th className="px-3 py-2">SKU</th>
-                                  <th className="px-3 py-2">Name</th>
-                                  <th className="px-3 py-2 text-right">Whole</th>
-                                  <th className="px-3 py-2 text-right">Broken</th>
+                                  <th className="px-3 py-2">{ta.sku}</th>
+                                  <th className="px-3 py-2">{ta.name}</th>
+                                  <th className="px-3 py-2 text-right">{ta.whole}</th>
+                                  <th className="px-3 py-2 text-right">{ta.broken}</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-border bg-card">
@@ -2016,6 +2469,7 @@ export default function AdminDashboard() {
                             total={previewItemPagination.total}
                             pageSize={DEFAULT_PAGE_SIZE}
                             onPageChange={setPreviewItemsPage}
+                            labels={{ showing: ta.paginationShowing, of: ta.paginationOf, previous: ta.paginationPrevious, next: ta.paginationNext, page: ta.paginationPage }}
                           />
                         </>
                       ),

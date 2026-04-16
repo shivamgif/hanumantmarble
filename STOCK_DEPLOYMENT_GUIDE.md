@@ -71,11 +71,11 @@ Tables created:
 
 ---
 
-## 🔐 Step 3: Configure Auth0 for Stock Subdomain
+## 🔐 Step 3: Configure Better Auth for Stock Subdomain
 
 ### 3a. Add Callback URLs
 
-1. Go to **Auth0 Dashboard** → **Applications** → your app
+1. Go to your OAuth provider dashboard (Google/GitHub) and your Better Auth deployment settings
 2. Go to **Settings** tab
 3. Add these to **Allowed Callback URLs**:
    ```
@@ -97,18 +97,12 @@ Tables created:
 
 6. Click **Save**
 
-### 3b. Create/Update Auth0 Rules (Optional but Recommended)
+### 3b. Configure Better Auth Providers
 
-Go to Auth0 → **Rules** → Create new rule:
+Configure at least one social provider in environment variables and register callback URLs:
 
-```javascript
-function addRolesToAccessToken(user, context, callback) {
-  if (user.email && ['admin@company.com', 'manager@company.com'].includes(user.email)) {
-    context.idToken['https://stock/role'] = 'admin';
-  }
-  callback(null, user, context);
-}
-```
+- `https://stock.yourdomain.com/api/auth/callback/google`
+- `https://hanumantmarble-stock.netlify.app/api/auth/callback/google`
 
 ---
 
@@ -124,15 +118,12 @@ NEXT_PUBLIC_REQUIRE_AUTH=true
 NEXT_PUBLIC_INTERNAL_ONLY=true
 NEXT_PUBLIC_URL=https://stock.yourdomain.com
 
-AUTH0_SECRET=[your-32-byte-hex-secret]
-AUTH0_DOMAIN=[your-auth0-domain]
-AUTH0_CLIENT_ID=[your-auth0-client-id]
-AUTH0_CLIENT_SECRET=[your-auth0-client-secret]
-AUTH0_BASE_URL=https://stock.yourdomain.com
-AUTH0_ISSUER_BASE_URL=https://[your-auth0-domain]
-
-NEXT_PUBLIC_AUTH0_DOMAIN=[your-auth0-domain]
-NEXT_PUBLIC_AUTH0_CLIENT_ID=[your-auth0-client-id]
+BETTER_AUTH_SECRET=[your-32-byte-secret]
+BETTER_AUTH_URL=https://stock.yourdomain.com
+NEXT_PUBLIC_BETTER_AUTH_URL=https://stock.yourdomain.com
+GOOGLE_CLIENT_ID=[your-google-client-id]
+GOOGLE_CLIENT_SECRET=[your-google-client-secret]
+NEXT_PUBLIC_BETTER_AUTH_SOCIAL_PROVIDER=google
 
 ALLOWED_INTERNAL_EMAILS=your-email@company.com,manager@company.com
 
@@ -206,7 +197,7 @@ You'll need to add a CNAME record. The exact steps depend on your provider:
 
 1. Open `https://stock.yourdomain.com`
 2. You should be redirected to login
-3. Log in with your Auth0 account
+3. Log in with your Better Auth account
 4. You should see the Stock Management Dashboard
 
 ### 6b. Test Internal-Only Access
@@ -238,7 +229,7 @@ Then Netlify will redeploy automatically.
 
 ✅ Done:
 - [x] Internal route protected by middleware
-- [x] Auth0 required before any stock access
+- [x] Better Auth required before any stock access
 - [x] Audit logging of all actions
 - [x] `noindex` header for stock subdomain
 - [x] HTTPS auto-enabled by Netlify
@@ -260,8 +251,8 @@ Still Recommended:
 ### "DATABASE_URL not found"
 → Verify Neon integration is enabled, wait a few minutes, redeploy
 
-### Auth0 login fails
-→ Check Auth0 callback URLs match your domain exactly
+### Better Auth login fails
+→ Check provider callback URLs match your domain exactly
 
 ### DNS not working
 → Use `nslookup stock.yourdomain.com` to verify CNAME record
@@ -274,5 +265,5 @@ Still Recommended:
 ## 📞 Support
 
 - Netlify Docs: https://docs.netlify.com
-- Auth0 Docs: https://auth0.com/docs
+- Better Auth Docs: https://better-auth.com/docs
 - Neon Docs: https://neon.tech/docs
