@@ -23,7 +23,8 @@ export default function About() {
     "/gallery6.jpeg",
   ];
 
-  const awards = getTranslation('about.awards.list', language);
+  const awardsData = getTranslation('about.awards.list', language);
+  const awards = Array.isArray(awardsData) ? awardsData : [];
 
   return (
     <div className="relative overflow-hidden">
