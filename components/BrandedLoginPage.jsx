@@ -27,6 +27,11 @@ export default function BrandedLoginPage({ returnTo = '/' }) {
 
     setSignInError('');
 
+    if (!socialProvider) {
+      setSignInError('Social sign-in is not configured in this environment. Use email/password or configure NEXT_PUBLIC_BETTER_AUTH_SOCIAL_PROVIDER and provider credentials.');
+      return;
+    }
+
     try {
       await authClient.signIn.social({
         provider: socialProvider,
@@ -88,7 +93,7 @@ export default function BrandedLoginPage({ returnTo = '/' }) {
       const message = String(authFailure?.message || '').toLowerCase();
 
       if (message.includes('invalid') || message.includes('credentials')) {
-        setSignInError('Invalid email or password.');
+        setSignInError('Invalid email or password. If this user was created before Better Auth migration, use "Create account" once with the same email/password to provision credentials.');
       } else if (message.includes('already exists') || message.includes('user_exists')) {
         setSignInError('This email is already registered. Try signing in instead.');
       } else {
@@ -249,12 +254,18 @@ export default function BrandedLoginPage({ returnTo = '/' }) {
                         </div>
                       </div>
 
-                      <Button className="h-12 w-full rounded-full bg-primary text-base text-primary-foreground shadow-lg transition hover:bg-primary/90" asChild>
-                        <a href={authLoginHref} onClick={startSignIn} className="flex items-center justify-center gap-2">
-                          Sign in
-                          <ArrowRight className="h-5 w-5" />
-                        </a>
-                      </Button>
+                      {socialProvider ? (
+                        <Button className="h-12 w-full rounded-full bg-primary text-base text-primary-foreground shadow-lg transition hover:bg-primary/90" asChild>
+                          <a href={authLoginHref} onClick={startSignIn} className="flex items-center justify-center gap-2">
+                            Sign in with {socialProvider}
+                            <ArrowRight className="h-5 w-5" />
+                          </a>
+                        </Button>
+                      ) : (
+                        <div className="rounded-xl border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                          Social sign-in is currently unavailable.
+                        </div>
+                      )}
 
                       <div className="rounded-3xl border border-border bg-background/80 p-4">
                         <div className="mb-3 flex items-center justify-between">
