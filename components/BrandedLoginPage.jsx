@@ -1,6 +1,6 @@
 'use client';
 
-import { authClient, getDefaultSocialProvider, getLoginHref, getLogoutHref, useAuthUser } from '@/lib/auth-client';
+import { authClient, getDefaultSocialProvider, getLogoutHref, useAuthUser } from '@/lib/auth-client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -18,19 +18,32 @@ export default function BrandedLoginPage({ returnTo = '/' }) {
   const [name, setName] = useState('');
   const [authMode, setAuthMode] = useState('signin');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSocialSubmitting, setIsSocialSubmitting] = useState(false);
+  const [socialRetryAfter, setSocialRetryAfter] = useState(null);
   const socialProvider = getDefaultSocialProvider();
-  const authLoginHref = getLoginHref(returnTo);
   const isUnauthorizedError = error?.message === 'Unauthorized' || error?.status === 401;
+
+  const socialCooldownSeconds = socialRetryAfter
+    ? Math.max(0, Math.ceil((socialRetryAfter - Date.now()) / 1000))
+    : 0;
+
+  const isSocialCooldownActive = socialCooldownSeconds > 0;
 
   async function startSignIn(event) {
     event?.preventDefault?.();
 
     setSignInError('');
 
+    if (isSocialSubmitting || isSocialCooldownActive) {
+      return;
+    }
+
     if (!socialProvider) {
       setSignInError('Social sign-in is not configured in this environment. Use email/password or configure NEXT_PUBLIC_BETTER_AUTH_SOCIAL_PROVIDER and provider credentials.');
       return;
     }
+
+    setIsSocialSubmitting(true);
 
     try {
       await authClient.signIn.social({
@@ -45,12 +58,21 @@ export default function BrandedLoginPage({ returnTo = '/' }) {
         return;
       }
 
+      if (message.includes('too many requests') || message.includes('429') || message.includes('rate limit')) {
+        const retryAt = Date.now() + 60_000;
+        setSocialRetryAfter(retryAt);
+        setSignInError('Too many sign-in attempts. Please wait 60 seconds and try again.');
+        return;
+      }
+
       if (message.includes('invalid origin') || message.includes('forbidden') || message.includes('403')) {
         setSignInError('This app origin is not trusted by Better Auth. Add the current localhost origin to trusted origins and restart the dev server.');
         return;
       }
 
       setSignInError('Unable to start sign-in. Please try again.');
+    } finally {
+      setIsSocialSubmitting(false);
     }
   }
 
@@ -148,8 +170,13 @@ export default function BrandedLoginPage({ returnTo = '/' }) {
             </div>
             <h2 className="mb-2 text-xl font-semibold">Authentication Error</h2>
             <p className="mb-6 text-muted-foreground">{error.message}</p>
-            <Button className="rounded-full" asChild>
-              <a href={authLoginHref} onClick={startSignIn}>Try Again</a>
+            <Button
+              className="rounded-full"
+              type="button"
+              onClick={startSignIn}
+              disabled={isSocialSubmitting || isSocialCooldownActive || !socialProvider}
+            >
+              {isSocialCooldownActive ? `Try again in ${socialCooldownSeconds}s` : 'Try Again'}
             </Button>
           </CardContent>
         </Card>
@@ -255,11 +282,14 @@ export default function BrandedLoginPage({ returnTo = '/' }) {
                       </div>
 
                       {socialProvider ? (
-                        <Button className="h-12 w-full rounded-full bg-primary text-base text-primary-foreground shadow-lg transition hover:bg-primary/90" asChild>
-                          <a href={authLoginHref} onClick={startSignIn} className="flex items-center justify-center gap-2">
-                            Sign in with {socialProvider}
-                            <ArrowRight className="h-5 w-5" />
-                          </a>
+                        <Button
+                          className="h-12 w-full rounded-full bg-primary text-base text-primary-foreground shadow-lg transition hover:bg-primary/90"
+                          type="button"
+                          onClick={startSignIn}
+                          disabled={isSocialSubmitting || isSocialCooldownActive}
+                        >
+                          {isSocialCooldownActive ? `Try again in ${socialCooldownSeconds}s` : `Sign in with ${socialProvider}`}
+                          <ArrowRight className="h-5 w-5" />
                         </Button>
                       ) : (
                         <div className="rounded-xl border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-800">
