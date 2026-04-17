@@ -6,11 +6,16 @@ import { getTranslation } from '@/lib/translations';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuthUser } from '@/lib/auth-client';
 import { useSearchParams } from 'next/navigation';
+import { useForm } from 'react-hook-form';
 import EntryPreviewSheet, { PreviewKeyValueGrid } from '@/components/ui/entry-preview-sheet';
 import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { validateStockPassword } from '@/lib/password-policy';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select } from '@/components/ui/select';
 import { ArrowRightLeft, ChevronDown, Eye, EyeOff, PackageSearch, ShieldAlert, UsersRound } from 'lucide-react';
 
 function formatDateTime(value) {
@@ -79,8 +84,8 @@ function getRoundedAxisScale(maxValue, targetTickCount = 4) {
 }
 
 const FORM_LABEL_CLASS = 'block text-[11px] font-semibold uppercase tracking-[0.08em] text-foreground/75';
-const FORM_INPUT_CLASS = 'mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground shadow-sm outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20';
-const FORM_SELECT_CLASS = `${FORM_INPUT_CLASS} appearance-none pr-10`;
+const FORM_INPUT_CLASS = 'mt-1';
+const FORM_SELECT_CLASS = 'mt-1';
 const FORM_PANEL_CLASS = 'rounded-2xl border border-border/80 bg-background/80 p-4';
 
 const CLASSES = {
@@ -877,14 +882,25 @@ export default function AdminDashboard() {
     documents: [],
     error: null,
   });
-  const [userDraft, setUserDraft] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    password: '',
-    role: 'stock_maintainer',
-    department: '',
-    status: 'active',
+  const createUserForm = useForm({
+    defaultValues: {
+      name: '',
+      phone: '',
+      email: '',
+      password: '',
+      role: 'stock_maintainer',
+      department: '',
+      status: 'active',
+    },
+  });
+  const previewUserForm = useForm({
+    defaultValues: {
+      role: 'stock_maintainer',
+      status: 'inactive',
+      canManageUsers: false,
+      canApproveChanges: false,
+      canViewDashboard: false,
+    },
   });
 
   useEffect(() => {
@@ -1130,6 +1146,13 @@ export default function AdminDashboard() {
       };
 
       mergePreviewUser(updatedUser);
+      previewUserForm.reset({
+        role: updatedUser.role || 'stock_maintainer',
+        status: updatedUser.status || (updatedUser.is_active ? 'active' : 'inactive'),
+        canManageUsers: Boolean(updatedUser.can_manage_users),
+        canApproveChanges: Boolean(updatedUser.can_approve_changes),
+        canViewDashboard: Boolean(updatedUser.can_view_dashboard),
+      });
       if (successMessage) {
         setActionNotice({ type: 'success', message: successMessage });
       }
@@ -1177,29 +1200,27 @@ export default function AdminDashboard() {
     });
   }
 
-  async function handleSaveUser(event) {
-    event.preventDefault();
-
+  const handleSaveUser = createUserForm.handleSubmit(async (values) => {
     setUserFormNotice(null);
     setError(null);
 
-    if (!userDraft.name.trim() || !userDraft.phone.trim()) {
+    if (!values.name.trim() || !values.phone.trim()) {
       setUserFormNotice({ type: 'error', message: 'Name and phone are required.' });
       return;
     }
 
-    if (!userDraft.email.trim()) {
+    if (!values.email.trim()) {
       setUserFormNotice({ type: 'error', message: 'Email is required.' });
       return;
     }
 
-    const passwordError = validateStockPassword(userDraft.password);
+    const passwordError = validateStockPassword(values.password);
     if (passwordError) {
       setUserFormNotice({ type: 'error', message: passwordError });
       return;
     }
 
-    if (userDraft.password !== confirmPassword) {
+    if (values.password !== confirmPassword) {
       setUserFormNotice({ type: 'error', message: 'Password and confirm password do not match.' });
       return;
     }
@@ -1211,14 +1232,14 @@ export default function AdminDashboard() {
       const response = await fetch('/api/stock/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userDraft),
+        body: JSON.stringify(values),
       });
       const json = await response.json();
       if (!response.ok) {
         throw new Error(json.error || 'Failed to save user');
       }
 
-      setUserDraft({ name: '', phone: '', email: '', password: '', role: 'stock_maintainer', department: '', status: 'active' });
+      createUserForm.reset({ name: '', phone: '', email: '', password: '', role: 'stock_maintainer', department: '', status: 'active' });
       setConfirmPassword('');
       setShowPrimaryPassword(false);
       setShowConfirmPassword(false);
@@ -1230,7 +1251,7 @@ export default function AdminDashboard() {
     } finally {
       setActionLoading(null);
     }
-  }
+  });
 
   async function handleDeleteUser(id) {
     if (!window.confirm('Deactivate this user?')) {
@@ -1260,6 +1281,20 @@ export default function AdminDashboard() {
   const changeRequestPagination = paginateRows(changeRequests || [], changeRequestPage, DEFAULT_PAGE_SIZE);
   const userPagination = paginateRows(data?.users || [], userPage, DEFAULT_PAGE_SIZE);
   const previewItemPagination = paginateRows(previewState.items || [], previewItemsPage, DEFAULT_PAGE_SIZE);
+
+  useEffect(() => {
+    if (previewState.kind !== 'user' || !previewState.record) {
+      return;
+    }
+
+    previewUserForm.reset({
+      role: previewState.record.role || 'stock_maintainer',
+      status: previewState.record.status || (previewState.record.is_active ? 'active' : 'inactive'),
+      canManageUsers: Boolean(previewState.record.can_manage_users),
+      canApproveChanges: Boolean(previewState.record.can_approve_changes),
+      canViewDashboard: Boolean(previewState.record.can_view_dashboard),
+    });
+  }, [previewState.kind, previewState.record, previewUserForm]);
 
   useEffect(() => {
     setArrivalPage((current) => Math.min(current, arrivalPagination.pageCount));
@@ -2199,20 +2234,18 @@ export default function AdminDashboard() {
             )}
             <div className="grid gap-4 md:grid-cols-2">
               <label>
-                <span className={FORM_LABEL_CLASS}>{t('name')}</span>
-                <input
-                  value={userDraft.name}
-                  onChange={(event) => setUserDraft((current) => ({ ...current, name: event.target.value }))}
+                <Label className={FORM_LABEL_CLASS}>{t('name')}</Label>
+                <Input
+                  {...createUserForm.register('name')}
                   autoFocus
                   className={FORM_INPUT_CLASS}
                   placeholder="Full name"
                 />
               </label>
               <label>
-                <span className={FORM_LABEL_CLASS}>{t('phone')}</span>
-                <input
-                  value={userDraft.phone}
-                  onChange={(event) => setUserDraft((current) => ({ ...current, phone: event.target.value }))}
+                <Label className={FORM_LABEL_CLASS}>{t('phone')}</Label>
+                <Input
+                  {...createUserForm.register('phone')}
                   className={FORM_INPUT_CLASS}
                   placeholder="10-digit phone"
                 />
@@ -2220,38 +2253,35 @@ export default function AdminDashboard() {
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <label>
-                <span className={FORM_LABEL_CLASS}>{t('email')}</span>
-                <input
+                <Label className={FORM_LABEL_CLASS}>{t('email')}</Label>
+                <Input
+                  {...createUserForm.register('email')}
                   type="email"
-                  value={userDraft.email}
-                  onChange={(event) => setUserDraft((current) => ({ ...current, email: event.target.value }))}
                   className={FORM_INPUT_CLASS}
                   placeholder="name@example.com"
                 />
               </label>
               <label>
-                <span className={FORM_LABEL_CLASS}>{t('role')}</span>
+                <Label className={FORM_LABEL_CLASS}>{t('role')}</Label>
                 <div className="relative">
-                  <select
-                    value={userDraft.role}
-                    onChange={(event) => setUserDraft((current) => ({ ...current, role: event.target.value }))}
+                  <Select
+                    {...createUserForm.register('role')}
                     className={FORM_SELECT_CLASS}
                   >
                     <option value="stock_maintainer">{language === 'hi' ? 'स्टॉक मेंटेनर' : 'stock_maintainer'}</option>
                     <option value="salesperson">{language === 'hi' ? 'सेल्सपर्सन' : 'salesperson'}</option>
                     <option value="manager">{language === 'hi' ? 'प्रबंधक' : 'manager'}</option>
                     <option value="admin">{language === 'hi' ? 'एडमिन' : 'admin'}</option>
-                  </select>
+                  </Select>
                   <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 </div>
               </label>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <label>
-                <span className={FORM_LABEL_CLASS}>{ta.department}</span>
-                <input
-                  value={userDraft.department}
-                  onChange={(event) => setUserDraft((current) => ({ ...current, department: event.target.value }))}
+                <Label className={FORM_LABEL_CLASS}>{ta.department}</Label>
+                <Input
+                  {...createUserForm.register('department')}
                   className={FORM_INPUT_CLASS}
                   placeholder="General"
                 />
@@ -2259,12 +2289,11 @@ export default function AdminDashboard() {
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <label className={FORM_PANEL_CLASS}>
-                <span className={FORM_LABEL_CLASS}>{ta.password}</span>
+                <Label className={FORM_LABEL_CLASS}>{ta.password}</Label>
                 <div className="relative">
-                  <input
+                  <Input
+                    {...createUserForm.register('password')}
                     type={showPrimaryPassword ? 'text' : 'password'}
-                    value={userDraft.password}
-                    onChange={(event) => setUserDraft((current) => ({ ...current, password: event.target.value }))}
                     className={`${FORM_INPUT_CLASS} pr-10`}
                     placeholder="12+ chars, 3 of 4 types"
                     minLength={12}
@@ -2282,9 +2311,9 @@ export default function AdminDashboard() {
                 <p className="mt-1 text-xs text-muted-foreground">Use at least 12 characters and include 3 of 4 types: lowercase, uppercase, number, and symbol.</p>
               </label>
               <label className={FORM_PANEL_CLASS}>
-                <span className={FORM_LABEL_CLASS}>{ta.confirmPassword}</span>
+                <Label className={FORM_LABEL_CLASS}>{ta.confirmPassword}</Label>
                 <div className="relative">
-                  <input
+                  <Input
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(event) => setConfirmPassword(event.target.value)}
@@ -2317,6 +2346,7 @@ export default function AdminDashboard() {
                 onClick={() => {
                   setShowUserForm(false);
                   setUserFormNotice(null);
+                  createUserForm.reset({ name: '', phone: '', email: '', password: '', role: 'stock_maintainer', department: '', status: 'active' });
                   setConfirmPassword('');
                   setShowPrimaryPassword(false);
                   setShowConfirmPassword(false);
@@ -2326,7 +2356,7 @@ export default function AdminDashboard() {
                 Cancel
               </button>
             </div>
-            <input type="hidden" value={userDraft.status} readOnly />
+            <input type="hidden" {...createUserForm.register('status')} readOnly />
           </form>
         )}
         <div className="max-h-[420px] overflow-auto">
@@ -2536,81 +2566,60 @@ export default function AdminDashboard() {
                             </button>
                           </div>
                         </div>
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <label>
-                            <span className={FORM_LABEL_CLASS}>Role</span>
-                            <div className="relative">
-                              <select
-                                value={previewState.record?.role || 'stock_maintainer'}
-                                onChange={(event) => mergePreviewUser({ id: previewState.record.id, role: event.target.value })}
-                                className={FORM_SELECT_CLASS}
-                              >
-                                <option value="stock_maintainer">stock_maintainer</option>
-                                <option value="salesperson">salesperson</option>
-                                <option value="manager">manager</option>
-                                <option value="admin">admin</option>
-                              </select>
-                              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            </div>
-                          </label>
-                          <label>
-                            <span className={FORM_LABEL_CLASS}>Status</span>
-                            <div className="relative">
-                              <select
-                                value={previewState.record?.status || (previewState.record?.is_active ? 'active' : 'inactive')}
-                                onChange={(event) => mergePreviewUser({
-                                  id: previewState.record.id,
-                                  status: event.target.value,
-                                  is_active: event.target.value === 'active',
-                                })}
-                                className={FORM_SELECT_CLASS}
-                              >
-                                <option value="active">active</option>
-                                <option value="inactive">inactive</option>
-                              </select>
-                              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            </div>
-                          </label>
-                        </div>
-                        <div className="mt-4 grid gap-3 md:grid-cols-3">
-                          {[
-                            ['can_manage_users', 'Can manage users'],
-                            ['can_approve_changes', 'Can approve changes'],
-                            ['can_view_dashboard', 'Can view dashboard'],
-                          ].map(([key, label]) => (
-                            <label key={key} className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground">
-                              <input
-                                type="checkbox"
-                                checked={Boolean(previewState.record?.[key])}
-                                onChange={(event) => mergePreviewUser({
-                                  id: previewState.record.id,
-                                  [key]: event.target.checked,
-                                })}
-                              />
-                              <span>{label}</span>
-                            </label>
+                        <form
+                          className="space-y-4"
+                          onSubmit={previewUserForm.handleSubmit((values) => handleUpdateUser(
+                            previewState.record.id,
+                            values,
+                            'User access updated.'
                           ))}
-                        </div>
-                        <div className="mt-4">
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateUser(
-                              previewState.record.id,
-                              {
-                                role: previewState.record.role,
-                                status: previewState.record.status || (previewState.record.is_active ? 'active' : 'inactive'),
-                                canManageUsers: Boolean(previewState.record.can_manage_users),
-                                canApproveChanges: Boolean(previewState.record.can_approve_changes),
-                                canViewDashboard: Boolean(previewState.record.can_view_dashboard),
-                              },
-                              'User access updated.'
-                            )}
-                            disabled={actionLoading === `user-${previewState.record?.id}-update`}
-                            className={`${CLASSES.actionButton} rounded-xl bg-[#E07A00] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c96d00] disabled:cursor-not-allowed disabled:opacity-50`}
-                          >
-                            {actionLoading === `user-${previewState.record?.id}-update` ? 'Saving…' : 'Save Access'}
-                          </button>
-                        </div>
+                        >
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <label>
+                              <Label className={FORM_LABEL_CLASS}>Role</Label>
+                              <div className="relative">
+                                <Select {...previewUserForm.register('role')} className={FORM_SELECT_CLASS}>
+                                  <option value="stock_maintainer">stock_maintainer</option>
+                                  <option value="salesperson">salesperson</option>
+                                  <option value="manager">manager</option>
+                                  <option value="admin">admin</option>
+                                </Select>
+                                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                              </div>
+                            </label>
+                            <label>
+                              <Label className={FORM_LABEL_CLASS}>Status</Label>
+                              <div className="relative">
+                                <Select {...previewUserForm.register('status')} className={FORM_SELECT_CLASS}>
+                                  <option value="active">active</option>
+                                  <option value="inactive">inactive</option>
+                                </Select>
+                                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                              </div>
+                            </label>
+                          </div>
+                          <div className="mt-4 grid gap-3 md:grid-cols-3">
+                            {[
+                              ['canManageUsers', 'Can manage users'],
+                              ['canApproveChanges', 'Can approve changes'],
+                              ['canViewDashboard', 'Can view dashboard'],
+                            ].map(([key, label]) => (
+                              <label key={key} className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground">
+                                <Checkbox {...previewUserForm.register(key)} />
+                                <span>{label}</span>
+                              </label>
+                            ))}
+                          </div>
+                          <div className="mt-4">
+                            <button
+                              type="submit"
+                              disabled={actionLoading === `user-${previewState.record?.id}-update`}
+                              className={`${CLASSES.actionButton} rounded-xl bg-[#E07A00] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c96d00] disabled:cursor-not-allowed disabled:opacity-50`}
+                            >
+                              {actionLoading === `user-${previewState.record?.id}-update` ? 'Saving…' : 'Save Access'}
+                            </button>
+                          </div>
+                        </form>
                       </div>
                     </div>
                   ),
