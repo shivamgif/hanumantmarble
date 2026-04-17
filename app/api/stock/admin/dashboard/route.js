@@ -20,6 +20,10 @@ async function fetchDashboardUsers() {
          phone AS phone_number,
          role,
          department,
+         status,
+         can_manage_users,
+         can_approve_changes,
+         can_view_dashboard,
          (status = 'active') AS is_active,
          last_login_at
        FROM stock_app_users
@@ -42,6 +46,10 @@ async function fetchDashboardUsers() {
          phone AS phone_number,
          role,
          department,
+         status,
+         can_manage_users,
+         can_approve_changes,
+         can_view_dashboard,
          (status = 'active') AS is_active,
          last_login_at
        FROM stock_app_users

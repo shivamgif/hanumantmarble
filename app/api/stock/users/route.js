@@ -298,6 +298,9 @@ export async function PATCH(request) {
   const hasRoleInPayload = Object.prototype.hasOwnProperty.call(body, 'role');
   const normalizedRole = hasRoleInPayload ? normalizeStockRole(body.role) : null;
   const roleFlags = hasRoleInPayload ? getRoleFlags(body.role) : null;
+  const hasCanManageUsersInPayload = Object.prototype.hasOwnProperty.call(body, 'canManageUsers');
+  const hasCanApproveChangesInPayload = Object.prototype.hasOwnProperty.call(body, 'canApproveChanges');
+  const hasCanViewDashboardInPayload = Object.prototype.hasOwnProperty.call(body, 'canViewDashboard');
   const hasDepartmentInPayload = Object.prototype.hasOwnProperty.call(body, 'department');
   const hasDivisionInPayload = Object.prototype.hasOwnProperty.call(body, 'division');
   const department = hasDepartmentInPayload
@@ -333,9 +336,9 @@ export async function PATCH(request) {
         body.email || null,
         normalizedRole,
         body.status || null,
-        hasRoleInPayload ? roleFlags.canManageUsers : body.canManageUsers,
-        hasRoleInPayload ? roleFlags.canApproveChanges : body.canApproveChanges,
-        body.canViewDashboard,
+        hasCanManageUsersInPayload ? body.canManageUsers : (hasRoleInPayload ? roleFlags.canManageUsers : null),
+        hasCanApproveChangesInPayload ? body.canApproveChanges : (hasRoleInPayload ? roleFlags.canApproveChanges : null),
+        hasCanViewDashboardInPayload ? body.canViewDashboard : (hasRoleInPayload ? roleFlags.canViewDashboard : null),
         department,
         divisionId,
         body.id,

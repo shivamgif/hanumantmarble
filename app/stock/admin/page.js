@@ -1087,6 +1087,82 @@ export default function AdminDashboard() {
     });
   }
 
+  function mergePreviewUser(user) {
+    setPreviewState((current) => {
+      if (current.kind !== 'user' || current.record?.id !== user.id) {
+        return current;
+      }
+
+      return {
+        ...current,
+        record: {
+          ...current.record,
+          ...user,
+        },
+      };
+    });
+  }
+
+  async function handleUpdateUser(userId, updates, successMessage = null) {
+    setActionLoading(`user-${userId}-update`);
+    setError(null);
+    setActionNotice(null);
+
+    try {
+      const response = await fetch('/api/stock/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: userId,
+          ...updates,
+        }),
+      });
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || 'Failed to update user');
+      }
+
+      const updatedUser = {
+        ...json.user,
+        full_name: json.user?.name,
+        phone_number: json.user?.phone,
+        is_active: json.user?.status === 'active',
+      };
+
+      mergePreviewUser(updatedUser);
+      if (successMessage) {
+        setActionNotice({ type: 'success', message: successMessage });
+      }
+      await refreshDashboard();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleApproveUser(user) {
+    await handleUpdateUser(
+      user.id,
+      {
+        status: 'active',
+        canViewDashboard: true,
+      },
+      `${user.full_name || user.email} is now approved for stock access.`
+    );
+  }
+
+  async function handleRejectUser(user) {
+    await handleUpdateUser(
+      user.id,
+      {
+        status: 'inactive',
+        canViewDashboard: false,
+      },
+      `${user.full_name || user.email} access was set to inactive.`
+    );
+  }
+
   function openChangeRequestPreview(row) {
     setPreviewState({
       open: true,
@@ -2315,6 +2391,25 @@ export default function AdminDashboard() {
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
+                          if (u.is_active) {
+                            handleRejectUser(u);
+                          } else {
+                            handleApproveUser(u);
+                          }
+                        }}
+                        disabled={actionLoading === `user-${u.id}-update`}
+                        className={`${CLASSES.actionButton} rounded-lg px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${
+                          u.is_active
+                            ? 'border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20'
+                            : 'border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20'
+                        }`}
+                      >
+                        {u.is_active ? 'Suspend' : 'Approve'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
                           openUserPreview(u);
                         }}
                         className={`${CLASSES.actionButton} rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800`}
@@ -2401,20 +2496,123 @@ export default function AdminDashboard() {
                 {
                   title: 'User Details',
                   children: (
-                    <PreviewKeyValueGrid
-                      items={[
-                        { label: 'Full Name', value: previewState.record?.full_name },
-                        { label: 'Email', value: previewState.record?.email },
-                        { label: 'Phone', value: previewState.record?.phone_number },
-                        { label: 'Role', value: previewState.record?.role },
-                        { label: 'Department', value: previewState.record?.department || 'General' },
-                        { label: 'Active', value: previewState.record?.is_active ? 'Yes' : 'No' },
-                        { label: 'Auth Provider', value: previewState.record?.external_auth_provider || 'better-auth' },
-                        { label: 'External Auth ID', value: previewState.record?.external_auth_id },
-                        { label: 'Legacy Auth Sub', value: previewState.record?.auth0_sub },
-                        { label: 'Last Login', value: previewState.record?.last_login_at },
-                      ]}
-                    />
+                    <div className="space-y-5">
+                      <PreviewKeyValueGrid
+                        items={[
+                          { label: 'Full Name', value: previewState.record?.full_name },
+                          { label: 'Email', value: previewState.record?.email },
+                          { label: 'Phone', value: previewState.record?.phone_number },
+                          { label: 'Role', value: previewState.record?.role },
+                          { label: 'Department', value: previewState.record?.department || 'General' },
+                          { label: 'Active', value: previewState.record?.is_active ? 'Yes' : 'No' },
+                          { label: 'Auth Provider', value: previewState.record?.external_auth_provider || 'better-auth' },
+                          { label: 'External Auth ID', value: previewState.record?.external_auth_id },
+                          { label: 'Legacy Auth Sub', value: previewState.record?.auth0_sub },
+                          { label: 'Last Login', value: previewState.record?.last_login_at },
+                        ]}
+                      />
+                      <div className="rounded-2xl border border-border bg-card p-4">
+                        <div className="mb-4 flex items-center justify-between gap-3">
+                          <div>
+                            <h3 className="text-sm font-semibold text-foreground">Access & RBAC</h3>
+                            <p className="text-xs text-muted-foreground">Approve onboarding requests, assign roles, and override user permissions.</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleApproveUser(previewState.record)}
+                              disabled={actionLoading === `user-${previewState.record?.id}-update` || previewState.record?.is_active}
+                              className={`${CLASSES.actionButton} rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20`}
+                            >
+                              Approve User
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRejectUser(previewState.record)}
+                              disabled={actionLoading === `user-${previewState.record?.id}-update` || !previewState.record?.is_active}
+                              className={`${CLASSES.actionButton} rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20`}
+                            >
+                              Suspend User
+                            </button>
+                          </div>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <label>
+                            <span className={FORM_LABEL_CLASS}>Role</span>
+                            <div className="relative">
+                              <select
+                                value={previewState.record?.role || 'stock_maintainer'}
+                                onChange={(event) => mergePreviewUser({ id: previewState.record.id, role: event.target.value })}
+                                className={FORM_SELECT_CLASS}
+                              >
+                                <option value="stock_maintainer">stock_maintainer</option>
+                                <option value="salesperson">salesperson</option>
+                                <option value="manager">manager</option>
+                                <option value="admin">admin</option>
+                              </select>
+                              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            </div>
+                          </label>
+                          <label>
+                            <span className={FORM_LABEL_CLASS}>Status</span>
+                            <div className="relative">
+                              <select
+                                value={previewState.record?.status || (previewState.record?.is_active ? 'active' : 'inactive')}
+                                onChange={(event) => mergePreviewUser({
+                                  id: previewState.record.id,
+                                  status: event.target.value,
+                                  is_active: event.target.value === 'active',
+                                })}
+                                className={FORM_SELECT_CLASS}
+                              >
+                                <option value="active">active</option>
+                                <option value="inactive">inactive</option>
+                              </select>
+                              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            </div>
+                          </label>
+                        </div>
+                        <div className="mt-4 grid gap-3 md:grid-cols-3">
+                          {[
+                            ['can_manage_users', 'Can manage users'],
+                            ['can_approve_changes', 'Can approve changes'],
+                            ['can_view_dashboard', 'Can view dashboard'],
+                          ].map(([key, label]) => (
+                            <label key={key} className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(previewState.record?.[key])}
+                                onChange={(event) => mergePreviewUser({
+                                  id: previewState.record.id,
+                                  [key]: event.target.checked,
+                                })}
+                              />
+                              <span>{label}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <div className="mt-4">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateUser(
+                              previewState.record.id,
+                              {
+                                role: previewState.record.role,
+                                status: previewState.record.status || (previewState.record.is_active ? 'active' : 'inactive'),
+                                canManageUsers: Boolean(previewState.record.can_manage_users),
+                                canApproveChanges: Boolean(previewState.record.can_approve_changes),
+                                canViewDashboard: Boolean(previewState.record.can_view_dashboard),
+                              },
+                              'User access updated.'
+                            )}
+                            disabled={actionLoading === `user-${previewState.record?.id}-update`}
+                            className={`${CLASSES.actionButton} rounded-xl bg-[#E07A00] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c96d00] disabled:cursor-not-allowed disabled:opacity-50`}
+                          >
+                            {actionLoading === `user-${previewState.record?.id}-update` ? 'Saving…' : 'Save Access'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   ),
                 },
               ]
