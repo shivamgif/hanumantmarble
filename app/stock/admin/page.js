@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowRightLeft, ChevronDown, Eye, EyeOff, PackageSearch, ShieldAlert, UsersRound } from 'lucide-react';
 
 function formatDateTime(value) {
@@ -2263,18 +2263,20 @@ export default function AdminDashboard() {
               </label>
               <label>
                 <Label className={FORM_LABEL_CLASS}>{t('role')}</Label>
-                <div className="relative">
-                  <Select
-                    {...createUserForm.register('role')}
-                    className={FORM_SELECT_CLASS}
-                  >
-                    <option value="stock_maintainer">{language === 'hi' ? 'स्टॉक मेंटेनर' : 'stock_maintainer'}</option>
-                    <option value="salesperson">{language === 'hi' ? 'सेल्सपर्सन' : 'salesperson'}</option>
-                    <option value="manager">{language === 'hi' ? 'प्रबंधक' : 'manager'}</option>
-                    <option value="admin">{language === 'hi' ? 'एडमिन' : 'admin'}</option>
-                  </Select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                </div>
+                <Select
+                  value={createUserForm.watch('role')}
+                  onValueChange={(value) => createUserForm.setValue('role', value, { shouldDirty: true })}
+                >
+                  <SelectTrigger className={FORM_SELECT_CLASS}>
+                    <SelectValue placeholder={t('role')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="stock_maintainer">{language === 'hi' ? 'स्टॉक मेंटेनर' : 'stock_maintainer'}</SelectItem>
+                    <SelectItem value="salesperson">{language === 'hi' ? 'सेल्सपर्सन' : 'salesperson'}</SelectItem>
+                    <SelectItem value="manager">{language === 'hi' ? 'प्रबंधक' : 'manager'}</SelectItem>
+                    <SelectItem value="admin">{language === 'hi' ? 'एडमिन' : 'admin'}</SelectItem>
+                  </SelectContent>
+                </Select>
               </label>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
@@ -2577,25 +2579,35 @@ export default function AdminDashboard() {
                           <div className="grid gap-4 md:grid-cols-2">
                             <label>
                               <Label className={FORM_LABEL_CLASS}>Role</Label>
-                              <div className="relative">
-                                <Select {...previewUserForm.register('role')} className={FORM_SELECT_CLASS}>
-                                  <option value="stock_maintainer">stock_maintainer</option>
-                                  <option value="salesperson">salesperson</option>
-                                  <option value="manager">manager</option>
-                                  <option value="admin">admin</option>
-                                </Select>
-                                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                              </div>
+                              <Select
+                                value={previewUserForm.watch('role')}
+                                onValueChange={(value) => previewUserForm.setValue('role', value, { shouldDirty: true })}
+                              >
+                                <SelectTrigger className={FORM_SELECT_CLASS}>
+                                  <SelectValue placeholder="Role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="stock_maintainer">stock_maintainer</SelectItem>
+                                  <SelectItem value="salesperson">salesperson</SelectItem>
+                                  <SelectItem value="manager">manager</SelectItem>
+                                  <SelectItem value="admin">admin</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </label>
                             <label>
                               <Label className={FORM_LABEL_CLASS}>Status</Label>
-                              <div className="relative">
-                                <Select {...previewUserForm.register('status')} className={FORM_SELECT_CLASS}>
-                                  <option value="active">active</option>
-                                  <option value="inactive">inactive</option>
-                                </Select>
-                                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                              </div>
+                              <Select
+                                value={previewUserForm.watch('status')}
+                                onValueChange={(value) => previewUserForm.setValue('status', value, { shouldDirty: true })}
+                              >
+                                <SelectTrigger className={FORM_SELECT_CLASS}>
+                                  <SelectValue placeholder="Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="active">active</SelectItem>
+                                  <SelectItem value="inactive">inactive</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </label>
                           </div>
                           <div className="mt-4 grid gap-3 md:grid-cols-3">

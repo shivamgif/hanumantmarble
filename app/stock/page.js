@@ -1,9 +1,25 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useFieldArray, useForm, useWatch } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuthUser } from '@/lib/auth-client';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { BarChart3, Boxes, Calendar, CircleAlert, Hash, PackageCheck, Truck } from 'lucide-react';
+import {
+  BarChart3,
+  Boxes,
+  Calendar,
+  CircleAlert,
+  CreditCard,
+  FileText,
+  Hash,
+  PackageCheck,
+  Plus,
+  ReceiptText,
+  Send,
+  Truck,
+  UploadCloud,
+} from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
@@ -11,6 +27,27 @@ import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import EntryPreviewSheet, { PreviewKeyValueGrid } from '@/components/ui/entry-preview-sheet';
 import PaginationControls from '@/components/ui/pagination-controls';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { DatePicker } from '@/components/ui/date-picker';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { arrivalFormSchema, dispatchFormSchema } from '@/lib/forms/stock-forms';
+import { useStockFormStore } from '@/lib/stores/stock-form-store';
 
 function createArrivalItemRow() {
   return {
@@ -75,19 +112,11 @@ function createInitialDispatchDraft() {
     driverName: '',
     invoiceNumber: '',
     salespersonName: '',
+    dispatchDate: '',
     transportCost: '',
     laborCost: '',
     notes: '',
     items: [createDispatchItemRow()],
-  };
-}
-
-function createInitialAttachmentState() {
-  return {
-    purchaseInvoice: null,
-    transporterBill: null,
-    salesInvoice: null,
-    gatepass: null,
   };
 }
 
@@ -298,19 +327,144 @@ function InlineNotice({ notice }) {
 
 function AttachmentField({ label, accept = 'image/*,.pdf', onChange, file, hint }) {
   return (
-    <label className="block">
-      <span className={FORM_LABEL_CLASS}>{label}</span>
+    <label className="block cursor-pointer">
+      <span className={`${FORM_LABEL_CLASS} mb-2 flex items-center gap-2`}>
+        <UploadCloud className="h-3.5 w-3.5 text-primary" />
+        {label}
+      </span>
       <input
         type="file"
         accept={accept}
-        className={FORM_INPUT_CLASS}
+        className="sr-only"
         onChange={(event) => onChange(event.target.files?.[0] || null)}
       />
-      <div className="mt-1 text-[11px] text-muted-foreground">
-        {hint || 'Attach a photo or PDF.'}
-        {file ? ` Selected: ${file.name}` : ''}
+      <div className="rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-4 transition hover:border-primary/50 hover:bg-primary/10">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-background text-primary shadow-sm">
+            <UploadCloud className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold text-foreground">
+              {file ? 'Replace file' : 'Choose file'}
+            </div>
+            <div className="mt-1 text-[11px] text-muted-foreground">
+              {hint || 'Attach a photo or PDF.'}
+            </div>
+            <div className="mt-2 text-xs font-medium text-primary">
+              {file ? file.name : 'Click to upload'}
+            </div>
+          </div>
+        </div>
       </div>
     </label>
+  );
+}
+
+function FormSectionTitle({ icon: Icon, title, description }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+        <Icon className="h-5 w-5" />
+      </div>
+      <div>
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        {description ? <p className="mt-1 text-xs text-muted-foreground">{description}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function StockFormField({ control, name, label, placeholder, type = 'text', className, ...props }) {
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <FormItem>
+          {label ? <FormLabel className={FORM_LABEL_CLASS}>{label}</FormLabel> : null}
+          <FormControl>
+            <Input {...field} value={field.value ?? ''} type={type} placeholder={placeholder} className={className || FORM_INPUT_CLASS} {...props} />
+          </FormControl>
+          <FormMessage className="text-xs" />
+        </FormItem>
+      )}
+    />
+  );
+}
+
+function StockMoneyField({ control, name, label, hint, placeholder = '0.00' }) {
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel className={FORM_LABEL_CLASS}>{label}</FormLabel>
+          <FormControl>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">₹</span>
+              <Input
+                {...field}
+                value={field.value ?? ''}
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder={placeholder}
+                className="w-full rounded-xl border border-border bg-background py-2.5 pl-12 pr-3 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+          </FormControl>
+          {hint ? <p className="text-[11px] text-muted-foreground">{hint}</p> : null}
+          <FormMessage className="text-xs" />
+        </FormItem>
+      )}
+    />
+  );
+}
+
+function StockDateField({ control, name, label, placeholder, className }) {
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel className={FORM_LABEL_CLASS}>{label}</FormLabel>
+          <FormControl>
+            <DatePicker
+              value={field.value}
+              onChange={field.onChange}
+              placeholder={placeholder}
+              className={className || FORM_INPUT_CLASS}
+            />
+          </FormControl>
+          <FormMessage className="text-xs" />
+        </FormItem>
+      )}
+    />
+  );
+}
+
+function StockDateTimeField({ control, name, label, placeholder, className }) {
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel className={FORM_LABEL_CLASS}>{label}</FormLabel>
+          <FormControl>
+            <DateTimePicker
+              value={field.value}
+              onChange={field.onChange}
+              datePlaceholder={placeholder}
+              className={className}
+            />
+          </FormControl>
+          <FormMessage className="text-xs" />
+        </FormItem>
+      )}
+    />
   );
 }
 
@@ -423,12 +577,6 @@ export default function StockDashboard() {
   const [arrivalPage, setArrivalPage] = useState(1);
   const [dispatchPage, setDispatchPage] = useState(1);
   const [previewItemsPage, setPreviewItemsPage] = useState(1);
-  const [arrivalSheetOpen, setArrivalSheetOpen] = useState(false);
-  const [dispatchSheetOpen, setDispatchSheetOpen] = useState(false);
-  const [arrivalDraft, setArrivalDraft] = useState(() => createInitialArrivalDraft());
-  const [dispatchDraft, setDispatchDraft] = useState(() => createInitialDispatchDraft());
-  const [arrivalAttachments, setArrivalAttachments] = useState(() => createInitialAttachmentState());
-  const [dispatchAttachments, setDispatchAttachments] = useState(() => createInitialAttachmentState());
   const [previewState, setPreviewState] = useState({
     open: false,
     loading: false,
@@ -440,6 +588,34 @@ export default function StockDashboard() {
     documents: [],
     error: null,
   });
+  const arrivalSheetOpen = useStockFormStore((state) => state.arrivalSheetOpen);
+  const dispatchSheetOpen = useStockFormStore((state) => state.dispatchSheetOpen);
+  const setArrivalSheetOpen = useStockFormStore((state) => state.setArrivalSheetOpen);
+  const setDispatchSheetOpen = useStockFormStore((state) => state.setDispatchSheetOpen);
+  const arrivalAttachments = useStockFormStore((state) => state.arrivalAttachments);
+  const dispatchAttachments = useStockFormStore((state) => state.dispatchAttachments);
+  const setArrivalAttachment = useStockFormStore((state) => state.setArrivalAttachment);
+  const setDispatchAttachment = useStockFormStore((state) => state.setDispatchAttachment);
+  const resetArrivalAttachments = useStockFormStore((state) => state.resetArrivalAttachments);
+  const resetDispatchAttachments = useStockFormStore((state) => state.resetDispatchAttachments);
+  const arrivalForm = useForm({
+    resolver: zodResolver(arrivalFormSchema),
+    defaultValues: createInitialArrivalDraft(),
+  });
+  const dispatchForm = useForm({
+    resolver: zodResolver(dispatchFormSchema),
+    defaultValues: createInitialDispatchDraft(),
+  });
+  const arrivalItemsFieldArray = useFieldArray({
+    control: arrivalForm.control,
+    name: 'items',
+  });
+  const dispatchItemsFieldArray = useFieldArray({
+    control: dispatchForm.control,
+    name: 'items',
+  });
+  const arrivalPaymentStatus = useWatch({ control: arrivalForm.control, name: 'paymentStatus' });
+  const arrivalItems = useWatch({ control: arrivalForm.control, name: 'items' }) || [];
 
   async function refreshDashboard() {
     const json = await fetchDashboardData();
@@ -513,20 +689,6 @@ export default function StockDashboard() {
       mounted = false;
     };
   }, [user]);
-
-  function updateArrivalDraft(field, value) {
-    setArrivalDraft((current) => ({
-      ...current,
-      [field]: value,
-    }));
-  }
-
-  function updateDispatchDraft(field, value) {
-    setDispatchDraft((current) => ({
-      ...current,
-      [field]: value,
-    }));
-  }
 
   async function uploadShipmentDocument({ entityType, entityId, documentType, file, documentNumber, notes }) {
     if (!file) {
@@ -639,45 +801,28 @@ export default function StockDashboard() {
     });
   }
 
-  function updateArrivalItem(index, field, value) {
-    setArrivalDraft((current) => ({
-      ...current,
-      items: current.items.map((item, itemIndex) => (
-        itemIndex === index ? { ...item, [field]: value } : item
-      )),
-    }));
-  }
-
   function autoPopulateArrivalItem(index, matchedItem) {
-    setArrivalDraft((current) => ({
-      ...current,
-      items: current.items.map((item, itemIndex) => {
-        if (itemIndex !== index) {
-          return item;
-        }
-
-        return {
-          ...item,
-          itemId: String(matchedItem.id),
-          itemName: matchedItem.name || item.itemName,
-          sku: matchedItem.sku || item.sku,
-          brandName: matchedItem.brand_name || item.brandName,
-          divisionName: matchedItem.division_name || matchedItem.department || item.divisionName,
-          typeName: matchedItem.type_name || item.typeName,
-          sizeLabel: matchedItem.size_label || item.sizeLabel,
-          sizeUnit: matchedItem.size_unit || item.sizeUnit || 'mm',
-          thicknessMm: matchedItem.thickness_mm != null ? String(matchedItem.thickness_mm) : item.thicknessMm,
-          tilesPerBox: matchedItem.tiles_per_box != null ? String(matchedItem.tiles_per_box) : item.tilesPerBox,
-          piecesPerBox: matchedItem.pieces_per_box != null ? String(matchedItem.pieces_per_box) : item.piecesPerBox,
-          reorderLevel: matchedItem.reorder_level != null ? String(matchedItem.reorder_level) : item.reorderLevel,
-          description: matchedItem.description || item.description,
-        };
-      }),
-    }));
+    const item = arrivalForm.getValues(`items.${index}`);
+    arrivalForm.setValue(`items.${index}`, {
+      ...item,
+      itemId: String(matchedItem.id),
+      itemName: matchedItem.name || item.itemName,
+      sku: matchedItem.sku || item.sku,
+      brandName: matchedItem.brand_name || item.brandName,
+      divisionName: matchedItem.division_name || matchedItem.department || item.divisionName,
+      typeName: matchedItem.type_name || item.typeName,
+      sizeLabel: matchedItem.size_label || item.sizeLabel,
+      sizeUnit: matchedItem.size_unit || item.sizeUnit || 'mm',
+      thicknessMm: matchedItem.thickness_mm != null ? String(matchedItem.thickness_mm) : item.thicknessMm,
+      tilesPerBox: matchedItem.tiles_per_box != null ? String(matchedItem.tiles_per_box) : item.tilesPerBox,
+      piecesPerBox: matchedItem.pieces_per_box != null ? String(matchedItem.pieces_per_box) : item.piecesPerBox,
+      reorderLevel: matchedItem.reorder_level != null ? String(matchedItem.reorder_level) : item.reorderLevel,
+      description: matchedItem.description || item.description,
+    }, { shouldDirty: true, shouldValidate: true });
   }
 
   function handleArrivalItemNameChange(index, value) {
-    updateArrivalItem(index, 'itemName', value);
+    arrivalForm.setValue(`items.${index}.itemName`, value, { shouldDirty: true, shouldValidate: true });
 
     const matchedItem = findMatchingActiveItem(data?.activeItems, value);
     if (matchedItem) {
@@ -685,11 +830,11 @@ export default function StockDashboard() {
       return;
     }
 
-    updateArrivalItem(index, 'itemId', '');
+    arrivalForm.setValue(`items.${index}.itemId`, '', { shouldDirty: true, shouldValidate: true });
   }
 
   function handleArrivalItemSkuChange(index, value) {
-    updateArrivalItem(index, 'sku', value);
+    arrivalForm.setValue(`items.${index}.sku`, value, { shouldDirty: true, shouldValidate: true });
 
     const matchedItem = findMatchingActiveItem(data?.activeItems, value);
     if (matchedItem) {
@@ -697,30 +842,15 @@ export default function StockDashboard() {
       return;
     }
 
-    updateArrivalItem(index, 'itemId', '');
-  }
-
-  function updateDispatchItem(index, field, value) {
-    setDispatchDraft((current) => ({
-      ...current,
-      items: current.items.map((item, itemIndex) => (
-        itemIndex === index ? { ...item, [field]: value } : item
-      )),
-    }));
+    arrivalForm.setValue(`items.${index}.itemId`, '', { shouldDirty: true, shouldValidate: true });
   }
 
   function addArrivalItemRow() {
-    setArrivalDraft((current) => ({
-      ...current,
-      items: [...current.items, createArrivalItemRow()],
-    }));
+    arrivalItemsFieldArray.append(createArrivalItemRow());
   }
 
   function addDispatchItemRow() {
-    setDispatchDraft((current) => ({
-      ...current,
-      items: [...current.items, createDispatchItemRow()],
-    }));
+    dispatchItemsFieldArray.append(createDispatchItemRow());
   }
 
   function toggleSort(sortState, setSortState, key) {
@@ -764,8 +894,7 @@ export default function StockDashboard() {
     return sortedRows;
   }
 
-  async function handleArrivalSubmit(event) {
-    event.preventDefault();
+  async function handleArrivalSubmit(values) {
     setArrivalNotice(null);
     setArrivalSubmitting(true);
 
@@ -779,7 +908,7 @@ export default function StockDashboard() {
     }
 
     try {
-      const items = arrivalDraft.items
+      const items = values.items
         .map((item) => {
           const piecesPerBox = toNumber(item.piecesPerBox);
           const wholeQty = toNumber(item.wholeQty);
@@ -834,25 +963,25 @@ export default function StockDashboard() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          purchaseNumber: trimText(arrivalDraft.shipmentNumber) || undefined,
-          purchaseDate: arrivalDraft.invoiceDate || undefined,
-          shipmentNumber: trimText(arrivalDraft.shipmentNumber) || undefined,
-          supplierName: trimText(arrivalDraft.supplierName) || undefined,
-          truckLicensePlate: trimText(arrivalDraft.truckLicensePlate) || undefined,
-          truckNumber: trimText(arrivalDraft.truckLicensePlate) || undefined,
-          driverName: trimText(arrivalDraft.driverName) || undefined,
-          invoiceNumber: trimText(arrivalDraft.invoiceNumber) || undefined,
-          invoiceDate: arrivalDraft.invoiceDate || undefined,
-          originCity: trimText(arrivalDraft.originCity) || undefined,
-          destinationWarehouseName: trimText(arrivalDraft.destinationWarehouseName) || undefined,
-          paymentStatus: trimText(arrivalDraft.paymentStatus) || 'unpaid',
-          paidAmount: arrivalDraft.paidAmount === '' ? undefined : toNumber(arrivalDraft.paidAmount),
-          paymentDate: arrivalDraft.paymentDate || undefined,
-          paymentReference: trimText(arrivalDraft.paymentReference) || undefined,
-          paymentMode: trimText(arrivalDraft.paymentMode) || undefined,
-          deliveryCost: toNumber(arrivalDraft.transportCost),
-          unloadingLabourCost: toNumber(arrivalDraft.laborCost),
-          notes: trimText(arrivalDraft.notes) || undefined,
+          purchaseNumber: trimText(values.shipmentNumber) || undefined,
+          purchaseDate: values.invoiceDate || undefined,
+          shipmentNumber: trimText(values.shipmentNumber) || undefined,
+          supplierName: trimText(values.supplierName) || undefined,
+          truckLicensePlate: trimText(values.truckLicensePlate) || undefined,
+          truckNumber: trimText(values.truckLicensePlate) || undefined,
+          driverName: trimText(values.driverName) || undefined,
+          invoiceNumber: trimText(values.invoiceNumber) || undefined,
+          invoiceDate: values.invoiceDate || undefined,
+          originCity: trimText(values.originCity) || undefined,
+          destinationWarehouseName: trimText(values.destinationWarehouseName) || undefined,
+          paymentStatus: trimText(values.paymentStatus) || 'unpaid',
+          paidAmount: values.paidAmount === '' ? undefined : toNumber(values.paidAmount),
+          paymentDate: values.paymentDate || undefined,
+          paymentReference: trimText(values.paymentReference) || undefined,
+          paymentMode: trimText(values.paymentMode) || undefined,
+          deliveryCost: toNumber(values.transportCost),
+          unloadingLabourCost: toNumber(values.laborCost),
+          notes: trimText(values.notes) || undefined,
           items: items.map((item) => ({
             itemId: item.itemId ? Number(item.itemId) : undefined,
             sku: item.sku || undefined,
@@ -884,8 +1013,8 @@ export default function StockDashboard() {
         throw new Error(json.error || json.detail || 'Failed to submit purchase');
       }
 
-      setArrivalDraft(createInitialArrivalDraft());
-      setArrivalAttachments(createInitialAttachmentState());
+      arrivalForm.reset(createInitialArrivalDraft());
+      resetArrivalAttachments();
       setArrivalSheetOpen(false);
       setArrivalNotice({
         type: 'success',
@@ -897,8 +1026,8 @@ export default function StockDashboard() {
           entityId: json.shipment?.id,
           documentType: 'purchase_invoice',
           file: arrivalAttachments.purchaseInvoice,
-          documentNumber: trimText(arrivalDraft.invoiceNumber) || undefined,
-          notes: trimText(arrivalDraft.notes) || undefined,
+          documentNumber: trimText(values.invoiceNumber) || undefined,
+          notes: trimText(values.notes) || undefined,
         });
         if (linkedInvoice) {
           setArrivalNotice({ type: 'success', message: `Purchase ${json.shipment?.shipment_number || 'submitted'} sent for review and invoice attached.` });
@@ -909,8 +1038,8 @@ export default function StockDashboard() {
           entityId: json.shipment?.id,
           documentType: 'transporter_bill',
           file: arrivalAttachments.transporterBill,
-          documentNumber: trimText(arrivalDraft.invoiceNumber) || undefined,
-          notes: trimText(arrivalDraft.notes) || undefined,
+          documentNumber: trimText(values.invoiceNumber) || undefined,
+          notes: trimText(values.notes) || undefined,
         });
         if (linkedBill) {
           setArrivalNotice({ type: 'success', message: `Purchase ${json.shipment?.shipment_number || 'submitted'} sent for review and documents attached.` });
@@ -940,18 +1069,17 @@ export default function StockDashboard() {
     }
   }
 
-  async function handleDispatchSubmit(event) {
-    event.preventDefault();
+  async function handleDispatchSubmit(values) {
     setDispatchNotice(null);
     setDispatchSubmitting(true);
 
     try {
-      const customerName = trimText(dispatchDraft.customerName);
+      const customerName = trimText(values.customerName);
       if (!customerName) {
         throw new Error('Customer name is required.');
       }
 
-      const items = dispatchDraft.items
+      const items = values.items
         .map((item) => ({
           itemId: trimText(item.itemId),
           loadedWholeQty: toNumber(item.loadedWholeQty),
@@ -978,16 +1106,17 @@ export default function StockDashboard() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          shipmentNumber: trimText(dispatchDraft.shipmentNumber) || undefined,
+          shipmentNumber: trimText(values.shipmentNumber) || undefined,
           customerName,
-          truckLicensePlate: trimText(dispatchDraft.truckLicensePlate) || undefined,
-          truckNumber: trimText(dispatchDraft.truckLicensePlate) || undefined,
-          driverName: trimText(dispatchDraft.driverName) || undefined,
-          invoiceNumber: trimText(dispatchDraft.invoiceNumber) || undefined,
-          salespersonName: trimText(dispatchDraft.salespersonName) || undefined,
-          transportCost: toNumber(dispatchDraft.transportCost),
-          loadingLabourCost: toNumber(dispatchDraft.laborCost),
-          notes: trimText(dispatchDraft.notes) || undefined,
+          truckLicensePlate: trimText(values.truckLicensePlate) || undefined,
+          truckNumber: trimText(values.truckLicensePlate) || undefined,
+          driverName: trimText(values.driverName) || undefined,
+          invoiceNumber: trimText(values.invoiceNumber) || undefined,
+          salespersonName: trimText(values.salespersonName) || undefined,
+          dispatchDate: values.dispatchDate || undefined,
+          transportCost: toNumber(values.transportCost),
+          loadingLabourCost: toNumber(values.laborCost),
+          notes: trimText(values.notes) || undefined,
           items: items.map((item) => ({
             itemId: Number(item.itemId),
             loadedWholeQty: item.loadedWholeQty,
@@ -1002,8 +1131,8 @@ export default function StockDashboard() {
         throw new Error(json.error || json.detail || 'Failed to submit dispatch');
       }
 
-      setDispatchDraft(createInitialDispatchDraft());
-      setDispatchAttachments(createInitialAttachmentState());
+      dispatchForm.reset(createInitialDispatchDraft());
+      resetDispatchAttachments();
       setDispatchSheetOpen(false);
       setDispatchNotice({
         type: 'success',
@@ -1016,8 +1145,8 @@ export default function StockDashboard() {
           entityId: json.shipment?.id,
           documentType: 'sales_invoice',
           file: dispatchAttachments.salesInvoice,
-          documentNumber: trimText(dispatchDraft.invoiceNumber) || undefined,
-          notes: trimText(dispatchDraft.notes) || undefined,
+          documentNumber: trimText(values.invoiceNumber) || undefined,
+          notes: trimText(values.notes) || undefined,
         });
 
         await uploadShipmentDocument({
@@ -1025,8 +1154,8 @@ export default function StockDashboard() {
           entityId: json.shipment?.id,
           documentType: 'gatepass',
           file: dispatchAttachments.gatepass,
-          documentNumber: trimText(dispatchDraft.shipmentNumber) || undefined,
-          notes: trimText(dispatchDraft.notes) || undefined,
+          documentNumber: trimText(values.shipmentNumber) || undefined,
+          notes: trimText(values.notes) || undefined,
         });
       } catch (uploadError) {
         setDispatchNotice({
@@ -1051,6 +1180,20 @@ export default function StockDashboard() {
     } finally {
       setDispatchSubmitting(false);
     }
+  }
+
+  function handleArrivalInvalid() {
+    setArrivalNotice({
+      type: 'error',
+      message: 'Please fix the highlighted purchase fields and try again.',
+    });
+  }
+
+  function handleDispatchInvalid() {
+    setDispatchNotice({
+      type: 'error',
+      message: 'Please fix the highlighted dispatch fields and try again.',
+    });
   }
 
   const tableViewTabs = [
@@ -1498,221 +1641,102 @@ export default function StockDashboard() {
                   disabled={!canCreateArrival}
                   title={!canCreateArrival ? tc.insufficientNewPurchase : undefined}
                 >
-                  + {tc.newPurchase}
+                  <span className="inline-flex items-center gap-1.5">
+                    <Plus className="h-3.5 w-3.5" />
+                    {tc.newPurchase}
+                  </span>
                 </button>
               <SheetContent side="right" className="w-full max-w-none overflow-y-auto md:w-[50vw]">
                 <SheetHeader>
                   <SheetTitle>{tc.logNewPurchase}</SheetTitle>
                   <SheetDescription>{tc.purchaseSheetDesc}</SheetDescription>
                 </SheetHeader>
-                <form className="mt-6 space-y-5" onSubmit={handleArrivalSubmit}>
+                <Form {...arrivalForm}>
+                <form className="mt-6 space-y-5" onSubmit={arrivalForm.handleSubmit(handleArrivalSubmit, handleArrivalInvalid)}>
                   <InlineNotice notice={arrivalNotice} />
                   <div className={FORM_CARD_CLASS}>
-                    <h3 className="text-sm font-semibold text-foreground">{tc.purchaseBasics}</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">{tc.purchaseBasicsDesc}</p>
+                    <FormSectionTitle icon={FileText} title={tc.purchaseBasics} description={tc.purchaseBasicsDesc} />
                     <div className="mt-3 grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className={FORM_LABEL_CLASS}>{t('shipmentNo')}</label>
-                      <input
-                        value={arrivalDraft.shipmentNumber}
-                        onChange={(event) => updateArrivalDraft('shipmentNumber', event.target.value)}
-                        type="text"
-                        autoFocus
-                        className={FORM_INPUT_CLASS}
-                        placeholder="SHP-202X..."
-                      />
+                      <StockFormField control={arrivalForm.control} name="shipmentNumber" label={t('shipmentNo')} placeholder="SHP-202X..." autoFocus />
+                      <StockFormField control={arrivalForm.control} name="supplierName" label={t('supplier')} placeholder="Supplier Name..." />
                     </div>
-                    <div>
-                      <label className={FORM_LABEL_CLASS}>{t('supplier')}</label>
-                      <input
-                        value={arrivalDraft.supplierName}
-                        onChange={(event) => updateArrivalDraft('supplierName', event.target.value)}
-                        type="text"
-                        className={FORM_INPUT_CLASS}
-                        placeholder="Supplier Name..."
-                      />
-                    </div>
-                  </div>
                   </div>
                   <div className={FORM_CARD_CLASS}>
-                    <h3 className="text-sm font-semibold text-foreground">{tc.transportInvoice}</h3>
+                    <FormSectionTitle icon={Truck} title={tc.transportInvoice} />
                     <div className="mt-3 grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className={FORM_LABEL_CLASS}>{t('truck')}</label>
-                      <input
-                        value={arrivalDraft.truckLicensePlate}
-                        onChange={(event) => updateArrivalDraft('truckLicensePlate', event.target.value)}
-                        type="text"
-                        className={FORM_INPUT_CLASS}
-                        placeholder="RJ 14 XY 0000"
+                      <StockFormField control={arrivalForm.control} name="truckLicensePlate" label={t('truck')} placeholder="RJ 14 XY 0000" />
+                      <StockFormField control={arrivalForm.control} name="driverName" label={t('driver')} placeholder="Driver Name..." />
+                      <StockFormField control={arrivalForm.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." />
+                      <StockDateField control={arrivalForm.control} name="invoiceDate" label={tc.invoiceDate} placeholder={tc.invoiceDate} />
+                      <StockFormField control={arrivalForm.control} name="originCity" label={tc.originCity} placeholder="Source city" />
+                      <StockFormField control={arrivalForm.control} name="destinationWarehouseName" label={tc.destinationWarehouse} placeholder="Warehouse name" />
+                      <AttachmentField
+                        label={tc.invoicePhoto}
+                        file={arrivalAttachments.purchaseInvoice}
+                        onChange={(file) => setArrivalAttachment('purchaseInvoice', file)}
+                        hint={tc.invoicePhotoHint}
                       />
-                    </div>
-                    <div>
-                      <label className={FORM_LABEL_CLASS}>{t('driver')}</label>
-                      <input
-                        value={arrivalDraft.driverName}
-                        onChange={(event) => updateArrivalDraft('driverName', event.target.value)}
-                        type="text"
-                        className={FORM_INPUT_CLASS}
-                        placeholder="Driver Name..."
+                      <AttachmentField
+                        label={tc.transporterBillPhoto}
+                        file={arrivalAttachments.transporterBill}
+                        onChange={(file) => setArrivalAttachment('transporterBill', file)}
+                        accept="image/*"
+                        hint={tc.transporterBillHint}
                       />
+                      <StockMoneyField control={arrivalForm.control} name="transportCost" label={t('transportCost')} hint={tc.amountInInr} />
                     </div>
-                    <div>
-                      <label className={FORM_LABEL_CLASS}>{t('invoiceNo')}</label>
-                      <input
-                        value={arrivalDraft.invoiceNumber}
-                        onChange={(event) => updateArrivalDraft('invoiceNumber', event.target.value)}
-                        type="text"
-                        className={FORM_INPUT_CLASS}
-                        placeholder="INV-..."
-                      />
-                    </div>
-                    <div>
-                      <label className={FORM_LABEL_CLASS}>{tc.invoiceDate}</label>
-                      <input
-                        value={arrivalDraft.invoiceDate}
-                        onChange={(event) => updateArrivalDraft('invoiceDate', event.target.value)}
-                        type="date"
-                        className={FORM_INPUT_CLASS}
-                      />
-                    </div>
-                    <div>
-                      <label className={FORM_LABEL_CLASS}>{tc.originCity}</label>
-                      <input
-                        value={arrivalDraft.originCity}
-                        onChange={(event) => updateArrivalDraft('originCity', event.target.value)}
-                        type="text"
-                        className={FORM_INPUT_CLASS}
-                        placeholder="Source city"
-                      />
-                    </div>
-                    <div>
-                      <label className={FORM_LABEL_CLASS}>{tc.destinationWarehouse}</label>
-                      <input
-                        value={arrivalDraft.destinationWarehouseName}
-                        onChange={(event) => updateArrivalDraft('destinationWarehouseName', event.target.value)}
-                        type="text"
-                        className={FORM_INPUT_CLASS}
-                        placeholder="Warehouse name"
-                      />
-                    </div>
-                    <AttachmentField
-                      label={tc.invoicePhoto}
-                      file={arrivalAttachments.purchaseInvoice}
-                      onChange={(file) => setArrivalAttachments((current) => ({ ...current, purchaseInvoice: file }))}
-                      hint={tc.invoicePhotoHint}
-                    />
-                    <AttachmentField
-                      label={tc.transporterBillPhoto}
-                      file={arrivalAttachments.transporterBill}
-                      onChange={(file) => setArrivalAttachments((current) => ({ ...current, transporterBill: file }))}
-                      accept="image/*"
-                      hint={tc.transporterBillHint}
-                    />
-                    <div>
-                      <label className={FORM_LABEL_CLASS}>{t('transportCost')}</label>
-                      <div className="relative mt-1">
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">₹</span>
-                        <input
-                          value={arrivalDraft.transportCost}
-                          onChange={(event) => updateArrivalDraft('transportCost', event.target.value)}
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          className="w-full rounded-xl border border-border bg-background py-2.5 pl-12 pr-3 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <p className="mt-1 text-[11px] text-muted-foreground">{tc.amountInInr}</p>
-                    </div>
-                  </div>
                   </div>
                   <div className={FORM_CARD_CLASS}>
+                    <FormSectionTitle icon={CreditCard} title={tc.paymentStatus} description={language === 'hi' ? 'भुगतान और सहायक विवरण दर्ज करें।' : 'Capture payment state and supporting details.'} />
                     <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className={FORM_LABEL_CLASS}>{tc.paymentStatus}</label>
-                      <select
-                        value={arrivalDraft.paymentStatus}
-                        onChange={(event) => updateArrivalDraft('paymentStatus', event.target.value)}
-                        className={FORM_INPUT_CLASS}
-                      >
-                        <option value="unpaid">{tc.unpaid}</option>
-                        <option value="partial">{tc.partial}</option>
-                        <option value="paid">{tc.paid}</option>
-                      </select>
-                    </div>
-                    {(arrivalDraft.paymentStatus === 'partial' || arrivalDraft.paymentStatus === 'paid') ? (
+                      <FormField
+                        control={arrivalForm.control}
+                        name="paymentStatus"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={FORM_LABEL_CLASS}>{tc.paymentStatus}</FormLabel>
+                            <FormControl>
+                              <Select value={field.value} onValueChange={field.onChange}>
+                                <SelectTrigger className={FORM_INPUT_CLASS}>
+                                  <SelectValue placeholder={tc.paymentStatus} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="unpaid">{tc.unpaid}</SelectItem>
+                                  <SelectItem value="partial">{tc.partial}</SelectItem>
+                                  <SelectItem value="paid">{tc.paid}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+                    {(arrivalPaymentStatus === 'partial' || arrivalPaymentStatus === 'paid') ? (
                       <>
-                        <div>
-                          <label className={FORM_LABEL_CLASS}>{tc.paidAmount}</label>
-                          <input
-                            value={arrivalDraft.paidAmount}
-                            onChange={(event) => updateArrivalDraft('paidAmount', event.target.value)}
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            className={FORM_INPUT_CLASS}
-                            placeholder="0.00"
-                          />
-                        </div>
-                        <div>
-                          <label className={FORM_LABEL_CLASS}>{tc.paymentDate}</label>
-                          <input
-                            value={arrivalDraft.paymentDate}
-                            onChange={(event) => updateArrivalDraft('paymentDate', event.target.value)}
-                            type="date"
-                            className={FORM_INPUT_CLASS}
-                          />
-                        </div>
-                        <div>
-                          <label className={FORM_LABEL_CLASS}>{tc.paymentMode}</label>
-                          <input
-                            value={arrivalDraft.paymentMode}
-                            onChange={(event) => updateArrivalDraft('paymentMode', event.target.value)}
-                            type="text"
-                            className={FORM_INPUT_CLASS}
-                            placeholder="NEFT / UPI / Cash"
-                          />
-                        </div>
-                        <div>
-                          <label className={FORM_LABEL_CLASS}>{tc.paymentReference}</label>
-                          <input
-                            value={arrivalDraft.paymentReference}
-                            onChange={(event) => updateArrivalDraft('paymentReference', event.target.value)}
-                            type="text"
-                            className={FORM_INPUT_CLASS}
-                            placeholder="Txn reference"
-                          />
-                        </div>
+                        <StockMoneyField control={arrivalForm.control} name="paidAmount" label={tc.paidAmount} />
+                        <StockDateField control={arrivalForm.control} name="paymentDate" label={tc.paymentDate} placeholder={tc.paymentDate} />
+                        <StockFormField control={arrivalForm.control} name="paymentMode" label={tc.paymentMode} placeholder="NEFT / UPI / Cash" />
+                        <StockFormField control={arrivalForm.control} name="paymentReference" label={tc.paymentReference} placeholder="Txn reference" />
                       </>
                     ) : null}
-                    <div>
-                      <label className={FORM_LABEL_CLASS}>{t('laborCost')}</label>
-                      <div className="relative mt-1">
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">₹</span>
-                        <input
-                          value={arrivalDraft.laborCost}
-                          onChange={(event) => updateArrivalDraft('laborCost', event.target.value)}
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          className="w-full rounded-xl border border-border bg-background py-2.5 pl-12 pr-3 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <p className="mt-1 text-[11px] text-muted-foreground">{tc.amountInInr}</p>
+                      <StockMoneyField control={arrivalForm.control} name="laborCost" label={t('laborCost')} hint={tc.amountInInr} />
                     </div>
-                  </div>
                   </div>
                   <div className="rounded-2xl border border-border/80 bg-muted/20 p-4">
                     <div className="flex justify-between items-center mb-2 gap-4">
-                      <label className="text-sm font-semibold text-foreground">{t('items')}</label>
+                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <Boxes className="h-4 w-4 text-primary" />
+                        <label>{t('items')}</label>
+                      </div>
                       <button
                         type="button"
                         onClick={addArrivalItemRow}
                         className="rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary transition hover:bg-primary/15"
                       >
-                        {t('addItem')}
+                        <span className="inline-flex items-center gap-1.5">
+                          <Plus className="h-3.5 w-3.5" />
+                          {t('addItem')}
+                        </span>
                       </button>
                     </div>
                     <datalist id="arrival-item-options">
@@ -1723,168 +1747,119 @@ export default function StockDashboard() {
                       ))}
                     </datalist>
                     <div className="space-y-3">
-                      {arrivalDraft.items.map((item, index) => (
-                        <div key={`arrival-item-${index}`} className="space-y-2 rounded-xl border border-border bg-background/70 p-3">
+                      {arrivalItemsFieldArray.fields.map((fieldRow, index) => {
+                        const item = arrivalItems[index] || fieldRow;
+                        const isCatalogItem = Boolean(item?.itemId);
+
+                        return (
+                        <div key={fieldRow.id} className="space-y-2 rounded-xl border border-border bg-background/70 p-3">
                           <div className="flex items-center justify-between gap-4 text-xs font-medium text-muted-foreground">
                             <span>{tc.itemLabel} {index + 1}</span>
-                            <span className={`rounded-full border px-2.5 py-1 ${item.itemId ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
-                              {item.itemId ? tc.autofilledCatalog : tc.newTileEntry}
+                            <span className={`rounded-full border px-2.5 py-1 ${isCatalogItem ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
+                              {isCatalogItem ? tc.autofilledCatalog : tc.newTileEntry}
                             </span>
                           </div>
                           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                             <div className="col-span-2">
-                              <input
-                                value={item.itemName}
-                                onChange={(event) => handleArrivalItemNameChange(index, event.target.value)}
-                                className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                placeholder={tc.typeTileName}
-                                list="arrival-item-options"
-                              />
-                              <div className="mt-1 text-[11px] text-muted-foreground">{tc.itemAutofillHint}</div>
-                            </div>
-                            <div>
-                              <label className="mb-1 block text-xs font-semibold text-muted-foreground">{tc.wholeBox}</label>
-                              <input
-                                value={item.wholeQty}
-                                onChange={(event) => updateArrivalItem(index, 'wholeQty', event.target.value)}
-                                type="number"
-                                min="0"
-                                className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                placeholder="0"
-                              />
-                            </div>
-                            <div>
-                              <label className="mb-1 block text-xs font-semibold text-muted-foreground">{tc.brokenTiles}</label>
-                              <input
-                                value={item.brokenQty}
-                                onChange={(event) => updateArrivalItem(index, 'brokenQty', event.target.value)}
-                                type="number"
-                                min="0"
-                                className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                placeholder="0"
+                              <FormField
+                                control={arrivalForm.control}
+                                name={`items.${index}.itemName`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormControl>
+                                      <Input
+                                        {...field}
+                                        value={field.value ?? ''}
+                                        onChange={(event) => handleArrivalItemNameChange(index, event.target.value)}
+                                        className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                        placeholder={tc.typeTileName}
+                                        list="arrival-item-options"
+                                      />
+                                    </FormControl>
+                                    <div className="mt-1 text-[11px] text-muted-foreground">{tc.itemAutofillHint}</div>
+                                    <FormMessage className="text-xs" />
+                                  </FormItem>
+                                )}
                               />
                             </div>
+                            <FormField
+                              control={arrivalForm.control}
+                              name={`items.${index}.wholeQty`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="mb-1 block text-xs font-semibold text-muted-foreground">{tc.wholeBox}</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} value={field.value ?? ''} type="number" min="0" placeholder="0" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                                  </FormControl>
+                                  <FormMessage className="text-xs" />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={arrivalForm.control}
+                              name={`items.${index}.brokenQty`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="mb-1 block text-xs font-semibold text-muted-foreground">{tc.brokenTiles}</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} value={field.value ?? ''} type="number" min="0" placeholder="0" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                                  </FormControl>
+                                  <FormMessage className="text-xs" />
+                                </FormItem>
+                              )}
+                            />
                           </div>
                           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                            <input
-                              value={item.brandName}
-                              onChange={(event) => updateArrivalItem(index, 'brandName', event.target.value)}
-                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                              placeholder="Brand"
-                              disabled={Boolean(item.itemId)}
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.brandName`} placeholder="Brand" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.divisionName`} placeholder="Division" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.typeName`} placeholder="Type" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.sizeLabel`} placeholder="Size" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
+                            <FormField
+                              control={arrivalForm.control}
+                              name={`items.${index}.sku`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <Input
+                                      {...field}
+                                      value={field.value ?? ''}
+                                      onChange={(event) => handleArrivalItemSkuChange(index, event.target.value)}
+                                      className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                      placeholder="SKU optional"
+                                    />
+                                  </FormControl>
+                                  <FormMessage className="text-xs" />
+                                </FormItem>
+                              )}
                             />
-                            <input
-                              value={item.divisionName}
-                              onChange={(event) => updateArrivalItem(index, 'divisionName', event.target.value)}
-                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                              placeholder="Division"
-                            />
-                            <input
-                              value={item.typeName}
-                              onChange={(event) => updateArrivalItem(index, 'typeName', event.target.value)}
-                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                              placeholder="Type"
-                              disabled={Boolean(item.itemId)}
-                            />
-                            <input
-                              value={item.sizeLabel}
-                              onChange={(event) => updateArrivalItem(index, 'sizeLabel', event.target.value)}
-                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                              placeholder="Size"
-                              disabled={Boolean(item.itemId)}
-                            />
-                            <input
-                              value={item.sku}
-                              onChange={(event) => handleArrivalItemSkuChange(index, event.target.value)}
-                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                              placeholder="SKU optional"
-                            />
-                            <input
-                              value={item.tilesPerBox}
-                              onChange={(event) => updateArrivalItem(index, 'tilesPerBox', event.target.value)}
-                              type="number"
-                              min="0"
-                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                              placeholder="Tiles / box"
-                              disabled={Boolean(item.itemId)}
-                            />
-                            <input
-                              value={item.piecesPerBox}
-                              onChange={(event) => updateArrivalItem(index, 'piecesPerBox', event.target.value)}
-                              type="number"
-                              min="0"
-                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                              placeholder="Pieces / box"
-                              disabled={Boolean(item.itemId)}
-                            />
-                            <input
-                              value={item.reorderLevel}
-                              onChange={(event) => updateArrivalItem(index, 'reorderLevel', event.target.value)}
-                              type="number"
-                              min="0"
-                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                              placeholder="Reorder level"
-                              disabled={Boolean(item.itemId)}
-                            />
-                            <input
-                              value={item.sizeUnit}
-                              onChange={(event) => updateArrivalItem(index, 'sizeUnit', event.target.value)}
-                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                              placeholder="Size unit"
-                              disabled={Boolean(item.itemId)}
-                            />
-                            <input
-                              value={item.hsnCode}
-                              onChange={(event) => updateArrivalItem(index, 'hsnCode', event.target.value)}
-                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                              placeholder="HSN Code"
-                            />
-                            <input
-                              value={item.thicknessMm}
-                              onChange={(event) => updateArrivalItem(index, 'thicknessMm', event.target.value)}
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                              placeholder="Thickness (mm)"
-                            />
-                            <input
-                              value={item.qtySqm}
-                              onChange={(event) => updateArrivalItem(index, 'qtySqm', event.target.value)}
-                              type="number"
-                              min="0"
-                              step="0.001"
-                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                              placeholder="Quantity (sqm)"
-                            />
-                            <input
-                              value={item.costPerSqm}
-                              onChange={(event) => updateArrivalItem(index, 'costPerSqm', event.target.value)}
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                              placeholder="Cost / sqm"
-                            />
-                            <input
-                              value={item.description}
-                              onChange={(event) => updateArrivalItem(index, 'description', event.target.value)}
-                              className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 lg:col-span-2"
-                              placeholder="Description"
-                              disabled={Boolean(item.itemId)}
-                            />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.tilesPerBox`} type="number" placeholder="Tiles / box" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" disabled={isCatalogItem} />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.piecesPerBox`} type="number" placeholder="Pieces / box" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" disabled={isCatalogItem} />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.reorderLevel`} type="number" placeholder="Reorder level" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" disabled={isCatalogItem} />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.sizeUnit`} placeholder="Size unit" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.hsnCode`} placeholder="HSN Code" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.thicknessMm`} type="number" placeholder="Thickness (mm)" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.01" />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.qtySqm`} type="number" placeholder="Quantity (sqm)" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.001" />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.costPerSqm`} type="number" placeholder="Cost / sqm" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.01" />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.description`} placeholder="Description" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 lg:col-span-2" disabled={isCatalogItem} />
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                   <div className={FORM_CARD_CLASS}>
-                    <label className={FORM_LABEL_CLASS}>{t('notes')}</label>
-                    <textarea
-                      value={arrivalDraft.notes}
-                      onChange={(event) => updateArrivalDraft('notes', event.target.value)}
-                      className={FORM_INPUT_CLASS}
-                      rows="2"
+                    <FormField
+                      control={arrivalForm.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className={FORM_LABEL_CLASS}>{t('notes')}</FormLabel>
+                          <FormControl>
+                            <Textarea {...field} value={field.value ?? ''} className={FORM_INPUT_CLASS} rows={2} />
+                          </FormControl>
+                          <FormMessage className="text-xs" />
+                        </FormItem>
+                      )}
                     />
                   </div>
                   <button
@@ -1892,9 +1867,13 @@ export default function StockDashboard() {
                     disabled={arrivalSubmitting}
                     className="mt-4 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {arrivalSubmitting ? tc.submitting : (language === 'hi' ? 'खरीद जमा करें' : 'Submit Purchase')}
+                    <span className="inline-flex items-center gap-2">
+                      <ReceiptText className="h-4 w-4" />
+                      {arrivalSubmitting ? tc.submitting : (language === 'hi' ? 'खरीद जमा करें' : 'Submit Purchase')}
+                    </span>
                   </button>
                 </form>
+                </Form>
               </SheetContent>
             </Sheet>
           </div>
@@ -2097,138 +2076,73 @@ export default function StockDashboard() {
                   }}
                   className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
                 >
-                  + {t('newDispatch')}
+                  <span className="inline-flex items-center gap-1.5">
+                    <Plus className="h-3.5 w-3.5" />
+                    {t('newDispatch')}
+                  </span>
                 </button>
               <SheetContent side="right" className="w-full max-w-none overflow-y-auto md:w-[50vw]">
                 <SheetHeader>
                   <SheetTitle>{t('logNewDispatch')}</SheetTitle>
                   <SheetDescription>{t('logNewDispatchDesc')}</SheetDescription>
                 </SheetHeader>
-                <form className="mt-6 space-y-4" onSubmit={handleDispatchSubmit}>
+                <Form {...dispatchForm}>
+                <form className="mt-6 space-y-4" onSubmit={dispatchForm.handleSubmit(handleDispatchSubmit, handleDispatchInvalid)}>
                   <InlineNotice notice={dispatchNotice} />
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-semibold text-foreground/80">{t('dispatchNo')}</label>
-                      <input
-                        value={dispatchDraft.shipmentNumber}
-                        onChange={(event) => updateDispatchDraft('shipmentNumber', event.target.value)}
-                        type="text"
-                        autoFocus
-                        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                        placeholder="DSP-202X..."
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-foreground/80">{t('customer')}</label>
-                      <input
-                        value={dispatchDraft.customerName}
-                        onChange={(event) => updateDispatchDraft('customerName', event.target.value)}
-                        type="text"
-                        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                        placeholder="Customer Name..."
-                      />
+                  <div className={FORM_CARD_CLASS}>
+                    <FormSectionTitle icon={Send} title={t('logNewDispatch')} description={t('logNewDispatchDesc')} />
+                    <div className="mt-3 grid grid-cols-2 gap-4">
+                      <StockFormField control={dispatchForm.control} name="shipmentNumber" label={t('dispatchNo')} placeholder="DSP-202X..." className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" autoFocus />
+                      <StockFormField control={dispatchForm.control} name="customerName" label={t('customer')} placeholder="Customer Name..." className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-semibold text-foreground/80">{t('truck')}</label>
-                      <input
-                        value={dispatchDraft.truckLicensePlate}
-                        onChange={(event) => updateDispatchDraft('truckLicensePlate', event.target.value)}
-                        type="text"
-                        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                        placeholder="RJ 14 XY 0000"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-foreground/80">{t('driver')}</label>
-                      <input
-                        value={dispatchDraft.driverName}
-                        onChange={(event) => updateDispatchDraft('driverName', event.target.value)}
-                        type="text"
-                        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                        placeholder="Driver Name..."
-                      />
-                    </div>
+                    <StockFormField control={dispatchForm.control} name="truckLicensePlate" label={t('truck')} placeholder="RJ 14 XY 0000" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                    <StockFormField control={dispatchForm.control} name="driverName" label={t('driver')} placeholder="Driver Name..." className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-semibold text-foreground/80">{t('invoiceNo')}</label>
-                      <input
-                        value={dispatchDraft.invoiceNumber}
-                        onChange={(event) => updateDispatchDraft('invoiceNumber', event.target.value)}
-                        type="text"
-                        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                        placeholder="INV-..."
-                      />
-                    </div>
+                  <div className={FORM_CARD_CLASS}>
+                    <FormSectionTitle icon={Truck} title={language === 'hi' ? 'डिस्पैच और वाहन' : 'Dispatch And Vehicle'} />
+                    <div className="mt-3 grid grid-cols-2 gap-4">
+                    <StockFormField control={dispatchForm.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                    <StockDateTimeField control={dispatchForm.control} name="dispatchDate" label={tc.date} placeholder={tc.date} className="mt-1" />
                     <AttachmentField
                       label={tc.salesInvoicePhoto}
                       file={dispatchAttachments.salesInvoice}
-                      onChange={(file) => setDispatchAttachments((current) => ({ ...current, salesInvoice: file }))}
+                      onChange={(file) => setDispatchAttachment('salesInvoice', file)}
                       hint={tc.salesInvoiceHint}
                     />
                     <AttachmentField
                       label={tc.gatepassPhoto}
                       file={dispatchAttachments.gatepass}
-                      onChange={(file) => setDispatchAttachments((current) => ({ ...current, gatepass: file }))}
+                      onChange={(file) => setDispatchAttachment('gatepass', file)}
                       accept="image/*"
                       hint={tc.gatepassHint}
                     />
-                    <div>
-                      <label className="text-xs font-semibold text-foreground/80">{t('salesperson')}</label>
-                      <input
-                        value={dispatchDraft.salespersonName}
-                        onChange={(event) => updateDispatchDraft('salespersonName', event.target.value)}
-                        type="text"
-                        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                        placeholder="Salesperson..."
-                      />
+                    <StockFormField control={dispatchForm.control} name="salespersonName" label={t('salesperson')} placeholder="Salesperson..." className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-semibold text-foreground/80">{t('transportCost')}</label>
-                      <div className="relative mt-1">
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">₹</span>
-                        <input
-                          value={dispatchDraft.transportCost}
-                          onChange={(event) => updateDispatchDraft('transportCost', event.target.value)}
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          className="w-full rounded-xl border border-border bg-background pl-12 pr-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <p className="mt-1 text-[11px] text-muted-foreground">{tc.amountInInr}</p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-foreground/80">{t('laborCost')}</label>
-                      <div className="relative mt-1">
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">₹</span>
-                        <input
-                          value={dispatchDraft.laborCost}
-                          onChange={(event) => updateDispatchDraft('laborCost', event.target.value)}
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          className="w-full rounded-xl border border-border bg-background pl-12 pr-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <p className="mt-1 text-[11px] text-muted-foreground">{tc.amountInInr}</p>
+                  <div className={FORM_CARD_CLASS}>
+                    <FormSectionTitle icon={CreditCard} title={language === 'hi' ? 'खर्च' : 'Charges'} />
+                    <div className="mt-3 grid grid-cols-2 gap-4">
+                    <StockMoneyField control={dispatchForm.control} name="transportCost" label={t('transportCost')} hint={tc.amountInInr} />
+                    <StockMoneyField control={dispatchForm.control} name="laborCost" label={t('laborCost')} hint={tc.amountInInr} />
                     </div>
                   </div>
-                  <div className="border-t pt-4">
+                  <div className={`${FORM_CARD_CLASS} border-t pt-4`}>
                     <div className="flex justify-between items-center mb-2 gap-4">
-                      <label className="text-sm font-semibold text-foreground">{t('items')}</label>
+                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <Boxes className="h-4 w-4 text-primary" />
+                        <label>{t('items')}</label>
+                      </div>
                       <button
                         type="button"
                         onClick={addDispatchItemRow}
                         className="text-primary text-xs font-semibold hover:underline"
                       >
-                        {t('addItem')}
+                        <span className="inline-flex items-center gap-1.5">
+                          <Plus className="h-3.5 w-3.5" />
+                          {t('addItem')}
+                        </span>
                       </button>
                     </div>
                     <div className="grid grid-cols-4 gap-2 items-center mb-2">
@@ -2237,68 +2151,91 @@ export default function StockDashboard() {
                       <div className="text-xs font-semibold text-muted-foreground">{t('broken')}</div>
                     </div>
                     <div className="space-y-3">
-                      {dispatchDraft.items.map((item, index) => (
-                        <div key={`dispatch-item-${index}`} className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+                      {dispatchItemsFieldArray.fields.map((fieldRow, index) => (
+                        <div key={fieldRow.id} className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
                           <div className="flex items-center justify-between gap-4 text-xs font-medium text-muted-foreground">
                             <span>Item {index + 1}</span>
                           </div>
                           <div className="grid grid-cols-4 gap-2 items-center">
                             <div className="col-span-2">
-                              <select
-                                value={item.itemId}
-                                onChange={(event) => updateDispatchItem(index, 'itemId', event.target.value)}
-                                className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                              >
-                                <option value="">{t('selectItem')}</option>
-                                {data?.activeItems?.map((stockItem) => (
-                                  <option key={stockItem.id} value={stockItem.id}>
-                                    {stockItem.sku} - {stockItem.name}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
-                              <input
-                                value={item.loadedWholeQty}
-                                onChange={(event) => updateDispatchItem(index, 'loadedWholeQty', event.target.value)}
-                                type="number"
-                                min="0"
-                                className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                placeholder="0"
+                              <FormField
+                                control={dispatchForm.control}
+                                name={`items.${index}.itemId`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormControl>
+                                      <Select value={field.value || undefined} onValueChange={field.onChange}>
+                                        <SelectTrigger className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20">
+                                          <SelectValue placeholder={t('selectItem')} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {(data?.activeItems || []).map((stockItem) => (
+                                            <SelectItem key={stockItem.id} value={String(stockItem.id)}>
+                                              {stockItem.sku} - {stockItem.name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </FormControl>
+                                    <FormMessage className="text-xs" />
+                                  </FormItem>
+                                )}
                               />
                             </div>
-                            <div>
-                              <input
-                                value={item.loadedBrokenQty}
-                                onChange={(event) => updateDispatchItem(index, 'loadedBrokenQty', event.target.value)}
-                                type="number"
-                                min="0"
-                                className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                placeholder="0"
-                              />
-                            </div>
+                            <FormField
+                              control={dispatchForm.control}
+                              name={`items.${index}.loadedWholeQty`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <Input {...field} value={field.value ?? ''} type="number" min="0" placeholder="0" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                                  </FormControl>
+                                  <FormMessage className="text-xs" />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={dispatchForm.control}
+                              name={`items.${index}.loadedBrokenQty`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <Input {...field} value={field.value ?? ''} type="number" min="0" placeholder="0" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                                  </FormControl>
+                                  <FormMessage className="text-xs" />
+                                </FormItem>
+                              )}
+                            />
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
-                  <div>
-                    <label className="text-xs font-semibold text-foreground/80">{t('notes')}</label>
-                    <textarea
-                      value={dispatchDraft.notes}
-                      onChange={(event) => updateDispatchDraft('notes', event.target.value)}
-                      className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      rows="2"
-                    />
-                  </div>
+                  <FormField
+                    control={dispatchForm.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs font-semibold text-foreground/80">{t('notes')}</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} value={field.value ?? ''} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" rows={2} />
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
                   <button
                     type="submit"
                     disabled={dispatchSubmitting}
                     className="mt-4 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {dispatchSubmitting ? tc.submitting : t('submitDispatch')}
+                    <span className="inline-flex items-center gap-2">
+                      <Send className="h-4 w-4" />
+                      {dispatchSubmitting ? tc.submitting : t('submitDispatch')}
+                    </span>
                   </button>
                 </form>
+                </Form>
               </SheetContent>
             </Sheet>
           </div>
