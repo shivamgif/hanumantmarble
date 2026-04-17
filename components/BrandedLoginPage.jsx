@@ -3,13 +3,13 @@
 import { authClient, getDefaultSocialProvider, getLogoutHref, useAuthUser } from '@/lib/auth-client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRight, LogIn, LogOut, Shield, Sparkles, User } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
-export default function BrandedLoginPage({ returnTo = '/' }) {
+export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
   const { user, error, isLoading } = useAuthUser();
   const router = useRouter();
   const [signInError, setSignInError] = useState('');
@@ -127,12 +127,12 @@ export default function BrandedLoginPage({ returnTo = '/' }) {
   }
 
   useEffect(() => {
-    if (user && returnTo) {
+    if (user && returnTo && !isInline) {
       if (typeof window !== 'undefined' && window.location.pathname !== returnTo) {
         router.replace(returnTo);
       }
     }
-  }, [user, returnTo, router]);
+  }, [user, returnTo, router, isInline]);
 
   useEffect(() => {
     document.cookie = 'hm-login-return-to=; Path=/; Max-Age=0; SameSite=Lax';

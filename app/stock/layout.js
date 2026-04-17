@@ -166,7 +166,7 @@ export default function StockLayout({ children }) {
   }
 
   if (!user) {
-    return <BrandedLoginPage returnTo="/stock" />;
+    return <BrandedLoginPage returnTo="/stock" isInline />;
   }
 
   if (accessLoading && !hasResolvedAccessOnce) {
