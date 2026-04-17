@@ -128,7 +128,9 @@ export default function BrandedLoginPage({ returnTo = '/' }) {
 
   useEffect(() => {
     if (user && returnTo) {
-      router.replace(returnTo);
+      if (typeof window !== 'undefined' && window.location.pathname !== returnTo) {
+        router.replace(returnTo);
+      }
     }
   }, [user, returnTo, router]);
 
