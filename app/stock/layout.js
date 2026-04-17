@@ -49,6 +49,7 @@ export default function StockLayout({ children }) {
   const router = useRouter();
   const dashboardSearchRef = useRef(null);
   const [accessLoading, setAccessLoading] = useState(true);
+  const [hasResolvedAccessOnce, setHasResolvedAccessOnce] = useState(false);
   const [accessApproved, setAccessApproved] = useState(false);
   const [accessMessage, setAccessMessage] = useState('');
   const [accessRole, setAccessRole] = useState('stock_maintainer');
@@ -195,7 +196,9 @@ export default function StockLayout({ children }) {
         return;
       }
 
-      setAccessLoading(true);
+      if (!hasResolvedAccessOnce) {
+        setAccessLoading(true);
+      }
       try {
         const response = await fetch('/api/stock/access', { cache: 'no-store' });
         const result = await response.json();
@@ -207,12 +210,14 @@ export default function StockLayout({ children }) {
         if (!response.ok) {
           setAccessApproved(false);
           setAccessMessage(result.error || t('accessFallback'));
+          setHasResolvedAccessOnce(true);
           return;
         }
 
         setAccessApproved(Boolean(result.approved));
         setAccessMessage(result.message || t('accessPendingFallback'));
         setAccessRole(result.role || 'stock_maintainer');
+        setHasResolvedAccessOnce(true);
       } catch (accessError) {
         if (!mounted) {
           return;
@@ -220,6 +225,7 @@ export default function StockLayout({ children }) {
 
         setAccessApproved(false);
         setAccessMessage(accessError.message || t('accessFallback'));
+        setHasResolvedAccessOnce(true);
       } finally {
         if (mounted) {
           setAccessLoading(false);
@@ -232,7 +238,7 @@ export default function StockLayout({ children }) {
     return () => {
       mounted = false;
     };
-  }, [user]);
+  }, [hasResolvedAccessOnce, user]);
 
   async function loadNotifications({ silent = false } = {}) {
     if (!silent) {
@@ -384,7 +390,7 @@ export default function StockLayout({ children }) {
     return <BrandedLoginPage returnTo="/stock" />;
   }
 
-  if (accessLoading) {
+  if (accessLoading && !hasResolvedAccessOnce) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
