@@ -17,6 +17,7 @@ import {
   Plus,
   ReceiptText,
   Send,
+  Sparkles,
   Truck,
   UploadCloud,
 } from 'lucide-react';
@@ -1752,14 +1753,14 @@ export default function StockDashboard() {
                         const isCatalogItem = Boolean(item?.itemId);
 
                         return (
-                        <div key={fieldRow.id} className="space-y-2 rounded-xl border border-border bg-background/70 p-3">
-                          <div className="flex items-center justify-between gap-4 text-xs font-medium text-muted-foreground">
+                        <div key={fieldRow.id} className="space-y-4 rounded-2xl border border-border bg-background/80 p-4 shadow-sm">
+                          <div className="flex flex-wrap items-center justify-between gap-4 text-xs font-medium text-muted-foreground">
                             <span>{tc.itemLabel} {index + 1}</span>
                             <span className={`rounded-full border px-2.5 py-1 ${isCatalogItem ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
                               {isCatalogItem ? tc.autofilledCatalog : tc.newTileEntry}
                             </span>
                           </div>
-                          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                          <div className="grid gap-3 md:grid-cols-[minmax(0,1.6fr)_minmax(140px,0.8fr)_minmax(140px,0.8fr)]">
                             <div className="col-span-2">
                               <FormField
                                 control={arrivalForm.control}
@@ -1809,11 +1810,16 @@ export default function StockDashboard() {
                               )}
                             />
                           </div>
-                          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.brandName`} placeholder="Brand" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.divisionName`} placeholder="Division" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.typeName`} placeholder="Type" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.sizeLabel`} placeholder="Size" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
+                          <div className="rounded-xl border border-border/70 bg-muted/30 p-3">
+                            <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-foreground/70">
+                              <Sparkles className="h-3.5 w-3.5 text-primary" />
+                              {isCatalogItem ? 'Catalog Details' : 'New Tile Details'}
+                            </div>
+                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.brandName`} label="Brand" placeholder="Brand" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.divisionName`} label="Division" placeholder="Division" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.typeName`} label="Type" placeholder="Type" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.sizeLabel`} label="Size" placeholder="800x800" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
                             <FormField
                               control={arrivalForm.control}
                               name={`items.${index}.sku`}
@@ -1832,15 +1838,16 @@ export default function StockDashboard() {
                                 </FormItem>
                               )}
                             />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.tilesPerBox`} type="number" placeholder="Tiles / box" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" disabled={isCatalogItem} />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.piecesPerBox`} type="number" placeholder="Pieces / box" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" disabled={isCatalogItem} />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.reorderLevel`} type="number" placeholder="Reorder level" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" disabled={isCatalogItem} />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.sizeUnit`} placeholder="Size unit" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.hsnCode`} placeholder="HSN Code" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.thicknessMm`} type="number" placeholder="Thickness (mm)" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.01" />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.qtySqm`} type="number" placeholder="Quantity (sqm)" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.001" />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.costPerSqm`} type="number" placeholder="Cost / sqm" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.01" />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.description`} placeholder="Description" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 lg:col-span-2" disabled={isCatalogItem} />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.tilesPerBox`} label="Tiles / box" type="number" placeholder="2" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" disabled={isCatalogItem} />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.piecesPerBox`} label="Pieces / box" type="number" placeholder="2" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" disabled={isCatalogItem} />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.reorderLevel`} label="Reorder level" type="number" placeholder="20" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" disabled={isCatalogItem} />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.sizeUnit`} label="Size unit" placeholder="mm" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.hsnCode`} label="HSN Code" placeholder="HSN Code" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.thicknessMm`} label="Thickness (mm)" type="number" placeholder="Thickness (mm)" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.01" />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.qtySqm`} label="Quantity (sqm)" type="number" placeholder="Quantity (sqm)" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.001" />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.costPerSqm`} label="Cost / sqm" type="number" placeholder="Cost / sqm" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.01" />
+                            <StockFormField control={arrivalForm.control} name={`items.${index}.description`} label="Description" placeholder="Description" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 lg:col-span-2" disabled={isCatalogItem} />
+                            </div>
                           </div>
                         </div>
                         );
