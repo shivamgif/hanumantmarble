@@ -4,7 +4,7 @@ import { authClient, getDefaultSocialProvider, getLogoutHref, useAuthUser } from
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowRight, LogIn, LogOut, Shield, Sparkles, User } from 'lucide-react';
+import { Github, ArrowRight, LogIn, LogOut, Shield, Sparkles, User } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -196,49 +196,13 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
       <div className="relative z-10 w-full max-w-5xl">
         <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-stretch">
           <section className="overflow-hidden rounded-[2rem] border border-border bg-card shadow-xl">
-            <div className="h-full p-8 sm:p-10 lg:p-12">
-              <div className="mb-6 flex items-center gap-3">
-                <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-border bg-muted/40">
-                  <img src="/logo.png" alt="Hanumant Marble logo" className="h-full w-full object-contain p-1.5" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">Hanumant Marble</p>
-                  <h1 className="text-2xl font-bold text-foreground">Stock access portal</h1>
-                </div>
+            <div className="h-full p-3 sm:p-10 lg:p-12">
+              <div className="mb-4 flex justify-center items-center gap-3">
+                  <h1 className="text-3xl font-bold text-foreground">Stock Portal</h1>
               </div>
 
-              <Badge variant="outline" className="mb-6 rounded-full border-primary/20 bg-primary/10 px-4 py-2 text-primary">
-                <Sparkles className="mr-2 h-4 w-4" />
-                {returnTo.startsWith('/stock') ? 'Stock access' : 'Sign in'}
-              </Badge>
 
-              <div className="max-w-xl space-y-4">
-                <p className="text-4xl font-black tracking-tight sm:text-5xl">
-                  Sign in to continue.
-                </p>
-                <p className="max-w-lg text-base leading-7 text-muted-foreground">
-                  You’ll be redirected to the secure Better Auth flow, then returned here automatically.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          <section className="flex h-full items-stretch rounded-[2rem] border border-border bg-card shadow-xl">
-            <Card className="w-full border-0 bg-transparent shadow-none">
-              <CardContent className="flex h-full flex-col justify-between p-8 sm:p-10">
-                <div>
-                  <div className="mb-4 inline-flex rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    {returnTo.startsWith('/stock') ? 'Stock login' : 'Website login'}
-                  </div>
-
-                  <div className="mb-8">
-                    <h2 className="text-2xl font-bold text-foreground">Continue to your account</h2>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      Sign in securely through Better Auth and return to your requested page.
-                    </p>
-                  </div>
-
-                  {user ? (
+               {user ? (
                     <div className="space-y-6">
                       <div className="rounded-3xl border border-border bg-muted/40 p-6 text-center">
                         <div className="relative mx-auto mb-4 h-24 w-24 overflow-hidden rounded-full border border-border bg-background">
@@ -271,54 +235,19 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
                     </div>
                   ) : (
                     <div className="space-y-6">
-                      <div className="rounded-3xl border border-border bg-muted/40 p-6">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                            <LogIn className="h-6 w-6" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-foreground">Secure sign-in</p>
-                            <p className="text-xs text-muted-foreground">Better Auth keeps credentials and authentication hosted.</p>
-                          </div>
-                        </div>
-                      </div>
+                      
 
-                      {socialProvider ? (
-                        <Button
-                          className="h-12 w-full rounded-full bg-primary text-base text-primary-foreground shadow-lg transition hover:bg-primary/90"
-                          type="button"
-                          onClick={startSignIn}
-                          disabled={isSocialSubmitting || isSocialCooldownActive}
-                        >
-                          {isSocialCooldownActive ? `Try again in ${socialCooldownSeconds}s` : `Sign in with ${socialProvider}`}
-                          <ArrowRight className="h-5 w-5" />
-                        </Button>
-                      ) : (
-                        <div className="rounded-xl border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                          Social sign-in is currently unavailable.
-                        </div>
-                      )}
+                      
 
-                      <div className="rounded-3xl border border-border bg-background/80 p-4">
-                        <div className="mb-3 flex items-center justify-between">
-                          <p className="text-sm font-semibold text-foreground">Email and password</p>
-                          <button
-                            type="button"
-                            className="text-xs font-medium text-primary hover:underline"
-                            onClick={() => setAuthMode((current) => (current === 'signin' ? 'signup' : 'signin'))}
-                          >
-                            {authMode === 'signin' ? 'Create account' : 'Have an account? Sign in'}
-                          </button>
-                        </div>
-
-                        <form className="space-y-2.5" onSubmit={handleEmailPasswordAuth}>
+                      <div>
+                        <form className="space-y-3" onSubmit={handleEmailPasswordAuth}>
                           {authMode === 'signup' ? (
                             <input
                               type="text"
                               value={name}
                               onChange={(event) => setName(event.target.value)}
                               placeholder="Full name"
-                              className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary"
+                              className="w-full rounded-xl border border-border bg-card p-3 text-sm outline-none focus:border-primary"
                               autoComplete="name"
                             />
                           ) : null}
@@ -327,7 +256,7 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
                             value={email}
                             onChange={(event) => setEmail(event.target.value)}
                             placeholder="Email"
-                            className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary"
+                            className="w-full rounded-xl border border-border bg-card p-3 text-sm outline-none focus:border-primary"
                             autoComplete="email"
                           />
                           <input
@@ -335,7 +264,7 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
                             value={password}
                             onChange={(event) => setPassword(event.target.value)}
                             placeholder="Password"
-                            className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary"
+                            className="w-full rounded-xl border border-border bg-card p-3 text-sm outline-none focus:border-primary"
                             autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
                           />
                           <Button
@@ -348,7 +277,38 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
                               : (authMode === 'signin' ? 'Sign in with email' : 'Sign up with email')}
                           </Button>
                         </form>
+                        <div className="m-3 flex justify-center items-center">
+                          <button
+                            type="button"
+                            className="text-xs font-medium text-primary hover:underline"
+                            onClick={() => setAuthMode((current) => (current === 'signin' ? 'signup' : 'signin'))}
+                          >
+                            {authMode === 'signin' ? 'Create account' : 'Have an account? Sign in'}
+                          </button>
+                        </div>
                       </div>
+                      <span className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                        <p className="h-px flex-1 bg-border" />
+                        Or continue with
+                        <p className="h-px flex-1 bg-border" />
+                      </span>
+                      {socialProvider ? (
+                        <div className="flex items-center justify-center gap-4">
+                        <Button
+                          className="h-14 w-14 rounded-full text-center bg-transparent border border-primary text-base text-primary-foreground shadow-lg transition hover:bg-primary/90"
+                          type="button"
+                          onClick={startSignIn}
+                          disabled={isSocialSubmitting || isSocialCooldownActive}
+                        >
+                          {isSocialCooldownActive ? `Try again in ${socialCooldownSeconds}s` : ''}
+                          <Github className="h-6" />
+                        </Button>
+                      </div>
+                      ) : (
+                        <div className="rounded-xl border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                          Social sign-in is currently unavailable.
+                        </div>
+                      )}
 
                       {signInError ? (
                         <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
@@ -359,16 +319,7 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
                       <p className="text-center text-xs text-muted-foreground">Use the same login for stock access and the rest of the site.</p>
                     </div>
                   )}
-                </div>
-
-                <div className="mt-8 flex items-center justify-between border-t border-border pt-6 text-xs text-muted-foreground">
-                  <span>Hanumant Marble</span>
-                  <Link href={returnTo} className="font-medium text-primary hover:underline">
-                    Return target: {returnTo}
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
+            </div>
           </section>
         </div>
       </div>

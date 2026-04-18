@@ -167,6 +167,7 @@
       "submitArrival": "जमा करें",
       "status": "स्थिति",
       "dispatches": "डिस्पैच (निकासी)",
+      "purchases": "खरीद",
       "newDispatch": "डिस्पैच दर्ज करें",
       "logNewDispatch": "नया डिस्पैच दर्ज करें",
       "logNewDispatchDesc": "डिलीवरी के लिए यार्ड से जाने वाले माल का रिकॉर्ड करें",

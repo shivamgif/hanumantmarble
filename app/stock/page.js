@@ -330,7 +330,6 @@ function AttachmentField({ label, accept = 'image/*,.pdf', onChange, file, hint 
   return (
     <label className="block cursor-pointer">
       <span className={`${FORM_LABEL_CLASS} mb-2 flex items-center gap-2`}>
-        <UploadCloud className="h-3.5 w-3.5 text-primary" />
         {label}
       </span>
       <input
@@ -569,7 +568,7 @@ export default function StockDashboard() {
   const [arrivalSort, setArrivalSort] = useState({ key: 'datetime', direction: 'desc' });
   const [dispatchSort, setDispatchSort] = useState({ key: 'datetime', direction: 'desc' });
   const [stockSort, setStockSort] = useState({ key: 'sku', direction: 'asc' });
-  const [activeTableView, setActiveTableView] = useState('items');
+  const [activeTableView, setActiveTableView] = useState('dispatches');
   const [processedDeepLink, setProcessedDeepLink] = useState('');
   const [highlightedShipmentKey, setHighlightedShipmentKey] = useState(null);
   const [arrivalExpandedId, setArrivalExpandedId] = useState(null);
@@ -1198,9 +1197,9 @@ export default function StockDashboard() {
   }
 
   const tableViewTabs = [
-    { id: 'items', label: t('currentStock') },
-    { id: 'purchases', label: 'Purchases' },
     { id: 'dispatches', label: t('dispatches') },
+    { id: 'purchases', label: t('purchases') },
+    { id: 'items', label: t('currentStock') },
   ];
 
   const purchaseSourceRows = data?.recentPurchases || data?.recentArrivals || [];
@@ -1500,11 +1499,10 @@ export default function StockDashboard() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTableView(tab.id)}
-                className={`whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold transition ${
-                  isActive
-                    ? 'bg-primary text-primary-foreground shadow-sm duration-300'
-                    : 'text-muted-foreground duration-300 hover:bg-muted/80 hover:text-foreground'
-                }`}
+                className={`whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold transition ${isActive
+                  ? 'bg-primary text-primary-foreground shadow-sm duration-300'
+                  : 'text-muted-foreground duration-300 hover:bg-muted/80 hover:text-foreground'
+                  }`}
                 aria-label={`Switch to ${tab.label}`}
               >
                 {tab.label}
@@ -1515,122 +1513,122 @@ export default function StockDashboard() {
       </div>
       {activeTableView === 'items' && (
         <div className="stock-tab-panel" key="stock-panel-items">
-        <div id="current-stock" className="overflow-hidden scroll-mt-6 rounded-2xl border border-slate-200/60 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-900/40">
-          <h2 className="text-base font-semibold text-foreground">{t('currentStock')}</h2>
-          <span className="text-xs text-muted-foreground">{data?.activeItems?.length || 0} {t('items')}</span>
-        </div>
-        <div className="border-b border-slate-100 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
-          <input
-            type="search"
-            value={stockSearch}
-            onChange={(event) => setStockSearch(event.target.value)}
-            placeholder={tc.searchItems}
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-          />
-        </div>
-        <div className="overflow-x-auto max-h-[500px]">
-          <table className="w-full text-xs text-left whitespace-nowrap">
-            <thead className="sticky top-0 bg-slate-50/90 font-medium text-slate-600 dark:bg-slate-900/90 dark:text-slate-300">
-              <tr>
-                <th className="px-3 py-2">
-                  <button type="button" onClick={() => toggleSort(stockSort, setStockSort, 'sku')} className="font-medium hover:text-foreground">
-                    {t('sku')}
-                  </button>
-                </th>
-                <th className="px-3 py-2">
-                  <button type="button" onClick={() => toggleSort(stockSort, setStockSort, 'name')} className="font-medium hover:text-foreground">
-                    {t('name')}
-                  </button>
-                </th>
-                <th className="px-3 py-2">
-                  <button type="button" onClick={() => toggleSort(stockSort, setStockSort, 'size')} className="font-medium hover:text-foreground">
-                    {t('size')}
-                  </button>
-                </th>
-                <th className="px-3 py-2 text-right">
-                  <button type="button" onClick={() => toggleSort(stockSort, setStockSort, 'whole')} className="font-medium hover:text-foreground">
-                    {t('whole')}
-                  </button>
-                </th>
-                <th className="px-3 py-2 text-right">
-                  <button type="button" onClick={() => toggleSort(stockSort, setStockSort, 'broken')} className="font-medium hover:text-foreground">
-                    {t('broken')}
-                  </button>
-                </th>
-                <th className="px-3 py-2 text-right">
-                  <button type="button" onClick={() => toggleSort(stockSort, setStockSort, 'reorder')} className="font-medium hover:text-foreground">
-                    {t('reorder')}
-                  </button>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {stockPagination.rows.map((item) => (
-                <tr
-                  key={item.id}
-                  className="cursor-pointer bg-white transition hover:bg-slate-50 focus-within:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/40 dark:focus-within:bg-slate-800/40"
-                  onClick={() => openStockItemPreview(item)}
-                  tabIndex={0}
-                  role="button"
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      openStockItemPreview(item);
-                    }
-                  }}
-                  title="Click to preview"
-                >
-                  <td className="border-r border-slate-100 px-3 py-2 font-mono font-medium text-foreground dark:border-slate-800">{item.sku}</td>
-                  <td className="px-3 py-2 truncate max-w-[200px]" title={item.name}>{item.name}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{item.size_label}</td>
-                  <td className="px-3 py-2 text-right font-semibold text-foreground">{item.current_whole_qty}</td>
-                  <td className="px-3 py-2 text-right text-amber-600">{item.current_broken_qty}</td>
-                  <td className="px-3 py-2 text-right text-muted-foreground">{item.reorder_level}</td>
-                </tr>
-              ))}
-              {stockPagination.total === 0 ? (
-                <tr>
-                  <td colSpan="6" className="px-3 py-10">
-                    <div className="flex flex-col items-center justify-center gap-3 text-center">
-                      <Boxes className="h-6 w-6 text-slate-400" />
-                      <p className="text-sm text-slate-500 dark:text-slate-400">{tc.noStockItems}</p>
-                      <button
-                        type="button"
-                        onClick={() => setStockSearch('')}
-                        className="rounded-xl bg-[#E07A00] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#c96d00] focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20"
-                      >
-                        {tc.resetSearch}
+          <div id="current-stock" className="overflow-hidden scroll-mt-6 rounded-2xl border border-slate-200/60 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-900/40">
+              <h2 className="text-base font-semibold text-foreground">{t('currentStock')}</h2>
+              <span className="text-xs text-muted-foreground">{data?.activeItems?.length || 0} {t('items')}</span>
+            </div>
+            <div className="border-b border-slate-100 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
+              <input
+                type="search"
+                value={stockSearch}
+                onChange={(event) => setStockSearch(event.target.value)}
+                placeholder={tc.searchItems}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+              />
+            </div>
+            <div className="overflow-x-auto max-h-[500px]">
+              <table className="w-full text-xs text-left whitespace-nowrap">
+                <thead className="sticky top-0 bg-slate-50/90 font-medium text-slate-600 dark:bg-slate-900/90 dark:text-slate-300">
+                  <tr>
+                    <th className="px-3 py-2">
+                      <button type="button" onClick={() => toggleSort(stockSort, setStockSort, 'sku')} className="font-medium hover:text-foreground">
+                        {t('sku')}
                       </button>
-                    </div>
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-        <PaginationControls
-          page={stockPagination.page}
-          pageCount={stockPagination.pageCount}
-          total={stockPagination.total}
-          pageSize={DEFAULT_PAGE_SIZE}
-          onPageChange={setStockPage}
-          labels={{
-            showing: tc.paginationShowing,
-            of: tc.paginationOf,
-            previous: tc.paginationPrevious,
-            next: tc.paginationNext,
-            page: tc.paginationPage,
-          }}
-        />
-      </div>
+                    </th>
+                    <th className="px-3 py-2">
+                      <button type="button" onClick={() => toggleSort(stockSort, setStockSort, 'name')} className="font-medium hover:text-foreground">
+                        {t('name')}
+                      </button>
+                    </th>
+                    <th className="px-3 py-2">
+                      <button type="button" onClick={() => toggleSort(stockSort, setStockSort, 'size')} className="font-medium hover:text-foreground">
+                        {t('size')}
+                      </button>
+                    </th>
+                    <th className="px-3 py-2 text-right">
+                      <button type="button" onClick={() => toggleSort(stockSort, setStockSort, 'whole')} className="font-medium hover:text-foreground">
+                        {t('whole')}
+                      </button>
+                    </th>
+                    <th className="px-3 py-2 text-right">
+                      <button type="button" onClick={() => toggleSort(stockSort, setStockSort, 'broken')} className="font-medium hover:text-foreground">
+                        {t('broken')}
+                      </button>
+                    </th>
+                    <th className="px-3 py-2 text-right">
+                      <button type="button" onClick={() => toggleSort(stockSort, setStockSort, 'reorder')} className="font-medium hover:text-foreground">
+                        {t('reorder')}
+                      </button>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {stockPagination.rows.map((item) => (
+                    <tr
+                      key={item.id}
+                      className="cursor-pointer bg-white transition hover:bg-slate-50 focus-within:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/40 dark:focus-within:bg-slate-800/40"
+                      onClick={() => openStockItemPreview(item)}
+                      tabIndex={0}
+                      role="button"
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          openStockItemPreview(item);
+                        }
+                      }}
+                      title="Click to preview"
+                    >
+                      <td className="border-r border-slate-100 px-3 py-2 font-mono font-medium text-foreground dark:border-slate-800">{item.sku}</td>
+                      <td className="px-3 py-2 truncate max-w-[200px]" title={item.name}>{item.name}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{item.size_label}</td>
+                      <td className="px-3 py-2 text-right font-semibold text-foreground">{item.current_whole_qty}</td>
+                      <td className="px-3 py-2 text-right text-amber-600">{item.current_broken_qty}</td>
+                      <td className="px-3 py-2 text-right text-muted-foreground">{item.reorder_level}</td>
+                    </tr>
+                  ))}
+                  {stockPagination.total === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="px-3 py-10">
+                        <div className="flex flex-col items-center justify-center gap-3 text-center">
+                          <Boxes className="h-6 w-6 text-slate-400" />
+                          <p className="text-sm text-slate-500 dark:text-slate-400">{tc.noStockItems}</p>
+                          <button
+                            type="button"
+                            onClick={() => setStockSearch('')}
+                            className="rounded-xl bg-[#E07A00] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#c96d00] focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20"
+                          >
+                            {tc.resetSearch}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+            <PaginationControls
+              page={stockPagination.page}
+              pageCount={stockPagination.pageCount}
+              total={stockPagination.total}
+              pageSize={DEFAULT_PAGE_SIZE}
+              onPageChange={setStockPage}
+              labels={{
+                showing: tc.paginationShowing,
+                of: tc.paginationOf,
+                previous: tc.paginationPrevious,
+                next: tc.paginationNext,
+                page: tc.paginationPage,
+              }}
+            />
+          </div>
         </div>
       )}
       {activeTableView === 'purchases' && (
         <div className="stock-tab-panel" key="stock-panel-purchases">
-        <section id="purchases" className="flex h-full flex-col overflow-hidden scroll-mt-6 rounded-2xl border border-slate-200/60 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-          <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-900/40">
-            <h2 className="text-base font-semibold text-foreground">{tc.purchases}</h2>
+          <section id="purchases" className="flex h-full flex-col overflow-hidden scroll-mt-6 rounded-2xl border border-slate-200/60 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-900/40">
+              <h2 className="text-base font-semibold text-foreground">{tc.purchases}</h2>
               <Sheet open={arrivalSheetOpen} onOpenChange={setArrivalSheetOpen}>
                 <button
                   type="button"
@@ -1647,433 +1645,439 @@ export default function StockDashboard() {
                     {tc.newPurchase}
                   </span>
                 </button>
-              <SheetContent side="right" className="w-full max-w-none overflow-y-auto md:w-[50vw]">
-                <SheetHeader>
-                  <SheetTitle>{tc.logNewPurchase}</SheetTitle>
-                  <SheetDescription>{tc.purchaseSheetDesc}</SheetDescription>
-                </SheetHeader>
-                <Form {...arrivalForm}>
-                <form className="mt-6 space-y-5" onSubmit={arrivalForm.handleSubmit(handleArrivalSubmit, handleArrivalInvalid)}>
-                  <InlineNotice notice={arrivalNotice} />
-                  <div className={FORM_CARD_CLASS}>
-                    <FormSectionTitle icon={FileText} title={tc.purchaseBasics} description={tc.purchaseBasicsDesc} />
-                    <div className="mt-3 grid gap-4 md:grid-cols-2">
-                      <StockFormField control={arrivalForm.control} name="shipmentNumber" label={t('shipmentNo')} placeholder="SHP-202X..." autoFocus />
-                      <StockFormField control={arrivalForm.control} name="supplierName" label={t('supplier')} placeholder="Supplier Name..." />
-                    </div>
-                  </div>
-                  <div className={FORM_CARD_CLASS}>
-                    <FormSectionTitle icon={Truck} title={tc.transportInvoice} />
-                    <div className="mt-3 grid gap-4 md:grid-cols-2">
-                      <StockFormField control={arrivalForm.control} name="truckLicensePlate" label={t('truck')} placeholder="RJ 14 XY 0000" />
-                      <StockFormField control={arrivalForm.control} name="driverName" label={t('driver')} placeholder="Driver Name..." />
-                      <StockFormField control={arrivalForm.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." />
-                      <StockDateField control={arrivalForm.control} name="invoiceDate" label={tc.invoiceDate} placeholder={tc.invoiceDate} />
-                      <StockFormField control={arrivalForm.control} name="originCity" label={tc.originCity} placeholder="Source city" />
-                      <StockFormField control={arrivalForm.control} name="destinationWarehouseName" label={tc.destinationWarehouse} placeholder="Warehouse name" />
-                      <AttachmentField
-                        label={tc.invoicePhoto}
-                        file={arrivalAttachments.purchaseInvoice}
-                        onChange={(file) => setArrivalAttachment('purchaseInvoice', file)}
-                        hint={tc.invoicePhotoHint}
-                      />
-                      <AttachmentField
-                        label={tc.transporterBillPhoto}
-                        file={arrivalAttachments.transporterBill}
-                        onChange={(file) => setArrivalAttachment('transporterBill', file)}
-                        accept="image/*"
-                        hint={tc.transporterBillHint}
-                      />
-                      <StockMoneyField control={arrivalForm.control} name="transportCost" label={t('transportCost')} hint={tc.amountInInr} />
-                    </div>
-                  </div>
-                  <div className={FORM_CARD_CLASS}>
-                    <FormSectionTitle icon={CreditCard} title={tc.paymentStatus} description={language === 'hi' ? 'भुगतान और सहायक विवरण दर्ज करें।' : 'Capture payment state and supporting details.'} />
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <FormField
-                        control={arrivalForm.control}
-                        name="paymentStatus"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={FORM_LABEL_CLASS}>{tc.paymentStatus}</FormLabel>
-                            <FormControl>
-                              <Select value={field.value} onValueChange={field.onChange}>
-                                <SelectTrigger className={FORM_INPUT_CLASS}>
-                                  <SelectValue placeholder={tc.paymentStatus} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="unpaid">{tc.unpaid}</SelectItem>
-                                  <SelectItem value="partial">{tc.partial}</SelectItem>
-                                  <SelectItem value="paid">{tc.paid}</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                            <FormMessage className="text-xs" />
-                          </FormItem>
-                        )}
-                      />
-                    {(arrivalPaymentStatus === 'partial' || arrivalPaymentStatus === 'paid') ? (
-                      <>
-                        <StockMoneyField control={arrivalForm.control} name="paidAmount" label={tc.paidAmount} />
-                        <StockDateField control={arrivalForm.control} name="paymentDate" label={tc.paymentDate} placeholder={tc.paymentDate} />
-                        <StockFormField control={arrivalForm.control} name="paymentMode" label={tc.paymentMode} placeholder="NEFT / UPI / Cash" />
-                        <StockFormField control={arrivalForm.control} name="paymentReference" label={tc.paymentReference} placeholder="Txn reference" />
-                      </>
-                    ) : null}
-                      <StockMoneyField control={arrivalForm.control} name="laborCost" label={t('laborCost')} hint={tc.amountInInr} />
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-border/80 bg-muted/20 p-4">
-                    <div className="flex justify-between items-center mb-2 gap-4">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                        <Boxes className="h-4 w-4 text-primary" />
-                        <label>{t('items')}</label>
+                <SheetContent side="right" className="w-full max-w-none overflow-y-auto bg-slate-50/50 dark:bg-slate-950 md:w-[50vw]">
+                  <SheetHeader>
+                    <SheetTitle>{tc.logNewPurchase}</SheetTitle>
+                    <SheetDescription>{tc.purchaseSheetDesc}</SheetDescription>
+                  </SheetHeader>
+                  <Form {...arrivalForm}>
+                    <form className="mt-6 space-y-5" onSubmit={arrivalForm.handleSubmit(handleArrivalSubmit, handleArrivalInvalid)}>
+                      <InlineNotice notice={arrivalNotice} />
+                      <div className={FORM_CARD_CLASS}>
+                        <FormSectionTitle icon={FileText} title={tc.purchaseBasics} description={tc.purchaseBasicsDesc} />
+                        <div className="mt-3 grid gap-4 md:grid-cols-2">
+                          <StockFormField control={arrivalForm.control} name="shipmentNumber" label={t('shipmentNo')} placeholder="SHP-202X..." autoFocus />
+                          <StockFormField control={arrivalForm.control} name="supplierName" label={t('supplier')} placeholder="Supplier Name..." />
+                        </div>
+                      </div>
+                      <div className={FORM_CARD_CLASS}>
+                        <FormSectionTitle icon={Truck} title={tc.transportInvoice} />
+                        <div className="mt-3 grid gap-4 md:grid-cols-2">
+                          <StockFormField control={arrivalForm.control} name="truckLicensePlate" label={t('truck')} placeholder="RJ 14 XY 0000" />
+                          <StockFormField control={arrivalForm.control} name="driverName" label={t('driver')} placeholder="Driver Name..." />
+                          <StockFormField control={arrivalForm.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." />
+                          <StockDateField control={arrivalForm.control} name="invoiceDate" label={tc.invoiceDate} placeholder={tc.invoiceDate} />
+                          <StockFormField control={arrivalForm.control} name="originCity" label={tc.originCity} placeholder="Source city" />
+                          <StockFormField control={arrivalForm.control} name="destinationWarehouseName" label={tc.destinationWarehouse} placeholder="Warehouse name" />
+                          <AttachmentField
+                            label={tc.invoicePhoto}
+                            file={arrivalAttachments.purchaseInvoice}
+                            onChange={(file) => setArrivalAttachment('purchaseInvoice', file)}
+                            hint={tc.invoicePhotoHint}
+                          />
+                          <AttachmentField
+                            label={tc.transporterBillPhoto}
+                            file={arrivalAttachments.transporterBill}
+                            onChange={(file) => setArrivalAttachment('transporterBill', file)}
+                            accept="image/*"
+                            hint={tc.transporterBillHint}
+                          />
+                          <StockMoneyField control={arrivalForm.control} name="transportCost" label={t('transportCost')} hint={tc.amountInInr} />
+                        </div>
+                      </div>
+                      <div className={FORM_CARD_CLASS}>
+                        <FormSectionTitle icon={CreditCard} title={tc.paymentStatus} description={language === 'hi' ? 'भुगतान और सहायक विवरण दर्ज करें।' : 'Capture payment state and supporting details.'} />
+                        <div className="grid pt-4 gap-4 md:grid-cols-2">
+                          <FormField
+                            control={arrivalForm.control}
+                            name="paymentStatus"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className={FORM_LABEL_CLASS}>{tc.paymentStatus}</FormLabel>
+                                <FormControl>
+                                  <Select value={field.value} onValueChange={field.onChange}>
+                                    <SelectTrigger className={FORM_INPUT_CLASS}>
+                                      <SelectValue placeholder={tc.paymentStatus} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="unpaid">{tc.unpaid}</SelectItem>
+                                      <SelectItem value="partial">{tc.partial}</SelectItem>
+                                      <SelectItem value="paid">{tc.paid}</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </FormControl>
+                                <FormMessage className="text-xs" />
+                              </FormItem>
+                            )}
+                          />
+                          {(arrivalPaymentStatus === 'partial' || arrivalPaymentStatus === 'paid') ? (
+                            <>
+                              <StockMoneyField control={arrivalForm.control} name="paidAmount" label={tc.paidAmount} />
+                              <StockDateField control={arrivalForm.control} name="paymentDate" label={tc.paymentDate} placeholder={tc.paymentDate} />
+                              <StockFormField control={arrivalForm.control} name="paymentMode" label={tc.paymentMode} placeholder="NEFT / UPI / Cash" />
+                              <StockFormField control={arrivalForm.control} name="paymentReference" label={tc.paymentReference} placeholder="Txn reference" />
+                            </>
+                          ) : null}
+                          <StockMoneyField control={arrivalForm.control} name="laborCost" label={t('laborCost')} hint={tc.amountInInr} />
+                        </div>
+                      </div>
+                      <div className="rounded-2xl bg-muted/20 p-0">
+                        <div className="flex justify-between items-center mb-2 gap-4">
+                          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                            <Boxes className="h-4 w-4 text-primary" />
+                            <label>{t('items')}</label>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={addArrivalItemRow}
+                            className="rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary transition hover:bg-primary/15"
+                          >
+                            <span className="inline-flex items-center gap-1.5">
+                              <Plus className="h-3.5 w-3.5" />
+                              {t('addItem')}
+                            </span>
+                          </button>
+                        </div>
+                        <datalist id="arrival-item-options">
+                          {(data?.activeItems || []).map((stockItem) => (
+                            <option key={`arrival-option-${stockItem.id}`} value={stockItem.name}>
+                              {stockItem.sku}
+                            </option>
+                          ))}
+                        </datalist>
+                        <div className="space-y-3">
+                          {arrivalItemsFieldArray.fields.map((fieldRow, index) => {
+                            const item = arrivalItems[index] || fieldRow;
+                            const isCatalogItem = Boolean(item?.itemId);
+
+                            return (
+                              <div key={fieldRow.id} className="overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
+                                {/* Item header */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-muted/30 px-4 py-2.5">
+                                  <span className="text-xs font-semibold text-foreground">{tc.itemLabel} {index + 1}</span>
+                                  <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${isCatalogItem ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-400' : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400'}`}>
+                                    {isCatalogItem ? tc.autofilledCatalog : tc.newTileEntry}
+                                  </span>
+                                </div>
+                                <div className="p-4 space-y-4">
+                                  {/* Tile name + qty row */}
+                                  <div className="grid gap-3 grid-cols-[minmax(0,1fr)_120px_120px]">
+                                    <div>
+                                      <label className={FORM_LABEL_CLASS}>{language === 'hi' ? 'टाइल नाम' : 'Tile Name'}</label>
+                                      <FormField
+                                        control={arrivalForm.control}
+                                        name={`items.${index}.itemName`}
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            <FormControl>
+                                              <Input
+                                                {...field}
+                                                value={field.value ?? ''}
+                                                onChange={(event) => handleArrivalItemNameChange(index, event.target.value)}
+                                                className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                placeholder={tc.typeTileName}
+                                                list="arrival-item-options"
+                                              />
+                                            </FormControl>
+                                            <div className="mt-1 text-[11px] text-muted-foreground">{tc.itemAutofillHint}</div>
+                                            <FormMessage className="text-xs" />
+                                          </FormItem>
+                                        )}
+                                      />
+                                    </div>
+                                    <FormField
+                                      control={arrivalForm.control}
+                                      name={`items.${index}.wholeQty`}
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel className={FORM_LABEL_CLASS}>{tc.wholeBox}</FormLabel>
+                                          <FormControl>
+                                            <Input {...field} value={field.value ?? ''} type="number" min="0" placeholder="0" className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                                          </FormControl>
+                                          <FormMessage className="text-xs" />
+                                        </FormItem>
+                                      )}
+                                    />
+                                    <FormField
+                                      control={arrivalForm.control}
+                                      name={`items.${index}.brokenQty`}
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel className={FORM_LABEL_CLASS}>{tc.brokenTiles}</FormLabel>
+                                          <FormControl>
+                                            <Input {...field} value={field.value ?? ''} type="number" min="0" placeholder="0" className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                                          </FormControl>
+                                          <FormMessage className="text-xs" />
+                                        </FormItem>
+                                      )}
+                                    />
+                                  </div>
+                                  {/* New tile detail section */}
+                                  <div>
+                                    <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-foreground/70">
+                                      <Sparkles className="h-3.5 w-3.5 text-primary" />
+                                      {isCatalogItem ? 'Catalog Details' : 'New Tile Details'}
+                                    </div>
+                                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.brandName`} label="Brand" placeholder="Brand" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.divisionName`} label="Division" placeholder="Division" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.typeName`} label="Type" placeholder="Type" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.sizeLabel`} label="Size" placeholder="800x800" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
+                                      <FormField
+                                        control={arrivalForm.control}
+                                        name={`items.${index}.sku`}
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            <FormLabel className={FORM_LABEL_CLASS}>SKU</FormLabel>
+                                            <FormControl>
+                                              <Input
+                                                {...field}
+                                                value={field.value ?? ''}
+                                                onChange={(event) => handleArrivalItemSkuChange(index, event.target.value)}
+                                                className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                placeholder="SKU optional"
+                                              />
+                                            </FormControl>
+                                            <FormMessage className="text-xs" />
+                                          </FormItem>
+                                        )}
+                                      />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.tilesPerBox`} label="Tiles / Box" type="number" placeholder="2" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" disabled={isCatalogItem} />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.piecesPerBox`} label="Pieces / Box" type="number" placeholder="2" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" disabled={isCatalogItem} />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.reorderLevel`} label="Reorder Level" type="number" placeholder="20" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" disabled={isCatalogItem} />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.sizeUnit`} label="Size Unit" placeholder="mm" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.hsnCode`} label="HSN Code" placeholder="HSN Code" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.thicknessMm`} label="Thickness (mm)" type="number" placeholder="Thickness (mm)" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.01" />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.qtySqm`} label="Quantity (sqm)" type="number" placeholder="Quantity (sqm)" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.001" />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.costPerSqm`} label="Cost / sqm" type="number" placeholder="Cost / sqm" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.01" />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.description`} label="Description" placeholder="Description" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 lg:col-span-2" disabled={isCatalogItem} />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className={FORM_CARD_CLASS}>
+                        <FormField
+                          control={arrivalForm.control}
+                          name="notes"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className={FORM_LABEL_CLASS}>{t('notes')}</FormLabel>
+                              <FormControl>
+                                <Textarea {...field} value={field.value ?? ''} className={FORM_INPUT_CLASS} rows={2} />
+                              </FormControl>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )}
+                        />
                       </div>
                       <button
-                        type="button"
-                        onClick={addArrivalItemRow}
-                        className="rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary transition hover:bg-primary/15"
+                        type="submit"
+                        disabled={arrivalSubmitting}
+                        className="mt-4 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        <span className="inline-flex items-center gap-1.5">
-                          <Plus className="h-3.5 w-3.5" />
-                          {t('addItem')}
+                        <span className="inline-flex items-center gap-2">
+                          <ReceiptText className="h-4 w-4" />
+                          {arrivalSubmitting ? tc.submitting : (language === 'hi' ? 'खरीद जमा करें' : 'Submit Purchase')}
                         </span>
                       </button>
-                    </div>
-                    <datalist id="arrival-item-options">
-                      {(data?.activeItems || []).map((stockItem) => (
-                        <option key={`arrival-option-${stockItem.id}`} value={stockItem.name}>
-                          {stockItem.sku}
-                        </option>
-                      ))}
-                    </datalist>
-                    <div className="space-y-3">
-                      {arrivalItemsFieldArray.fields.map((fieldRow, index) => {
-                        const item = arrivalItems[index] || fieldRow;
-                        const isCatalogItem = Boolean(item?.itemId);
-
-                        return (
-                        <div key={fieldRow.id} className="space-y-4 rounded-2xl border border-border bg-background/80 p-4 shadow-sm">
-                          <div className="flex flex-wrap items-center justify-between gap-4 text-xs font-medium text-muted-foreground">
-                            <span>{tc.itemLabel} {index + 1}</span>
-                            <span className={`rounded-full border px-2.5 py-1 ${isCatalogItem ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
-                              {isCatalogItem ? tc.autofilledCatalog : tc.newTileEntry}
-                            </span>
-                          </div>
-                          <div className="grid gap-3 md:grid-cols-[minmax(0,1.6fr)_minmax(140px,0.8fr)_minmax(140px,0.8fr)]">
-                            <div className="col-span-2">
-                              <FormField
-                                control={arrivalForm.control}
-                                name={`items.${index}.itemName`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormControl>
-                                      <Input
-                                        {...field}
-                                        value={field.value ?? ''}
-                                        onChange={(event) => handleArrivalItemNameChange(index, event.target.value)}
-                                        className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                        placeholder={tc.typeTileName}
-                                        list="arrival-item-options"
-                                      />
-                                    </FormControl>
-                                    <div className="mt-1 text-[11px] text-muted-foreground">{tc.itemAutofillHint}</div>
-                                    <FormMessage className="text-xs" />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
-                            <FormField
-                              control={arrivalForm.control}
-                              name={`items.${index}.wholeQty`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="mb-1 block text-xs font-semibold text-muted-foreground">{tc.wholeBox}</FormLabel>
-                                  <FormControl>
-                                    <Input {...field} value={field.value ?? ''} type="number" min="0" placeholder="0" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
-                                  </FormControl>
-                                  <FormMessage className="text-xs" />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={arrivalForm.control}
-                              name={`items.${index}.brokenQty`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="mb-1 block text-xs font-semibold text-muted-foreground">{tc.brokenTiles}</FormLabel>
-                                  <FormControl>
-                                    <Input {...field} value={field.value ?? ''} type="number" min="0" placeholder="0" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
-                                  </FormControl>
-                                  <FormMessage className="text-xs" />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          <div className="rounded-xl border border-border/70 bg-muted/30 p-3">
-                            <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-foreground/70">
-                              <Sparkles className="h-3.5 w-3.5 text-primary" />
-                              {isCatalogItem ? 'Catalog Details' : 'New Tile Details'}
-                            </div>
-                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.brandName`} label="Brand" placeholder="Brand" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.divisionName`} label="Division" placeholder="Division" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.typeName`} label="Type" placeholder="Type" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.sizeLabel`} label="Size" placeholder="800x800" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
-                            <FormField
-                              control={arrivalForm.control}
-                              name={`items.${index}.sku`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      value={field.value ?? ''}
-                                      onChange={(event) => handleArrivalItemSkuChange(index, event.target.value)}
-                                      className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                      placeholder="SKU optional"
-                                    />
-                                  </FormControl>
-                                  <FormMessage className="text-xs" />
-                                </FormItem>
-                              )}
-                            />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.tilesPerBox`} label="Tiles / box" type="number" placeholder="2" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" disabled={isCatalogItem} />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.piecesPerBox`} label="Pieces / box" type="number" placeholder="2" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" disabled={isCatalogItem} />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.reorderLevel`} label="Reorder level" type="number" placeholder="20" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" disabled={isCatalogItem} />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.sizeUnit`} label="Size unit" placeholder="mm" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.hsnCode`} label="HSN Code" placeholder="HSN Code" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.thicknessMm`} label="Thickness (mm)" type="number" placeholder="Thickness (mm)" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.01" />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.qtySqm`} label="Quantity (sqm)" type="number" placeholder="Quantity (sqm)" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.001" />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.costPerSqm`} label="Cost / sqm" type="number" placeholder="Cost / sqm" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.01" />
-                            <StockFormField control={arrivalForm.control} name={`items.${index}.description`} label="Description" placeholder="Description" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 lg:col-span-2" disabled={isCatalogItem} />
-                            </div>
-                          </div>
-                        </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div className={FORM_CARD_CLASS}>
-                    <FormField
-                      control={arrivalForm.control}
-                      name="notes"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className={FORM_LABEL_CLASS}>{t('notes')}</FormLabel>
-                          <FormControl>
-                            <Textarea {...field} value={field.value ?? ''} className={FORM_INPUT_CLASS} rows={2} />
-                          </FormControl>
-                          <FormMessage className="text-xs" />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={arrivalSubmitting}
-                    className="mt-4 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <ReceiptText className="h-4 w-4" />
-                      {arrivalSubmitting ? tc.submitting : (language === 'hi' ? 'खरीद जमा करें' : 'Submit Purchase')}
-                    </span>
-                  </button>
-                </form>
-                </Form>
-              </SheetContent>
-            </Sheet>
-          </div>
-          {!canCreateArrival ? (
-            <div className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              Insufficient permission: salespeople can create dispatches but cannot create purchases.
+                    </form>
+                  </Form>
+                </SheetContent>
+              </Sheet>
             </div>
-          ) : null}
-          <div className="sticky top-0 z-10 border-b border-slate-100 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
-            <input
-              type="search"
-              value={arrivalSearch}
-              onChange={(event) => setArrivalSearch(event.target.value)}
-              placeholder="Search purchases by date, product, qty, truck, or status"
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-            />
-          </div>
-          <div className="space-y-3 p-3 md:hidden">
-            {arrivalPagination.rows.map((a) => {
-              const expanded = arrivalExpandedId === a.id;
-              return (
-                <article key={`arrival-mobile-${a.id}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/60">
-                  <div className="flex items-start justify-between gap-2">
+            {!canCreateArrival ? (
+              <div className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                Insufficient permission: salespeople can create dispatches but cannot create purchases.
+              </div>
+            ) : null}
+            <div className="sticky top-0 z-10 border-b border-slate-100 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
+              <input
+                type="search"
+                value={arrivalSearch}
+                onChange={(event) => setArrivalSearch(event.target.value)}
+                placeholder="Search purchases by date, product, qty, truck, or status"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+              />
+            </div>
+            <div className="space-y-3 p-3 md:hidden">
+              {arrivalPagination.rows.map((a) => {
+                const expanded = arrivalExpandedId === a.id;
+                return (
+                  <article key={`arrival-mobile-${a.id}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/60">
+                    <div className="flex items-start justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openShipmentPreview('arrival', a)}
+                        className="min-w-0 flex-1 text-left"
+                        aria-label={`Open purchase ${a.shipment_number}`}
+                      >
+                        <p className="break-all font-mono text-xs font-semibold text-primary">{a.shipment_number}</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">{formatDateTime(a.arrival_date || a.created_at)}</p>
+                      </button>
+                      <Badge variant={getStatusVariant(a.status)}>{a.status}</Badge>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">{Number(a.total_whole_qty || 0)} whole / {Number(a.total_broken_qty || 0)} broken</p>
+                    <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                      Invoice: {a.invoice_number || '—'} {a.invoice_date ? `(${formatDateTime(a.invoice_date)})` : ''}
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                      {a.origin_city || '—'} to {a.destination_warehouse_name || '—'} • {a.payment_status || 'unpaid'}
+                    </p>
+                    {expanded ? (
+                      <div className="mt-2 space-y-1 text-[11px] text-slate-500 dark:text-slate-400">
+                        <p className="truncate">{a.product_names || a.product_skus || '—'}</p>
+                        <p>Division: {a.divisions || 'General'}</p>
+                        <p>SQM: {Number(a.total_qty_sqm || 0).toFixed(3)} • Avg cost/sqm: {Number(a.avg_cost_per_sqm || 0).toFixed(2)}</p>
+                        <p>By: {a.generated_by || '—'}</p>
+                      </div>
+                    ) : null}
                     <button
                       type="button"
-                      onClick={() => openShipmentPreview('arrival', a)}
-                      className="min-w-0 flex-1 text-left"
-                      aria-label={`Open purchase ${a.shipment_number}`}
+                      onClick={() => setArrivalExpandedId((current) => (current === a.id ? null : a.id))}
+                      className="mt-2 rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                      aria-label={expanded ? 'Collapse purchase details' : 'Expand purchase details'}
                     >
-                      <p className="break-all font-mono text-xs font-semibold text-primary">{a.shipment_number}</p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">{formatDateTime(a.arrival_date || a.created_at)}</p>
+                      {expanded ? 'Collapse' : 'Expand'}
                     </button>
-                    <Badge variant={getStatusVariant(a.status)}>{a.status}</Badge>
-                  </div>
-                  <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">{Number(a.total_whole_qty || 0)} whole / {Number(a.total_broken_qty || 0)} broken</p>
-                  <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                    Invoice: {a.invoice_number || '—'} {a.invoice_date ? `(${formatDateTime(a.invoice_date)})` : ''}
-                  </p>
-                  <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                    {a.origin_city || '—'} to {a.destination_warehouse_name || '—'} • {a.payment_status || 'unpaid'}
-                  </p>
-                  {expanded ? (
-                    <div className="mt-2 space-y-1 text-[11px] text-slate-500 dark:text-slate-400">
-                      <p className="truncate">{a.product_names || a.product_skus || '—'}</p>
-                      <p>Division: {a.divisions || 'General'}</p>
-                      <p>SQM: {Number(a.total_qty_sqm || 0).toFixed(3)} • Avg cost/sqm: {Number(a.avg_cost_per_sqm || 0).toFixed(2)}</p>
-                      <p>By: {a.generated_by || '—'}</p>
-                    </div>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => setArrivalExpandedId((current) => (current === a.id ? null : a.id))}
-                    className="mt-2 rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                    aria-label={expanded ? 'Collapse purchase details' : 'Expand purchase details'}
-                  >
-                    {expanded ? 'Collapse' : 'Expand'}
-                  </button>
-                </article>
-              );
-            })}
-          </div>
-          <div className="overflow-x-auto flex-1">
-            <table className="hidden w-full text-xs text-left whitespace-nowrap md:table">
-              <thead className="sticky top-0 bg-slate-50/90 font-medium text-slate-600 dark:bg-slate-900/90 dark:text-slate-300">
-                <tr>
-                  <th className="px-3 py-2">
-                    <button type="button" onClick={() => toggleSort(arrivalSort, setArrivalSort, 'datetime')} className="font-medium hover:text-foreground">
-                      {tc.datetime}
-                    </button>
-                  </th>
-                  <th className="px-3 py-2">
-                    <button type="button" onClick={() => toggleSort(arrivalSort, setArrivalSort, 'shipment')} className="font-medium hover:text-foreground">
-                      {t('shipmentNo')}
-                    </button>
-                  </th>
-                  <th className="px-3 py-2">{tc.invoice}</th>
-                  <th className="px-3 py-2">{tc.route}</th>
-                  <th className="px-3 py-2">{tc.payment}</th>
-                  <th className="px-3 py-2">
-                    <button type="button" onClick={() => toggleSort(arrivalSort, setArrivalSort, 'products')} className="font-medium hover:text-foreground">
-                      Products
-                    </button>
-                  </th>
-                  <th className="px-3 py-2 text-right">
-                    <button type="button" onClick={() => toggleSort(arrivalSort, setArrivalSort, 'quantities')} className="font-medium hover:text-foreground">
-                      Quantities
-                    </button>
-                  </th>
-                  <th className="px-3 py-2">
-                    <button type="button" onClick={() => toggleSort(arrivalSort, setArrivalSort, 'status')} className="font-medium hover:text-foreground">
-                      {t('status')}
-                    </button>
-                  </th>
-                  <th className="px-3 py-2">{tc.generatedBy}</th>
-                  <th className="px-3 py-2">{tc.approvedBy}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {arrivalPagination.rows.map((a) => (
-                  <tr
-                    key={a.id}
-                    className={`cursor-pointer transition hover:bg-slate-50 focus-within:bg-slate-50 dark:hover:bg-slate-800/40 dark:focus-within:bg-slate-800/40 ${
-                      highlightedShipmentKey === `arrival-${a.id}` ? 'bg-[#E07A00]/10 ring-1 ring-[#E07A00]/40' : 'odd:bg-white even:bg-slate-50/70 dark:odd:bg-slate-900 dark:even:bg-slate-900/70'
-                    }`}
-                    onClick={() => openShipmentPreview('arrival', a)}
-                    tabIndex={0}
-                    role="button"
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        openShipmentPreview('arrival', a);
-                      }
-                    }}
-                    title="Click to preview"
-                  >
-                    <td className="px-3 py-2 text-muted-foreground">{formatDateTime(a.arrival_date || a.created_at)}</td>
-                    <td className="px-3 py-2 font-mono font-medium text-primary">{a.shipment_number}</td>
-                    <td className="px-3 py-2 text-muted-foreground">
-                      <div>{a.invoice_number || '—'}</div>
-                      <div className="text-[10px]">{a.invoice_date ? formatDateTime(a.invoice_date) : '—'}</div>
-                    </td>
-                    <td className="px-3 py-2 text-muted-foreground">
-                      <div className="max-w-[170px] truncate" title={`${a.origin_city || '—'} to ${a.destination_warehouse_name || '—'}`}>
-                        {a.origin_city || '—'} to {a.destination_warehouse_name || '—'}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-muted-foreground">
-                      <div className="uppercase text-[10px] font-semibold">{a.payment_status || 'unpaid'}</div>
-                      {a.paid_amount != null ? <div className="text-[10px]">INR {Number(a.paid_amount).toFixed(2)}</div> : null}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="max-w-[260px] truncate" title={a.product_names || a.product_skus || ''}>
-                        {a.product_names || a.product_skus || '—'}
-                      </div>
-                      <div className="mt-0.5 text-[10px] text-muted-foreground">{a.divisions || 'General'}</div>
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      {Number(a.total_whole_qty || 0)} whole / {Number(a.total_broken_qty || 0)} broken
-                      <div className="text-[10px] text-muted-foreground">{Number(a.total_qty_sqm || 0).toFixed(3)} sqm</div>
-                    </td>
-                    <td className="px-3 py-2"><Badge variant={getStatusVariant(a.status)}>{a.status}</Badge></td>
-                    <td className="px-3 py-2 text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <span>{a.generated_by || '—'}</span>
-                        <Badge variant="neutral" className="text-[10px]">{getGeneratedByRoleLabel(a.generated_by_role)}</Badge>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-muted-foreground">{a.approved_by || '—'}</td>
-                  </tr>
-                ))}
-                {arrivalPagination.total === 0 ? (
+                  </article>
+                );
+              })}
+            </div>
+            <div className="overflow-x-auto flex-1">
+              <table className="hidden w-full text-xs text-left whitespace-nowrap md:table">
+                <thead className="sticky top-0 bg-slate-50/90 font-medium text-slate-600 dark:bg-slate-900/90 dark:text-slate-300">
                   <tr>
-                    <td colSpan="10" className="px-3 py-10">
-                      <div className="flex flex-col items-center justify-center gap-3 text-center">
-                        <PackageCheck className="h-6 w-6 text-slate-400" />
-                        <p className="text-sm text-slate-500 dark:text-slate-400">{tc.noPurchases}</p>
-                        <button
-                          type="button"
-                          onClick={() => setArrivalSearch('')}
-                          className="rounded-xl bg-[#E07A00] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#c96d00] focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20"
-                        >
-                          {tc.clearFilters}
-                        </button>
-                      </div>
-                    </td>
+                    <th className="px-3 py-2">
+                      <button type="button" onClick={() => toggleSort(arrivalSort, setArrivalSort, 'datetime')} className="font-medium hover:text-foreground">
+                        {tc.datetime}
+                      </button>
+                    </th>
+                    <th className="px-3 py-2">
+                      <button type="button" onClick={() => toggleSort(arrivalSort, setArrivalSort, 'shipment')} className="font-medium hover:text-foreground">
+                        {t('shipmentNo')}
+                      </button>
+                    </th>
+                    <th className="px-3 py-2">{tc.invoice}</th>
+                    <th className="px-3 py-2">{tc.route}</th>
+                    <th className="px-3 py-2">{tc.payment}</th>
+                    <th className="px-3 py-2">
+                      <button type="button" onClick={() => toggleSort(arrivalSort, setArrivalSort, 'products')} className="font-medium hover:text-foreground">
+                        Products
+                      </button>
+                    </th>
+                    <th className="px-3 py-2 text-right">
+                      <button type="button" onClick={() => toggleSort(arrivalSort, setArrivalSort, 'quantities')} className="font-medium hover:text-foreground">
+                        Quantities
+                      </button>
+                    </th>
+                    <th className="px-3 py-2">
+                      <button type="button" onClick={() => toggleSort(arrivalSort, setArrivalSort, 'status')} className="font-medium hover:text-foreground">
+                        {t('status')}
+                      </button>
+                    </th>
+                    <th className="px-3 py-2">{tc.generatedBy}</th>
+                    <th className="px-3 py-2">{tc.approvedBy}</th>
                   </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-          <PaginationControls
-            page={arrivalPagination.page}
-            pageCount={arrivalPagination.pageCount}
-            total={arrivalPagination.total}
-            pageSize={DEFAULT_PAGE_SIZE}
-            onPageChange={setArrivalPage}
-            labels={{
-              showing: tc.paginationShowing,
-              of: tc.paginationOf,
-              previous: tc.paginationPrevious,
-              next: tc.paginationNext,
-              page: tc.paginationPage,
-            }}
-          />
-        </section>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {arrivalPagination.rows.map((a) => (
+                    <tr
+                      key={a.id}
+                      className={`cursor-pointer transition hover:bg-slate-50 focus-within:bg-slate-50 dark:hover:bg-slate-800/40 dark:focus-within:bg-slate-800/40 ${highlightedShipmentKey === `arrival-${a.id}` ? 'bg-[#E07A00]/10 ring-1 ring-[#E07A00]/40' : 'odd:bg-white even:bg-slate-50/70 dark:odd:bg-slate-900 dark:even:bg-slate-900/70'
+                        }`}
+                      onClick={() => openShipmentPreview('arrival', a)}
+                      tabIndex={0}
+                      role="button"
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          openShipmentPreview('arrival', a);
+                        }
+                      }}
+                      title="Click to preview"
+                    >
+                      <td className="px-3 py-2 text-muted-foreground">{formatDateTime(a.arrival_date || a.created_at)}</td>
+                      <td className="px-3 py-2 font-mono font-medium text-primary">{a.shipment_number}</td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        <div>{a.invoice_number || '—'}</div>
+                        <div className="text-[10px]">{a.invoice_date ? formatDateTime(a.invoice_date) : '—'}</div>
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        <div className="max-w-[170px] truncate" title={`${a.origin_city || '—'} to ${a.destination_warehouse_name || '—'}`}>
+                          {a.origin_city || '—'} to {a.destination_warehouse_name || '—'}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        <div className="uppercase text-[10px] font-semibold">{a.payment_status || 'unpaid'}</div>
+                        {a.paid_amount != null ? <div className="text-[10px]">INR {Number(a.paid_amount).toFixed(2)}</div> : null}
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="max-w-[260px] truncate" title={a.product_names || a.product_skus || ''}>
+                          {a.product_names || a.product_skus || '—'}
+                        </div>
+                        <div className="mt-0.5 text-[10px] text-muted-foreground">{a.divisions || 'General'}</div>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {Number(a.total_whole_qty || 0)} whole / {Number(a.total_broken_qty || 0)} broken
+                        <div className="text-[10px] text-muted-foreground">{Number(a.total_qty_sqm || 0).toFixed(3)} sqm</div>
+                      </td>
+                      <td className="px-3 py-2"><Badge variant={getStatusVariant(a.status)}>{a.status}</Badge></td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <span>{a.generated_by || '—'}</span>
+                          <Badge variant="neutral" className="text-[10px]">{getGeneratedByRoleLabel(a.generated_by_role)}</Badge>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">{a.approved_by || '—'}</td>
+                    </tr>
+                  ))}
+                  {arrivalPagination.total === 0 ? (
+                    <tr>
+                      <td colSpan="10" className="px-3 py-10">
+                        <div className="flex flex-col items-center justify-center gap-3 text-center">
+                          <PackageCheck className="h-6 w-6 text-slate-400" />
+                          <p className="text-sm text-slate-500 dark:text-slate-400">{tc.noPurchases}</p>
+                          <button
+                            type="button"
+                            onClick={() => setArrivalSearch('')}
+                            className="rounded-xl bg-[#E07A00] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#c96d00] focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20"
+                          >
+                            {tc.clearFilters}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+            <PaginationControls
+              page={arrivalPagination.page}
+              pageCount={arrivalPagination.pageCount}
+              total={arrivalPagination.total}
+              pageSize={DEFAULT_PAGE_SIZE}
+              onPageChange={setArrivalPage}
+              labels={{
+                showing: tc.paginationShowing,
+                of: tc.paginationOf,
+                previous: tc.paginationPrevious,
+                next: tc.paginationNext,
+                page: tc.paginationPage,
+              }}
+            />
+          </section>
         </div>
-        )}
+      )}
 
-        {activeTableView === 'dispatches' && (
+      {activeTableView === 'dispatches' && (
         <div className="stock-tab-panel" key="stock-panel-dispatches">
-        <section id="dispatches" className="flex h-full flex-col overflow-hidden scroll-mt-6 rounded-2xl border border-slate-200/60 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-          <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-900/40">
-            <h2 className="text-base font-semibold text-foreground">{t('dispatches')}</h2>
+          <section id="dispatches" className="flex h-full flex-col overflow-hidden scroll-mt-6 rounded-2xl border border-slate-200/60 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-900/40">
+              <h2 className="text-base font-semibold text-foreground">{t('dispatches')}</h2>
               <Sheet open={dispatchSheetOpen} onOpenChange={setDispatchSheetOpen}>
                 <button
                   type="button"
@@ -2088,317 +2092,327 @@ export default function StockDashboard() {
                     {t('newDispatch')}
                   </span>
                 </button>
-              <SheetContent side="right" className="w-full max-w-none overflow-y-auto md:w-[50vw]">
-                <SheetHeader>
-                  <SheetTitle>{t('logNewDispatch')}</SheetTitle>
-                  <SheetDescription>{t('logNewDispatchDesc')}</SheetDescription>
-                </SheetHeader>
-                <Form {...dispatchForm}>
-                <form className="mt-6 space-y-4" onSubmit={dispatchForm.handleSubmit(handleDispatchSubmit, handleDispatchInvalid)}>
-                  <InlineNotice notice={dispatchNotice} />
-                  <div className={FORM_CARD_CLASS}>
-                    <FormSectionTitle icon={Send} title={t('logNewDispatch')} description={t('logNewDispatchDesc')} />
-                    <div className="mt-3 grid grid-cols-2 gap-4">
-                      <StockFormField control={dispatchForm.control} name="shipmentNumber" label={t('dispatchNo')} placeholder="DSP-202X..." className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" autoFocus />
-                      <StockFormField control={dispatchForm.control} name="customerName" label={t('customer')} placeholder="Customer Name..." className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                <SheetContent side="right" className="w-full max-w-none overflow-y-auto bg-slate-50/50 dark:bg-slate-950 md:w-[50vw]">
+                  <SheetHeader className="border-b border-border pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                        <Send className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <SheetTitle className="text-base">{t('logNewDispatch')}</SheetTitle>
+                        <SheetDescription className="text-xs">{t('logNewDispatchDesc')}</SheetDescription>
+                      </div>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <StockFormField control={dispatchForm.control} name="truckLicensePlate" label={t('truck')} placeholder="RJ 14 XY 0000" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
-                    <StockFormField control={dispatchForm.control} name="driverName" label={t('driver')} placeholder="Driver Name..." className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
-                  </div>
-                  <div className={FORM_CARD_CLASS}>
-                    <FormSectionTitle icon={Truck} title={language === 'hi' ? 'डिस्पैच और वाहन' : 'Dispatch And Vehicle'} />
-                    <div className="mt-3 grid grid-cols-2 gap-4">
-                    <StockFormField control={dispatchForm.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
-                    <StockDateTimeField control={dispatchForm.control} name="dispatchDate" label={tc.date} placeholder={tc.date} className="mt-1" />
-                    <AttachmentField
-                      label={tc.salesInvoicePhoto}
-                      file={dispatchAttachments.salesInvoice}
-                      onChange={(file) => setDispatchAttachment('salesInvoice', file)}
-                      hint={tc.salesInvoiceHint}
-                    />
-                    <AttachmentField
-                      label={tc.gatepassPhoto}
-                      file={dispatchAttachments.gatepass}
-                      onChange={(file) => setDispatchAttachment('gatepass', file)}
-                      accept="image/*"
-                      hint={tc.gatepassHint}
-                    />
-                    <StockFormField control={dispatchForm.control} name="salespersonName" label={t('salesperson')} placeholder="Salesperson..." className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
-                    </div>
-                  </div>
-                  <div className={FORM_CARD_CLASS}>
-                    <FormSectionTitle icon={CreditCard} title={language === 'hi' ? 'खर्च' : 'Charges'} />
-                    <div className="mt-3 grid grid-cols-2 gap-4">
-                    <StockMoneyField control={dispatchForm.control} name="transportCost" label={t('transportCost')} hint={tc.amountInInr} />
-                    <StockMoneyField control={dispatchForm.control} name="laborCost" label={t('laborCost')} hint={tc.amountInInr} />
-                    </div>
-                  </div>
-                  <div className={`${FORM_CARD_CLASS} border-t pt-4`}>
-                    <div className="flex justify-between items-center mb-2 gap-4">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                        <Boxes className="h-4 w-4 text-primary" />
-                        <label>{t('items')}</label>
+                  </SheetHeader>
+                  <Form {...dispatchForm}>
+                    <form className="mt-5 space-y-4" onSubmit={dispatchForm.handleSubmit(handleDispatchSubmit, handleDispatchInvalid)}>
+                      <InlineNotice notice={dispatchNotice} />
+                      {/* Dispatch basics */}
+                      <div className={FORM_CARD_CLASS}>
+                        <FormSectionTitle icon={Send} title={language === 'hi' ? 'डिस्पैच की मूल जानकारी' : 'Dispatch Basics'} description={language === 'hi' ? 'इस डिस्पैच के लिए मुख्य विवरण भरें।' : 'Fill in the core details for this dispatch.'} />
+                        <div className="mt-3 grid grid-cols-2 gap-4">
+                          <StockFormField control={dispatchForm.control} name="shipmentNumber" label={t('dispatchNo')} placeholder="DSP-202X..." className={FORM_INPUT_CLASS} autoFocus />
+                          <StockFormField control={dispatchForm.control} name="customerName" label={t('customer')} placeholder="Customer Name..." className={FORM_INPUT_CLASS} />
+                        </div>
+                      </div>
+                      {/* Transport */}
+                      <div className={FORM_CARD_CLASS}>
+                        <FormSectionTitle icon={Truck} title={language === 'hi' ? 'डिस्पैच और वाहन' : 'Transport & Vehicle'} />
+                        <div className="mt-3 grid grid-cols-2 gap-4">
+                          <StockFormField control={dispatchForm.control} name="truckLicensePlate" label={t('truck')} placeholder="RJ 14 XY 0000" className={FORM_INPUT_CLASS} />
+                          <StockFormField control={dispatchForm.control} name="driverName" label={t('driver')} placeholder="Driver Name..." className={FORM_INPUT_CLASS} />
+                          <StockFormField control={dispatchForm.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." className={FORM_INPUT_CLASS} />
+                          <StockDateTimeField control={dispatchForm.control} name="dispatchDate" label={tc.date} placeholder={tc.date} />
+                          <StockFormField control={dispatchForm.control} name="salespersonName" label={t('salesperson')} placeholder="Salesperson..." className={FORM_INPUT_CLASS} />
+                          <AttachmentField
+                            label={tc.salesInvoicePhoto}
+                            file={dispatchAttachments.salesInvoice}
+                            onChange={(file) => setDispatchAttachment('salesInvoice', file)}
+                            hint={tc.salesInvoiceHint}
+                          />
+                          <AttachmentField
+                            label={tc.gatepassPhoto}
+                            file={dispatchAttachments.gatepass}
+                            onChange={(file) => setDispatchAttachment('gatepass', file)}
+                            accept="image/*"
+                            hint={tc.gatepassHint}
+                          />
+                        </div>
+                      </div>
+                      {/* Charges */}
+                      <div className={FORM_CARD_CLASS}>
+                        <FormSectionTitle icon={CreditCard} title={language === 'hi' ? 'खर्च' : 'Charges'} />
+                        <div className="mt-3 grid grid-cols-2 gap-4">
+                          <StockMoneyField control={dispatchForm.control} name="transportCost" label={t('transportCost')} hint={tc.amountInInr} />
+                          <StockMoneyField control={dispatchForm.control} name="laborCost" label={t('laborCost')} hint={tc.amountInInr} />
+                        </div>
+                      </div>
+                      {/* Items */}
+                      <div className={FORM_CARD_CLASS}>
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                            <Boxes className="h-4 w-4 text-primary" />
+                            <span>{t('items')}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={addDispatchItemRow}
+                            className="rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary transition hover:bg-primary/15"
+                          >
+                            <span className="inline-flex items-center gap-1.5">
+                              <Plus className="h-3.5 w-3.5" />
+                              {t('addItem')}
+                            </span>
+                          </button>
+                        </div>
+                        {/* Column headers */}
+                        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_100px_100px] gap-2 px-1">
+                          <div className={FORM_LABEL_CLASS}>{t('sku')} / {t('name')}</div>
+                          <div className={FORM_LABEL_CLASS}>{t('whole')}</div>
+                          <div className={FORM_LABEL_CLASS}>{t('broken')}</div>
+                        </div>
+                        <div className="mt-2 space-y-2">
+                          {dispatchItemsFieldArray.fields.map((fieldRow, index) => (
+                            <div key={fieldRow.id} className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+                              <div className="border-b border-border/60 bg-muted/30 px-3 py-2">
+                                <span className="text-xs font-semibold text-foreground">{language === 'hi' ? 'आइटम' : 'Item'} {index + 1}</span>
+                              </div>
+                              <div className="grid grid-cols-[minmax(0,1fr)_100px_100px] gap-2 p-3 items-start">
+                                <FormField
+                                  control={dispatchForm.control}
+                                  name={`items.${index}.itemId`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormControl>
+                                        <Select value={field.value || undefined} onValueChange={field.onChange}>
+                                          <SelectTrigger className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20">
+                                            <SelectValue placeholder={t('selectItem')} />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {(data?.activeItems || []).map((stockItem) => (
+                                              <SelectItem key={stockItem.id} value={String(stockItem.id)}>
+                                                {stockItem.sku} - {stockItem.name}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </FormControl>
+                                      <FormMessage className="text-xs" />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={dispatchForm.control}
+                                  name={`items.${index}.loadedWholeQty`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormControl>
+                                        <Input {...field} value={field.value ?? ''} type="number" min="0" placeholder="0" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                                      </FormControl>
+                                      <FormMessage className="text-xs" />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={dispatchForm.control}
+                                  name={`items.${index}.loadedBrokenQty`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormControl>
+                                        <Input {...field} value={field.value ?? ''} type="number" min="0" placeholder="0" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                                      </FormControl>
+                                      <FormMessage className="text-xs" />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      {/* Notes */}
+                      <div className={FORM_CARD_CLASS}>
+                        <FormField
+                          control={dispatchForm.control}
+                          name="notes"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className={FORM_LABEL_CLASS}>{t('notes')}</FormLabel>
+                              <FormControl>
+                                <Textarea {...field} value={field.value ?? ''} className={`${FORM_INPUT_CLASS} mt-1`} rows={2} />
+                              </FormControl>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )}
+                        />
                       </div>
                       <button
-                        type="button"
-                        onClick={addDispatchItemRow}
-                        className="text-primary text-xs font-semibold hover:underline"
+                        type="submit"
+                        disabled={dispatchSubmitting}
+                        className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        <span className="inline-flex items-center gap-1.5">
-                          <Plus className="h-3.5 w-3.5" />
-                          {t('addItem')}
+                        <span className="inline-flex items-center justify-center gap-2">
+                          <Send className="h-4 w-4" />
+                          {dispatchSubmitting ? tc.submitting : t('submitDispatch')}
                         </span>
                       </button>
+                    </form>
+                  </Form>
+                </SheetContent>
+              </Sheet>
+            </div>
+            <div className="sticky top-0 z-10 border-b border-slate-100 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
+              <input
+                type="search"
+                value={dispatchSearch}
+                onChange={(event) => setDispatchSearch(event.target.value)}
+                placeholder={tc.searchDispatches}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+              />
+            </div>
+            <div className="space-y-3 p-3 md:hidden">
+              {dispatchPagination.rows.map((d) => {
+                const expanded = dispatchExpandedId === d.id;
+                return (
+                  <article key={`dispatch-mobile-${d.id}`} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900/70">
+                    <div className="flex items-start justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openShipmentPreview('dispatch', d)}
+                        className="min-w-0 flex-1 text-left"
+                        aria-label={`Open dispatch ${d.shipment_number}`}
+                      >
+                        <p className="break-all font-mono text-xs font-semibold text-primary">{d.shipment_number}</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">{formatDateTime(d.dispatch_date || d.created_at)}</p>
+                      </button>
+                      <Badge variant={getStatusVariant(d.status)}>{d.status}</Badge>
                     </div>
-                    <div className="grid grid-cols-4 gap-2 items-center mb-2">
-                      <div className="col-span-2 text-xs font-semibold text-muted-foreground">{t('sku')} / {t('name')}</div>
-                      <div className="text-xs font-semibold text-muted-foreground">{t('whole')}</div>
-                      <div className="text-xs font-semibold text-muted-foreground">{t('broken')}</div>
-                    </div>
-                    <div className="space-y-3">
-                      {dispatchItemsFieldArray.fields.map((fieldRow, index) => (
-                        <div key={fieldRow.id} className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
-                          <div className="flex items-center justify-between gap-4 text-xs font-medium text-muted-foreground">
-                            <span>Item {index + 1}</span>
-                          </div>
-                          <div className="grid grid-cols-4 gap-2 items-center">
-                            <div className="col-span-2">
-                              <FormField
-                                control={dispatchForm.control}
-                                name={`items.${index}.itemId`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormControl>
-                                      <Select value={field.value || undefined} onValueChange={field.onChange}>
-                                        <SelectTrigger className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20">
-                                          <SelectValue placeholder={t('selectItem')} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {(data?.activeItems || []).map((stockItem) => (
-                                            <SelectItem key={stockItem.id} value={String(stockItem.id)}>
-                                              {stockItem.sku} - {stockItem.name}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </FormControl>
-                                    <FormMessage className="text-xs" />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
-                            <FormField
-                              control={dispatchForm.control}
-                              name={`items.${index}.loadedWholeQty`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormControl>
-                                    <Input {...field} value={field.value ?? ''} type="number" min="0" placeholder="0" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
-                                  </FormControl>
-                                  <FormMessage className="text-xs" />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={dispatchForm.control}
-                              name={`items.${index}.loadedBrokenQty`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormControl>
-                                    <Input {...field} value={field.value ?? ''} type="number" min="0" placeholder="0" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
-                                  </FormControl>
-                                  <FormMessage className="text-xs" />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <FormField
-                    control={dispatchForm.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs font-semibold text-foreground/80">{t('notes')}</FormLabel>
-                        <FormControl>
-                          <Textarea {...field} value={field.value ?? ''} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" rows={2} />
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
-                  />
-                  <button
-                    type="submit"
-                    disabled={dispatchSubmitting}
-                    className="mt-4 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <Send className="h-4 w-4" />
-                      {dispatchSubmitting ? tc.submitting : t('submitDispatch')}
-                    </span>
-                  </button>
-                </form>
-                </Form>
-              </SheetContent>
-            </Sheet>
-          </div>
-          <div className="sticky top-0 z-10 border-b border-slate-100 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
-            <input
-              type="search"
-              value={dispatchSearch}
-              onChange={(event) => setDispatchSearch(event.target.value)}
-              placeholder={tc.searchDispatches}
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-            />
-          </div>
-          <div className="space-y-3 p-3 md:hidden">
-            {dispatchPagination.rows.map((d) => {
-              const expanded = dispatchExpandedId === d.id;
-              return (
-                <article key={`dispatch-mobile-${d.id}`} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900/70">
-                  <div className="flex items-start justify-between gap-2">
+                    <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">{Number(d.total_whole_qty || 0)} whole / {Number(d.total_broken_qty || 0)} broken</p>
+                    {expanded ? (
+                      <div className="mt-2 space-y-1 text-[11px] text-slate-500 dark:text-slate-400">
+                        <p className="truncate">{d.product_names || d.product_skus || '—'}</p>
+                        <p>By: {d.generated_by || '—'}</p>
+                      </div>
+                    ) : null}
                     <button
                       type="button"
-                      onClick={() => openShipmentPreview('dispatch', d)}
-                      className="min-w-0 flex-1 text-left"
-                      aria-label={`Open dispatch ${d.shipment_number}`}
+                      onClick={() => setDispatchExpandedId((current) => (current === d.id ? null : d.id))}
+                      className="mt-2 rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                      aria-label={expanded ? 'Collapse dispatch details' : 'Expand dispatch details'}
                     >
-                      <p className="break-all font-mono text-xs font-semibold text-primary">{d.shipment_number}</p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">{formatDateTime(d.dispatch_date || d.created_at)}</p>
+                      {expanded ? 'Collapse' : 'Expand'}
                     </button>
-                    <Badge variant={getStatusVariant(d.status)}>{d.status}</Badge>
-                  </div>
-                  <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">{Number(d.total_whole_qty || 0)} whole / {Number(d.total_broken_qty || 0)} broken</p>
-                  {expanded ? (
-                    <div className="mt-2 space-y-1 text-[11px] text-slate-500 dark:text-slate-400">
-                      <p className="truncate">{d.product_names || d.product_skus || '—'}</p>
-                      <p>By: {d.generated_by || '—'}</p>
-                    </div>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => setDispatchExpandedId((current) => (current === d.id ? null : d.id))}
-                    className="mt-2 rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                    aria-label={expanded ? 'Collapse dispatch details' : 'Expand dispatch details'}
-                  >
-                    {expanded ? 'Collapse' : 'Expand'}
-                  </button>
-                </article>
-              );
-            })}
-          </div>
-          <div className="overflow-x-auto flex-1">
-            <table className="hidden w-full text-xs text-left whitespace-nowrap md:table">
-              <thead className="sticky top-0 bg-slate-50/90 font-medium text-slate-600 dark:bg-slate-900/90 dark:text-slate-300">
-                <tr>
-                  <th className="px-3 py-2">
-                    <button type="button" onClick={() => toggleSort(dispatchSort, setDispatchSort, 'datetime')} className="font-medium hover:text-foreground">
-                      {tc.datetime}
-                    </button>
-                  </th>
-                  <th className="px-3 py-2">
-                    <button type="button" onClick={() => toggleSort(dispatchSort, setDispatchSort, 'shipment')} className="font-medium hover:text-foreground">
-                      {t('dispatchNo')}
-                    </button>
-                  </th>
-                  <th className="px-3 py-2">
-                    <button type="button" onClick={() => toggleSort(dispatchSort, setDispatchSort, 'products')} className="font-medium hover:text-foreground">
-                      Products
-                    </button>
-                  </th>
-                  <th className="px-3 py-2 text-right">
-                    <button type="button" onClick={() => toggleSort(dispatchSort, setDispatchSort, 'quantities')} className="font-medium hover:text-foreground">
-                      Quantities
-                    </button>
-                  </th>
-                  <th className="px-3 py-2">
-                    <button type="button" onClick={() => toggleSort(dispatchSort, setDispatchSort, 'status')} className="font-medium hover:text-foreground">
-                      {t('status')}
-                    </button>
-                  </th>
-                  <th className="px-3 py-2">{tc.generatedBy}</th>
-                  <th className="px-3 py-2">{tc.approvedBy}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {dispatchPagination.rows.map((d) => (
-                  <tr
-                    key={d.id}
-                    className={`cursor-pointer transition hover:bg-slate-50 focus-within:bg-slate-50 dark:hover:bg-slate-800/40 dark:focus-within:bg-slate-800/40 ${
-                      highlightedShipmentKey === `dispatch-${d.id}` ? 'bg-[#E07A00]/10 ring-1 ring-[#E07A00]/40' : 'odd:bg-white even:bg-slate-50/70 dark:odd:bg-slate-900 dark:even:bg-slate-900/70'
-                    }`}
-                    onClick={() => openShipmentPreview('dispatch', d)}
-                    tabIndex={0}
-                    role="button"
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        openShipmentPreview('dispatch', d);
-                      }
-                    }}
-                    title="Click to preview"
-                  >
-                    <td className="px-3 py-2 text-muted-foreground">{formatDateTime(d.dispatch_date || d.created_at)}</td>
-                    <td className="px-3 py-2 font-mono font-medium text-primary">{d.shipment_number}</td>
-                    <td className="px-3 py-2">
-                      <div className="max-w-[260px] truncate" title={d.product_names || d.product_skus || ''}>
-                        {d.product_names || d.product_skus || '—'}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      {Number(d.total_whole_qty || 0)} whole / {Number(d.total_broken_qty || 0)} broken
-                    </td>
-                    <td className="px-3 py-2"><Badge variant={getStatusVariant(d.status)}>{d.status}</Badge></td>
-                    <td className="px-3 py-2 text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <span>{d.generated_by || '—'}</span>
-                        <Badge variant="neutral" className="text-[10px]">{getGeneratedByRoleLabel(d.generated_by_role)}</Badge>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-muted-foreground">{d.approved_by || '—'}</td>
-                  </tr>
-                ))}
-                {dispatchPagination.total === 0 ? (
+                  </article>
+                );
+              })}
+            </div>
+            <div className="overflow-x-auto flex-1">
+              <table className="hidden w-full text-xs text-left whitespace-nowrap md:table">
+                <thead className="sticky top-0 bg-slate-50/90 font-medium text-slate-600 dark:bg-slate-900/90 dark:text-slate-300">
                   <tr>
-                    <td colSpan="7" className="px-3 py-10">
-                      <div className="flex flex-col items-center justify-center gap-3 text-center">
-                        <PackageCheck className="h-6 w-6 text-slate-400" />
-                        <p className="text-sm text-slate-500 dark:text-slate-400">{tc.noDispatches}</p>
-                        <button
-                          type="button"
-                          onClick={() => setDispatchSearch('')}
-                          className="rounded-xl bg-[#E07A00] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#c96d00] focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20"
-                        >
-                          {tc.clearFilters}
-                        </button>
-                      </div>
-                    </td>
+                    <th className="px-3 py-2">
+                      <button type="button" onClick={() => toggleSort(dispatchSort, setDispatchSort, 'datetime')} className="font-medium hover:text-foreground">
+                        {tc.datetime}
+                      </button>
+                    </th>
+                    <th className="px-3 py-2">
+                      <button type="button" onClick={() => toggleSort(dispatchSort, setDispatchSort, 'shipment')} className="font-medium hover:text-foreground">
+                        {t('dispatchNo')}
+                      </button>
+                    </th>
+                    <th className="px-3 py-2">
+                      <button type="button" onClick={() => toggleSort(dispatchSort, setDispatchSort, 'products')} className="font-medium hover:text-foreground">
+                        Products
+                      </button>
+                    </th>
+                    <th className="px-3 py-2 text-right">
+                      <button type="button" onClick={() => toggleSort(dispatchSort, setDispatchSort, 'quantities')} className="font-medium hover:text-foreground">
+                        Quantities
+                      </button>
+                    </th>
+                    <th className="px-3 py-2">
+                      <button type="button" onClick={() => toggleSort(dispatchSort, setDispatchSort, 'status')} className="font-medium hover:text-foreground">
+                        {t('status')}
+                      </button>
+                    </th>
+                    <th className="px-3 py-2">{tc.generatedBy}</th>
+                    <th className="px-3 py-2">{tc.approvedBy}</th>
                   </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-          <PaginationControls
-            page={dispatchPagination.page}
-            pageCount={dispatchPagination.pageCount}
-            total={dispatchPagination.total}
-            pageSize={DEFAULT_PAGE_SIZE}
-            onPageChange={setDispatchPage}
-            labels={{
-              showing: tc.paginationShowing,
-              of: tc.paginationOf,
-              previous: tc.paginationPrevious,
-              next: tc.paginationNext,
-              page: tc.paginationPage,
-            }}
-          />
-        </section>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {dispatchPagination.rows.map((d) => (
+                    <tr
+                      key={d.id}
+                      className={`cursor-pointer transition hover:bg-slate-50 focus-within:bg-slate-50 dark:hover:bg-slate-800/40 dark:focus-within:bg-slate-800/40 ${highlightedShipmentKey === `dispatch-${d.id}` ? 'bg-[#E07A00]/10 ring-1 ring-[#E07A00]/40' : 'odd:bg-white even:bg-slate-50/70 dark:odd:bg-slate-900 dark:even:bg-slate-900/70'
+                        }`}
+                      onClick={() => openShipmentPreview('dispatch', d)}
+                      tabIndex={0}
+                      role="button"
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          openShipmentPreview('dispatch', d);
+                        }
+                      }}
+                      title="Click to preview"
+                    >
+                      <td className="px-3 py-2 text-muted-foreground">{formatDateTime(d.dispatch_date || d.created_at)}</td>
+                      <td className="px-3 py-2 font-mono font-medium text-primary">{d.shipment_number}</td>
+                      <td className="px-3 py-2">
+                        <div className="max-w-[260px] truncate" title={d.product_names || d.product_skus || ''}>
+                          {d.product_names || d.product_skus || '—'}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {Number(d.total_whole_qty || 0)} whole / {Number(d.total_broken_qty || 0)} broken
+                      </td>
+                      <td className="px-3 py-2"><Badge variant={getStatusVariant(d.status)}>{d.status}</Badge></td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <span>{d.generated_by || '—'}</span>
+                          <Badge variant="neutral" className="text-[10px]">{getGeneratedByRoleLabel(d.generated_by_role)}</Badge>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">{d.approved_by || '—'}</td>
+                    </tr>
+                  ))}
+                  {dispatchPagination.total === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="px-3 py-10">
+                        <div className="flex flex-col items-center justify-center gap-3 text-center">
+                          <PackageCheck className="h-6 w-6 text-slate-400" />
+                          <p className="text-sm text-slate-500 dark:text-slate-400">{tc.noDispatches}</p>
+                          <button
+                            type="button"
+                            onClick={() => setDispatchSearch('')}
+                            className="rounded-xl bg-[#E07A00] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#c96d00] focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20"
+                          >
+                            {tc.clearFilters}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+            <PaginationControls
+              page={dispatchPagination.page}
+              pageCount={dispatchPagination.pageCount}
+              total={dispatchPagination.total}
+              pageSize={DEFAULT_PAGE_SIZE}
+              onPageChange={setDispatchPage}
+              labels={{
+                showing: tc.paginationShowing,
+                of: tc.paginationOf,
+                previous: tc.paginationPrevious,
+                next: tc.paginationNext,
+                page: tc.paginationPage,
+              }}
+            />
+          </section>
         </div>
-        )}
+      )}
 
       <EntryPreviewSheet
         open={previewState.open}
@@ -2419,234 +2433,234 @@ export default function StockDashboard() {
         sections={
           previewState.kind === 'stock'
             ? [
-                {
-                  title: 'Item Details',
-                  children: (
-                    <PreviewKeyValueGrid
-                      items={[
-                        { label: 'SKU', value: previewState.record?.sku },
-                        { label: 'Name', value: previewState.record?.name },
-                        { label: 'Size', value: previewState.record?.size_label },
-                        { label: 'Whole Qty', value: previewState.record?.current_whole_qty },
-                        { label: 'Broken Qty', value: previewState.record?.current_broken_qty },
-                        { label: 'Reorder Level', value: previewState.record?.reorder_level },
-                        { label: 'Tiles / Box', value: previewState.record?.tiles_per_box },
-                      ]}
-                    />
-                  ),
-                },
-              ]
+              {
+                title: 'Item Details',
+                children: (
+                  <PreviewKeyValueGrid
+                    items={[
+                      { label: 'SKU', value: previewState.record?.sku },
+                      { label: 'Name', value: previewState.record?.name },
+                      { label: 'Size', value: previewState.record?.size_label },
+                      { label: 'Whole Qty', value: previewState.record?.current_whole_qty },
+                      { label: 'Broken Qty', value: previewState.record?.current_broken_qty },
+                      { label: 'Reorder Level', value: previewState.record?.reorder_level },
+                      { label: 'Tiles / Box', value: previewState.record?.tiles_per_box },
+                    ]}
+                  />
+                ),
+              },
+            ]
             : [
-                {
-                  title: isInboundPreview ? 'ERP Header' : 'Shipment Details',
-                  children: (
-                    isInboundPreview ? (
-                      <div className={INVOICE_CLASSES.surface}>
-                        <div className={INVOICE_CLASSES.commandCard}>
-                          <div className="grid gap-4 md:grid-cols-[1.15fr_1fr] md:items-start">
-                            <div>
-                              <div className={INVOICE_CLASSES.supplierTitle}>{previewState.record?.supplier_name || 'Supplier'}</div>
-                              <div className={INVOICE_CLASSES.supplierMeta}>GSTIN: {previewState.record?.supplier_gst_number || '—'}</div>
-                              <div className={INVOICE_CLASSES.supplierMeta}>{previewState.record?.supplier_address || 'Address not available'}</div>
-                              <div className="mt-3 font-mono text-xs font-semibold text-[#E07A00]">{previewState.record?.shipment_number || '—'}</div>
+              {
+                title: isInboundPreview ? 'ERP Header' : 'Shipment Details',
+                children: (
+                  isInboundPreview ? (
+                    <div className={INVOICE_CLASSES.surface}>
+                      <div className={INVOICE_CLASSES.commandCard}>
+                        <div className="grid gap-4 md:grid-cols-[1.15fr_1fr] md:items-start">
+                          <div>
+                            <div className={INVOICE_CLASSES.supplierTitle}>{previewState.record?.supplier_name || 'Supplier'}</div>
+                            <div className={INVOICE_CLASSES.supplierMeta}>GSTIN: {previewState.record?.supplier_gst_number || '—'}</div>
+                            <div className={INVOICE_CLASSES.supplierMeta}>{previewState.record?.supplier_address || 'Address not available'}</div>
+                            <div className="mt-3 font-mono text-xs font-semibold text-[#E07A00]">{previewState.record?.shipment_number || '—'}</div>
+                          </div>
+                          <div className={INVOICE_CLASSES.logisticsGrid}>
+                            <div className={INVOICE_CLASSES.logisticsCell}>
+                              <div className={INVOICE_CLASSES.logisticsLabel}><Hash className="h-3 w-3" />{tc.invoiceNoLabel}</div>
+                              <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.invoice_number || '—'}</div>
                             </div>
-                            <div className={INVOICE_CLASSES.logisticsGrid}>
-                              <div className={INVOICE_CLASSES.logisticsCell}>
-                                <div className={INVOICE_CLASSES.logisticsLabel}><Hash className="h-3 w-3" />{tc.invoiceNoLabel}</div>
-                                <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.invoice_number || '—'}</div>
-                              </div>
-                              <div className={INVOICE_CLASSES.logisticsCell}>
-                                <div className={INVOICE_CLASSES.logisticsLabel}><Calendar className="h-3 w-3" />{tc.date}</div>
-                                <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.invoice_date ? formatDateTime(previewState.record?.invoice_date) : '—'}</div>
-                              </div>
-                              <div className={INVOICE_CLASSES.logisticsCell}>
-                                <div className={INVOICE_CLASSES.logisticsLabel}><Truck className="h-3 w-3" />{tc.vehicleNo}</div>
-                                <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.truck_license_plate || previewState.record?.truck_number || '—'}</div>
-                              </div>
-                              <div className={INVOICE_CLASSES.logisticsCell}>
-                                <div className={INVOICE_CLASSES.logisticsLabel}><Truck className="h-3 w-3" />{tc.transporter}</div>
-                                <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.transporter_name || '—'}</div>
-                              </div>
+                            <div className={INVOICE_CLASSES.logisticsCell}>
+                              <div className={INVOICE_CLASSES.logisticsLabel}><Calendar className="h-3 w-3" />{tc.date}</div>
+                              <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.invoice_date ? formatDateTime(previewState.record?.invoice_date) : '—'}</div>
+                            </div>
+                            <div className={INVOICE_CLASSES.logisticsCell}>
+                              <div className={INVOICE_CLASSES.logisticsLabel}><Truck className="h-3 w-3" />{tc.vehicleNo}</div>
+                              <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.truck_license_plate || previewState.record?.truck_number || '—'}</div>
+                            </div>
+                            <div className={INVOICE_CLASSES.logisticsCell}>
+                              <div className={INVOICE_CLASSES.logisticsLabel}><Truck className="h-3 w-3" />{tc.transporter}</div>
+                              <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.transporter_name || '—'}</div>
                             </div>
                           </div>
-                        </div>
-                        {hasTechnicalSubBar ? (
-                          <div className="px-4 pb-4">
-                            <div className={INVOICE_CLASSES.subBar}>
-                              {previewState.record?.eway_bill_number ? <span>E-WAY: {previewState.record?.eway_bill_number}</span> : null}
-                              {previewState.record?.irn_number ? <span>IRN: {previewState.record?.irn_number}</span> : null}
-                            </div>
-                          </div>
-                        ) : null}
-                        <div className="px-4 pb-4">
-                          <PreviewKeyValueGrid items={inboundMetaItems} />
                         </div>
                       </div>
-                    ) : (
-                      <PreviewKeyValueGrid
-                        items={[
-                          { label: 'Shipment No.', value: previewState.record?.shipment_number },
-                          { label: 'Status', value: previewState.record?.status },
-                          { label: 'Approval', value: previewState.record?.approval_status },
-                          { label: 'Datetime', value: formatDateTime(previewState.record?.arrival_date || previewState.record?.dispatch_date || previewState.record?.created_at) },
-                          { label: 'Truck', value: previewState.record?.truck_license_plate || previewState.record?.truck_number },
-                          { label: 'Driver', value: previewState.record?.driver_name },
-                          { label: 'Invoice No.', value: previewState.record?.invoice_number },
-                          { label: 'Gatepass No.', value: previewState.record?.gatepass_number },
-                          { label: 'Customer', value: previewState.record?.customer_name },
-                          { label: 'Total Whole', value: previewState.record?.total_whole_qty },
-                          { label: 'Total Broken', value: previewState.record?.total_broken_qty },
-                          { label: 'Notes', value: previewState.record?.notes },
-                        ]}
-                      />
-                    )
-                  ),
-                },
-                previewState.items?.length
-                  ? {
-                      title: isInboundPreview ? 'Industrial Line Items' : 'Line Items',
-                      children: (
-                        <>
-                          {isInboundPreview ? (
-                            <div className={INVOICE_CLASSES.mobileGrid}>
-                              {previewItemPagination.rows.map((item, index) => (
-                                <article key={`inbound-mobile-item-${item.id || index}`} className={INVOICE_CLASSES.mobileCard}>
-                                  <div className={INVOICE_CLASSES.mobileCardHeader}>Line {index + 1}</div>
-                                  <div className="mt-2 grid grid-cols-2 gap-2">
-                                    <div>
-                                      <div className={INVOICE_CLASSES.mobileKey}>{tc.description}</div>
-                                      <div className={INVOICE_CLASSES.mobileValue}>{item.item_name || item.sku || '—'}</div>
-                                    </div>
-                                    <div>
-                                      <div className={INVOICE_CLASSES.mobileKey}>HSN</div>
-                                      <div className={INVOICE_CLASSES.mobileValue}>{item.hsn_code || '—'}</div>
-                                    </div>
-                                    <div>
-                                      <div className={INVOICE_CLASSES.mobileKey}>{t('size')}</div>
-                                      <div className={INVOICE_CLASSES.mobileValue}>{item.size_label || '—'}</div>
-                                    </div>
-                                    <div>
-                                      <div className={INVOICE_CLASSES.mobileKey}>{tc.wholeBox}</div>
-                                      <div className={INVOICE_CLASSES.mobileValue}>{item.received_whole_qty ?? item.loaded_whole_qty ?? 0}</div>
-                                    </div>
-                                    <div className="col-span-2">
-                                      <div className={INVOICE_CLASSES.mobileKey}>{tc.totalSqmQty}</div>
-                                      <div className={INVOICE_CLASSES.mobileValue}>
-                                        {item.qty_sqm != null ? Number(item.qty_sqm).toFixed(3) : Number((item.received_whole_qty ?? 0) + (item.received_broken_qty ?? 0)).toFixed(0)}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </article>
-                              ))}
-                            </div>
-                          ) : null}
-                          <div className={isInboundPreview ? `hidden md:block ${INVOICE_CLASSES.tableWrap}` : 'overflow-hidden rounded-2xl border border-border bg-card'}>
-                            <table className="w-full text-left text-sm">
-                              <thead className={isInboundPreview ? INVOICE_CLASSES.tableHead : 'bg-muted/70 text-muted-foreground'}>
-                                <tr>
-                                  {isInboundPreview ? (
-                                    <>
-                                      <th className={INVOICE_CLASSES.tableHeadCell}>{tc.srNo}</th>
-                                      <th className={INVOICE_CLASSES.tableHeadCell}>{tc.description}</th>
-                                      <th className={INVOICE_CLASSES.tableHeadCell}>HSN</th>
-                                      <th className={INVOICE_CLASSES.tableHeadCell}>{t('size')}</th>
-                                      <th className={`${INVOICE_CLASSES.tableHeadCell} text-right`}>{tc.wholeBox}</th>
-                                      <th className={`${INVOICE_CLASSES.tableHeadCell} text-right`}>{tc.totalSqmQty}</th>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <th className="px-3 py-2">{t('sku')}</th>
-                                      <th className="px-3 py-2">{t('name')}</th>
-                                      <th className="px-3 py-2">HSN</th>
-                                      <th className="px-3 py-2">{tc.division}</th>
-                                      <th className="px-3 py-2 text-right">{tc.sqm}</th>
-                                      <th className="px-3 py-2 text-right">{tc.costPerSqm}</th>
-                                      <th className="px-3 py-2 text-right">{t('whole')}</th>
-                                      <th className="px-3 py-2 text-right">{t('broken')}</th>
-                                      <th className="px-3 py-2">{t('notes')}</th>
-                                    </>
-                                  )}
-                                </tr>
-                              </thead>
-                              <tbody className={isInboundPreview ? 'bg-white dark:bg-slate-950' : 'divide-y divide-border bg-card'}>
-                                {previewItemPagination.rows.map((item, index) => (
-                                  <tr key={item.id || `preview-item-${index}`} className={isInboundPreview ? INVOICE_CLASSES.tableRow : ''}>
-                                    {isInboundPreview ? (
-                                      <>
-                                        <td className={`${INVOICE_CLASSES.tableCell} ${INVOICE_CLASSES.monoCell}`}>{index + 1}</td>
-                                        <td className={INVOICE_CLASSES.tableCell}>{item.item_name || item.sku || '—'}</td>
-                                        <td className={`${INVOICE_CLASSES.tableCell} ${INVOICE_CLASSES.monoCell}`}>{item.hsn_code || '—'}</td>
-                                        <td className={`${INVOICE_CLASSES.tableCell} ${INVOICE_CLASSES.monoCell}`}>{item.size_label || '—'}</td>
-                                        <td className={`${INVOICE_CLASSES.tableCell} ${INVOICE_CLASSES.monoCell} text-right`}>{item.received_whole_qty ?? item.loaded_whole_qty ?? 0}</td>
-                                        <td className={`${INVOICE_CLASSES.tableCell} ${INVOICE_CLASSES.monoCell} text-right`}>
-                                          {item.qty_sqm != null ? Number(item.qty_sqm).toFixed(3) : Number((item.received_whole_qty ?? 0) + (item.received_broken_qty ?? 0)).toFixed(0)}
-                                        </td>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <td className="px-3 py-2 font-medium text-foreground">{item.sku}</td>
-                                        <td className="px-3 py-2 text-foreground/80">{item.item_name}</td>
-                                        <td className="px-3 py-2 text-muted-foreground">{item.hsn_code || '—'}</td>
-                                        <td className="px-3 py-2 text-muted-foreground">{item.division_name || item.department || '—'}</td>
-                                        <td className="px-3 py-2 text-right">{item.qty_sqm != null ? Number(item.qty_sqm).toFixed(3) : '—'}</td>
-                                        <td className="px-3 py-2 text-right">{item.cost_per_sqm != null ? Number(item.cost_per_sqm).toFixed(2) : '—'}</td>
-                                        <td className="px-3 py-2 text-right">{item.loaded_whole_qty ?? item.received_whole_qty ?? 0}</td>
-                                        <td className="px-3 py-2 text-right">{item.loaded_broken_qty ?? item.received_broken_qty ?? 0}</td>
-                                        <td className="px-3 py-2 text-muted-foreground">{item.notes || '—'}</td>
-                                      </>
-                                    )}
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                      {hasTechnicalSubBar ? (
+                        <div className="px-4 pb-4">
+                          <div className={INVOICE_CLASSES.subBar}>
+                            {previewState.record?.eway_bill_number ? <span>E-WAY: {previewState.record?.eway_bill_number}</span> : null}
+                            {previewState.record?.irn_number ? <span>IRN: {previewState.record?.irn_number}</span> : null}
                           </div>
-                          <PaginationControls
-                            page={previewItemPagination.page}
-                            pageCount={previewItemPagination.pageCount}
-                            total={previewItemPagination.total}
-                            pageSize={DEFAULT_PAGE_SIZE}
-                            onPageChange={setPreviewItemsPage}
-                            labels={{
-                              showing: tc.paginationShowing,
-                              of: tc.paginationOf,
-                              previous: tc.paginationPrevious,
-                              next: tc.paginationNext,
-                              page: tc.paginationPage,
-                            }}
-                          />
-                        </>
-                      ),
-                    }
-                  : null,
-                previewState.documents?.length
-                  ? {
-                      title: 'Linked Documents',
-                      children: (
-                        <div className="grid gap-4 xl:grid-cols-2">
-                          {previewState.documents.map((document) => (
-                            <section
-                              key={document.id}
-                              className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
-                            >
-                                <div className="border-b border-border bg-muted/40 px-4 py-3">
-                                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{document.document_type}</div>
-                                  <div className="mt-1 text-sm font-medium text-foreground">{document.document_number || document.file_name}</div>
-                                  <div className="mt-1 truncate text-xs text-muted-foreground">{document.file_name}</div>
+                        </div>
+                      ) : null}
+                      <div className="px-4 pb-4">
+                        <PreviewKeyValueGrid items={inboundMetaItems} />
+                      </div>
+                    </div>
+                  ) : (
+                    <PreviewKeyValueGrid
+                      items={[
+                        { label: 'Shipment No.', value: previewState.record?.shipment_number },
+                        { label: 'Status', value: previewState.record?.status },
+                        { label: 'Approval', value: previewState.record?.approval_status },
+                        { label: 'Datetime', value: formatDateTime(previewState.record?.arrival_date || previewState.record?.dispatch_date || previewState.record?.created_at) },
+                        { label: 'Truck', value: previewState.record?.truck_license_plate || previewState.record?.truck_number },
+                        { label: 'Driver', value: previewState.record?.driver_name },
+                        { label: 'Invoice No.', value: previewState.record?.invoice_number },
+                        { label: 'Gatepass No.', value: previewState.record?.gatepass_number },
+                        { label: 'Customer', value: previewState.record?.customer_name },
+                        { label: 'Total Whole', value: previewState.record?.total_whole_qty },
+                        { label: 'Total Broken', value: previewState.record?.total_broken_qty },
+                        { label: 'Notes', value: previewState.record?.notes },
+                      ]}
+                    />
+                  )
+                ),
+              },
+              previewState.items?.length
+                ? {
+                  title: isInboundPreview ? 'Industrial Line Items' : 'Line Items',
+                  children: (
+                    <>
+                      {isInboundPreview ? (
+                        <div className={INVOICE_CLASSES.mobileGrid}>
+                          {previewItemPagination.rows.map((item, index) => (
+                            <article key={`inbound-mobile-item-${item.id || index}`} className={INVOICE_CLASSES.mobileCard}>
+                              <div className={INVOICE_CLASSES.mobileCardHeader}>Line {index + 1}</div>
+                              <div className="mt-2 grid grid-cols-2 gap-2">
+                                <div>
+                                  <div className={INVOICE_CLASSES.mobileKey}>{tc.description}</div>
+                                  <div className={INVOICE_CLASSES.mobileValue}>{item.item_name || item.sku || '—'}</div>
+                                </div>
+                                <div>
+                                  <div className={INVOICE_CLASSES.mobileKey}>HSN</div>
+                                  <div className={INVOICE_CLASSES.mobileValue}>{item.hsn_code || '—'}</div>
+                                </div>
+                                <div>
+                                  <div className={INVOICE_CLASSES.mobileKey}>{t('size')}</div>
+                                  <div className={INVOICE_CLASSES.mobileValue}>{item.size_label || '—'}</div>
+                                </div>
+                                <div>
+                                  <div className={INVOICE_CLASSES.mobileKey}>{tc.wholeBox}</div>
+                                  <div className={INVOICE_CLASSES.mobileValue}>{item.received_whole_qty ?? item.loaded_whole_qty ?? 0}</div>
+                                </div>
+                                <div className="col-span-2">
+                                  <div className={INVOICE_CLASSES.mobileKey}>{tc.totalSqmQty}</div>
+                                  <div className={INVOICE_CLASSES.mobileValue}>
+                                    {item.qty_sqm != null ? Number(item.qty_sqm).toFixed(3) : Number((item.received_whole_qty ?? 0) + (item.received_broken_qty ?? 0)).toFixed(0)}
+                                  </div>
+                                </div>
                               </div>
-                              <div className="p-4">
-                                {renderDocumentPreview(document)}
-                              </div>
-                            </section>
+                            </article>
                           ))}
                         </div>
-                      ),
-                    }
-                  : null,
-              ]
+                      ) : null}
+                      <div className={isInboundPreview ? `hidden md:block ${INVOICE_CLASSES.tableWrap}` : 'overflow-hidden rounded-2xl border border-border bg-card'}>
+                        <table className="w-full text-left text-sm">
+                          <thead className={isInboundPreview ? INVOICE_CLASSES.tableHead : 'bg-muted/70 text-muted-foreground'}>
+                            <tr>
+                              {isInboundPreview ? (
+                                <>
+                                  <th className={INVOICE_CLASSES.tableHeadCell}>{tc.srNo}</th>
+                                  <th className={INVOICE_CLASSES.tableHeadCell}>{tc.description}</th>
+                                  <th className={INVOICE_CLASSES.tableHeadCell}>HSN</th>
+                                  <th className={INVOICE_CLASSES.tableHeadCell}>{t('size')}</th>
+                                  <th className={`${INVOICE_CLASSES.tableHeadCell} text-right`}>{tc.wholeBox}</th>
+                                  <th className={`${INVOICE_CLASSES.tableHeadCell} text-right`}>{tc.totalSqmQty}</th>
+                                </>
+                              ) : (
+                                <>
+                                  <th className="px-3 py-2">{t('sku')}</th>
+                                  <th className="px-3 py-2">{t('name')}</th>
+                                  <th className="px-3 py-2">HSN</th>
+                                  <th className="px-3 py-2">{tc.division}</th>
+                                  <th className="px-3 py-2 text-right">{tc.sqm}</th>
+                                  <th className="px-3 py-2 text-right">{tc.costPerSqm}</th>
+                                  <th className="px-3 py-2 text-right">{t('whole')}</th>
+                                  <th className="px-3 py-2 text-right">{t('broken')}</th>
+                                  <th className="px-3 py-2">{t('notes')}</th>
+                                </>
+                              )}
+                            </tr>
+                          </thead>
+                          <tbody className={isInboundPreview ? 'bg-white dark:bg-slate-950' : 'divide-y divide-border bg-card'}>
+                            {previewItemPagination.rows.map((item, index) => (
+                              <tr key={item.id || `preview-item-${index}`} className={isInboundPreview ? INVOICE_CLASSES.tableRow : ''}>
+                                {isInboundPreview ? (
+                                  <>
+                                    <td className={`${INVOICE_CLASSES.tableCell} ${INVOICE_CLASSES.monoCell}`}>{index + 1}</td>
+                                    <td className={INVOICE_CLASSES.tableCell}>{item.item_name || item.sku || '—'}</td>
+                                    <td className={`${INVOICE_CLASSES.tableCell} ${INVOICE_CLASSES.monoCell}`}>{item.hsn_code || '—'}</td>
+                                    <td className={`${INVOICE_CLASSES.tableCell} ${INVOICE_CLASSES.monoCell}`}>{item.size_label || '—'}</td>
+                                    <td className={`${INVOICE_CLASSES.tableCell} ${INVOICE_CLASSES.monoCell} text-right`}>{item.received_whole_qty ?? item.loaded_whole_qty ?? 0}</td>
+                                    <td className={`${INVOICE_CLASSES.tableCell} ${INVOICE_CLASSES.monoCell} text-right`}>
+                                      {item.qty_sqm != null ? Number(item.qty_sqm).toFixed(3) : Number((item.received_whole_qty ?? 0) + (item.received_broken_qty ?? 0)).toFixed(0)}
+                                    </td>
+                                  </>
+                                ) : (
+                                  <>
+                                    <td className="px-3 py-2 font-medium text-foreground">{item.sku}</td>
+                                    <td className="px-3 py-2 text-foreground/80">{item.item_name}</td>
+                                    <td className="px-3 py-2 text-muted-foreground">{item.hsn_code || '—'}</td>
+                                    <td className="px-3 py-2 text-muted-foreground">{item.division_name || item.department || '—'}</td>
+                                    <td className="px-3 py-2 text-right">{item.qty_sqm != null ? Number(item.qty_sqm).toFixed(3) : '—'}</td>
+                                    <td className="px-3 py-2 text-right">{item.cost_per_sqm != null ? Number(item.cost_per_sqm).toFixed(2) : '—'}</td>
+                                    <td className="px-3 py-2 text-right">{item.loaded_whole_qty ?? item.received_whole_qty ?? 0}</td>
+                                    <td className="px-3 py-2 text-right">{item.loaded_broken_qty ?? item.received_broken_qty ?? 0}</td>
+                                    <td className="px-3 py-2 text-muted-foreground">{item.notes || '—'}</td>
+                                  </>
+                                )}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <PaginationControls
+                        page={previewItemPagination.page}
+                        pageCount={previewItemPagination.pageCount}
+                        total={previewItemPagination.total}
+                        pageSize={DEFAULT_PAGE_SIZE}
+                        onPageChange={setPreviewItemsPage}
+                        labels={{
+                          showing: tc.paginationShowing,
+                          of: tc.paginationOf,
+                          previous: tc.paginationPrevious,
+                          next: tc.paginationNext,
+                          page: tc.paginationPage,
+                        }}
+                      />
+                    </>
+                  ),
+                }
+                : null,
+              previewState.documents?.length
+                ? {
+                  title: 'Linked Documents',
+                  children: (
+                    <div className="grid gap-4 xl:grid-cols-2">
+                      {previewState.documents.map((document) => (
+                        <section
+                          key={document.id}
+                          className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
+                        >
+                          <div className="border-b border-border bg-muted/40 px-4 py-3">
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{document.document_type}</div>
+                            <div className="mt-1 text-sm font-medium text-foreground">{document.document_number || document.file_name}</div>
+                            <div className="mt-1 truncate text-xs text-muted-foreground">{document.file_name}</div>
+                          </div>
+                          <div className="p-4">
+                            {renderDocumentPreview(document)}
+                          </div>
+                        </section>
+                      ))}
+                    </div>
+                  ),
+                }
+                : null,
+            ]
         }
       />
 
-      
+
     </div>
   );
 }
