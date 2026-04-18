@@ -161,7 +161,7 @@ async function seedStockDatabase() {
     const locations = [
       { name: 'Main Warehouse', location_type: 'warehouse', address: 'Industrial Area, Delhi', contact_name: 'Rajesh', contact_phone: '9876543210' },
       { name: 'Showroom Delhi', location_type: 'showroom', address: 'Connaught Place, Delhi', contact_name: 'Priya', contact_phone: '9876543211' },
-      { name: 'Yard 1', location_type: 'yard', address: 'Outside Delhi', contact_name: 'Kumar', contact_phone: '9876543212' },
+      { name: 'Godaam 1', location_type: 'Godaam', address: 'Outside Delhi', contact_name: 'Kumar', contact_phone: '9876543212' },
       { name: 'In Transit', location_type: 'in_transit', address: 'Various', contact_name: 'Driver', contact_phone: 'N/A' },
       { name: 'Customer Site A', location_type: 'customer_site', address: 'Gurgaon', contact_name: 'Customer', contact_phone: '9876543213' },
     ];

@@ -531,7 +531,7 @@ export default function StockDashboard() {
     salesInvoicePhoto: language === 'hi' ? 'बिक्री इनवॉइस फोटो' : 'Sales invoice photo',
     salesInvoiceHint: language === 'hi' ? 'बिक्री इनवॉइस की फोटो या PDF।' : 'Sales invoice photo or PDF.',
     gatepassPhoto: language === 'hi' ? 'गेटपास फोटो' : 'Gatepass photo',
-    gatepassHint: language === 'hi' ? 'डिस्पैच यार्ड से निकलने से पहले का गेटपास फोटो।' : 'Gatepass photo before dispatch leaves the yard.',
+    gatepassHint: language === 'hi' ? 'डिस्पैच यार्ड से निकलने से पहले का गेटपास फोटो।' : 'Gatepass photo before dispatch leaves the Godaam.',
     submitting: language === 'hi' ? 'जमा किया जा रहा है...' : 'Submitting...',
     noDispatches: language === 'hi' ? 'अभी तक कोई डिस्पैच दर्ज नहीं है।' : 'No dispatches logged yet.',
     loadingPreview: language === 'hi' ? 'पूर्वावलोकन लोड हो रहा है…' : 'Loading preview…',

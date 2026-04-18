@@ -28,7 +28,7 @@ export function CartSummary() {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="icon" className="relative rounded-full hover:scale-105 transition-transform">
+        <Button variant="outline" size="icon" className="relative p-0 rounded-full hover:scale-105 transition-transform">
           <ShoppingCart className="h-5 w-5" />
           {cartCount > 0 && (
             <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground rounded-full h-5 w-5 flex items-center justify-center text-xs font-medium shadow-lg">

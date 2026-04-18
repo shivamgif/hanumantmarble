@@ -158,7 +158,7 @@ async function freshSeedDatabase() {
     const locations = [
       { name: 'Main Warehouse', location_type: 'warehouse', address: 'Industrial Area' },
       { name: 'Showroom', location_type: 'showroom', address: 'Delhi' },
-      { name: 'Yard', location_type: 'yard', address: 'Outside' },
+      { name: 'Godaam', location_type: 'Godaam', address: 'Outside' },
       { name: 'In Transit', location_type: 'in_transit', address: 'Various' },
     ];
 

@@ -194,7 +194,7 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
       </div>
 
       <div className="relative z-10 w-full max-w-5xl">
-        <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-stretch">
+        <div className="grid max-w-lg gap-6 md:mx-auto">
           <section className="overflow-hidden rounded-[2rem] border border-border bg-card shadow-xl">
             <div className="h-full p-3 sm:p-10 lg:p-12">
               <div className="mb-4 flex justify-center items-center gap-3">
@@ -293,15 +293,15 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
                         <p className="h-px flex-1 bg-border" />
                       </span>
                       {socialProvider ? (
-                        <div className="flex items-center justify-center gap-4">
+                        <div className="flex items-center justify-center gap-2">
                         <Button
-                          className="h-14 w-14 rounded-full text-center bg-transparent border border-primary text-base text-primary-foreground shadow-lg transition hover:bg-primary/90"
+                          className="h-12 w-12 p-0 rounded-full text-center bg-transparent border border-primary text-base text-primary-foreground shadow-lg transition hover:bg-primary/90"
                           type="button"
                           onClick={startSignIn}
                           disabled={isSocialSubmitting || isSocialCooldownActive}
                         >
                           {isSocialCooldownActive ? `Try again in ${socialCooldownSeconds}s` : ''}
-                          <Github className="h-6" />
+                          <Github className="h-6 text-primary" />
                         </Button>
                       </div>
                       ) : (
