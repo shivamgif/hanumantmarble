@@ -320,19 +320,34 @@ export async function PATCH(request, context) {
 
     const rows = await sql(
       `UPDATE stock_outbound_shipments
-       SET truck_license_plate = COALESCE($1, truck_license_plate),
-           truck_number = COALESCE($2, truck_number),
-           driver_name = COALESCE($3, driver_name),
-           driver_phone = COALESCE($4, driver_phone),
+       SET truck_license_plate_snapshot = COALESCE($1, truck_license_plate_snapshot),
+           truck_number_snapshot = COALESCE($2, truck_number_snapshot),
+           driver_name_snapshot = COALESCE($3, driver_name_snapshot),
+           driver_phone_snapshot = COALESCE($4, driver_phone_snapshot),
            gatepass_number = COALESCE($5, gatepass_number),
            invoice_number = COALESCE($6, invoice_number),
            loading_labour_cost = COALESCE($7, loading_labour_cost),
            transport_cost = COALESCE($8, transport_cost),
            notes = COALESCE($9, notes),
+           customer_id = COALESCE($11::bigint, customer_id),
+           salesperson_id = COALESCE($12::bigint, salesperson_id),
            updated_at = NOW()
        WHERE id = $10
        RETURNING *`,
-      [body.truckLicensePlate || null, body.truckNumber || null, body.driverName || null, body.driverPhone || null, body.gatepassNumber || null, body.invoiceNumber || null, body.loadingLabourCost ?? null, body.transportCost ?? null, body.notes || null, id]
+      [
+        body.truckLicensePlate || null,
+        body.truckNumber || null,
+        body.driverName || null,
+        body.driverPhone || null,
+        body.gatepassNumber || null,
+        body.invoiceNumber || null,
+        body.loadingLabourCost ?? null,
+        body.transportCost ?? null,
+        body.notes || null,
+        id,
+        body.customerId ? Number(body.customerId) : null,      // $11
+        body.salespersonId ? Number(body.salespersonId) : null, // $12
+      ]
     );
 
     return NextResponse.json({ shipment: rows[0] });

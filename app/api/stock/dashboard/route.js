@@ -31,7 +31,6 @@ export async function GET(request) {
            i.tiles_per_box,
            i.pieces_per_box,
            i.thickness_mm,
-           i.department,
            i.unit_of_measure,
            b.name AS brand_name,
            t.name AS type_name,
@@ -52,13 +51,13 @@ export async function GET(request) {
         `SELECT
            s.id,
            s.shipment_number,
-           s.truck_license_plate,
-           s.driver_name,
+           s.truck_license_plate_snapshot AS truck_license_plate,
+           s.driver_name_snapshot AS driver_name,
            s.arrival_date,
            s.invoice_number,
            s.invoice_date,
            s.origin_city,
-           s.destination_warehouse_name,
+           loc.name AS destination_warehouse_name,
            s.payment_status,
            s.paid_amount,
            s.payment_date,
@@ -77,6 +76,7 @@ export async function GET(request) {
          FROM stock_inbound_shipments s
          LEFT JOIN stock_app_users submitter ON submitter.id = s.submitted_by_user_id
          LEFT JOIN stock_app_users approver ON approver.id = s.approved_by_user_id
+         LEFT JOIN stock_locations loc ON loc.id = s.destination_location_id
          ORDER BY s.created_at DESC
          LIMIT 20`,
         []
@@ -88,7 +88,7 @@ export async function GET(request) {
            STRING_AGG(DISTINCT i.sku, ', ' ORDER BY i.sku) AS product_skus
            ,COALESCE(SUM(isi.qty_sqm), 0) AS total_qty_sqm
            ,COALESCE(AVG(NULLIF(isi.cost_per_sqm, 0)), 0) AS avg_cost_per_sqm
-           ,STRING_AGG(DISTINCT COALESCE(d.name, NULLIF(TRIM(i.department), ''), 'General'), ', ' ORDER BY COALESCE(d.name, NULLIF(TRIM(i.department), ''), 'General')) AS divisions
+           ,STRING_AGG(DISTINCT COALESCE(d.name, 'General'), ', ' ORDER BY COALESCE(d.name, 'General')) AS divisions
          FROM stock_inbound_shipment_items isi
          JOIN stock_items i ON i.id = isi.item_id
          LEFT JOIN stock_divisions d ON d.id = i.division_id
@@ -111,8 +111,8 @@ export async function GET(request) {
         `SELECT 
             sos.id, 
             sos.shipment_number, 
-            sos.truck_license_plate, 
-            sos.driver_name, 
+            sos.truck_license_plate_snapshot AS truck_license_plate, 
+            sos.driver_name_snapshot AS driver_name, 
             sos.created_at AS dispatch_date, 
             sos.status, 
             sos.approval_status,

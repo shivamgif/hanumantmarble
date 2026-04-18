@@ -53,7 +53,8 @@ async function resolveStockItem(item) {
 async function resolveCustomerContext(body) {
   if (body.salesOrderId) {
     const rows = await sql(
-      `SELECT so.id, so.customer_id, so.sales_person, so.notes,
+      `SELECT so.id, so.customer_id, so.notes,
+              so.salesperson_id,
               c.name AS customer_name,
               c.phone AS customer_phone,
               c.whatsapp_phone AS customer_whatsapp_phone,
@@ -72,7 +73,8 @@ async function resolveCustomerContext(body) {
 
   if (body.customerId) {
     const rows = await sql(
-      `SELECT id, name AS customer_name, phone AS customer_phone, whatsapp_phone AS customer_whatsapp_phone, email AS customer_email
+      `SELECT id AS customer_id, name AS customer_name, phone AS customer_phone,
+              whatsapp_phone AS customer_whatsapp_phone, email AS customer_email
        FROM stock_customers
        WHERE id = $1
        LIMIT 1`,
@@ -85,6 +87,51 @@ async function resolveCustomerContext(body) {
   }
 
   return null;
+}
+
+/**
+ * Resolves or upserts a salesperson record and returns their id.
+ * Accepts salespersonId (FK) directly, or upserts by name.
+ */
+async function resolveSalespersonId(body, resolvedCustomer) {
+  if (body.salespersonId) {
+    return Number(body.salespersonId);
+  }
+
+  // Inherit from the linked sales order if available
+  if (resolvedCustomer?.salesperson_id) {
+    return resolvedCustomer.salesperson_id;
+  }
+
+  const spName = normalizeText(
+    body.salespersonName || body.salesPersonName || resolvedCustomer?.sales_person
+  );
+  const spPhone = normalizeText(body.salespersonPhone || body.salesPersonPhone);
+
+  if (!spName) {
+    return null;
+  }
+
+  const rows = await sql(
+    `INSERT INTO stock_sales_people (name, phone, is_active)
+     VALUES ($1, $2, TRUE)
+     ON CONFLICT DO NOTHING
+     RETURNING id`,
+    [spName, spPhone || null]
+  );
+
+  if (rows[0]) {
+    return rows[0].id;
+  }
+
+  // Already exists — look it up
+  const existing = await sql(
+    `SELECT id FROM stock_sales_people
+     WHERE lower(trim(name)) = lower(trim($1))
+     LIMIT 1`,
+    [spName]
+  );
+  return existing[0]?.id || null;
 }
 
 async function resolveVehicleId(body) {
@@ -241,6 +288,10 @@ export async function POST(request) {
     const resolvedCustomer = await resolveCustomerContext(body);
     const vehicleId = await resolveVehicleId(body);
 
+    // Resolve FK IDs — dual-write with legacy text columns during transition
+    const resolvedCustomerId = resolvedCustomer?.customer_id || null;
+    const resolvedSalespersonId = await resolveSalespersonId(body, resolvedCustomer);
+
     const customerName = normalizeText(body.customerName || resolvedCustomer?.customer_name);
     const customerPhone = normalizeText(body.customerPhone || resolvedCustomer?.customer_phone);
     const salespersonName = normalizeText(body.salespersonName || body.salesPersonName || resolvedCustomer?.sales_person);
@@ -290,14 +341,12 @@ export async function POST(request) {
         shipment_number,
         sales_order_id,
         vehicle_id,
-        customer_name,
-        customer_phone,
-        salesperson_name,
-        salesperson_phone,
-        truck_license_plate,
-        truck_number,
-        driver_name,
-        driver_phone,
+        customer_id,
+        salesperson_id,
+        truck_license_plate_snapshot,
+        truck_number_snapshot,
+        driver_name_snapshot,
+        driver_phone_snapshot,
         gatepass_number,
         invoice_number,
         submitted_at,
@@ -313,46 +362,44 @@ export async function POST(request) {
         notes,
         created_by
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
         NOW(),
+        $12,
+        $13,
         $14,
-        $15,
+        COALESCE($15, NOW()),
         $16,
-        COALESCE($17, NOW()),
+        $17,
         $18,
         $19,
         $20,
         $21,
-        $22,
-        $23,
-        $24
+        $22
       )
       RETURNING *`,
       [
-        shipmentNumber,
-        body.salesOrderId || null,
-        vehicleId,
-        customerName,
-        customerPhone || null,
-        salespersonName || null,
-        salespersonPhone || null,
-        truckLicensePlate || null,
-        truckNumber || null,
-        driverName || null,
-        driverPhone || null,
-        normalizeText(body.gatepassNumber) || null,
-        normalizeText(body.invoiceNumber) || null,
-        appUser?.id || null,
-        approvalStatus,
-        status,
-        dispatchDate,
-        Number(body.loadingLabourCost || 0),
-        Number(body.transportCost || 0),
-        toPositiveInteger(body.returnBrokenQty),
-        normalizeText(body.returnNotes) || null,
-        appUser?.id || null,
-        normalizeText(body.notes) || null,
-        session.user.email,
+        shipmentNumber,           // $1
+        body.salesOrderId || null, // $2
+        vehicleId,                 // $3
+        resolvedCustomerId,        // $4  ← NEW FK
+        resolvedSalespersonId,     // $5  ← NEW FK
+        truckLicensePlate || null, // $6
+        truckNumber || null,       // $7
+        driverName || null,        // $8
+        driverPhone || null,       // $9
+        normalizeText(body.gatepassNumber) || null,  // $10
+        normalizeText(body.invoiceNumber) || null,   // $11
+        appUser?.id || null,       // $12
+        approvalStatus,            // $13
+        status,                    // $14
+        dispatchDate,              // $15
+        Number(body.loadingLabourCost || 0), // $16
+        Number(body.transportCost || 0),     // $17
+        toPositiveInteger(body.returnBrokenQty), // $18
+        normalizeText(body.returnNotes) || null,  // $19
+        appUser?.id || null,       // $20
+        normalizeText(body.notes) || null, // $21
+        session.user.email,        // $22
       ]
     );
 

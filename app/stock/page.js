@@ -363,9 +363,6 @@ function AttachmentField({ label, accept = 'image/*,.pdf', onChange, file, hint 
 function FormSectionTitle({ icon: Icon, title, description }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-        <Icon className="h-5 w-5" />
-      </div>
       <div>
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         {description ? <p className="mt-1 text-xs text-muted-foreground">{description}</p> : null}
@@ -1645,7 +1642,7 @@ export default function StockDashboard() {
                     {tc.newPurchase}
                   </span>
                 </button>
-                <SheetContent side="right" className="w-full max-w-none overflow-y-auto bg-slate-50/50 dark:bg-slate-950 md:w-[50vw]">
+                <SheetContent side="right" className="w-full max-w-none overflow-y-auto bg-white dark:bg-slate-950 md:w-[50vw]">
                   <SheetHeader>
                     <SheetTitle>{tc.logNewPurchase}</SheetTitle>
                     <SheetDescription>{tc.purchaseSheetDesc}</SheetDescription>
@@ -2092,7 +2089,7 @@ export default function StockDashboard() {
                     {t('newDispatch')}
                   </span>
                 </button>
-                <SheetContent side="right" className="w-full max-w-none overflow-y-auto bg-slate-50/50 dark:bg-slate-950 md:w-[50vw]">
+                <SheetContent side="right" className="w-full max-w-none overflow-y-auto bg-white dark:bg-slate-950 md:w-[50vw]">
                   <SheetHeader className="border-b border-border pb-4">
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">

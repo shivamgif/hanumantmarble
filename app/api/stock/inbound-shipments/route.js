@@ -73,12 +73,11 @@ async function upsertItemMaster(item) {
     },
   });
 
+  // division_id replaces the legacy `department` text column (Group E normalization)
   const division = await upsertNamedRecord({
     table: 'stock_divisions',
     value: item.divisionName || item.division || item.department || item.brandName,
   });
-
-  const department = normalizeText(item.department) || normalizeText(item.brandName) || 'General';
 
   const sku = normalizeText(item.sku) || generateSku({ brandName: brand.name, typeName: type.name, sizeLabel: size.label, itemName: item.itemName });
   const rows = await sql(
@@ -88,7 +87,6 @@ async function upsertItemMaster(item) {
       type_id,
       division_id,
       size_id,
-      department,
       name,
       unit_of_measure,
       tiles_per_box,
@@ -100,13 +98,12 @@ async function upsertItemMaster(item) {
       landed_cost,
       selling_price,
       description
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
     ON CONFLICT (sku) DO UPDATE SET
       brand_id = EXCLUDED.brand_id,
       type_id = EXCLUDED.type_id,
       division_id = EXCLUDED.division_id,
       size_id = EXCLUDED.size_id,
-      department = EXCLUDED.department,
       name = EXCLUDED.name,
       unit_of_measure = EXCLUDED.unit_of_measure,
       tiles_per_box = EXCLUDED.tiles_per_box,
@@ -126,7 +123,6 @@ async function upsertItemMaster(item) {
       type.id,
       division.id,
       size.id,
-      department,
       normalizeText(item.itemName),
       item.unitOfMeasure || 'box',
       item.tilesPerBox || null,
@@ -208,6 +204,72 @@ export async function POST(request) {
       [body.vehicleNumber, body.vehicleType || null, body.driverName || null, body.driverPhone || null, transporter?.id || null]
     ) : [];
 
+    // ── Group A: resolve customer FK ────────────────────────────────
+    let resolvedCustomerId = body.customerId ? Number(body.customerId) : null;
+    if (!resolvedCustomerId && body.customerName && normalizeText(body.customerName)) {
+      const custName = normalizeText(body.customerName);
+      const custInsert = await sql(
+        `INSERT INTO stock_customers (name, phone, is_active)
+         VALUES ($1, $2, TRUE)
+         ON CONFLICT DO NOTHING
+         RETURNING id`,
+        [custName, normalizeText(body.customerPhone) || null]
+      );
+      if (custInsert[0]) {
+        resolvedCustomerId = custInsert[0].id;
+      } else {
+        const existing = await sql(
+          `SELECT id FROM stock_customers WHERE lower(trim(name)) = lower(trim($1)) LIMIT 1`,
+          [custName]
+        );
+        resolvedCustomerId = existing[0]?.id || null;
+      }
+    }
+
+    // ── Group B: resolve salesperson FK ────────────────────────────
+    let resolvedSalespersonId = body.salespersonId ? Number(body.salespersonId) : null;
+    if (!resolvedSalespersonId && (body.salespersonName || body.salesPersonName)) {
+      const spName = normalizeText(body.salespersonName || body.salesPersonName);
+      const spInsert = await sql(
+        `INSERT INTO stock_sales_people (name, phone, is_active)
+         VALUES ($1, $2, TRUE)
+         ON CONFLICT DO NOTHING
+         RETURNING id`,
+        [spName, normalizeText(body.salespersonPhone) || null]
+      );
+      if (spInsert[0]) {
+        resolvedSalespersonId = spInsert[0].id;
+      } else {
+        const existing = await sql(
+          `SELECT id FROM stock_sales_people WHERE lower(trim(name)) = lower(trim($1)) LIMIT 1`,
+          [spName]
+        );
+        resolvedSalespersonId = existing[0]?.id || null;
+      }
+    }
+
+    // ── Group D: resolve destination location FK ────────────────────
+    let resolvedDestLocationId = body.destinationLocationId ? Number(body.destinationLocationId) : null;
+    if (!resolvedDestLocationId && body.destinationWarehouseName && normalizeText(body.destinationWarehouseName)) {
+      const locName = normalizeText(body.destinationWarehouseName);
+      const locInsert = await sql(
+        `INSERT INTO stock_locations (name, location_type, is_active)
+         VALUES ($1, 'warehouse', TRUE)
+         ON CONFLICT (name) DO NOTHING
+         RETURNING id`,
+        [locName]
+      );
+      if (locInsert[0]) {
+        resolvedDestLocationId = locInsert[0].id;
+      } else {
+        const existing = await sql(
+          `SELECT id FROM stock_locations WHERE lower(trim(name)) = lower(trim($1)) LIMIT 1`,
+          [locName]
+        );
+        resolvedDestLocationId = existing[0]?.id || null;
+      }
+    }
+
     const shipmentNumber = normalizeText(body.purchaseNumber || body.shipmentNumber) || generateReference('PUR');
 
     const paymentStatusRaw = normalizeText(body.paymentStatus).toLowerCase();
@@ -230,10 +292,13 @@ export async function POST(request) {
         supplier_id,
         transporter_id,
         vehicle_id,
-        truck_license_plate,
-        truck_number,
-        driver_name,
-        driver_phone,
+        customer_id,
+        salesperson_id,
+        destination_location_id,
+        truck_license_plate_snapshot,
+        truck_number_snapshot,
+        driver_name_snapshot,
+        driver_phone_snapshot,
         arrival_date,
         submitted_at,
         submitted_by_user_id,
@@ -242,7 +307,6 @@ export async function POST(request) {
         invoice_number,
         invoice_date,
         origin_city,
-        destination_warehouse_name,
         payment_status,
         paid_amount,
         payment_date,
@@ -259,56 +323,58 @@ export async function POST(request) {
         notes,
         created_by
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,
-        COALESCE($10, NOW()),
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
+        COALESCE($13, NOW()),
         NOW(),
-        $11,
+        $14,
         'pending',
         'submitted',
-        $12,$13,$14,$15,$16,$17,$18,$19,
-        $20,
-        $21,
-        $22,
+        $15,$16,$17,$18,$19,$20,$21,$22,
         $23,
         $24,
         $25,
         $26,
         $27,
         $28,
-        $29
+        $29,
+        $30,
+        $31,
+        $32
       )
       RETURNING *`,
       [
-        shipmentNumber,
-        body.purchaseOrderId || null,
-        supplier?.id || body.supplierId || null,
-        transporter?.id || body.transporterId || null,
-        vehicle[0]?.id || body.vehicleId || null,
-        normalizeText(body.truckLicensePlate) || null,
-        normalizeText(body.truckNumber) || null,
-        normalizeText(body.driverName) || null,
-        normalizeText(body.driverPhone) || null,
-        body.purchaseDate || body.arrivalDate || null,
-        appUser?.id || null,
-        normalizeText(body.invoiceNumber) || null,
-        body.invoiceDate || null,
-        normalizeText(body.originCity) || null,
-        normalizeText(body.destinationWarehouseName) || null,
-        paymentStatus,
-        Number.isFinite(paidAmount) ? paidAmount : null,
-        paymentDate,
-        paymentReference,
-        paymentMode,
-        normalizeText(body.transporterBillNumber) || null,
-        body.transporterBillAmount || 0,
-        body.deliveryCost || body.transportCost || 0,
-        body.unloadingLabourCost || body.laborCost || 0,
-        items.reduce((total, item) => total + Number(item.wholeQty || 0), 0),
-        items.reduce((total, item) => total + Number(item.brokenQty || 0), 0),
-        normalizeText(body.receivedBy) || session.user.name || session.user.email,
-        appUser?.id || null,
-        body.notes || null,
-        session.user.email,
+        shipmentNumber,                                // $1
+        body.purchaseOrderId || null,                  // $2
+        supplier?.id || body.supplierId || null,       // $3
+        transporter?.id || body.transporterId || null, // $4
+        vehicle[0]?.id || body.vehicleId || null,      // $5
+        resolvedCustomerId,                            // $6  ← NEW FK
+        resolvedSalespersonId,                         // $7  ← NEW FK
+        resolvedDestLocationId,                        // $8  ← NEW FK
+        normalizeText(body.truckLicensePlate) || null, // $9
+        normalizeText(body.truckNumber) || null,       // $10
+        normalizeText(body.driverName) || null,        // $11
+        normalizeText(body.driverPhone) || null,       // $12
+        body.purchaseDate || body.arrivalDate || null, // $13
+        appUser?.id || null,                           // $14
+        normalizeText(body.invoiceNumber) || null,     // $15
+        body.invoiceDate || null,                      // $16
+        normalizeText(body.originCity) || null,        // $17
+        paymentStatus,                                 // $18
+        Number.isFinite(paidAmount) ? paidAmount : null, // $19
+        paymentDate,                                   // $20
+        paymentReference,                              // $21
+        paymentMode,                                   // $22
+        normalizeText(body.transporterBillNumber) || null, // $23
+        body.transporterBillAmount || 0,               // $24
+        body.deliveryCost || body.transportCost || 0,  // $25
+        body.unloadingLabourCost || body.laborCost || 0, // $26
+        items.reduce((total, item) => total + Number(item.wholeQty || 0), 0), // $27
+        items.reduce((total, item) => total + Number(item.brokenQty || 0), 0), // $28
+        normalizeText(body.receivedBy) || session.user.name || session.user.email, // $29
+        appUser?.id || null,                           // $30
+        body.notes || null,                            // $31
+        session.user.email,                            // $32
       ]
     );
 

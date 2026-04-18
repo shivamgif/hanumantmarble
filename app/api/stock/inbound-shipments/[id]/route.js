@@ -28,7 +28,7 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
 
     const itemRows = await sql(
       `SELECT isi.*, i.sku, i.name AS item_name, b.name AS brand_name, i.current_whole_qty, i.current_broken_qty,
-              COALESCE(d.name, NULLIF(TRIM(i.department), ''), 'General') AS department
+              COALESCE(d.name, 'General') AS department
        FROM stock_inbound_shipment_items isi
        JOIN stock_items i ON i.id = isi.item_id
        LEFT JOIN stock_brands b ON b.id = i.brand_id
@@ -266,8 +266,8 @@ export async function GET(request, context) {
 
     const items = await sql(
       `SELECT isi.*, i.name, i.sku,
-              COALESCE(d.name, NULLIF(TRIM(i.department), ''), 'General') AS division_name,
-              COALESCE(NULLIF(TRIM(i.department), ''), 'General') AS department
+              COALESCE(d.name, 'General') AS division_name,
+              COALESCE(d.name, 'General') AS department
        FROM stock_inbound_shipment_items isi
        JOIN stock_items i ON i.id = isi.item_id
        LEFT JOIN stock_divisions d ON d.id = i.division_id
@@ -467,15 +467,28 @@ export async function PATCH(request, context) {
 
     const rows = await sql(
       `UPDATE stock_inbound_shipments
-       SET truck_license_plate = COALESCE($1, truck_license_plate),
-           truck_number = COALESCE($2, truck_number),
-           driver_name = COALESCE($3, driver_name),
-           driver_phone = COALESCE($4, driver_phone),
+       SET truck_license_plate_snapshot = COALESCE($1, truck_license_plate_snapshot),
+           truck_number_snapshot = COALESCE($2, truck_number_snapshot),
+           driver_name_snapshot = COALESCE($3, driver_name_snapshot),
+           driver_phone_snapshot = COALESCE($4, driver_phone_snapshot),
            notes = COALESCE($5, notes),
+           customer_id = COALESCE($7::bigint, customer_id),
+           salesperson_id = COALESCE($8::bigint, salesperson_id),
+           destination_location_id = COALESCE($9::bigint, destination_location_id),
            updated_at = NOW()
        WHERE id = $6
        RETURNING *`,
-      [body.truckLicensePlate || null, body.truckNumber || null, body.driverName || null, body.driverPhone || null, body.notes || null, id]
+      [
+        body.truckLicensePlate || null,
+        body.truckNumber || null,
+        body.driverName || null,
+        body.driverPhone || null,
+        body.notes || null,
+        id,
+        body.customerId ? Number(body.customerId) : null,           // $7
+        body.salespersonId ? Number(body.salespersonId) : null,     // $8
+        body.destinationLocationId ? Number(body.destinationLocationId) : null, // $9
+      ]
     );
 
     return NextResponse.json({ shipment: rows[0] });

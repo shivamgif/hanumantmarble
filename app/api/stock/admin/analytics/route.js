@@ -215,7 +215,7 @@ export async function GET(request) {
       ),
       sql(
         `SELECT
-           COALESCE(d.name, NULLIF(TRIM(i.department), ''), 'General') AS division,
+           COALESCE(d.name, 'General') AS division,
            COUNT(*) FILTER (WHERE COALESCE(i.reorder_level, 0) > 0 AND (COALESCE(i.current_whole_qty, 0) + COALESCE(i.current_broken_qty, 0)) <= COALESCE(i.reorder_level, 0))::int AS at_risk,
            COUNT(*)::int AS total_items,
            COALESCE(SUM(COALESCE(i.current_whole_qty, 0) + COALESCE(i.current_broken_qty, 0)), 0)::numeric(14,2) AS current_stock
@@ -272,9 +272,10 @@ export async function GET(request) {
            SELECT
              s.id,
              date_trunc('month', COALESCE(s.dispatch_date, s.created_at))::date AS bucket,
-             COALESCE(NULLIF(TRIM(s.salesperson_name), ''), 'Unassigned') AS salesperson,
+             COALESCE(sp.name, 'Unassigned') AS salesperson,
              COALESCE(SUM(COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)), 0) AS total_qty
            FROM stock_outbound_shipments s
+           LEFT JOIN stock_sales_people sp ON sp.id = s.salesperson_id
            LEFT JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = s.id
            WHERE COALESCE(s.dispatch_date, s.created_at)::date BETWEEN $1::date AND $2::date
            GROUP BY s.id, bucket, salesperson
@@ -293,10 +294,11 @@ export async function GET(request) {
         `WITH monthly AS (
            SELECT
              date_trunc('month', COALESCE(s.dispatch_date, s.created_at))::date AS bucket,
-             COALESCE(NULLIF(TRIM(s.salesperson_name), ''), 'Unassigned') AS salesperson,
+             COALESCE(sp.name, 'Unassigned') AS salesperson,
              COUNT(*)::int AS shipment_count,
              COALESCE(SUM(COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)), 0)::numeric(14,2) AS total_qty
            FROM stock_outbound_shipments s
+           LEFT JOIN stock_sales_people sp ON sp.id = s.salesperson_id
            LEFT JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = s.id
            WHERE COALESCE(s.dispatch_date, s.created_at)::date BETWEEN $1::date AND $2::date
            GROUP BY bucket, salesperson
