@@ -7,6 +7,11 @@ export async function GET(request) {
   try {
     const session = await getCurrentSession(request);
 
+    const cookies = request.headers.get('cookie') || '';
+    if (!session?.user) {
+      console.warn('[Session Route] getSession returned null. Cookies present?:', cookies.includes('better-auth') || cookies.includes('session'));
+    }
+
     return NextResponse.json(
       {
         user: session?.user || null,
