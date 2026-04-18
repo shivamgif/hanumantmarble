@@ -22,7 +22,7 @@ export default function PaginationControls({
   const end = total === 0 ? 0 : Math.min(page * pageSize, total);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-dark bg-dark px-3 py-2 text-xs text-dark dark:text-slate-300">
       <span>
         {copy.showing} {start}-{end} {copy.of} {total}
       </span>
@@ -31,18 +31,18 @@ export default function PaginationControls({
           type="button"
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page <= 1}
-          className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-md border border-primary bg-primary px-2.5 py-1.5 font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           {copy.previous}
         </button>
-        <span className="font-medium text-slate-700">
+        <span className="font-medium text-dark dark:text-slate-300">
           {copy.page} {page} {copy.of} {pageCount}
         </span>
         <button
           type="button"
           onClick={() => onPageChange(Math.min(pageCount, page + 1))}
           disabled={page >= pageCount}
-          className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-md border border-primary bg-primary px-2.5 py-1.5 font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           {copy.next}
         </button>
