@@ -198,7 +198,7 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
           <section className="overflow-hidden rounded-[2rem] border border-border bg-card shadow-xl">
             <div className="h-full p-3 sm:p-10 lg:p-12">
               <div className="mb-4 flex justify-center items-center gap-3">
-                  <h1 className="text-3xl font-bold text-foreground">Stock Portal</h1>
+                  <h1 className="text-3xl font-bold text-dark">Stock Portal</h1>
               </div>
 
 
