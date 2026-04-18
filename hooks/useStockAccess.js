@@ -9,11 +9,19 @@ export function useStockAccess(user) {
   const [accessMessage, setAccessMessage] = useState('');
   const [accessRole, setAccessRole] = useState('stock_maintainer');
 
+  // Use the user's stable ID string as the dependency, not the full object.
+  // This prevents re-running the check when useAuthUser produces a new user
+  // object reference for the same account (e.g. after a background refresh).
+  // hasResolvedAccessOnce is intentionally NOT in the dep array — it was
+  // previously causing a double-fetch: the effect ran, set it to true, which
+  // re-triggered the effect and fetched /api/stock/access a second time.
+  const userId = user?.id ?? null;
+
   useEffect(() => {
     let mounted = true;
 
     async function checkAccess() {
-      if (!user) {
+      if (!userId) {
         return;
       }
 
@@ -60,7 +68,7 @@ export function useStockAccess(user) {
     return () => {
       mounted = false;
     };
-  }, [hasResolvedAccessOnce, user]);
+  }, [userId]); // Only re-run when the actual user identity changes.
 
   return { accessLoading, hasResolvedAccessOnce, accessApproved, accessMessage, accessRole };
 }

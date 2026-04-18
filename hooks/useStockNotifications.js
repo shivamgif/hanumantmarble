@@ -85,8 +85,13 @@ export function useStockNotifications({ user, accessApproved }) {
     setNotificationOpen(false);
   }, [markNotificationRead]);
 
+  // Depend on the user's stable ID, not the object reference.
+  // This prevents the interval from being torn down and restarted when
+  // useAuthUser produces a new user object for the same account.
+  const userId = user?.id ?? null;
+
   useEffect(() => {
-    if (!accessApproved || !user) {
+    if (!accessApproved || !userId) {
       return;
     }
 
@@ -97,7 +102,7 @@ export function useStockNotifications({ user, accessApproved }) {
     }, 30000);
 
     return () => clearInterval(intervalId);
-  }, [accessApproved, user, loadNotifications]);
+  }, [accessApproved, userId, loadNotifications]);
 
   return {
     notificationOpen,
