@@ -568,6 +568,7 @@ export default function StockDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [accessRole, setAccessRole] = useState('stock_maintainer');
+  const [suggestions, setSuggestions] = useState({});
   const [arrivalSubmitting, setArrivalSubmitting] = useState(false);
   const [dispatchSubmitting, setDispatchSubmitting] = useState(false);
   const [arrivalNotice, setArrivalNotice] = useState(null);
@@ -665,6 +666,16 @@ export default function StockDashboard() {
     }
 
     loadData();
+
+    async function loadSuggestions() {
+      try {
+        const response = await fetch('/api/stock/form-suggestions', { cache: 'no-store' });
+        if (!response.ok) return;
+        const json = await response.json();
+        if (mounted && json?.suggestions) setSuggestions(json.suggestions);
+      } catch {}
+    }
+    loadSuggestions();
 
     return () => { mounted = false; };
   }, [user, userLoading]);
@@ -1656,11 +1667,16 @@ export default function StockDashboard() {
                   </SheetHeader>
                   <Form {...arrivalForm}>
                     <form className="mt-6 space-y-5" onSubmit={arrivalForm.handleSubmit(handleArrivalSubmit, handleArrivalInvalid)}>
+                      {Object.entries(suggestions).map(([key, values]) => (
+                        <datalist key={key} id={`sg-${key}`}>
+                          {(values || []).map((v) => <option key={v} value={v} />)}
+                        </datalist>
+                      ))}
                       <InlineNotice notice={arrivalNotice} />
                       <div className={FORM_CARD_CLASS}>
                         <FormSectionTitle icon={FileText} title={tc.purchaseBasics} description={tc.purchaseBasicsDesc} />
                         <div className="mt-3 grid gap-4 md:grid-cols-2">
-                          <StockFormField control={arrivalForm.control} name="supplierName" label={t('supplier')} placeholder="Supplier Name..." />
+                          <StockFormField control={arrivalForm.control} name="supplierName" label={t('supplier')} placeholder="Supplier Name..." list="sg-supplierName" />
                           <StockFormField control={arrivalForm.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." />
                           <StockDateField control={arrivalForm.control} name="invoiceDate" label={tc.invoiceDate} placeholder={tc.invoiceDate} />
                           <StockFormField control={arrivalForm.control} name="handlingCostPercent" label="Handling Cost %" type="number" placeholder="1.0" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.1" />
@@ -1685,11 +1701,11 @@ export default function StockDashboard() {
                       <div className={FORM_CARD_CLASS}>
                         <FormSectionTitle icon={Truck} title={tc.transportInvoice} />
                         <div className="mt-3 grid gap-4 md:grid-cols-2">
-                          <StockFormField control={arrivalForm.control} name="transporterName" label={tc.transporter} placeholder="Transport company" />
-                          <StockFormField control={arrivalForm.control} name="truckLicensePlate" label={t('truck')} placeholder="RJ 14 XY 0000" />
-                          <StockFormField control={arrivalForm.control} name="driverName" label={t('driver')} placeholder="Driver Name..." />
-                          <StockFormField control={arrivalForm.control} name="originCity" label={tc.originCity} placeholder="Source city" />
-                          <StockFormField control={arrivalForm.control} name="destinationWarehouseName" label={tc.destinationWarehouse} placeholder="Warehouse name" />
+                          <StockFormField control={arrivalForm.control} name="transporterName" label={tc.transporter} placeholder="Transport company" list="sg-transporterName" />
+                          <StockFormField control={arrivalForm.control} name="truckLicensePlate" label={t('truck')} placeholder="RJ 14 XY 0000" list="sg-truckLicensePlate" />
+                          <StockFormField control={arrivalForm.control} name="driverName" label={t('driver')} placeholder="Driver Name..." list="sg-driverName" />
+                          <StockFormField control={arrivalForm.control} name="originCity" label={tc.originCity} placeholder="Source city" list="sg-originCity" />
+                          <StockFormField control={arrivalForm.control} name="destinationWarehouseName" label={tc.destinationWarehouse} placeholder="Warehouse name" list="sg-destinationWarehouseName" />
                           <StockMoneyField control={arrivalForm.control} name="transportCost" label={t('transportCost')} hint={tc.amountInInr} />
                           <StockMoneyField control={arrivalForm.control} name="laborCost" label={t('laborCost')} hint={tc.amountInInr} />
                           <StockFormField control={arrivalForm.control} name="freightWeightKg" label="Freight Weight (kg)" type="number" placeholder="0" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.01" />
@@ -1795,15 +1811,15 @@ export default function StockDashboard() {
                                       {isCatalogItem ? 'Catalog Details' : 'New Tile Details'}
                                     </div>
                                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                                      <StockFormField control={arrivalForm.control} name={`items.${index}.brandName`} label="Brand" placeholder="Brand" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
-                                      <StockFormField control={arrivalForm.control} name={`items.${index}.divisionName`} label="Division" placeholder="Division" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
-                                      <StockFormField control={arrivalForm.control} name={`items.${index}.finish`} label="Finish" placeholder="Finish" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
-                                      <StockFormField control={arrivalForm.control} name={`items.${index}.grade`} label="Quality" placeholder="Premium / Standard" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
-                                      <StockFormField control={arrivalForm.control} name={`items.${index}.sizeLabel`} label="Size" placeholder="800x800" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.brandName`} label="Brand" placeholder="Brand" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} list="sg-brandName" />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.divisionName`} label="Division" placeholder="Division" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" list="sg-divisionName" />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.finish`} label="Finish" placeholder="Finish" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} list="sg-finish" />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.grade`} label="Quality" placeholder="Premium / Standard" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} list="sg-grade" />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.sizeLabel`} label="Size" placeholder="800x800" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} list="sg-sizeLabel" />
                                       <StockFormField control={arrivalForm.control} name={`items.${index}.piecesPerBox`} label="Pieces / Box" type="number" placeholder="2" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" disabled={isCatalogItem} />
                                       <StockFormField control={arrivalForm.control} name={`items.${index}.reorderLevel`} label="Reorder Level" type="number" placeholder="20" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" disabled />
                                       <StockFormField control={arrivalForm.control} name={`items.${index}.sizeUnit`} label="Size Unit" placeholder="mm" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled />
-                                      <StockFormField control={arrivalForm.control} name={`items.${index}.hsnCode`} label="HSN Code" placeholder="HSN Code" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.hsnCode`} label="HSN Code" placeholder="HSN Code" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" list="sg-hsnCode" />
                                       <StockFormField control={arrivalForm.control} name={`items.${index}.thicknessMm`} label="Thickness (mm)" type="number" placeholder="Thickness (mm)" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.01" />
                                       <StockFormField control={arrivalForm.control} name={`items.${index}.qtySqm`} label="Quantity (sqm)" type="number" placeholder="Quantity (sqm)" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.001" />
                                       <StockFormField control={arrivalForm.control} name={`items.${index}.costPerSqm`} label="Cost / sqm" type="number" placeholder="Cost / sqm" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.01" />
