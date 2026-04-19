@@ -20,6 +20,21 @@ function generateSku({ brandName, typeName, sizeLabel, itemName }) {
   return parts.join('-').replace(/-+/g, '-').replace(/^-|-$/g, '') || generateReference('TILE');
 }
 
+function computeSqmValues(item, size) {
+  const widthMm = size?.width_mm;
+  const lengthMm = size?.length_mm;
+  const piecesPerBox = item.piecesPerBox;
+
+  if (!widthMm || !lengthMm) {
+    return { sqmPerBox: null, sqmPerTile: null };
+  }
+
+  const sqmPerTile = (widthMm * lengthMm) / 1_000_000;
+  const sqmPerBox = piecesPerBox ? sqmPerTile * piecesPerBox : null;
+
+  return { sqmPerBox, sqmPerTile };
+}
+
 async function resolveExistingItem(item) {
   if (item.itemId) {
     const rows = await sql(
@@ -35,32 +50,17 @@ async function resolveExistingItem(item) {
     }
   }
 
-  const sku = normalizeText(item.sku);
-  if (sku) {
-    const rows = await sql(
-      `SELECT *
-       FROM stock_items
-       WHERE sku = $1
-       LIMIT 1`,
-      [sku]
-    );
-
-    if (rows[0]) {
-      return rows[0];
-    }
-  }
-
   return null;
 }
 
-async function upsertItemMaster(item) {
+async function upsertItemMaster(item, orderedBoxes = 0) {
   const existingItem = await resolveExistingItem(item);
   if (existingItem) {
     return existingItem;
   }
 
   const brand = await upsertNamedRecord({ table: 'stock_brands', value: item.brandName });
-  const type = await upsertNamedRecord({ table: 'stock_types', value: item.typeName });
+  await upsertNamedRecord({ table: 'stock_types', value: item.typeName });
   const size = await upsertNamedRecord({
     table: 'stock_sizes',
     column: 'label',
@@ -69,7 +69,7 @@ async function upsertItemMaster(item) {
       width_mm: item.widthMm || null,
       length_mm: item.lengthMm || null,
       thickness_mm: item.thicknessMm || null,
-      unit: item.sizeUnit || 'mm',
+      unit: 'mm',
     },
   });
 
@@ -79,17 +79,17 @@ async function upsertItemMaster(item) {
     value: item.divisionName || item.division || item.department || item.brandName,
   });
 
-  const sku = normalizeText(item.sku) || generateSku({ brandName: brand.name, typeName: type.name, sizeLabel: size.label, itemName: item.itemName });
+  const sku = generateSku({ brandName: brand.name, typeName: item.typeName, sizeLabel: size.label, itemName: item.itemName });
   const rows = await sql(
     `INSERT INTO stock_items (
       sku,
       brand_id,
-      type_id,
       division_id,
       size_id,
       name,
+      finish,
+      grade,
       unit_of_measure,
-      tiles_per_box,
       pieces_per_box,
       thickness_mm,
       reorder_level,
@@ -101,15 +101,15 @@ async function upsertItemMaster(item) {
     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
     ON CONFLICT (sku) DO UPDATE SET
       brand_id = EXCLUDED.brand_id,
-      type_id = EXCLUDED.type_id,
       division_id = EXCLUDED.division_id,
       size_id = EXCLUDED.size_id,
       name = EXCLUDED.name,
+      finish = EXCLUDED.finish,
+      grade = EXCLUDED.grade,
       unit_of_measure = EXCLUDED.unit_of_measure,
-      tiles_per_box = EXCLUDED.tiles_per_box,
       pieces_per_box = EXCLUDED.pieces_per_box,
       thickness_mm = COALESCE(EXCLUDED.thickness_mm, stock_items.thickness_mm),
-      reorder_level = EXCLUDED.reorder_level,
+      reorder_level = stock_items.reorder_level + $11,
       safety_stock = EXCLUDED.safety_stock,
       purchase_price = EXCLUDED.purchase_price,
       landed_cost = EXCLUDED.landed_cost,
@@ -120,15 +120,15 @@ async function upsertItemMaster(item) {
     [
       sku,
       brand.id,
-      type.id,
       division.id,
       size.id,
       normalizeText(item.itemName),
+      item.finish || null,
+      item.grade || null,
       item.unitOfMeasure || 'box',
-      item.tilesPerBox || null,
       item.piecesPerBox || null,
       item.thicknessMm || null,
-      item.reorderLevel || 10,
+      Number(orderedBoxes || 0),
       item.safetyStock || 0,
       item.purchasePrice || null,
       item.landedCost || null,
@@ -270,7 +270,7 @@ export async function POST(request) {
       }
     }
 
-    const shipmentNumber = normalizeText(body.purchaseNumber || body.shipmentNumber) || generateReference('PUR');
+    const shipmentNumber = generateReference('PUR');
 
     const paymentStatusRaw = normalizeText(body.paymentStatus).toLowerCase();
     const paymentStatus = paymentStatusRaw === 'paid' || paymentStatusRaw === 'partial'
@@ -321,7 +321,11 @@ export async function POST(request) {
         received_by,
         recorded_by_user_id,
         notes,
-        created_by
+        created_by,
+        handling_cost_percent,
+        fuel_cost_percent,
+        gst_percent,
+        freight_weight_kg
       ) VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
         COALESCE($13, NOW()),
@@ -339,7 +343,11 @@ export async function POST(request) {
         $29,
         $30,
         $31,
-        $32
+        $32,
+        $33,
+        $34,
+        $35,
+        $36
       )
       RETURNING *`,
       [
@@ -375,15 +383,35 @@ export async function POST(request) {
         appUser?.id || null,                           // $30
         body.notes || null,                            // $31
         session.user.email,                            // $32
+        Number(body.handlingCostPercent ?? 1.0),       // $33
+        Number(body.fuelCostPercent ?? 5.0),           // $34
+        Number(body.gstPercent ?? 18.0),               // $35
+        body.freightWeightKg || null,                  // $36
       ]
     );
 
     const shipment = shipmentRows[0];
+    const insertedItems = [];
+    let subtotal = 0;
 
     for (const row of items) {
-      const item = await upsertItemMaster(row);
+      const orderedBoxes = Number(row.orderedBoxes || 0);
+      const item = await upsertItemMaster(row, orderedBoxes);
 
-      await sql(
+      const { sqmPerBox, sqmPerTile } = computeSqmValues(item,
+        { width_mm: item.width_mm || row.widthMm, length_mm: item.length_mm || row.lengthMm }
+      );
+
+      const whole_qty_sqm = sqmPerBox != null ? Number((sqmPerBox * Number(row.wholeQty || 0)).toFixed(3)) : null;
+      const broken_qty_sqm = sqmPerTile != null ? Number((sqmPerTile * Number(row.brokenQty || 0)).toFixed(3)) : null;
+      const ordered_qty_sqm = sqmPerBox != null ? Number((sqmPerBox * orderedBoxes).toFixed(3)) : null;
+      const total_cost = ordered_qty_sqm != null && row.costPerSqm
+        ? Number((ordered_qty_sqm * Number(row.costPerSqm)).toFixed(2))
+        : 0;
+
+      subtotal += total_cost;
+
+      const insertResult = await sql(
         `INSERT INTO stock_inbound_shipment_items (
           inbound_shipment_id,
           item_id,
@@ -397,25 +425,47 @@ export async function POST(request) {
           qty_sqm,
           cost_per_sqm,
           thickness_mm_snapshot,
+          whole_qty_sqm,
+          broken_qty_sqm,
+          ordered_qty_sqm,
+          total_cost,
           notes
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+        RETURNING *`,
         [
           shipment.id,
           item.id,
-          Number(row.orderedQty || row.wholeQty || 0) + Number(row.brokenQty || 0),
+          orderedBoxes,
           Number(row.wholeQty || 0),
           Number(row.brokenQty || 0),
           Number(row.rejectedQty || 0),
           Number(row.unitPrice || 0),
           Number(row.landedCost || row.unitPrice || 0),
           normalizeText(row.hsnCode) || null,
-          row.qtySqm != null && row.qtySqm !== '' ? Number(row.qtySqm) : null,
+          whole_qty_sqm,
           row.costPerSqm != null && row.costPerSqm !== '' ? Number(row.costPerSqm) : null,
           row.thicknessMm != null && row.thicknessMm !== '' ? Number(row.thicknessMm) : null,
+          whole_qty_sqm,
+          broken_qty_sqm,
+          ordered_qty_sqm,
+          total_cost,
           row.notes || null,
         ]
       );
+      insertedItems.push(insertResult[0]);
     }
+
+    const handlingPct = Number(body.handlingCostPercent ?? 1.0);
+    const fuelPct = Number(body.fuelCostPercent ?? 5.0);
+    const gstPct = Number(body.gstPercent ?? 18.0);
+    const grand_total = Number((subtotal + (subtotal * handlingPct / 100) + (subtotal * fuelPct / 100) + (subtotal * gstPct / 100)).toFixed(2));
+
+    await sql(
+      `UPDATE stock_inbound_shipments
+       SET handling_cost_percent=$1, fuel_cost_percent=$2, gst_percent=$3, grand_total=$4, freight_weight_kg=$5
+       WHERE id=$6`,
+      [handlingPct, fuelPct, gstPct, grand_total, body.freightWeightKg || null, shipment.id]
+    );
 
     const recipients = await collectNotificationRecipients();
     await queueNotification({

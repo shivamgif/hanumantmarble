@@ -50,23 +50,43 @@ function formatCurrency(value) {
 
 const CLASSES = {
   heroGrid: 'grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-6',
-  card: 'rounded-2xl border border-slate-200/60 bg-white shadow-sm dark:bg-slate-950 dark:border-slate-800 p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-md',
-  title: 'text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400',
+  card: 'rounded-3xl border border-slate-200/60 bg-white/80 backdrop-blur-sm shadow-sm dark:bg-slate-900/80 dark:border-slate-800/60 p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-md',
+  title: 'text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400',
   value: 'mt-2 text-3xl font-extrabold text-slate-900 dark:text-slate-100 font-mono tracking-tight',
   grid: 'grid grid-cols-1 gap-4 lg:gap-6 md:grid-cols-2 lg:grid-cols-3',
   mobileScroll: 'flex overflow-x-auto no-scrollbar gap-2 pb-2',
 };
 
-function AnalyticsCard({ title, subtitle, topRight, children, className = '' }) {
+function TrendCapsule({ value, isPositive }) {
+  return (
+    <span
+      className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black ${
+        isPositive
+          ? 'text-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400'
+          : 'text-rose-700 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400'
+      }`}
+    >
+      {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+      {Math.abs(value).toFixed(1)}%
+    </span>
+  );
+}
+
+function AnalyticsCard({ title, subtitle, topRight, contextBar, children, className = '' }) {
   return (
     <div className={`${CLASSES.card} ${className}`}>
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex items-start justify-between mb-3">
         <div>
           <h3 className={CLASSES.title}>{title}</h3>
           {subtitle && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{subtitle}</p>}
         </div>
         {topRight}
       </div>
+      {contextBar && (
+        <div className="mb-4 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium italic">{contextBar}</p>
+        </div>
+      )}
       {children}
     </div>
   );
@@ -95,12 +115,12 @@ function StockHealthScorecard({ data }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
       {metrics.map((m) => (
-        <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm dark:bg-slate-950 dark:border-slate-800 hover:-translate-y-1 transition-transform" key={m.label}>
+        <div className="rounded-3xl border border-slate-200/60 bg-white/80 backdrop-blur-sm p-6 shadow-sm dark:bg-slate-900/80 dark:border-slate-800/60 hover:-translate-y-1 transition-transform" key={m.label}>
           <div className="flex items-center justify-between mb-4">
             <div className={`w-12 h-12 flex items-center justify-center rounded-xl border ${m.bg} ${m.border}`}>
               <m.icon className={`h-6 w-6 ${m.color}`} />
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Inventory Status</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">Inventory Status</span>
           </div>
           <div className="text-slate-500 text-sm font-medium">{m.label}</div>
           <div className={`text-3xl font-extrabold font-mono mt-1 tracking-tight text-slate-900 dark:text-slate-100 ${m.color}`}>{formatCompactNumber(m.value)}</div>
@@ -114,6 +134,7 @@ function SalesRevenueChart({ data }) {
   const containerRef = useRef(null);
   const [width, setWidth] = useState(500);
   const [hoveredIndex, setHoveredIndex] = useState(null);
+  const [mouseX, setMouseX] = useState(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -152,23 +173,30 @@ function SalesRevenueChart({ data }) {
       : 0;
   const isPositive = trend >= 0;
 
+  const peakPoint = points.reduce((best, p) => (Number(p.d.total || 0) > Number(best.d.total || 0) ? p : best), points[0]);
+  const peakLabel = peakPoint ? `Peak volume of ${formatCompactNumber(peakPoint.d.total)} units detected on ${formatMonthLabel(peakPoint.d.month || peakPoint.d.bucket)}` : null;
+
   return (
     <AnalyticsCard
       title="Sales Volume"
       subtitle="Monthly outbound analytics"
-      topRight={
-        <span className={`text-xs font-bold flex items-center gap-1 px-2 py-1 rounded-full ${isPositive ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10' : 'text-rose-600 bg-rose-50 dark:bg-rose-500/10'}`}>
-          {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-          {Math.abs(trend).toFixed(1)}%
-        </span>
-      }
+      contextBar={peakLabel}
+      topRight={<TrendCapsule value={trend} isPositive={isPositive} />}
     >
-      <div className="relative h-64 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden flex items-end" ref={containerRef}>
-        <svg className="absolute inset-0" width={width} height={height}>
+      <div
+        className="relative h-64 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden flex items-end"
+        ref={containerRef}
+        onMouseMove={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          setMouseX(e.clientX - rect.left);
+        }}
+        onMouseLeave={() => { setMouseX(null); setHoveredIndex(null); }}
+      >
+        <svg className="absolute inset-0" width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
           <defs>
-            <linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor={BRAND_PRIMARY} stopOpacity="0.15" />
-              <stop offset="100%" stopColor={BRAND_PRIMARY} stopOpacity="0" />
+            <linearGradient id="salesAreaGradient" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor={BRAND_PRIMARY} stopOpacity="0.18" />
+              <stop offset="100%" stopColor={BRAND_PRIMARY} stopOpacity="0.02" />
             </linearGradient>
           </defs>
 
@@ -176,7 +204,18 @@ function SalesRevenueChart({ data }) {
             <line key={`grid-${i}`} x1={p.x} x2={p.x} y1={pad.t} y2={height - pad.b} stroke="currentColor" className="text-slate-200 dark:text-slate-800" />
           ))}
 
-          <path d={areaPath} fill="url(#chartGradient)" />
+          {mouseX !== null && mouseX >= pad.l && mouseX <= width - pad.r && (
+            <line
+              x1={mouseX} x2={mouseX}
+              y1={pad.t} y2={height - pad.b}
+              stroke={BRAND_PRIMARY}
+              strokeWidth="1.5"
+              strokeDasharray="4 3"
+              opacity="0.5"
+            />
+          )}
+
+          <path d={areaPath} fill="url(#salesAreaGradient)" fillOpacity="0.05" />
           <path d={linePath} fill="none" stroke={BRAND_PRIMARY} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
 
           {points.map((p, i) => (
@@ -190,7 +229,6 @@ function SalesRevenueChart({ data }) {
                 strokeWidth="2"
                 className={`transition-all duration-300 ${hoveredIndex === i ? 'scale-150' : 'opacity-0 hover:opacity-100'}`}
                 onMouseEnter={() => setHoveredIndex(i)}
-                onMouseLeave={() => setHoveredIndex(null)}
               />
               <text x={p.x} y={height - 15} textAnchor="middle" fontSize="10" className="fill-slate-400 font-bold uppercase tracking-tighter">
                 {formatMonthLabel(p.d.month || p.d.bucket)}
@@ -203,7 +241,7 @@ function SalesRevenueChart({ data }) {
             className="absolute z-20 pointer-events-none rounded-xl bg-slate-900 dark:bg-slate-800 text-white p-3 shadow-2xl animate-scale-in"
             style={{ left: points[hoveredIndex].x, top: points[hoveredIndex].y - 70, transform: 'translateX(-50%)' }}
           >
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{formatMonthLabel(points[hoveredIndex].d.month || points[hoveredIndex].d.bucket)}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">{formatMonthLabel(points[hoveredIndex].d.month || points[hoveredIndex].d.bucket)}</p>
             <p className="text-sm font-bold font-mono">{formatCompactNumber(points[hoveredIndex].d.total)} units</p>
           </div>
         )}
@@ -233,9 +271,14 @@ function TopDivisionsChart({ data }) {
 
   const topDivisions = [...data].sort((a, b) => Number(b.total || 0) - Number(a.total || 0)).slice(0, 5);
   const maxVal = Math.max(...topDivisions.map((d) => Number(d.total || 0)), 1);
+  const topDiv = topDivisions[0];
 
   return (
-    <AnalyticsCard title="Top Selling Divisions" subtitle="Volume by division">
+    <AnalyticsCard
+      title="Top Selling Divisions"
+      subtitle="Volume by division"
+      contextBar={topDiv ? `${topDiv.division || 'Top division'} leads with ${formatCompactNumber(topDiv.total)} units — highest contribution this period.` : null}
+    >
       <div className="space-y-4" ref={containerRef}>
         {topDivisions.map((d, i) => {
           const wPercent = (Number(d.total || 0) / maxVal) * 100;
@@ -252,10 +295,10 @@ function TopDivisionsChart({ data }) {
                 <span className="font-mono text-slate-900 dark:text-white">{formatCompactNumber(d.total)}</span>
               </div>
               <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${wPercent}%`, backgroundColor: color }} />
+                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${wPercent}%`, backgroundColor: color }} />
               </div>
               {hoveredIndex === i && (
-                <div className="absolute right-0 -top-8 z-20 pointer-events-none rounded-xl bg-slate-900 dark:bg-slate-800 text-white p-2 shadow-xl animate-fade-in text-[10px] font-mono whitespace-nowrap">
+                <div className="absolute right-0 -top-8 z-20 pointer-events-none rounded-xl bg-slate-900 dark:bg-slate-800 text-white p-2 shadow-xl text-[10px] font-mono whitespace-nowrap">
                   {Number(d.total).toLocaleString()} units
                 </div>
               )}
@@ -271,6 +314,7 @@ function MonthlyCostVolumeChart({ data }) {
   const containerRef = useRef(null);
   const [width, setWidth] = useState(500);
   const [hoveredIndex, setHoveredIndex] = useState(null);
+  const [mouseX, setMouseX] = useState(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -301,24 +345,46 @@ function MonthlyCostVolumeChart({ data }) {
   const maxVal = Math.max(...chartData.map((d) => Math.max(d.costIn, d.soldOut)), 1);
   const barWidth = Math.max(10, (innerW / chartData.length) * 0.3);
 
+  const peakSoldOut = chartData.reduce((best, d) => (d.soldOut > best.soldOut ? d : best), chartData[0]);
+
   return (
     <AnalyticsCard
       title="Monthly Cost vs Volume"
       subtitle="Financial flow overview"
+      contextBar={peakSoldOut ? `Peak volume of ${formatCompactNumber(peakSoldOut.soldOut)} units detected on ${formatMonthLabel(peakSoldOut.month || peakSoldOut.bucket)}` : null}
       topRight={
         <div className="flex gap-4">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+          <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em]">
             <span className="w-3 h-3 rounded-full bg-rose-500" /> Cost In
           </div>
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+          <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em]">
             <span className="w-3 h-3 rounded-full bg-emerald-500" /> Sold Out
           </div>
         </div>
       }
       className="col-span-1 lg:col-span-2"
     >
-      <div className="relative h-[240px] border-b border-slate-100 dark:border-slate-800" ref={containerRef}>
-        <svg width={width} height={height} className="overflow-visible">
+      <div
+        className="relative h-[240px] border-b border-slate-100 dark:border-slate-800"
+        ref={containerRef}
+        onMouseMove={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          setMouseX(e.clientX - rect.left);
+        }}
+        onMouseLeave={() => { setMouseX(null); setHoveredIndex(null); }}
+      >
+        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+          <defs>
+            <linearGradient id="costGradient" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="#F43F5E" stopOpacity="0.12" />
+              <stop offset="100%" stopColor="#F43F5E" stopOpacity="0" />
+            </linearGradient>
+            <linearGradient id="soldGradient" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="#10B981" stopOpacity="0.12" />
+              <stop offset="100%" stopColor="#10B981" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+
           {[0, 0.5, 1].map((t) => (
             <line
               key={t}
@@ -331,6 +397,17 @@ function MonthlyCostVolumeChart({ data }) {
               className="text-slate-100 dark:text-slate-800"
             />
           ))}
+
+          {mouseX !== null && mouseX >= pad.l && mouseX <= width - pad.r && (
+            <line
+              x1={mouseX} x2={mouseX}
+              y1={pad.t} y2={height - pad.b}
+              stroke={BRAND_PRIMARY}
+              strokeWidth="1.5"
+              strokeDasharray="4 3"
+              opacity="0.4"
+            />
+          )}
 
           {chartData.map((d, i) => {
             const groupX = pad.l + (i + 0.5) * (innerW / chartData.length);
@@ -352,14 +429,14 @@ function MonthlyCostVolumeChart({ data }) {
         </svg>
         {hoveredIndex !== null && (
           <div
-            className="absolute z-20 pointer-events-none rounded-xl bg-slate-900 dark:bg-slate-800 text-white p-3 shadow-2xl animate-fade-in"
+            className="absolute z-20 pointer-events-none rounded-xl bg-slate-900 dark:bg-slate-800 text-white p-3 shadow-2xl"
             style={{
               left: pad.l + (hoveredIndex + 0.5) * (innerW / chartData.length),
               top: pad.t + innerH / 2,
               transform: 'translate(-50%, -100%)',
             }}
           >
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">{formatMonthLabel(chartData[hoveredIndex].month)}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 mb-1">{formatMonthLabel(chartData[hoveredIndex].month)}</p>
             <div className="flex flex-col gap-1 text-sm font-mono font-bold">
               <span className="text-rose-400">In: {formatCompactNumber(chartData[hoveredIndex].costIn)}</span>
               <span className="text-emerald-400">Out: {formatCompactNumber(chartData[hoveredIndex].soldOut)}</span>
@@ -384,6 +461,11 @@ function LeaderboardRow({ row, i }) {
   ];
   const maxVal = Math.max(...monthlyData.map((d) => d.total));
 
+  const consistencyScore = Math.round(
+    (monthlyData.reduce((sum, d) => sum + d.total, 0) / (maxVal * monthlyData.length)) * 100
+  );
+  const isHighConsistency = consistencyScore >= 90;
+
   return (
     <div className="group border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden mb-3">
       <div
@@ -399,7 +481,12 @@ function LeaderboardRow({ row, i }) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">{row.name || row.salesperson}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">{row.name || row.salesperson}</p>
+              {isHighConsistency && (
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title={`Consistency: ${consistencyScore}%`} />
+              )}
+            </div>
             <p className="text-sm font-mono font-bold text-slate-900 dark:text-white">{formatCompactNumber(row.totalQty || row.quantity)}</p>
           </div>
           <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
@@ -416,7 +503,7 @@ function LeaderboardRow({ row, i }) {
 
       {expanded && (
         <div className="p-4 bg-slate-50 dark:bg-slate-900/30 border-t border-slate-100 dark:border-slate-800">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-3">Monthly Breakdown</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 mb-3">Monthly Breakdown</p>
           <div className="flex items-end gap-2 h-24">
             {monthlyData.map((d, idx) => (
               <div className="flex-1 flex flex-col items-center gap-1 group/bar relative" key={idx}>
@@ -494,28 +581,44 @@ export default function AnalyticsDashboard() {
       <div className="space-y-6">
         <div className={CLASSES.heroGrid}>
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={`hero-skeleton-${index}`} className="animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800 h-32" />
+            <div key={`hero-skeleton-${index}`} className="animate-pulse rounded-3xl bg-slate-200 dark:bg-slate-800 h-32" />
           ))}
         </div>
-        <div className="animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800 h-64" />
+        <div className="animate-pulse rounded-3xl bg-slate-200 dark:bg-slate-800 h-64" />
       </div>
     );
-  if (error) return <div className="p-8 text-rose-500 font-bold bg-rose-50 rounded-2xl border border-rose-100">{error}</div>;
+  if (error) return <div className="p-8 text-rose-500 font-bold bg-rose-50 rounded-3xl border border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40">{error}</div>;
 
   const divisionRisk = adminAnalytics?.inventoryHealth?.divisionRisk || [];
   const dispatchTrend = adminAnalytics?.dispatchPerformance?.trend || [];
   const salespersonRanking = adminAnalytics?.salespersonPerformance?.ranking || [];
 
+  const overallTrend =
+    dispatchTrend.length >= 2
+      ? ((Number(dispatchTrend[dispatchTrend.length - 1]?.total || 0) - Number(dispatchTrend[dispatchTrend.length - 2]?.total || 0)) /
+          Number(dispatchTrend[dispatchTrend.length - 2]?.total || 1)) *
+        100
+      : 0;
+
   return (
     <div className="mx-auto max-w-[1600px] space-y-6 lg:space-y-8 animate-fade-in font-sans" style={{ fontFamily: 'Inter, sans-serif' }}>
       <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <nav className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+          <nav className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 mb-2">
             <Link href="/stock/admin" className="hover:text-brand-primary transition-colors">Admin Hub</Link>
             <ChevronRight className="h-3 w-3" />
             <span className="text-slate-900 dark:text-white">Analytics</span>
           </nav>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Business Intelligence</h1>
+          {dispatchTrend.length >= 2 && (
+            <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 italic">
+              Current trend indicates a{' '}
+              <span className={`font-black ${overallTrend >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                {overallTrend >= 0 ? '+' : ''}{overallTrend.toFixed(1)}%
+              </span>{' '}
+              {overallTrend >= 0 ? 'increase' : 'decrease'} compared to the previous period.
+            </p>
+          )}
         </div>
         <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-900 p-1 self-start border border-slate-200 dark:border-slate-800">
           {[3, 6, 12].map((m) => (
@@ -548,10 +651,10 @@ export default function AnalyticsDashboard() {
           <table className="w-full text-left text-sm min-w-[600px]">
             <thead className="bg-slate-50/50 dark:bg-slate-900/50">
               <tr>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">Division</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Healthy</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">At Risk</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Action</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">Division</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 text-right">Healthy</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 text-right">At Risk</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">

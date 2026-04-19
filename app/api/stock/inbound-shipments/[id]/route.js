@@ -1,6 +1,21 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole, queueNotification, recordTimelineEvent } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, generateReference, getStockContext, hasAnyStockRole, queueNotification, recordTimelineEvent } from '@/lib/stock-workflow';
 import { sql, withTransaction } from '@/lib/db';
+
+function computeSqmValues(item, size) {
+  const widthMm = size?.width_mm;
+  const lengthMm = size?.length_mm;
+  const piecesPerBox = item.piecesPerBox;
+
+  if (!widthMm || !lengthMm) {
+    return { sqmPerBox: null, sqmPerTile: null };
+  }
+
+  const sqmPerTile = (widthMm * lengthMm) / 1_000_000;
+  const sqmPerBox = piecesPerBox ? sqmPerTile * piecesPerBox : null;
+
+  return { sqmPerBox, sqmPerTile };
+}
 
 async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKey) {
   return withTransaction(async (tx) => {
@@ -265,7 +280,8 @@ export async function GET(request, context) {
     const items = await sql(
       `SELECT isi.*, i.name, i.sku,
               COALESCE(d.name, 'General') AS division_name,
-              COALESCE(d.name, 'General') AS department
+              COALESCE(d.name, 'General') AS department,
+              isi.whole_qty_sqm, isi.broken_qty_sqm, isi.ordered_qty_sqm, isi.total_cost
        FROM stock_inbound_shipment_items isi
        JOIN stock_items i ON i.id = isi.item_id
        LEFT JOIN stock_divisions d ON d.id = i.division_id
@@ -463,6 +479,85 @@ export async function PATCH(request, context) {
       return NextResponse.json({ shipment: rows[0], changeRequest: changeRequestRows[0] });
     }
 
+    // Handle line item updates if provided
+    if (body.items && Array.isArray(body.items)) {
+      for (const itemUpdate of body.items) {
+        if (!itemUpdate.id) continue;
+
+        const itemRow = await sql(
+          `SELECT isi.*, i.pieces_per_box
+           FROM stock_inbound_shipment_items isi
+           JOIN stock_items i ON i.id = isi.item_id
+           WHERE isi.id = $1 LIMIT 1`,
+          [itemUpdate.id]
+        );
+
+        if (itemRow[0]) {
+          const item = itemRow[0];
+          const size = await sql(
+            `SELECT * FROM stock_sizes WHERE id = (SELECT size_id FROM stock_items WHERE id = $1)`,
+            [item.item_id]
+          );
+
+          const { sqmPerBox, sqmPerTile } = computeSqmValues(
+            { piecesPerBox: item.pieces_per_box },
+            size[0]
+          );
+
+          const newWholeQty = itemUpdate.received_whole_qty != null ? Number(itemUpdate.received_whole_qty) : item.received_whole_qty;
+          const newBrokenQty = itemUpdate.received_broken_qty != null ? Number(itemUpdate.received_broken_qty) : item.received_broken_qty;
+          const newOrderedBoxes = itemUpdate.ordered_qty != null ? Number(itemUpdate.ordered_qty) : item.ordered_qty;
+          const costPerSqm = itemUpdate.cost_per_sqm != null ? Number(itemUpdate.cost_per_sqm) : item.cost_per_sqm;
+
+          const whole_qty_sqm = sqmPerBox != null ? Number((sqmPerBox * newWholeQty).toFixed(3)) : null;
+          const broken_qty_sqm = sqmPerTile != null ? Number((sqmPerTile * newBrokenQty).toFixed(3)) : null;
+          const ordered_qty_sqm = sqmPerBox != null ? Number((sqmPerBox * newOrderedBoxes).toFixed(3)) : null;
+          const total_cost = ordered_qty_sqm != null && costPerSqm
+            ? Number((ordered_qty_sqm * costPerSqm).toFixed(2))
+            : 0;
+
+          await sql(
+            `UPDATE stock_inbound_shipment_items
+             SET received_whole_qty = $1,
+                 received_broken_qty = $2,
+                 ordered_qty = $3,
+                 cost_per_sqm = $4,
+                 whole_qty_sqm = $5,
+                 broken_qty_sqm = $6,
+                 ordered_qty_sqm = $7,
+                 total_cost = $8,
+                 updated_at = NOW()
+             WHERE id = $9`,
+            [newWholeQty, newBrokenQty, newOrderedBoxes, costPerSqm, whole_qty_sqm, broken_qty_sqm, ordered_qty_sqm, total_cost, itemUpdate.id]
+          );
+        }
+      }
+
+      // Recompute shipment grand_total
+      const lineItems = await sql(
+        `SELECT total_cost FROM stock_inbound_shipment_items WHERE inbound_shipment_id = $1`,
+        [id]
+      );
+      const subtotal = lineItems.reduce((sum, i) => sum + (i.total_cost || 0), 0);
+
+      const shipmentData = await sql(
+        `SELECT handling_cost_percent, fuel_cost_percent, gst_percent FROM stock_inbound_shipments WHERE id = $1`,
+        [id]
+      );
+
+      if (shipmentData[0]) {
+        const handlingPct = shipmentData[0].handling_cost_percent || 1.0;
+        const fuelPct = shipmentData[0].fuel_cost_percent || 5.0;
+        const gstPct = shipmentData[0].gst_percent || 18.0;
+        const grand_total = Number((subtotal + (subtotal * handlingPct / 100) + (subtotal * fuelPct / 100) + (subtotal * gstPct / 100)).toFixed(2));
+
+        await sql(
+          `UPDATE stock_inbound_shipments SET grand_total = $1, updated_at = NOW() WHERE id = $2`,
+          [grand_total, id]
+        );
+      }
+    }
+
     const rows = await sql(
       `UPDATE stock_inbound_shipments
        SET truck_license_plate_snapshot = COALESCE($1, truck_license_plate_snapshot),
@@ -470,9 +565,13 @@ export async function PATCH(request, context) {
            driver_name_snapshot = COALESCE($3, driver_name_snapshot),
            driver_phone_snapshot = COALESCE($4, driver_phone_snapshot),
            notes = COALESCE($5, notes),
-           customer_id = COALESCE($7::bigint, customer_id),
-           salesperson_id = COALESCE($8::bigint, salesperson_id),
-           destination_location_id = COALESCE($9::bigint, destination_location_id),
+           handling_cost_percent = COALESCE($7::numeric, handling_cost_percent),
+           fuel_cost_percent = COALESCE($8::numeric, fuel_cost_percent),
+           gst_percent = COALESCE($9::numeric, gst_percent),
+           freight_weight_kg = COALESCE($10::numeric, freight_weight_kg),
+           customer_id = COALESCE($11::bigint, customer_id),
+           salesperson_id = COALESCE($12::bigint, salesperson_id),
+           destination_location_id = COALESCE($13::bigint, destination_location_id),
            updated_at = NOW()
        WHERE id = $6
        RETURNING *`,
@@ -483,9 +582,13 @@ export async function PATCH(request, context) {
         body.driverPhone || null,
         body.notes || null,
         id,
-        body.customerId ? Number(body.customerId) : null,           // $7
-        body.salespersonId ? Number(body.salespersonId) : null,     // $8
-        body.destinationLocationId ? Number(body.destinationLocationId) : null, // $9
+        body.handlingCostPercent != null ? Number(body.handlingCostPercent) : null,
+        body.fuelCostPercent != null ? Number(body.fuelCostPercent) : null,
+        body.gstPercent != null ? Number(body.gstPercent) : null,
+        body.freightWeightKg != null ? Number(body.freightWeightKg) : null,
+        body.customerId ? Number(body.customerId) : null,           // $11
+        body.salespersonId ? Number(body.salespersonId) : null,     // $12
+        body.destinationLocationId ? Number(body.destinationLocationId) : null, // $13
       ]
     );
 
