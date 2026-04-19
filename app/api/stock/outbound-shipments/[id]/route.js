@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, generateReference, getStockContext, hasAnyStockRole, queueNotification, recordTimelineEvent } from '@/lib/stock-workflow';
-import { sql } from '@/lib/db';
+import { sql, withTransaction } from '@/lib/db';
 
 async function loadShipmentWithItems(id) {
   const shipmentRows = await sql('SELECT * FROM stock_outbound_shipments WHERE id = $1 LIMIT 1', [id]);
@@ -28,16 +28,14 @@ function toPositiveInteger(value) {
 }
 
 async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKey) {
-  await sql('BEGIN', []);
-
-  try {
+  return withTransaction(async (tx) => {
     // Serialize approval for the same shipment to prevent concurrent decrements.
-    await sql(
+    await tx(
       `SELECT pg_advisory_xact_lock(hashtext($1)::bigint)`,
       [`stock_outbound_approval:${shipmentId}`]
     );
 
-    const shipmentRows = await sql(
+    const shipmentRows = await tx(
       `SELECT *
        FROM stock_outbound_shipments
        WHERE id = $1
@@ -52,7 +50,7 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
       throw new Error('Shipment not found');
     }
 
-    const items = await sql(
+    const items = await tx(
       `SELECT soi.*, i.sku, i.name AS item_name, i.current_whole_qty, i.current_broken_qty
        FROM stock_outbound_shipment_items soi
        JOIN stock_items i ON i.id = soi.item_id
@@ -63,9 +61,10 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
     );
 
     if (shipment.approval_status === 'approved') {
-      await sql('COMMIT', []);
       return { shipment, items, idempotent: true, idempotencyKey };
     }
+
+    const batchPromises = [];
 
     for (const item of items) {
       const wholeToIssue = toPositiveInteger(item.loaded_whole_qty);
@@ -76,7 +75,8 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
           throw new Error(`Insufficient whole stock for ${item.sku}`);
         }
 
-        const wholeUpdateRows = await sql(
+        // Run the update synchronously first to ensure we get the RETURNING id
+        const wholeUpdateRows = await tx(
           `UPDATE stock_items
            SET current_whole_qty = current_whole_qty - $1,
                updated_at = NOW()
@@ -87,10 +87,10 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
         );
 
         if (!wholeUpdateRows[0]) {
-          throw new Error(`Insufficient whole stock for ${item.sku}`);
+          throw new Error(`Insufficient whole stock for ${item.sku}. Race condition detected.`);
         }
 
-        await sql(
+        batchPromises.push(tx(
           `INSERT INTO stock_movements (
             movement_number, movement_type, direction, item_id, quantity, tile_condition,
             source_type, source_id, reference_number, notes, created_by
@@ -104,7 +104,7 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
             `Dispatch approved for ${shipment.shipment_number}`,
             session.user.email,
           ]
-        );
+        ));
       }
 
       if (brokenToIssue > 0) {
@@ -112,7 +112,7 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
           throw new Error(`Insufficient broken stock for ${item.sku}`);
         }
 
-        const brokenUpdateRows = await sql(
+        const brokenUpdateRows = await tx(
           `UPDATE stock_items
            SET current_broken_qty = current_broken_qty - $1,
                updated_at = NOW()
@@ -123,10 +123,10 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
         );
 
         if (!brokenUpdateRows[0]) {
-          throw new Error(`Insufficient broken stock for ${item.sku}`);
+          throw new Error(`Insufficient broken stock for ${item.sku}. Race condition detected.`);
         }
 
-        await sql(
+        batchPromises.push(tx(
           `INSERT INTO stock_movements (
             movement_number, movement_type, direction, item_id, quantity, tile_condition,
             source_type, source_id, reference_number, notes, created_by
@@ -140,11 +140,13 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
             `Dispatch approved for ${shipment.shipment_number}`,
             session.user.email,
           ]
-        );
+        ));
       }
     }
 
-    const updatedRows = await sql(
+    await Promise.all(batchPromises);
+
+    const updatedRows = await tx(
       `UPDATE stock_outbound_shipments
        SET approval_status = 'approved',
            status = 'dispatched',
@@ -158,12 +160,8 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
       [appUser?.id || null, shipmentId]
     );
 
-    await sql('COMMIT', []);
     return { shipment: updatedRows[0], items, idempotent: false, idempotencyKey };
-  } catch (error) {
-    await sql('ROLLBACK', []);
-    throw error;
-  }
+  });
 }
 
 export async function GET(request, context) {

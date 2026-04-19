@@ -92,6 +92,9 @@ export async function GET(request) {
          FROM stock_inbound_shipment_items isi
          JOIN stock_items i ON i.id = isi.item_id
          LEFT JOIN stock_divisions d ON d.id = i.division_id
+         WHERE isi.inbound_shipment_id IN (
+           SELECT id FROM stock_inbound_shipments ORDER BY created_at DESC LIMIT 20
+         )
          GROUP BY isi.inbound_shipment_id`,
         []
       ),
@@ -104,11 +107,20 @@ export async function GET(request) {
            SUM(soi.loaded_broken_qty) AS total_broken_qty
          FROM stock_outbound_shipment_items soi
          JOIN stock_items i ON i.id = soi.item_id
+         WHERE soi.outbound_shipment_id IN (
+           SELECT id FROM stock_outbound_shipments ORDER BY created_at DESC LIMIT 20
+         )
          GROUP BY soi.outbound_shipment_id`,
         []
       ),
       sql(
-        `SELECT 
+        `WITH recent_sos AS (
+           SELECT *
+           FROM stock_outbound_shipments
+           ORDER BY created_at DESC
+           LIMIT 20
+         )
+         SELECT 
             sos.id, 
             sos.shipment_number, 
             sos.truck_license_plate_snapshot AS truck_license_plate, 
@@ -124,13 +136,12 @@ export async function GET(request) {
               WHEN sos.approval_status = 'approved' THEN COALESCE(MAX(approver.name), MAX(approver.email), '—')
               ELSE '—'
             END AS approved_by
-         FROM stock_outbound_shipments sos
+         FROM recent_sos sos
          LEFT JOIN stock_outbound_shipment_items soi ON sos.id = soi.outbound_shipment_id
          LEFT JOIN stock_app_users submitter ON submitter.id = sos.submitted_by_user_id
          LEFT JOIN stock_app_users approver ON approver.id = sos.approved_by_user_id
-         GROUP BY sos.id
-         ORDER BY sos.created_at DESC
-         LIMIT 20`,
+         GROUP BY sos.id, sos.shipment_number, sos.truck_license_plate_snapshot, sos.driver_name_snapshot, sos.created_at, sos.status, sos.approval_status, sos.approval_status
+         ORDER BY sos.created_at DESC`,
         []
       ),
     ]);

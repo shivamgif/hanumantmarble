@@ -40,20 +40,47 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const categoryId = searchParams.get('categoryId');
+    const limitParam = searchParams.get('limit');
+    const pageParam = searchParams.get('page');
+
+    const limit = Math.min(parseInt(limitParam) || 50, 1000); // Default 50, max 1000
+    const page = Math.max(parseInt(pageParam) || 1, 1);
+    const offset = (page - 1) * limit;
+
+    let countQuery = 'SELECT COUNT(*) FROM stock_items WHERE isActive = true';
+    let countParams = [];
 
     let query = 'SELECT * FROM stock_items WHERE isActive = true';
     const params = [];
 
     if (categoryId) {
+      countQuery += ' AND categoryId = $1';
+      countParams.push(parseInt(categoryId));
+
       query += ' AND categoryId = $1';
       params.push(parseInt(categoryId));
     }
 
-    query += ' ORDER BY name ASC';
+    query += ` ORDER BY name ASC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(limit, offset);
 
-    const items = await sql(query, params);
+    const [items, countResult] = await Promise.all([
+      sql(query, params),
+      sql(countQuery, countParams)
+    ]);
 
-    return NextResponse.json({ items });
+    const totalCount = parseInt(countResult[0]?.count || 0, 10);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return NextResponse.json({ 
+      items,
+      pagination: {
+        total: totalCount,
+        page,
+        limit,
+        totalPages
+      }
+    });
   } catch (error) {
     console.error('Error fetching items:', error);
     return NextResponse.json(

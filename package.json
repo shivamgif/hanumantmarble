@@ -12,6 +12,7 @@
     "db:migrate-department-columns": "node scripts/migrate-department-columns.mjs",
     "db:migrate-purchase-capabilities": "node scripts/migrate-purchase-capabilities.mjs",
     "db:migrate-external-auth-identity": "node scripts/migrate-external-auth-identity.mjs",
+    "db:apply-performance-indexes": "node scripts/apply-performance-indexes.mjs",
     "db:rollback-external-auth-identity": "node scripts/rollback-external-auth-identity.mjs",
     "db:reset-seed-stock-ops": "node scripts/reset-and-seed-stock-ops.mjs"
   },

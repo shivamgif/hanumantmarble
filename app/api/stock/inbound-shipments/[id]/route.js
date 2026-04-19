@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole, queueNotification, recordTimelineEvent } from '@/lib/stock-workflow';
-import { sql } from '@/lib/db';
+import { sql, withTransaction } from '@/lib/db';
 
 async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKey) {
-  await sql('BEGIN', []);
-
-  try {
+  return withTransaction(async (tx) => {
     // Serialize approval for the same shipment to avoid concurrent double increments.
-    await sql(
+    await tx(
       `SELECT pg_advisory_xact_lock(hashtext($1)::bigint)`,
       [`stock_inbound_approval:${shipmentId}`]
     );
 
-    const shipmentRows = await sql(
+    const shipmentRows = await tx(
       `SELECT *
        FROM stock_inbound_shipments
        WHERE id = $1
@@ -26,7 +24,7 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
       throw new Error('Shipment not found');
     }
 
-    const itemRows = await sql(
+    const itemRows = await tx(
       `SELECT isi.*, i.sku, i.name AS item_name, b.name AS brand_name, i.current_whole_qty, i.current_broken_qty,
               COALESCE(d.name, 'General') AS department
        FROM stock_inbound_shipment_items isi
@@ -39,21 +37,22 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
     );
 
     if (shipment.approval_status === 'approved') {
-      await sql('COMMIT', []);
       return { shipment, items: itemRows, idempotent: true, idempotencyKey };
     }
 
+    const batchPromises = [];
+
     for (const item of itemRows) {
       if (item.received_whole_qty > 0) {
-        await sql(
+        batchPromises.push(tx(
           `UPDATE stock_items
            SET current_whole_qty = current_whole_qty + $1,
                updated_at = NOW()
            WHERE id = $2`,
           [item.received_whole_qty, item.item_id]
-        );
+        ));
 
-        await sql(
+        batchPromises.push(tx(
           `INSERT INTO stock_inventory_lots (
             lot_number,
             item_id,
@@ -83,9 +82,9 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
             `Approved from shipment ${shipment.shipment_number}`,
             session.user.email,
           ]
-        );
+        ));
 
-        await sql(
+        batchPromises.push(tx(
           `INSERT INTO stock_movements (
             movement_number,
             movement_type,
@@ -115,19 +114,19 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
             `Inbound whole tiles approved for shipment ${shipment.shipment_number}`,
             session.user.email,
           ]
-        );
+        ));
       }
 
       if (item.received_broken_qty > 0) {
-        await sql(
+        batchPromises.push(tx(
           `UPDATE stock_items
            SET current_broken_qty = current_broken_qty + $1,
                updated_at = NOW()
            WHERE id = $2`,
           [item.received_broken_qty, item.item_id]
-        );
+        ));
 
-        await sql(
+        batchPromises.push(tx(
           `INSERT INTO stock_inventory_lots (
             lot_number,
             item_id,
@@ -157,9 +156,9 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
             `Broken tiles approved from shipment ${shipment.shipment_number}`,
             session.user.email,
           ]
-        );
+        ));
 
-        await sql(
+        batchPromises.push(tx(
           `INSERT INTO stock_movements (
             movement_number,
             movement_type,
@@ -189,11 +188,14 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
             `Inbound broken tiles approved for shipment ${shipment.shipment_number}`,
             session.user.email,
           ]
-        );
+        ));
       }
     }
 
-    const updatedRows = await sql(
+    // Execute all updates simultaneously on the same dedicated client connection
+    await Promise.all(batchPromises);
+
+    const updatedRows = await tx(
       `UPDATE stock_inbound_shipments
        SET approval_status = 'approved',
            status = 'received',
@@ -218,7 +220,7 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
     )];
 
     const salespersonRecipients = departments.length > 0
-      ? await sql(
+      ? await tx(
           `SELECT u.id, u.name, u.email, u.phone,
                   COALESCE(d.name, NULLIF(TRIM(u.department), ''), 'General') AS department
            FROM stock_app_users
@@ -231,7 +233,6 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
         )
       : [];
 
-    await sql('COMMIT', []);
     return {
       shipment: updatedRows[0],
       items: itemRows,
@@ -240,10 +241,7 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
       departments,
       salespersonRecipients,
     };
-  } catch (error) {
-    await sql('ROLLBACK', []);
-    throw error;
-  }
+  });
 }
 
 export async function GET(request, context) {

@@ -84,13 +84,16 @@ function createDispatchItemRow() {
 }
 
 function createInitialArrivalDraft() {
+  const now = new Date();
+  const dateStr = now.toISOString().split('T')[0]; // yyyy-MM-dd
+
   return {
     shipmentNumber: '',
     supplierName: '',
     truckLicensePlate: '',
     driverName: '',
     invoiceNumber: '',
-    invoiceDate: '',
+    invoiceDate: dateStr,
     originCity: '',
     destinationWarehouseName: '',
     paymentStatus: 'unpaid',
@@ -106,6 +109,11 @@ function createInitialArrivalDraft() {
 }
 
 function createInitialDispatchDraft() {
+  const now = new Date();
+  const dateStr = now.toISOString().split('T')[0];
+  const timeStr = now.toTimeString().slice(0, 5); // HH:mm
+  const fullDateTime = `${dateStr}T${timeStr}`;
+
   return {
     shipmentNumber: '',
     customerName: '',
@@ -113,7 +121,7 @@ function createInitialDispatchDraft() {
     driverName: '',
     invoiceNumber: '',
     salespersonName: '',
-    dispatchDate: '',
+    dispatchDate: fullDateTime,
     transportCost: '',
     laborCost: '',
     notes: '',

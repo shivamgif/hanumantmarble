@@ -19,6 +19,7 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
   const [authMode, setAuthMode] = useState('signin');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSocialSubmitting, setIsSocialSubmitting] = useState(false);
+  const [showSignupSuccess, setShowSignupSuccess] = useState(false);
   const [socialRetryAfter, setSocialRetryAfter] = useState(null);
   const socialProvider = getDefaultSocialProvider();
   const isUnauthorizedError = error?.message === 'Unauthorized' || error?.status === 401;
@@ -103,6 +104,11 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
           password: cleanPassword,
           name: cleanName,
         });
+        
+        // Show success message briefly for signup before signing in and redirecting
+        setShowSignupSuccess(true);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        setShowSignupSuccess(false);
       }
 
       await authClient.signIn.email({
@@ -313,6 +319,16 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
                       {signInError ? (
                         <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
                           {signInError}
+                        </div>
+                      ) : null}
+
+                      {showSignupSuccess ? (
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-4 text-center">
+                          <div className="flex justify-center mb-2">
+                            <Sparkles className="h-6 w-6 text-emerald-500 animate-bounce" />
+                          </div>
+                          <p className="text-sm font-bold text-emerald-800">Account created successfully!</p>
+                          <p className="text-xs text-emerald-700 mt-1">Logging you in now...</p>
                         </div>
                       ) : null}
 
