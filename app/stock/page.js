@@ -101,6 +101,7 @@ function createInitialArrivalDraft() {
     paymentDate: '',
     paymentReference: '',
     paymentMode: '',
+    transporterName: '',
     transportCost: '',
     laborCost: '',
     handlingCostPercent: '1.0',
@@ -977,6 +978,7 @@ export default function StockDashboard() {
           paymentDate: values.paymentDate || undefined,
           paymentReference: trimText(values.paymentReference) || undefined,
           paymentMode: trimText(values.paymentMode) || undefined,
+          transporterName: trimText(values.transporterName) || undefined,
           deliveryCost: toNumber(values.transportCost),
           unloadingLabourCost: toNumber(values.laborCost),
           handlingCostPercent: values.handlingCostPercent === '' ? undefined : toNumber(values.handlingCostPercent),
@@ -1683,6 +1685,7 @@ export default function StockDashboard() {
                       <div className={FORM_CARD_CLASS}>
                         <FormSectionTitle icon={Truck} title={tc.transportInvoice} />
                         <div className="mt-3 grid gap-4 md:grid-cols-2">
+                          <StockFormField control={arrivalForm.control} name="transporterName" label={tc.transporter} placeholder="Transport company" />
                           <StockFormField control={arrivalForm.control} name="truckLicensePlate" label={t('truck')} placeholder="RJ 14 XY 0000" />
                           <StockFormField control={arrivalForm.control} name="driverName" label={t('driver')} placeholder="Driver Name..." />
                           <StockFormField control={arrivalForm.control} name="originCity" label={tc.originCity} placeholder="Source city" />
