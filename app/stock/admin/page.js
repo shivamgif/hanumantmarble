@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthUser } from '@/lib/auth-client';
 import { useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowRightLeft, ChevronDown, Eye, EyeOff, PackageSearch, ShieldAlert, UsersRound } from 'lucide-react';
+import { ArrowRightLeft, BarChart2, ChevronDown, Eye, EyeOff, PackageSearch, ShieldAlert, UsersRound } from 'lucide-react';
 
 function formatDateTime(value) {
   if (!value) {
@@ -37,51 +37,6 @@ function formatDateTime(value) {
   }).format(date);
 }
 
-function formatChartDate(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-  }).format(date);
-}
-
-function formatChartLongDate(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '—';
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(date);
-}
-
-function getRoundedAxisScale(maxValue, targetTickCount = 4) {
-  const safeMax = Math.max(Number(maxValue || 0), 1);
-  const roughStep = safeMax / Math.max(targetTickCount, 2);
-  const magnitude = 10 ** Math.floor(Math.log10(roughStep));
-  const normalized = roughStep / magnitude;
-
-  let niceStepFactor = 1;
-  if (normalized > 5) {
-    niceStepFactor = 10;
-  } else if (normalized > 2) {
-    niceStepFactor = 5;
-  } else if (normalized > 1) {
-    niceStepFactor = 2;
-  }
-
-  const step = niceStepFactor * magnitude;
-  const maxRounded = Math.ceil(safeMax / step) * step;
-
-  return { step, maxRounded };
-}
 
 const FORM_LABEL_CLASS = 'block text-[11px] font-semibold uppercase tracking-[0.08em] text-foreground/75';
 const FORM_INPUT_CLASS = 'mt-1';
@@ -144,140 +99,11 @@ function getStatusVariant(status) {
   return 'neutral';
 }
 
-function formatCompactNumber(value) {
-  return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(Number(value || 0));
-}
-
-function formatPercent(value) {
-  return `${(Number(value || 0) * 100).toFixed(1)}%`;
-}
-
-function formatCurrencyInr(value) {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(Number(value || 0));
-}
-
-function formatMonthLabel(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '—';
-  }
-
-  return new Intl.DateTimeFormat(undefined, { month: 'short' }).format(date);
-}
-
-
-
-function AnimatedStackedBars({ rows, keys, colors, maxValue, emptyText = '—' }) {
-  if (!rows.length) {
-    return <div className="rounded-xl border border-dashed border-border px-3 py-8 text-center text-xs text-muted-foreground">{emptyText}</div>;
-  }
-
-  const max = Math.max(maxValue || 0, 1);
-
-  return (
-    <div className="space-y-2">
-      {rows.map((row, rowIndex) => {
-        let cumulative = 0;
-        const total = keys.reduce((sum, key) => sum + Number(row[key] || 0), 0);
-
-        return (
-          <div key={`stack-${row.bucket}`} className="grid grid-cols-[38px_1fr_48px] items-center gap-2">
-            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">{formatMonthLabel(row.bucket)}</span>
-            <div className="relative h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-              {keys.map((key, index) => {
-                const value = Number(row[key] || 0);
-                const width = (value / max) * 100;
-                const left = (cumulative / max) * 100;
-                cumulative += value;
-
-                if (!value) {
-                  return null;
-                }
-
-                return (
-                  <span
-                    key={`${row.bucket}-${key}`}
-                    className="absolute top-0 h-full rounded-[2px]"
-                    style={{
-                      left: `${left}%`,
-                      width: `${width}%`,
-                      backgroundColor: colors[index],
-                      animation: `growWidth 700ms ease ${120 + rowIndex * 80}ms both`,
-                    }}
-                  />
-                );
-              })}
-            </div>
-            <span className="text-right text-[10px] font-mono text-slate-500 dark:text-slate-400">{total}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function MiniDonut({ segments }) {
-  const [hoveredIndex, setHoveredIndex] = useState(null);
-  const values = segments.map((segment) => Number(segment.value || 0));
-  const colors = segments.map((segment) => segment.color);
-  const total = values.reduce((sum, value) => sum + value, 0) || 1;
-  const radius = 30;
-  const circumference = 2 * Math.PI * radius;
-  let offset = 0;
-  const activeSegment = hoveredIndex != null ? segments[hoveredIndex] : null;
-
-  return (
-    <div className="space-y-2">
-      <svg viewBox="0 0 90 90" className="h-24 w-24">
-        <g transform="translate(45,45)">
-          {values.map((value, index) => {
-            const segment = (Number(value || 0) / total) * circumference;
-            const node = (
-              <circle
-                key={`donut-${index}`}
-                r={radius}
-                fill="none"
-                stroke={colors[index]}
-                strokeWidth={hoveredIndex === index ? '12' : '10'}
-                strokeDasharray={`${segment} ${circumference - segment}`}
-                strokeDashoffset={-offset}
-                transform="rotate(-90)"
-                style={{ animation: `drawStroke 800ms ease ${index * 120}ms both` }}
-                className="cursor-pointer transition-all duration-150"
-                onMouseEnter={() => setHoveredIndex(index)}
-              />
-            );
-            offset += segment;
-            return node;
-          })}
-          <text textAnchor="middle" y="3" className="fill-slate-700 text-[9px] font-semibold dark:fill-slate-100">{formatCompactNumber(total)}</text>
-        </g>
-      </svg>
-      {activeSegment ? (
-        <div className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] dark:border-slate-700 dark:bg-slate-900">
-          <span className="font-semibold" style={{ color: activeSegment.color }}>{activeSegment.label}: </span>
-          <span className="font-mono text-slate-700 dark:text-slate-200">{activeSegment.value}</span>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 export default function AdminDashboard() {
   const { language } = useLanguage();
   const searchParams = useSearchParams();
   const t = (key) => getTranslation(`stock.admin.${key}`, language);
   const ta = {
-    adminHubAnalytics: language === 'hi' ? 'एडमिन हब विश्लेषण' : 'Admin Hub Analytics',
-    processView: language === 'hi' ? 'स्टॉक वर्कफ़्लो आधारित प्रोसेस इंटेलिजेंस दृश्य' : 'Process intelligence view powered by stock workflows',
-    dateRange: language === 'hi' ? 'तिथि सीमा' : 'Date Range',
-    last3Months: language === 'hi' ? 'पिछले 3 महीने' : 'Last 3 months',
-    last6Months: language === 'hi' ? 'पिछले 6 महीने' : 'Last 6 months',
-    last12Months: language === 'hi' ? 'पिछले 12 महीने' : 'Last 12 months',
     operationalAlerts: language === 'hi' ? 'संचालन अलर्ट' : 'Operational Alerts',
     active: language === 'hi' ? 'सक्रिय' : 'active',
     recentActivity: language === 'hi' ? 'हाल की गतिविधि' : 'Recent Activity',
@@ -300,23 +126,10 @@ export default function AdminDashboard() {
     role: language === 'hi' ? 'भूमिका' : 'Role',
     actions: language === 'hi' ? 'कार्रवाई' : 'Actions',
     status: language === 'hi' ? 'स्थिति' : 'Status',
-    paid: language === 'hi' ? 'भुगतान' : 'Paid',
-    partial: language === 'hi' ? 'आंशिक' : 'Partial',
-    unpaid: language === 'hi' ? 'अदेय' : 'Unpaid',
-    salesperson: language === 'hi' ? 'सेल्सपर्सन' : 'Salesperson',
-    qty: language === 'hi' ? 'मात्रा' : 'Qty',
-    growth: language === 'hi' ? 'वृद्धि' : 'Growth',
-    consistencyShort: language === 'hi' ? 'स्थिरता' : 'Cons.',
     sku: language === 'hi' ? 'SKU' : 'SKU',
     name: language === 'hi' ? 'नाम' : 'Name',
     whole: language === 'hi' ? 'संपूर्ण' : 'Whole',
     broken: language === 'hi' ? 'टूटी' : 'Broken',
-    whatThisMeans: language === 'hi' ? 'इसका अर्थ:' : 'What this means:',
-    noChartData: language === 'hi' ? 'अभी कोई चार्ट डेटा उपलब्ध नहीं है।' : 'No chart data available yet.',
-    noMovementData: language === 'hi' ? 'अभी कोई मूवमेंट डेटा उपलब्ध नहीं है।' : 'No movement data available yet.',
-    inbound: language === 'hi' ? 'आवक' : 'Inbound',
-    outbound: language === 'hi' ? 'जावक' : 'Outbound',
-    netChange: language === 'hi' ? 'शुद्ध परिवर्तन' : 'Net Change',
     noUsersFound: language === 'hi' ? 'कोई उपयोगकर्ता नहीं मिला।' : 'No users found.',
     loadingPreview: language === 'hi' ? 'पूर्वावलोकन लोड हो रहा है…' : 'Loading preview…',
     paginationShowing: language === 'hi' ? 'दिखाए जा रहे हैं' : 'Showing',
@@ -328,8 +141,6 @@ export default function AdminDashboard() {
   const { user } = useAuthUser();
   const [data, setData] = useState(null);
   const [analyticsData, setAnalyticsData] = useState(null);
-  const [adminAnalytics, setAdminAnalytics] = useState(null);
-  const [analyticsRangeMonths, setAnalyticsRangeMonths] = useState(6);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
@@ -384,17 +195,15 @@ export default function AdminDashboard() {
     let mounted = true;
     async function loadData() {
       try {
-        const [dashboardResponse, analyticsResponse, changeRequestResponse, adminAnalyticsResponse] = await Promise.all([
+        const [dashboardResponse, analyticsResponse, changeRequestResponse] = await Promise.all([
           fetch('/api/stock/admin/dashboard'),
           fetch('/api/stock/dashboard'),
           fetch('/api/stock/change-requests', { cache: 'no-store' }),
-          fetch(`/api/stock/admin/analytics?months=${analyticsRangeMonths}`, { cache: 'no-store' }),
         ]);
 
         const dashboardJson = await dashboardResponse.json();
         const analyticsJson = await analyticsResponse.json();
         const changeRequestJson = await changeRequestResponse.json();
-        const adminAnalyticsJson = await adminAnalyticsResponse.json();
 
         if (!dashboardResponse.ok) {
           throw new Error(dashboardJson.error || 'Fetch failed');
@@ -408,14 +217,9 @@ export default function AdminDashboard() {
           throw new Error(changeRequestJson.error || 'Failed to load change requests');
         }
 
-        if (!adminAnalyticsResponse.ok) {
-          throw new Error(adminAnalyticsJson.error || 'Failed to load admin analytics');
-        }
-
         if (mounted) {
           setData(dashboardJson);
           setAnalyticsData(analyticsJson);
-          setAdminAnalytics(adminAnalyticsJson);
           setChangeRequests(changeRequestJson.requests || []);
         }
       } catch (err) {
@@ -426,7 +230,7 @@ export default function AdminDashboard() {
     }
     if (user) loadData();
     return () => { mounted = false; };
-  }, [user, analyticsRangeMonths]);
+  }, [user]);
 
   async function handleShipmentAction(type, id, action, notes = null) {
     const confirmMessage = action === 'reject'
@@ -472,17 +276,15 @@ export default function AdminDashboard() {
   }
 
   async function refreshDashboard() {
-    const [refreshResponse, analyticsResponse, changeRequestResponse, adminAnalyticsResponse] = await Promise.all([
+    const [refreshResponse, analyticsResponse, changeRequestResponse] = await Promise.all([
       fetch('/api/stock/admin/dashboard'),
       fetch('/api/stock/dashboard'),
       fetch('/api/stock/change-requests', { cache: 'no-store' }),
-      fetch(`/api/stock/admin/analytics?months=${analyticsRangeMonths}`, { cache: 'no-store' }),
     ]);
 
     const refreshJson = await refreshResponse.json();
     const analyticsJson = await analyticsResponse.json();
     const changeRequestJson = await changeRequestResponse.json();
-    const adminAnalyticsJson = await adminAnalyticsResponse.json();
 
     if (!refreshResponse.ok) {
       throw new Error(refreshJson.error || 'Failed to refresh dashboard');
@@ -496,13 +298,8 @@ export default function AdminDashboard() {
       throw new Error(changeRequestJson.error || 'Failed to refresh change requests');
     }
 
-    if (!adminAnalyticsResponse.ok) {
-      throw new Error(adminAnalyticsJson.error || 'Failed to refresh admin analytics');
-    }
-
     setData(refreshJson);
     setAnalyticsData(analyticsJson);
-    setAdminAnalytics(adminAnalyticsJson);
     setChangeRequests(changeRequestJson.requests || []);
   }
 
@@ -934,7 +731,7 @@ export default function AdminDashboard() {
   }, null);
 
   const movementSummary = movementPeak
-    ? `High-volume day detected on ${formatChartLongDate(movementPeak.date)} with ${formatCompactNumber(movementPeak.total)} units moved.`
+    ? `High-volume day detected on ${new Date(movementPeak.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })} with ${movementPeak.total} units moved.`
     : 'Waiting for enough movement history to identify a high-volume day.';
 
   const lowStockCount = (analyticsData?.activeItems || []).filter((item) => {
@@ -1007,40 +804,6 @@ export default function AdminDashboard() {
     .sort((left, right) => new Date(right.at || 0).getTime() - new Date(left.at || 0).getTime())
     .slice(0, 8);
 
-  const purchaseTrendRows = adminAnalytics?.purchasePerformance?.trend || [];
-  const purchaseFunnel = adminAnalytics?.purchasePerformance?.funnel || {};
-  const dispatchTrendRows = adminAnalytics?.dispatchPerformance?.trend || [];
-  const costTrendRows = adminAnalytics?.costAndPayment?.trend || [];
-  const paymentMixRows = adminAnalytics?.costAndPayment?.paymentMix || [];
-  const paymentExposure = adminAnalytics?.costAndPayment?.exposure || {};
-  const inventoryDivisionRisk = adminAnalytics?.inventoryHealth?.divisionRisk || [];
-  const inventoryRiskTrend = adminAnalytics?.inventoryHealth?.trend || [];
-  const salespersonTrendRows = adminAnalytics?.salespersonPerformance?.trend || [];
-  const salespersonRanking = adminAnalytics?.salespersonPerformance?.ranking || [];
-
-  const topSalespeople = salespersonRanking.slice(0, 3).map((row) => row.salesperson);
-  const salespersonTrendByMonth = useMemo(() => {
-    const map = new Map();
-
-    for (const row of salespersonTrendRows) {
-      const bucket = row.bucket;
-      const current = map.get(bucket) || { bucket };
-      current[row.salesperson] = Number(row.total_qty || 0);
-      map.set(bucket, current);
-    }
-
-    return Array.from(map.values()).sort((a, b) => String(a.bucket).localeCompare(String(b.bucket)));
-  }, [salespersonTrendRows]);
-
-  const funnelMax = Math.max(
-    Number(purchaseFunnel.pending || 0),
-    Number(purchaseFunnel.reviewed || 0),
-    Number(purchaseFunnel.approved || 0),
-    Number(purchaseFunnel.rejected || 0),
-    Number(purchaseFunnel.changes_requested || 0),
-    1
-  );
-
   if (loading) {
     return (
       <div className="space-y-6">
@@ -1109,6 +872,21 @@ export default function AdminDashboard() {
 
       </div>
 
+      <Link
+        href="/stock/analytics"
+        className="flex items-center justify-between rounded-2xl border border-slate-200/60 bg-gradient-to-r from-[#1A1A54]/5 to-[#E07A00]/5 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:from-[#1A1A54]/10 dark:to-[#E07A00]/10"
+      >
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#E07A00]/10 text-[#E07A00]">
+            <BarChart2 className="h-4 w-4" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">Analytics Dashboard</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Purchase, dispatch, inventory &amp; salesperson performance</p>
+          </div>
+        </div>
+        <span className="text-xs font-semibold text-[#E07A00]">View →</span>
+      </Link>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
         <div className="rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4 xl:col-span-2">
@@ -1951,42 +1729,6 @@ export default function AdminDashboard() {
               ]
         }
       />
-      <style jsx global>{`
-        @keyframes cardLiftIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes growWidth {
-          from {
-            opacity: 0.55;
-            transform: scaleX(0);
-          }
-          to {
-            opacity: 1;
-            transform: scaleX(1);
-          }
-        }
-
-        @keyframes drawStroke {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-
-        .analytics-card {
-          animation: cardLiftIn 520ms ease both;
-        }
-      `}</style>
     </div>
   );
 }
