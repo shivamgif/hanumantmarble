@@ -146,7 +146,8 @@
       "brand": "मार्बल",
       "accessFallback": "स्टॉक पहुंच सत्यापित नहीं हो सकी।",
       "accessPendingFallback": "स्टॉक पहुंच अनुमोदन की प्रतीक्षा में है।",
-      "adminDashboard": "एडमिन हब"
+      "adminDashboard": "एडमिन हब",
+      "analytics": "विश्लेषण"
     },
     "dashboard": {
       "loading": "डैशबोर्ड लोड हो रहा है...",

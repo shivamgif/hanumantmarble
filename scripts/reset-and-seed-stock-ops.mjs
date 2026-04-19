@@ -439,16 +439,16 @@ async function upsertUsersAndGetMaps() {
 
 function makeProductCatalog() {
   return [
-    { name: 'Bianco Antico', size: '600x600mm', widthMm: 600, lengthMm: 600, thicknessMm: 9.0, hsn: '69072200', piecesPerBox: 4, division: 'Marble', baseCostPerSqm: 395 },
-    { name: 'Cape White Marble', size: '600x1200mm', widthMm: 600, lengthMm: 1200, thicknessMm: 9.0, hsn: '69072200', piecesPerBox: 3, division: 'Marble', baseCostPerSqm: 410 },
-    { name: 'Emil Cedar', size: '300x450mm', widthMm: 300, lengthMm: 450, thicknessMm: 8.5, hsn: '69072300', piecesPerBox: 6, division: 'Designer', baseCostPerSqm: 360 },
-    { name: 'Lady Gudiva Silver - Matt', size: '600x600mm', widthMm: 600, lengthMm: 600, thicknessMm: 9.0, hsn: '69072200', piecesPerBox: 4, division: 'Designer', baseCostPerSqm: 388 },
-    { name: 'Milazzo Copper', size: '600x1200mm', widthMm: 600, lengthMm: 1200, thicknessMm: 9.5, hsn: '69072200', piecesPerBox: 3, division: 'Designer', baseCostPerSqm: 435 },
-    { name: 'Polished Wood Dark', size: '300x300mm', widthMm: 300, lengthMm: 300, thicknessMm: 8.0, hsn: '69072300', piecesPerBox: 10, division: 'Porcelain', baseCostPerSqm: 342 },
-    { name: 'Sapphire Marfil', size: '300x450mm', widthMm: 300, lengthMm: 450, thicknessMm: 8.5, hsn: '69072300', piecesPerBox: 6, division: 'Granite', baseCostPerSqm: 372 },
-    { name: 'Vega Gris', size: '300x300mm', widthMm: 300, lengthMm: 300, thicknessMm: 8.0, hsn: '69072300', piecesPerBox: 10, division: 'Granite', baseCostPerSqm: 350 },
-    { name: 'Roca Ivory Prime', size: '600x600mm', widthMm: 600, lengthMm: 600, thicknessMm: 9.0, hsn: '69072200', piecesPerBox: 4, division: 'Porcelain', baseCostPerSqm: 402 },
-    { name: 'Graphite Slate Edge', size: '600x1200mm', widthMm: 600, lengthMm: 1200, thicknessMm: 10.0, hsn: '69072200', piecesPerBox: 3, division: 'Granite', baseCostPerSqm: 448 },
+    { name: 'Bianco Antico', size: '600x600mm', widthMm: 600, lengthMm: 600, thicknessMm: 9.0, hsn: '69072200', piecesPerBox: 4, division: 'Marble', brand: 'Kajaria Ceramics Limited', type: 'Marble', baseCostPerSqm: 395 },
+    { name: 'Cape White Marble', size: '600x1200mm', widthMm: 600, lengthMm: 1200, thicknessMm: 9.0, hsn: '69072200', piecesPerBox: 3, division: 'Marble', brand: 'RAK Ceramics', type: 'Marble', baseCostPerSqm: 410 },
+    { name: 'Emil Cedar', size: '300x450mm', widthMm: 300, lengthMm: 450, thicknessMm: 8.5, hsn: '69072300', piecesPerBox: 6, division: 'Designer', brand: 'Somany Ceramics', type: 'Ceramic', baseCostPerSqm: 360 },
+    { name: 'Lady Gudiva Silver - Matt', size: '600x600mm', widthMm: 600, lengthMm: 600, thicknessMm: 9.0, hsn: '69072200', piecesPerBox: 4, division: 'Designer', brand: 'Kajaria Ceramics Limited', type: 'Vitrified Tile', baseCostPerSqm: 388 },
+    { name: 'Milazzo Copper', size: '600x1200mm', widthMm: 600, lengthMm: 1200, thicknessMm: 9.5, hsn: '69072200', piecesPerBox: 3, division: 'Designer', brand: 'RAK Ceramics', type: 'Vitrified Tile', baseCostPerSqm: 435 },
+    { name: 'Polished Wood Dark', size: '300x300mm', widthMm: 300, lengthMm: 300, thicknessMm: 8.0, hsn: '69072300', piecesPerBox: 10, division: 'Porcelain', brand: 'Somany Ceramics', type: 'Ceramic', baseCostPerSqm: 342 },
+    { name: 'Sapphire Marfil', size: '300x450mm', widthMm: 300, lengthMm: 450, thicknessMm: 8.5, hsn: '69072300', piecesPerBox: 6, division: 'Granite', brand: 'Kajaria Ceramics Limited', type: 'Granite', baseCostPerSqm: 372 },
+    { name: 'Vega Gris', size: '300x300mm', widthMm: 300, lengthMm: 300, thicknessMm: 8.0, hsn: '69072300', piecesPerBox: 10, division: 'Granite', brand: 'RAK Ceramics', type: 'Granite', baseCostPerSqm: 350 },
+    { name: 'Roca Ivory Prime', size: '600x600mm', widthMm: 600, lengthMm: 600, thicknessMm: 9.0, hsn: '69072200', piecesPerBox: 4, division: 'Porcelain', brand: 'Somany Ceramics', type: 'Vitrified Tile', baseCostPerSqm: 402 },
+    { name: 'Graphite Slate Edge', size: '600x1200mm', widthMm: 600, lengthMm: 1200, thicknessMm: 10.0, hsn: '69072200', piecesPerBox: 3, division: 'Granite', brand: 'Kajaria Ceramics Limited', type: 'Granite', baseCostPerSqm: 448 },
   ];
 }
 
@@ -461,29 +461,28 @@ function sqmPerBox(product) {
 }
 
 async function ensureItems(catalog) {
-  const brand = await ensureBrand('Kajaria Ceramics Limited');
-  const type = await ensureType('Vitrified Tile');
-
   const items = [];
 
   for (const p of catalog) {
+    const brand = await ensureBrand(p.brand || 'Kajaria Ceramics Limited');
+    const type = await ensureType(p.type || 'Vitrified Tile');
     const division = await ensureDivision(p.division);
     const size = await ensureSize(p.size, p.widthMm, p.lengthMm, p.thicknessMm);
 
-    const sku = `KAJ-${slugify(p.name).toUpperCase()}-${p.size.replace(/[^0-9]/g, '')}`;
+    const brandPrefix = (p.brand || 'Kajaria').split(' ')[0].substring(0, 3).toUpperCase();
+    const sku = `${brandPrefix}-${slugify(p.name).toUpperCase()}-${p.size.replace(/[^0-9]/g, '')}`;
 
     const rows = await sql(
       `INSERT INTO stock_items (
-         sku, brand_id, type_id, division_id, size_id, department, name,
+         sku, brand_id, type_id, division_id, size_id, name,
          grade, series, pieces_per_box, thickness_mm, unit_of_measure,
          purchase_price, landed_cost, selling_price, is_active
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,'PRM',$8,$9,$10,'box',$11,$12,$13,TRUE)
+       ) VALUES ($1,$2,$3,$4,$5,$6,'PRM',$7,$8,$9,'box',$10,$11,$12,TRUE)
        ON CONFLICT (sku) DO UPDATE SET
          brand_id = EXCLUDED.brand_id,
          type_id = EXCLUDED.type_id,
          division_id = EXCLUDED.division_id,
          size_id = EXCLUDED.size_id,
-         department = EXCLUDED.department,
          name = EXCLUDED.name,
          grade = 'PRM',
          series = EXCLUDED.series,
@@ -494,14 +493,13 @@ async function ensureItems(catalog) {
          selling_price = EXCLUDED.selling_price,
          is_active = TRUE,
          updated_at = NOW()
-       RETURNING id, sku, name, pieces_per_box, thickness_mm, department`,
+       RETURNING id, sku, name, pieces_per_box, thickness_mm`,
       [
         sku,
         brand.id,
         type.id,
         division.id,
         size.id,
-        p.division,
         p.name,
         `${p.division} Classic`,
         p.piecesPerBox,
@@ -518,7 +516,7 @@ async function ensureItems(catalog) {
       sku: rows[0].sku,
       piecesPerBox: Number(rows[0].pieces_per_box || p.piecesPerBox),
       thicknessMm: Number(rows[0].thickness_mm || p.thicknessMm),
-      department: rows[0].department || p.division,
+      department: p.division,
     });
   }
 
@@ -585,17 +583,44 @@ async function ensureMasters() {
   return { suppliers, transporters, vehicles, customers };
 }
 
+async function seedLocations() {
+  const locationSeeds = [
+    { name: 'Main Warehouse', location_type: 'warehouse', address: 'Industrial Area, Lucknow' },
+    { name: 'Yard A', location_type: 'yard', address: 'Lucknow Main Yard' },
+    { name: 'Yard B', location_type: 'yard', address: 'Kanpur Road Yard' },
+    { name: 'Showroom Lucknow', location_type: 'showroom', address: 'Hazratganj, Lucknow' },
+    { name: 'Showroom Kanpur', location_type: 'showroom', address: 'Mall Road, Kanpur' },
+    { name: 'In Transit', location_type: 'in_transit', address: null },
+  ];
+
+  const locations = [];
+  for (const loc of locationSeeds) {
+    const rows = await sql(
+      `INSERT INTO stock_locations (name, location_type, address)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (name) DO UPDATE SET
+         location_type = EXCLUDED.location_type,
+         address = COALESCE(EXCLUDED.address, stock_locations.address),
+         updated_at = NOW()
+       RETURNING id, name, location_type`,
+      [loc.name, loc.location_type, loc.address]
+    );
+    locations.push(rows[0]);
+  }
+  return locations;
+}
+
 async function insertInboundHeader(payload) {
   const rows = await sql(
     `INSERT INTO stock_inbound_shipments (
        shipment_number, supplier_id, transporter_id, vehicle_id,
-       truck_license_plate, truck_number, driver_name, driver_phone,
+       truck_license_plate_snapshot, truck_number_snapshot, driver_name_snapshot, driver_phone_snapshot,
        arrival_date, submitted_at, submitted_by_user_id,
        reviewed_at, reviewed_by_user_id,
        approval_status, approval_notes,
        approved_at, approved_by_user_id,
        invoice_number, invoice_date,
-       origin_city, destination_warehouse_name,
+       origin_city, destination_location_id,
        payment_status, paid_amount, payment_date, payment_reference, payment_mode,
        delivery_cost, unloading_labour_cost,
        total_whole_qty, total_broken_qty,
@@ -621,10 +646,10 @@ async function insertInboundHeader(payload) {
       payload.supplierId,
       payload.transporterId,
       payload.vehicleId,
-      payload.truckLicensePlate,
-      payload.truckNumber,
-      payload.driverName,
-      payload.driverPhone,
+      payload.truckLicensePlateSnapshot,
+      payload.truckNumberSnapshot,
+      payload.driverNameSnapshot,
+      payload.driverPhoneSnapshot,
       payload.arrivalDate,
       payload.submittedAt,
       payload.submittedByUserId,
@@ -637,7 +662,7 @@ async function insertInboundHeader(payload) {
       payload.invoiceNumber,
       payload.invoiceDate,
       payload.originCity,
-      payload.destinationWarehouseName,
+      payload.destinationLocationId,
       payload.paymentStatus,
       payload.paidAmount,
       payload.paymentDate,
@@ -688,7 +713,7 @@ async function insertInboundItem(payload) {
   return rows[0];
 }
 
-async function applyInboundApprovedStock({ shipment, lines }) {
+async function applyInboundApprovedStock({ shipment, lines, locationId = null }) {
   for (const line of lines) {
     await sql(
       `UPDATE stock_items
@@ -702,14 +727,15 @@ async function applyInboundApprovedStock({ shipment, lines }) {
     if (line.receivedWholeQty > 0) {
       const lotRows = await sql(
         `INSERT INTO stock_inventory_lots (
-           lot_number, item_id, source_type, source_table, source_id,
+           lot_number, item_id, location_id, source_type, source_table, source_id,
            tile_condition, quantity_received, quantity_available,
            unit_cost, landed_cost, qc_status, notes, created_by
-         ) VALUES ($1,$2,'purchase','stock_inbound_shipments',$3,'whole',$4,$4,$5,$6,'passed',$7,$8)
+         ) VALUES ($1,$2,$3,'purchase','stock_inbound_shipments',$4,'whole',$5,$5,$6,$7,'passed',$8,$9)
          RETURNING id`,
         [
           `LOT-${shipment.shipment_number}-${line.itemId}-W`,
           line.itemId,
+          locationId,
           shipment.id,
           line.receivedWholeQty,
           line.unitCost,
@@ -750,14 +776,15 @@ async function applyInboundApprovedStock({ shipment, lines }) {
     if (line.receivedBrokenQty > 0) {
       const lotRows = await sql(
         `INSERT INTO stock_inventory_lots (
-           lot_number, item_id, source_type, source_table, source_id,
+           lot_number, item_id, location_id, source_type, source_table, source_id,
            tile_condition, quantity_received, quantity_available,
            unit_cost, landed_cost, qc_status, notes, created_by
-         ) VALUES ($1,$2,'purchase','stock_inbound_shipments',$3,'broken',$4,$4,$5,$6,'passed',$7,$8)
+         ) VALUES ($1,$2,$3,'purchase','stock_inbound_shipments',$4,'broken',$5,$5,$6,$7,'passed',$8,$9)
          RETURNING id`,
         [
           `LOT-${shipment.shipment_number}-${line.itemId}-B`,
           line.itemId,
+          locationId,
           shipment.id,
           line.receivedBrokenQty,
           line.unitCost,
@@ -824,11 +851,14 @@ async function createInboundDocument({ shipmentId, invoiceNumber, createdBy }) {
   );
 }
 
-async function seedInboundShipments({ rng, usersByRole, masters, items }) {
+async function seedInboundShipments({ rng, usersByRole, masters, items, locations = [] }) {
   const purchaseCount = 36;
   const startDate = new Date();
   startDate.setUTCDate(startDate.getUTCDate() - 180);
   const endDate = new Date();
+
+  const warehouseLocations = locations.filter((l) => ['warehouse', 'yard'].includes(l.location_type));
+  const allLocations = locations;
 
   const statuses = [
     { approvalStatus: 'approved', status: 'received', weight: 45 },
@@ -937,15 +967,18 @@ async function seedInboundShipments({ rng, usersByRole, masters, items }) {
     const reviewedAt = selectedStatus.approvalStatus === 'pending' ? null : new Date(submittedAt.getTime() + randInt(rng, 4, 28) * 3600000);
     const approvedAt = selectedStatus.approvalStatus === 'approved' ? new Date(reviewedAt.getTime() + randInt(rng, 1, 12) * 3600000) : null;
 
+    const destinationLocation = warehouseLocations.length > 0 ? pick(rng, warehouseLocations) : null;
+    const destinationLocationId = destinationLocation?.id || null;
+
     const shipment = await insertInboundHeader({
       shipmentNumber,
       supplierId: supplier.id,
       transporterId: transporter.id,
       vehicleId: vehicle.id,
-      truckLicensePlate: vehicle.vehicle_number,
-      truckNumber: vehicle.vehicle_number,
-      driverName: pick(rng, ['Naveen Singh', 'Arjun Meena', 'Rafiq Khan', 'Gopal Prajapati']),
-      driverPhone: `98${randInt(rng, 100000000, 999999999)}`,
+      truckLicensePlateSnapshot: vehicle.vehicle_number,
+      truckNumberSnapshot: vehicle.vehicle_number,
+      driverNameSnapshot: pick(rng, ['Naveen Singh', 'Arjun Meena', 'Rafiq Khan', 'Gopal Prajapati']),
+      driverPhoneSnapshot: `98${randInt(rng, 100000000, 999999999)}`,
       arrivalDate: shipmentDate.toISOString(),
       submittedAt: submittedAt.toISOString(),
       submittedByUserId: maintainer.id,
@@ -958,7 +991,7 @@ async function seedInboundShipments({ rng, usersByRole, masters, items }) {
       invoiceNumber,
       invoiceDate: formatDateYYYYMMDD(invoiceDate),
       originCity: i === 0 ? 'Gailpur' : pick(rng, transportCities),
-      destinationWarehouseName: pick(rng, warehouseNames),
+      destinationLocationId,
       paymentStatus,
       paidAmount,
       paymentDate,
@@ -978,19 +1011,19 @@ async function seedInboundShipments({ rng, usersByRole, masters, items }) {
       createdBy: 'reset-seed-script',
     });
 
-    const insertedLines = [];
     for (const line of linePayloads) {
-      insertedLines.push(await insertInboundItem({
+      await insertInboundItem({
         inboundShipmentId: shipment.id,
         ...line,
         notes: 'Seeded line item',
-      }));
+      });
     }
 
     if (selectedStatus.approvalStatus === 'approved') {
       await applyInboundApprovedStock({
         shipment,
         lines: linePayloads,
+        locationId: destinationLocationId,
       });
     }
 
@@ -1012,9 +1045,8 @@ async function insertOutboundHeader(payload) {
   const rows = await sql(
     `INSERT INTO stock_outbound_shipments (
        shipment_number, vehicle_id,
-       customer_name, customer_phone,
-       salesperson_name, salesperson_phone,
-       truck_license_plate, truck_number, driver_name, driver_phone,
+       customer_id, salesperson_id,
+       truck_license_plate_snapshot, truck_number_snapshot, driver_name_snapshot, driver_phone_snapshot,
        gatepass_number, invoice_number,
        submitted_at, submitted_by_user_id,
        reviewed_at, reviewed_by_user_id,
@@ -1028,30 +1060,27 @@ async function insertOutboundHeader(payload) {
      ) VALUES (
        $1,$2,
        $3,$4,
-       $5,$6,
-       $7,$8,$9,$10,
+       $5,$6,$7,$8,
+       $9,$10,
        $11,$12,
        $13,$14,
        $15,$16,
        $17,$18,
        $19,$20,
-       $21,$22,
-       $23,
-       $24,$25,
-       $26,
-       $27,$28
+       $21,
+       $22,$23,
+       $24,
+       $25,$26
      ) RETURNING *`,
     [
       payload.shipmentNumber,
       payload.vehicleId,
-      payload.customerName,
-      payload.customerPhone,
-      payload.salespersonName,
-      payload.salespersonPhone,
-      payload.truckLicensePlate,
-      payload.truckNumber,
-      payload.driverName,
-      payload.driverPhone,
+      payload.customerId,
+      payload.salespersonId,
+      payload.truckLicensePlateSnapshot,
+      payload.truckNumberSnapshot,
+      payload.driverNameSnapshot,
+      payload.driverPhoneSnapshot,
       payload.gatepassNumber,
       payload.invoiceNumber,
       payload.submittedAt,
@@ -1211,7 +1240,7 @@ async function getStockAvailabilityMap() {
   return map;
 }
 
-async function seedOutboundShipments({ rng, usersByRole, masters, items }) {
+async function seedOutboundShipments({ rng, usersByRole, masters, items, salesPeople = [] }) {
   const dispatchCount = 24;
   const startDate = new Date();
   startDate.setUTCDate(startDate.getUTCDate() - 180);
@@ -1231,7 +1260,7 @@ async function seedOutboundShipments({ rng, usersByRole, masters, items }) {
   for (let i = 0; i < dispatchCount; i += 1) {
     const maintainer = pick(rng, usersByRole.stock_maintainer);
     const approver = pick(rng, [...usersByRole.admin, ...usersByRole.manager]);
-    const salesperson = pick(rng, usersByRole.salesperson);
+    const salesperson = salesPeople.length > 0 ? pick(rng, salesPeople) : null;
     const customer = pick(rng, masters.customers);
     const vehicle = pick(rng, masters.vehicles);
 
@@ -1285,14 +1314,12 @@ async function seedOutboundShipments({ rng, usersByRole, masters, items }) {
     const shipment = await insertOutboundHeader({
       shipmentNumber,
       vehicleId: vehicle.id,
-      customerName: customer.name,
-      customerPhone: customer.phone,
-      salespersonName: salesperson.name,
-      salespersonPhone: salesperson.phone,
-      truckLicensePlate: vehicle.vehicle_number,
-      truckNumber: vehicle.vehicle_number,
-      driverName: pick(rng, ['Naveen Singh', 'Arjun Meena', 'Rafiq Khan', 'Gopal Prajapati']),
-      driverPhone: `97${randInt(rng, 100000000, 999999999)}`,
+      customerId: customer.id,
+      salespersonId: salesperson?.id || null,
+      truckLicensePlateSnapshot: vehicle.vehicle_number,
+      truckNumberSnapshot: vehicle.vehicle_number,
+      driverNameSnapshot: pick(rng, ['Naveen Singh', 'Arjun Meena', 'Rafiq Khan', 'Gopal Prajapati']),
+      driverPhoneSnapshot: `97${randInt(rng, 100000000, 999999999)}`,
       gatepassNumber: `GP-${String(i + 1).padStart(5, '0')}`,
       invoiceNumber,
       submittedAt: submittedAt.toISOString(),
@@ -1335,11 +1362,453 @@ async function seedOutboundShipments({ rng, usersByRole, masters, items }) {
       });
     }
 
-    created.push({ shipment, lines: linePayloads, approved: selectedStatus.approvalStatus === 'approved' });
+    created.push({ shipment, lines: linePayloads, approved: selectedStatus.approvalStatus === 'approved', customer });
   }
 
   return created;
 }
+
+async function seedSalesPeople() {
+  const seeds = [
+    { name: 'Vikram Tilekar', phone: '9900001001', whatsapp_phone: '9900001001' },
+    { name: 'Meena Stones', phone: '9900001002', whatsapp_phone: '9900001002' },
+    { name: 'Rajesh Marbles', phone: '9900001003', whatsapp_phone: '9900001003' },
+    { name: 'Sunita Granites', phone: '9900001004', whatsapp_phone: '9900001004' },
+    { name: 'Deepak Ceramics', phone: '9900001005', whatsapp_phone: '9900001005' },
+    { name: 'Asha Designer', phone: '9900001006', whatsapp_phone: '9900001006' },
+  ];
+
+  const salesPeople = [];
+  for (const sp of seeds) {
+    const existing = await sql(
+      `SELECT id, name FROM stock_sales_people WHERE name = $1 LIMIT 1`,
+      [sp.name]
+    );
+    if (existing[0]) {
+      salesPeople.push(existing[0]);
+    } else {
+      const rows = await sql(
+        `INSERT INTO stock_sales_people (name, phone, whatsapp_phone)
+         VALUES ($1, $2, $3)
+         RETURNING id, name`,
+        [sp.name, sp.phone, sp.whatsapp_phone]
+      );
+      salesPeople.push(rows[0]);
+    }
+  }
+  return salesPeople;
+}
+
+async function seedCustomerAcknowledgements(seededDispatches, rng) {
+  const deliveredDispatches = seededDispatches.filter(
+    (d) => d.approved && d.shipment.delivered_date
+  );
+
+  const ackStatuses = [
+    { value: 'received', weight: 70 },
+    { value: 'partial', weight: 20 },
+    { value: 'damaged', weight: 10 },
+  ];
+
+  const created = [];
+
+  for (const dispatch of deliveredDispatches) {
+    const shipment = dispatch.shipment;
+    const deliveredDate = new Date(shipment.delivered_date);
+    const acknowledgedAt = new Date(deliveredDate.getTime() + randInt(rng, 2, 6) * 3600000);
+    const ackStatus = weightedPick(rng, ackStatuses);
+
+    const customerName = dispatch.customer?.name || 'Customer';
+    const customerPhone = dispatch.customer?.phone || null;
+
+    const rows = await sql(
+      `INSERT INTO stock_customer_acknowledgements (
+         outbound_shipment_id,
+         acknowledged_by, acknowledged_phone,
+         acknowledgement_status,
+         acknowledged_at,
+         notes
+       ) VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id`,
+      [
+        shipment.id,
+        customerName,
+        customerPhone,
+        ackStatus,
+        acknowledgedAt.toISOString(),
+        'Seeded customer acknowledgement',
+      ]
+    );
+
+    await sql(
+      `UPDATE stock_outbound_shipments
+       SET customer_acknowledged_at = $1, updated_at = NOW()
+       WHERE id = $2`,
+      [acknowledgedAt.toISOString(), shipment.id]
+    );
+
+    created.push(rows[0]);
+  }
+
+  return created.length;
+}
+
+async function seedTimelineEvents(seededPurchases, seededDispatches, allUsers, rng) {
+  let evtCount = 0;
+  const nextEvtNumber = () => `EVT-SEED-${String(++evtCount).padStart(5, '0')}`;
+
+  const eventRows = [];
+
+  for (const purchase of seededPurchases) {
+    const s = purchase.shipment;
+
+    eventRows.push({
+      eventNumber: nextEvtNumber(),
+      eventType: 'inbound_submitted',
+      entityType: 'inbound_shipment',
+      entityId: s.id,
+      occurredAt: s.submitted_at,
+      recordedByUserId: s.submitted_by_user_id,
+      summary: `Purchase ${s.shipment_number} submitted for review`,
+    });
+
+    if (s.reviewed_at) {
+      eventRows.push({
+        eventNumber: nextEvtNumber(),
+        eventType: 'inbound_reviewed',
+        entityType: 'inbound_shipment',
+        entityId: s.id,
+        occurredAt: s.reviewed_at,
+        recordedByUserId: s.reviewed_by_user_id || s.submitted_by_user_id,
+        summary: `Purchase ${s.shipment_number} reviewed`,
+      });
+    }
+
+    if (s.approved_at) {
+      eventRows.push({
+        eventNumber: nextEvtNumber(),
+        eventType: 'inbound_approved',
+        entityType: 'inbound_shipment',
+        entityId: s.id,
+        occurredAt: s.approved_at,
+        recordedByUserId: s.approved_by_user_id || s.reviewed_by_user_id,
+        summary: `Purchase ${s.shipment_number} approved and stock updated`,
+      });
+
+      if (s.received_date) {
+        eventRows.push({
+          eventNumber: nextEvtNumber(),
+          eventType: 'inbound_received',
+          entityType: 'inbound_shipment',
+          entityId: s.id,
+          occurredAt: s.received_date,
+          recordedByUserId: s.recorded_by_user_id || s.approved_by_user_id,
+          summary: `Stock received for purchase ${s.shipment_number}`,
+        });
+      }
+    }
+  }
+
+  for (const dispatch of seededDispatches) {
+    const s = dispatch.shipment;
+
+    eventRows.push({
+      eventNumber: nextEvtNumber(),
+      eventType: 'outbound_submitted',
+      entityType: 'outbound_shipment',
+      entityId: s.id,
+      occurredAt: s.submitted_at,
+      recordedByUserId: s.submitted_by_user_id,
+      summary: `Dispatch ${s.shipment_number} submitted for approval`,
+    });
+
+    if (s.reviewed_at) {
+      eventRows.push({
+        eventNumber: nextEvtNumber(),
+        eventType: 'outbound_reviewed',
+        entityType: 'outbound_shipment',
+        entityId: s.id,
+        occurredAt: s.reviewed_at,
+        recordedByUserId: s.reviewed_by_user_id || s.submitted_by_user_id,
+        summary: `Dispatch ${s.shipment_number} reviewed`,
+      });
+    }
+
+    if (s.approved_at) {
+      eventRows.push({
+        eventNumber: nextEvtNumber(),
+        eventType: 'outbound_approved',
+        entityType: 'outbound_shipment',
+        entityId: s.id,
+        occurredAt: s.approved_at,
+        recordedByUserId: s.approved_by_user_id || s.reviewed_by_user_id,
+        summary: `Dispatch ${s.shipment_number} approved`,
+      });
+    }
+
+    if (dispatch.approved && s.dispatch_date) {
+      eventRows.push({
+        eventNumber: nextEvtNumber(),
+        eventType: 'outbound_dispatched',
+        entityType: 'outbound_shipment',
+        entityId: s.id,
+        occurredAt: s.dispatch_date,
+        recordedByUserId: s.recorded_by_user_id || s.approved_by_user_id,
+        summary: `Dispatch ${s.shipment_number} sent to ${s.customer_name}`,
+      });
+    }
+  }
+
+  for (let i = 0; i < 5; i++) {
+    const user = pick(rng, allUsers);
+    const loginAt = new Date(Date.now() - randInt(rng, 1, 30) * 86400000);
+    eventRows.push({
+      eventNumber: nextEvtNumber(),
+      eventType: 'login',
+      entityType: 'user',
+      entityId: user.id,
+      occurredAt: loginAt.toISOString(),
+      recordedByUserId: user.id,
+      summary: `${user.name} logged in`,
+    });
+  }
+
+  for (const ev of eventRows) {
+    await sql(
+      `INSERT INTO stock_timeline_events (
+         event_number, event_type, entity_type, entity_id,
+         occurred_at, recorded_by_user_id, summary
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (event_number) DO NOTHING`,
+      [ev.eventNumber, ev.eventType, ev.entityType, ev.entityId, ev.occurredAt, ev.recordedByUserId, ev.summary]
+    );
+  }
+
+  return eventRows.length;
+}
+
+async function seedNotifications(seededPurchases, seededDispatches, rng) {
+  let notifCount = 0;
+  const nextNotifNumber = () => `NOTIF-SEED-${String(++notifCount).padStart(5, '0')}`;
+
+  const notifs = [];
+
+  for (const purchase of seededPurchases) {
+    if (!purchase.approved || rng() > 0.6) continue;
+    const s = purchase.shipment;
+    notifs.push({
+      notifNumber: nextNotifNumber(),
+      channel: 'whatsapp',
+      eventType: 'inbound_arrival',
+      messageText: `Purchase ${s.shipment_number} arrived: ${s.total_whole_qty} whole + ${s.total_broken_qty} broken boxes. Invoice: ${s.invoice_number}.`,
+      status: 'sent',
+      sentAt: s.arrival_date,
+      sourceTable: 'stock_inbound_shipments',
+      sourceId: s.id,
+      isRead: rng() < 0.7,
+    });
+  }
+
+  for (const dispatch of seededDispatches) {
+    if (!dispatch.approved || rng() > 0.6) continue;
+    const s = dispatch.shipment;
+    notifs.push({
+      notifNumber: nextNotifNumber(),
+      channel: 'whatsapp',
+      eventType: 'outbound_dispatch',
+      messageText: `Dispatch ${s.shipment_number} sent to ${s.customer_name}. Driver: ${s.driver_name}. Gatepass: ${s.gatepass_number}.`,
+      status: 'sent',
+      sentAt: s.dispatch_date,
+      sourceTable: 'stock_outbound_shipments',
+      sourceId: s.id,
+      isRead: rng() < 0.6,
+    });
+  }
+
+  const lowStockItems = await sql(
+    `SELECT id, name, current_whole_qty, current_broken_qty
+     FROM stock_items
+     WHERE current_whole_qty + current_broken_qty < 20
+     ORDER BY current_whole_qty + current_broken_qty ASC
+     LIMIT 5`,
+    []
+  );
+  for (const item of lowStockItems) {
+    const total = Number(item.current_whole_qty || 0) + Number(item.current_broken_qty || 0);
+    notifs.push({
+      notifNumber: nextNotifNumber(),
+      channel: 'internal',
+      eventType: 'low_stock',
+      messageText: `Low stock alert: ${item.name} — only ${total} boxes remaining. Consider raising a purchase order.`,
+      status: 'pending',
+      sentAt: null,
+      sourceTable: 'stock_items',
+      sourceId: item.id,
+      isRead: false,
+    });
+  }
+
+  for (const purchase of seededPurchases) {
+    const s = purchase.shipment;
+    if (!['paid', 'partial'].includes(s.payment_status) || rng() > 0.45) continue;
+    notifs.push({
+      notifNumber: nextNotifNumber(),
+      channel: 'email',
+      eventType: 'payment_update',
+      messageText: `Payment update for ${s.shipment_number}: status is ${s.payment_status}. Amount paid: ₹${s.paid_amount || 0}. Ref: ${s.payment_reference || 'N/A'}.`,
+      status: 'sent',
+      sentAt: s.payment_date ? new Date(s.payment_date).toISOString() : s.submitted_at,
+      sourceTable: 'stock_inbound_shipments',
+      sourceId: s.id,
+      isRead: rng() < 0.5,
+    });
+  }
+
+  for (const notif of notifs) {
+    await sql(
+      `INSERT INTO stock_notifications (
+         notification_number, channel, event_type,
+         message_text, status, sent_at,
+         source_table, source_id,
+         is_read, read_at,
+         recipients, created_by
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, '[]'::jsonb, 'reset-seed-script')
+       ON CONFLICT (notification_number) DO NOTHING`,
+      [
+        notif.notifNumber,
+        notif.channel,
+        notif.eventType,
+        notif.messageText,
+        notif.status,
+        notif.sentAt,
+        notif.sourceTable,
+        notif.sourceId,
+        notif.isRead,
+        notif.isRead ? new Date().toISOString() : null,
+      ]
+    );
+  }
+
+  return notifs.length;
+}
+
+async function seedChangeRequests(seededPurchases, seededDispatches, byRole, rng) {
+  let crCount = 0;
+  const nextCrNumber = () => `CR-SEED-${String(++crCount).padStart(5, '0')}`;
+
+  const statuses = ['pending', 'pending', 'pending', 'pending', 'approved', 'approved', 'approved', 'rejected', 'rejected', 'implemented'];
+  const priorities = ['normal', 'normal', 'normal', 'normal', 'normal', 'high', 'high', 'high', 'urgent', 'urgent'];
+  const approvers = [...(byRole.admin || []), ...(byRole.manager || [])];
+  const creators = [...(byRole.stock_maintainer || []), ...(byRole.manager || [])];
+
+  const changeRequests = [];
+  let idx = 0;
+
+  const inboundSample = pickMany(rng, seededPurchases, 4);
+  for (const purchase of inboundSample) {
+    const s = purchase.shipment;
+    const requestedBy = pick(rng, creators);
+    const status = statuses[idx];
+    const priority = priorities[idx];
+    const isQtyCorrection = idx % 2 === 0;
+
+    changeRequests.push({
+      crNumber: nextCrNumber(),
+      sourceEntityType: 'inbound_shipment',
+      sourceEntityId: s.id,
+      requestType: 'correct',
+      status,
+      priority,
+      reason: isQtyCorrection
+        ? `Quantity mismatch on ${s.shipment_number} — physical count differs from system entry.`
+        : `Invoice number correction needed for ${s.shipment_number}.`,
+      requestedByUserId: requestedBy.id,
+      requestedByName: requestedBy.name,
+      reviewedByUserId: status !== 'pending' && approvers.length > 0 ? pick(rng, approvers).id : null,
+      originalSnapshot: JSON.stringify({ shipment_number: s.shipment_number, total_whole_qty: s.total_whole_qty, invoice_number: s.invoice_number }),
+      requestedChanges: JSON.stringify(
+        isQtyCorrection
+          ? { total_whole_qty: Math.max(0, (Number(s.total_whole_qty) || 0) + randInt(rng, -5, 5)) }
+          : { invoice_number: `INV-CORRECTED-${String(idx + 1).padStart(5, '0')}` }
+      ),
+    });
+    idx++;
+  }
+
+  const outboundSample = pickMany(rng, seededDispatches, 3);
+  for (const dispatch of outboundSample) {
+    const s = dispatch.shipment;
+    const requestedBy = pick(rng, creators);
+    const status = statuses[idx] || 'pending';
+    const priority = priorities[idx] || 'normal';
+
+    changeRequests.push({
+      crNumber: nextCrNumber(),
+      sourceEntityType: 'outbound_shipment',
+      sourceEntityId: s.id,
+      requestType: 'correct',
+      status,
+      priority,
+      reason: `Customer details correction on dispatch ${s.shipment_number}.`,
+      requestedByUserId: requestedBy.id,
+      requestedByName: requestedBy.name,
+      reviewedByUserId: status !== 'pending' && approvers.length > 0 ? pick(rng, approvers).id : null,
+      originalSnapshot: JSON.stringify({ shipment_number: s.shipment_number, customer_name: s.customer_name, customer_phone: s.customer_phone }),
+      requestedChanges: JSON.stringify({ customer_name: s.customer_name + ' (Verified)' }),
+    });
+    idx++;
+  }
+
+  const stockItems = await sql(`SELECT id, name, purchase_price FROM stock_items LIMIT 3`, []);
+  for (const item of stockItems.slice(0, Math.min(3, stockItems.length))) {
+    if (idx >= statuses.length) break;
+    const requestedBy = pick(rng, creators);
+    const status = statuses[idx] || 'pending';
+    const priority = priorities[idx] || 'normal';
+    const newPrice = Number((Number(item.purchase_price || 0) * (1 + randFloat(rng, -0.1, 0.15, 2))).toFixed(2));
+
+    changeRequests.push({
+      crNumber: nextCrNumber(),
+      sourceEntityType: 'stock_item',
+      sourceEntityId: item.id,
+      requestType: 'update',
+      status,
+      priority,
+      reason: `Price revision request for ${item.name} based on latest supplier quote.`,
+      requestedByUserId: requestedBy.id,
+      requestedByName: requestedBy.name,
+      reviewedByUserId: status !== 'pending' && approvers.length > 0 ? pick(rng, approvers).id : null,
+      originalSnapshot: JSON.stringify({ id: item.id, name: item.name, purchase_price: item.purchase_price }),
+      requestedChanges: JSON.stringify({ purchase_price: newPrice }),
+    });
+    idx++;
+  }
+
+  for (const cr of changeRequests) {
+    await sql(
+      `INSERT INTO stock_change_requests (
+         request_number, source_entity_type, source_entity_id,
+         request_type, status, priority, reason,
+         requested_by_user_id, requested_by_name,
+         reviewed_by_user_id, reviewed_at,
+         original_snapshot, requested_changes,
+         requires_higher_level_approval
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13::jsonb, TRUE)
+       ON CONFLICT (request_number) DO NOTHING`,
+      [
+        cr.crNumber, cr.sourceEntityType, cr.sourceEntityId,
+        cr.requestType, cr.status, cr.priority, cr.reason,
+        cr.requestedByUserId, cr.requestedByName,
+        cr.reviewedByUserId,
+        cr.reviewedByUserId ? new Date().toISOString() : null,
+        cr.originalSnapshot, cr.requestedChanges,
+      ]
+    );
+  }
+
+  return changeRequests.length;
+}
+
 
 async function runVerificationReport() {
   const [
@@ -1422,19 +1891,43 @@ async function runVerificationReport() {
       []
     ),
     sql(
-      `SELECT shipment_number, invoice_number, invoice_date, origin_city, destination_warehouse_name, payment_status, total_whole_qty, total_broken_qty, status, approval_status
-       FROM stock_inbound_shipments
-       ORDER BY arrival_date DESC
+      `SELECT s.shipment_number, s.invoice_number, s.invoice_date, s.origin_city,
+              l.name AS destination_location, s.payment_status, s.total_whole_qty, s.total_broken_qty, s.status, s.approval_status
+       FROM stock_inbound_shipments s
+       LEFT JOIN stock_locations l ON l.id = s.destination_location_id
+       ORDER BY s.arrival_date DESC
        LIMIT 3`,
       []
     ),
     sql(
-      `SELECT shipment_number, invoice_number, customer_name, salesperson_name, status, approval_status, dispatch_date
-       FROM stock_outbound_shipments
-       ORDER BY dispatch_date DESC
+      `SELECT s.shipment_number, s.invoice_number, c.name AS customer_name, sp.name AS salesperson_name, s.status, s.approval_status, s.dispatch_date
+       FROM stock_outbound_shipments s
+       LEFT JOIN stock_customers c ON c.id = s.customer_id
+       LEFT JOIN stock_sales_people sp ON sp.id = s.salesperson_id
+       ORDER BY s.dispatch_date DESC
        LIMIT 3`,
       []
     ),
+  ]);
+
+  const [
+    locationCount,
+    salesPeopleCount,
+    ackCount,
+    timelineCount,
+    notifCount,
+    changeReqCount,
+    inventoryLotCount,
+    movementCount,
+  ] = await Promise.all([
+    sql(`SELECT COUNT(*)::INTEGER AS c FROM stock_locations`, []),
+    sql(`SELECT COUNT(*)::INTEGER AS c FROM stock_sales_people`, []),
+    sql(`SELECT COUNT(*)::INTEGER AS c FROM stock_customer_acknowledgements`, []),
+    sql(`SELECT COUNT(*)::INTEGER AS c FROM stock_timeline_events`, []),
+    sql(`SELECT COUNT(*)::INTEGER AS c FROM stock_notifications`, []),
+    sql(`SELECT COUNT(*)::INTEGER AS c FROM stock_change_requests`, []),
+    sql(`SELECT COUNT(*)::INTEGER AS c FROM stock_inventory_lots`, []),
+    sql(`SELECT COUNT(*)::INTEGER AS c FROM stock_movements`, []),
   ]);
 
   return {
@@ -1444,6 +1937,14 @@ async function runVerificationReport() {
       purchasesByPaymentStatus: purchasesByPayment,
       dispatchesByStatus,
       documentsLinked: docsCount,
+      locations: locationCount[0]?.c || 0,
+      salesPeople: salesPeopleCount[0]?.c || 0,
+      customerAcknowledgements: ackCount[0]?.c || 0,
+      timelineEvents: timelineCount[0]?.c || 0,
+      notifications: notifCount[0]?.c || 0,
+      changeRequests: changeReqCount[0]?.c || 0,
+      inventoryLots: inventoryLotCount[0]?.c || 0,
+      movements: movementCount[0]?.c || 0,
     },
     dateCoverage: dateCoverage[0] || {},
     integrity: {
@@ -1506,12 +2007,19 @@ async function main() {
     await ensureDivision(divisionName);
   }
 
+  const locations = await seedLocations();
   const { users, byRole } = await upsertUsersAndGetMaps();
   const masters = await ensureMasters();
   const items = await ensureItems(makeProductCatalog());
+  const salesPeople = await seedSalesPeople();
 
-  const seededPurchases = await seedInboundShipments({ rng, usersByRole: byRole, masters, items });
-  const seededDispatches = await seedOutboundShipments({ rng, usersByRole: byRole, masters, items });
+  const seededPurchases = await seedInboundShipments({ rng, usersByRole: byRole, masters, items, locations });
+  const seededDispatches = await seedOutboundShipments({ rng, usersByRole: byRole, masters, items, salesPeople });
+
+  const ackCount = await seedCustomerAcknowledgements(seededDispatches, rng);
+  const timelineCount = await seedTimelineEvents(seededPurchases, seededDispatches, users, rng);
+  const notifCount = await seedNotifications(seededPurchases, seededDispatches, rng);
+  const crCount = await seedChangeRequests(seededPurchases, seededDispatches, byRole, rng);
 
   const report = await runVerificationReport();
 
@@ -1519,8 +2027,13 @@ async function main() {
     message: 'Reset and seed completed successfully.',
     seed: args.seed,
     usersSeededReference: users.length,
+    locationsSeeded: locations.length,
     purchasesCreated: seededPurchases.length,
     dispatchesCreated: seededDispatches.length,
+    customerAcknowledgementsCreated: ackCount,
+    timelineEventsCreated: timelineCount,
+    notificationsCreated: notifCount,
+    changeRequestsCreated: crCount,
     report,
   }, null, 2));
 }

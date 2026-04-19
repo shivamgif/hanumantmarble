@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Home, Users } from 'lucide-react';
+import { BarChart2, Home, Users } from 'lucide-react';
 import { getLogoutHref, useAuthUser } from '@/lib/auth-client';
 import { usePathname, useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
@@ -87,6 +87,7 @@ export default function StockLayout({ children }) {
 
   if (accessRole === 'admin' || accessRole === 'manager') {
     navigationItems.push({ href: '/stock/admin', label: t('adminDashboard'), icon: Users });
+    navigationItems.push({ href: '/stock/analytics', label: t('analytics'), icon: BarChart2 });
   }
 
   const isActiveRoute = (href) => {
