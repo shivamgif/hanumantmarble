@@ -108,7 +108,7 @@ export default function StockTopbar({
             </div>
           </div>
 
-          <nav className="flex items-center justify-center gap-2" aria-label={tc.mobileNav}>
+          <nav className="flex items-center justify-center gap-5" aria-label={tc.mobileNav}>
             {navigationItems.map((item) => {
               const active = isActiveRoute(item.href);
               const mobileLabel = item.href === '/stock/admin' ? tc.adminHub : tc.dashboard;
@@ -118,7 +118,7 @@ export default function StockTopbar({
                   href={item.href}
                   aria-label={mobileLabel}
                   title={mobileLabel}
-                  className={`inline-flex h-9 items-center justify-between gap-5 rounded-xl border px-12 text-xs font-semibold transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20 ${active ? 'border-[#E07A00]/30 bg-[#E07A00]/10 text-[#E07A00]' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'}`}
+                  className={`inline-flex h-8 items-center justify-between gap-2 rounded-xl border px-2 text-xs font-semibold transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20 ${active ? 'border-[#E07A00]/30 bg-[#E07A00]/10 text-[#E07A00]' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'}`}
                 >
                   <item.icon className="h-3.5 w-3.5" />
                   <span>{mobileLabel}</span>

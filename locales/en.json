@@ -147,7 +147,8 @@
       "brand": "MARBLE",
       "accessFallback": "Could not verify stock access.",
       "accessPendingFallback": "Stock access is awaiting approval.",
-      "adminDashboard": "Admin Hub"
+      "adminDashboard": "Admin Hub",
+      "analytics": "Analytics"
     },
     "dashboard": {
       "loading": "Loading dashboard...",
