@@ -77,7 +77,16 @@
 }
 
 .stock-tab-panel {
-  animation: stock-tab-panel-enter 220ms ease-out;
+  animation: stock-tab-panel-enter 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
 
 @layer components {

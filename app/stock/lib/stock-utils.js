@@ -209,19 +209,19 @@ export function getSortedRows(rows, sortState, accessors) {
   return sortedRows;
 }
 
-export const FORM_LABEL_CLASS = 'block text-[11px] font-semibold uppercase tracking-[0.08em] text-foreground/75';
-export const FORM_INPUT_CLASS = 'mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground shadow-sm outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20';
-export const FORM_CARD_CLASS = 'rounded-2xl border border-border/80 bg-muted/20 p-4';
+export const FORM_LABEL_CLASS = 'block text-[11px] font-semibold uppercase tracking-[0.08em] text-foreground/70';
+export const FORM_INPUT_CLASS = 'mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary/50 focus:ring-2 focus:ring-primary/15';
+export const FORM_CARD_CLASS = 'rounded-xl border border-border/70 bg-muted/15 p-4';
 
 export const CLASSES = {
-  contentWrap: 'mx-auto w-full max-w-[1600px] space-y-6',
-  topCard: 'rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900',
-  interactiveCard: 'rounded-2xl border border-slate-200/60 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900',
-  statGrid: 'grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-6',
-  statCard: 'min-w-0 rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-md sm:p-6 dark:border-slate-700 dark:bg-slate-900',
+  contentWrap: 'mx-auto w-full max-w-[1600px] space-y-5',
+  topCard: 'rounded-xl border border-slate-200/70 bg-white p-4 dark:border-slate-700/70 dark:bg-slate-900',
+  interactiveCard: 'rounded-xl border border-slate-200/70 bg-white dark:border-slate-700/70 dark:bg-slate-900',
+  statGrid: 'grid grid-cols-2 gap-3 lg:grid-cols-4',
+  statCard: 'min-w-0 rounded-xl border border-slate-200/70 bg-white p-4 will-change-transform transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-slate-300/80 sm:p-5 dark:border-slate-700/70 dark:bg-slate-900 dark:hover:border-slate-600',
   statLabel: 'text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400',
-  statValue: 'mt-2 break-all text-2xl font-bold text-slate-900 sm:text-3xl dark:text-white',
-  iconButton: 'h-9 w-9 rounded-xl hover:bg-slate-100 transition-all active:scale-95 dark:hover:bg-slate-800',
+  statValue: 'mt-1.5 text-2xl font-bold text-slate-900 sm:text-3xl dark:text-white',
+  iconButton: 'h-8 w-8 rounded-lg hover:bg-slate-100 transition-colors active:scale-95 dark:hover:bg-slate-800',
 };
 
 export const INVOICE_CLASSES = {

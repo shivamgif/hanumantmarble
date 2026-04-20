@@ -44,15 +44,15 @@ const FORM_SELECT_CLASS = 'mt-1';
 const FORM_PANEL_CLASS = 'rounded-2xl border border-border/80 bg-background/80 p-4';
 
 const CLASSES = {
-  heroGrid: 'grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-6',
-  heroCard: 'min-w-0 rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md sm:p-6 dark:border-slate-700 dark:bg-slate-900',
+  heroGrid: 'grid grid-cols-2 gap-3 lg:grid-cols-4',
+  heroCard: 'min-w-0 rounded-xl border border-slate-200/70 bg-white p-4 will-change-transform transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-slate-300/80 sm:p-5 dark:border-slate-700/70 dark:bg-slate-900 dark:hover:border-slate-600',
   heroLabel: 'text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400',
-  heroValue: 'mt-2 break-all text-2xl font-bold text-slate-900 sm:text-3xl dark:text-white',
+  heroValue: 'mt-1.5 tabular-nums text-2xl font-bold text-slate-900 sm:text-3xl dark:text-white',
   heroBadgeBase: 'text-[10px] px-2 py-0.5 rounded-full font-semibold',
-  sectionCard: 'rounded-2xl border border-slate-200/60 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900',
-  sectionHeader: 'flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800',
-  avatar: 'h-10 w-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 font-semibold text-xs',
-  actionButton: 'active:scale-95 transition-transform',
+  sectionCard: 'rounded-xl border border-slate-200/70 bg-white dark:border-slate-700/70 dark:bg-slate-900',
+  sectionHeader: 'flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800',
+  avatar: 'h-9 w-9 rounded-full bg-slate-100 dark:bg-slate-800 flex shrink-0 items-center justify-center text-slate-600 dark:text-slate-300 font-semibold text-xs',
+  actionButton: 'active:scale-95 transition-all',
 };
 
 function getInitials(name, email) {

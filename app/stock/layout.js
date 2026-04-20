@@ -20,8 +20,8 @@ import StockTopbar from '@/components/stock/layout/StockTopbar';
 import StockNotificationsSheet from '@/components/stock/layout/StockNotificationsSheet';
 
 const CLASSES = {
-  shell: 'relative min-h-screen bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100',
-  sidebar: 'fixed inset-y-0 left-0 z-30 hidden h-screen w-64 overflow-y-auto border-r border-slate-200 bg-white lg:block dark:border-white/10 dark:bg-slate-950',
+  shell: 'relative min-h-screen bg-slate-50/80 font-sans text-slate-900 dark:bg-[#0b0f1a] dark:text-slate-100',
+  sidebar: 'fixed inset-y-0 left-0 z-30 hidden h-screen w-60 border-r border-slate-200/30 bg-white lg:flex lg:flex-col dark:border-white/8 dark:bg-slate-950',
 };
 
 export default function StockLayout({ children }) {
@@ -150,18 +150,21 @@ export default function StockLayout({ children }) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-[#0b0f1a]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-[#E07A00] dark:border-slate-700 dark:border-t-[#E07A00]" />
+          <p className="text-sm text-slate-400 dark:text-slate-500">Loading…</p>
+        </div>
       </div>
     );
   }
 
   if (error && !isUnauthorizedError) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600">{t('accessError')}</h1>
-          <p className="text-gray-600 mt-2">{error.message}</p>
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-[#0b0f1a]">
+        <div className="text-center max-w-sm px-4">
+          <h1 className="text-lg font-semibold text-red-600">{t('accessError')}</h1>
+          <p className="text-sm text-slate-500 mt-2">{error.message}</p>
         </div>
       </div>
     );
@@ -173,10 +176,10 @@ export default function StockLayout({ children }) {
 
   if (accessLoading && !hasResolvedAccessOnce) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="text-gray-600 mt-4">{t('loadingAccess')}</p>
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-[#0b0f1a]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-[#E07A00] dark:border-slate-700 dark:border-t-[#E07A00]" />
+          <p className="text-sm text-slate-400 dark:text-slate-500">{t('loadingAccess')}</p>
         </div>
       </div>
     );
@@ -243,7 +246,7 @@ export default function StockLayout({ children }) {
         handleStockLogout={handleStockLogout}
       />
 
-      <div className="relative z-10 flex min-h-screen flex-col lg:pl-64">
+      <div className="relative z-10 flex min-h-screen flex-col lg:pl-60">
         <StockTopbar
           t={t}
           tc={tc}
@@ -264,13 +267,13 @@ export default function StockLayout({ children }) {
           isActiveRoute={isActiveRoute}
         />
         
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <main className="flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
           <div className="mx-auto w-full max-w-[1600px]">
             {children}
           </div>
         </main>
-        
-        <footer className="border-t border-slate-200 bg-slate-50/90 px-4 py-4 text-center text-sm text-slate-600 sm:px-6 lg:px-8 dark:border-white/10 dark:bg-slate-900/60 dark:text-slate-400">
+
+        <footer className="border-t border-slate-200/60 bg-white/60 px-4 py-3 text-center text-xs text-slate-400 sm:px-6 lg:px-8 dark:border-white/8 dark:bg-slate-950/60 dark:text-slate-600">
           <p>{t('footerTitle')} • {t('footerUpdated')}: {new Date().toLocaleString()}</p>
         </footer>
       </div>
