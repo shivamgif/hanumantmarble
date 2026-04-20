@@ -52,7 +52,7 @@ export default function EntryPreviewSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-3xl">
         <SheetHeader className="mb-6 pr-8 text-left">
-          <SheetTitle className="text-2xl font-black text-slate-950">{title}</SheetTitle>
+          <SheetTitle className="text-2xl font-black text-slate-450">{title}</SheetTitle>
           {description ? <SheetDescription className="text-sm text-slate-500">{description}</SheetDescription> : null}
         </SheetHeader>
 

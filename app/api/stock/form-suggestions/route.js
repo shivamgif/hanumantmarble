@@ -13,7 +13,7 @@ export async function GET(request) {
     return NextResponse.json({ suggestions: {}, message: 'Database not configured yet.' }, { status: 503 });
   }
 
-  if (!hasAnyStockRole(appUser, ['admin', 'manager', 'staff'])) {
+  if (!hasAnyStockRole(appUser, ['admin', 'manager', 'stock_maintainer', 'salesperson'])) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

@@ -55,6 +55,7 @@ export default function StockLayout({ children }) {
     mobileNav: language === 'hi' ? 'मोबाइल स्टॉक नेविगेशन' : 'Mobile stock navigation',
     adminHub: language === 'hi' ? 'एडमिन हब' : 'Admin Hub',
     dashboard: language === 'hi' ? 'डैशबोर्ड' : 'Dashboard',
+    analytics: language === 'hi' ? 'विश्लेषण' : 'Analytics',
     notifications: language === 'hi' ? 'सूचनाएं' : 'Notifications',
     notificationsSubtitle: language === 'hi' ? 'स्टॉक वर्कफ़्लो से संचालन अलर्ट और शिपमेंट अपडेट।' : 'Operational alerts and shipment updates from stock workflow.',
     unread: language === 'hi' ? 'अपठित' : 'unread',

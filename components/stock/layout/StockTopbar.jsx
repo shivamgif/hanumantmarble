@@ -111,7 +111,15 @@ export default function StockTopbar({
           <nav className="flex items-center justify-center gap-5" aria-label={tc.mobileNav}>
             {navigationItems.map((item) => {
               const active = isActiveRoute(item.href);
-              const mobileLabel = item.href === '/stock/admin' ? tc.adminHub : tc.dashboard;
+              let mobileLabel;
+              if (item.href === '/stock/admin') {
+                mobileLabel = tc.adminHub;
+              } if (item.href === '/stock/analytics') {
+                mobileLabel = tc.analytics;
+              } else {
+                mobileLabel = tc.dashboard;
+              }
+
               return (
                 <Link
                   key={`mobile-top-${item.href}`}
