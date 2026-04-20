@@ -39,6 +39,7 @@ import {
 import { DatePicker } from '@/components/ui/date-picker';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
@@ -59,6 +60,8 @@ function createArrivalItemRow() {
     finish: '',
     grade: '',
     sizeLabel: '',
+    sizeWidthMm: '',
+    sizeLengthMm: '',
     sizeUnit: 'mm',
     hsnCode: '',
     thicknessMm: '',
@@ -248,7 +251,7 @@ const INVOICE_CLASSES = {
   tableRow: 'border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900/40',
   tableCell: 'px-4 py-3 text-sm text-slate-700 dark:text-slate-200',
   monoCell: 'font-mono text-sm text-slate-800 dark:text-slate-100',
-  mobileGrid: 'grid grid-cols-2 gap-3 md:hidden',
+  mobileGrid: '',
   mobileCard: 'rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950',
   mobileCardHeader: 'rounded-lg bg-slate-900 px-2.5 py-1.5 text-[10px] uppercase tracking-[0.14em] text-white',
   mobileKey: 'text-[10px] uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400',
@@ -384,6 +387,102 @@ function FormSectionTitle({ icon: Icon, title, description }) {
   );
 }
 
+function SuggestCombobox({
+  value,
+  onChange,
+  options = [],
+  placeholder,
+  className,
+  onBlur,
+  disabled,
+  inputRef,
+}) {
+  const [open, setOpen] = useState(false);
+  const current = String(value ?? '');
+  const needle = current.trim().toLowerCase();
+  const filtered = (options || [])
+    .filter((opt) => opt != null && String(opt).trim() !== '')
+    .filter((opt) => (needle ? String(opt).toLowerCase().includes(needle) : true))
+    .slice(0, 50);
+
+  return (
+    <Popover open={open && filtered.length > 0} onOpenChange={setOpen}>
+      <PopoverAnchor asChild>
+        <Input
+          ref={inputRef}
+          value={current}
+          onChange={(e) => {
+            onChange(e.target.value);
+            if (!open) setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={(e) => {
+            setTimeout(() => setOpen(false), 120);
+            onBlur?.(e);
+          }}
+          placeholder={placeholder}
+          className={className || FORM_INPUT_CLASS}
+          disabled={disabled}
+          autoComplete="off"
+        />
+      </PopoverAnchor>
+      <PopoverContent
+        align="start"
+        sideOffset={4}
+        className="w-[var(--radix-popover-trigger-width)] max-h-64 overflow-auto p-1"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <ul className="space-y-0.5">
+          {filtered.map((opt) => (
+            <li key={opt}>
+              <button
+                type="button"
+                className="w-full truncate rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onChange(String(opt));
+                  setOpen(false);
+                }}
+              >
+                {String(opt)}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function SuggestComboboxField({ control, name, label, placeholder, options, className, disabled, onChangeExtra }) {
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <FormItem>
+          {label ? <FormLabel className={FORM_LABEL_CLASS}>{label}</FormLabel> : null}
+          <FormControl>
+            <SuggestCombobox
+              value={field.value ?? ''}
+              onChange={(v) => {
+                field.onChange(v);
+                onChangeExtra?.(v);
+              }}
+              onBlur={field.onBlur}
+              options={options}
+              placeholder={placeholder}
+              className={className}
+              disabled={disabled}
+            />
+          </FormControl>
+          <FormMessage className="text-xs" />
+        </FormItem>
+      )}
+    />
+  );
+}
+
 function StockFormField({ control, name, label, placeholder, type = 'text', className, ...props }) {
   return (
     <FormField
@@ -505,7 +604,7 @@ export default function StockDashboard() {
     purchaseSheetDesc: language === 'hi' ? 'आवक खरीद डिलीवरी और इनवॉइस विवरण दर्ज करें।' : 'Record an inbound purchase delivery and invoice details.',
     purchaseBasics: language === 'hi' ? 'खरीद की मूल जानकारी' : 'Purchase Basics',
     purchaseBasicsDesc: language === 'hi' ? 'इस स्टॉक खरीद के लिए मुख्य विवरण भरें।' : 'Enter core details for this stock purchase.',
-    transportInvoice: language === 'hi' ? 'परिवहन' : 'Transport',
+    transportInvoice: language === 'hi' ? 'परिवहन' : 'Transport Detail',
     invoiceDate: language === 'hi' ? 'इनवॉइस तिथि' : 'Invoice Date',
     originCity: language === 'hi' ? 'मूल शहर' : 'Origin City',
     destinationWarehouse: language === 'hi' ? 'गंतव्य वेयरहाउस' : 'Destination Warehouse',
@@ -525,10 +624,10 @@ export default function StockDashboard() {
     itemLabel: language === 'hi' ? 'आइटम' : 'Item',
     autofilledCatalog: language === 'hi' ? 'कैटलॉग से स्वतः भरा गया' : 'Autofilled from catalog',
     newTileEntry: language === 'hi' ? 'नई टाइल प्रविष्टि' : 'New tile entry',
-    typeTileName: language === 'hi' ? 'टाइल नाम लिखें (मिलने पर ऑटो-फिल होगा)' : 'Type tile name (autocomplete will auto-fill if found)',
+    typeTileName: language === 'hi' ? 'टाइल नाम (मिलने पर ऑटो-फिल होगा)' : 'Type Tile Name',
     itemAutofillHint: language === 'hi' ? 'यदि यह किसी मौजूदा टाइल से मेल खाता है तो विवरण स्वतः भर जाएगा। अन्यथा नीचे नई टाइल प्रविष्टि भरें।' : 'If this matches an existing tile, details auto-fill. Otherwise fill details below for new tile entry.',
     wholeBox: language === 'hi' ? 'संपूर्ण (बॉक्स)' : 'Whole(Box)',
-    brokenTiles: language === 'hi' ? 'टूटी टाइलें' : 'Broken tiles',
+    brokenTiles: language === 'hi' ? 'टूटी टाइलें' : 'Broken (BOX)',
     noPurchases: language === 'hi' ? 'अभी तक कोई खरीद दर्ज नहीं है।' : 'No purchases logged yet.',
     clearFilters: language === 'hi' ? 'फ़िल्टर साफ़ करें' : 'Clear Filters',
     generatedBy: language === 'hi' ? 'जनरेट किया गया द्वारा' : 'Generated By',
@@ -548,7 +647,7 @@ export default function StockDashboard() {
     invoiceNoLabel: language === 'hi' ? 'इनवॉइस नंबर' : 'Invoice No',
     date: language === 'hi' ? 'तिथि' : 'Date',
     vehicleNo: language === 'hi' ? 'वाहन नंबर' : 'Vehicle No',
-    transporter: language === 'hi' ? 'ट्रांसपोर्टर' : 'Transporter',
+    transporter: language === 'hi' ? 'ट्रांसपोर्टर' : 'Company',
     description: language === 'hi' ? 'विवरण' : 'Description',
     totalSqmQty: language === 'hi' ? 'कुल SQM / मात्रा' : 'Total SQM / Qty',
     srNo: language === 'hi' ? 'क्र. सं.' : 'Sr. No',
@@ -833,11 +932,15 @@ export default function StockDashboard() {
       finish: matchedItem.finish || item.finish,
       grade: matchedItem.grade || item.grade,
       sizeLabel: matchedItem.size_label || item.sizeLabel,
+      sizeWidthMm: matchedItem.width_mm != null ? String(matchedItem.width_mm) : item.sizeWidthMm,
+      sizeLengthMm: matchedItem.length_mm != null ? String(matchedItem.length_mm) : item.sizeLengthMm,
       sizeUnit: matchedItem.size_unit || item.sizeUnit || 'mm',
       thicknessMm: matchedItem.thickness_mm != null ? String(matchedItem.thickness_mm) : item.thicknessMm,
       piecesPerBox: matchedItem.pieces_per_box != null ? String(matchedItem.pieces_per_box) : item.piecesPerBox,
       reorderLevel: matchedItem.reorder_level != null ? String(matchedItem.reorder_level) : item.reorderLevel,
       description: matchedItem.description || item.description,
+      hsnCode: matchedItem.hsn_code || item.hsnCode,
+      costPerSqm: matchedItem.cost_per_sqm != null ? String(matchedItem.cost_per_sqm) : item.costPerSqm,
     }, { shouldDirty: true, shouldValidate: true });
   }
 
@@ -923,7 +1026,10 @@ export default function StockDashboard() {
           const wholeQty = toNumber(item.wholeQty);
           const brokenQty = toNumber(item.brokenQty);
           const orderedBoxes = item.orderedBoxes === '' ? null : toNumber(item.orderedBoxes);
-          const sizeSqm = parseSizeLabelSqm(item.sizeLabel);
+          const widthMm = item.sizeWidthMm === '' ? null : toNumber(item.sizeWidthMm);
+          const lengthMm = item.sizeLengthMm === '' ? null : toNumber(item.sizeLengthMm);
+          const composedSizeLabel = widthMm && lengthMm ? `${widthMm}x${lengthMm}` : trimText(item.sizeLabel);
+          const sizeSqm = parseSizeLabelSqm(composedSizeLabel);
           const sqmPerBox = sizeSqm && piecesPerBox > 0 ? sizeSqm * piecesPerBox : null;
           const inferredQtySqm = sqmPerBox != null ? round3((wholeQty + brokenQty) * sqmPerBox) : null;
           const qtySqm = item.qtySqm === '' ? inferredQtySqm : toNumber(item.qtySqm);
@@ -937,8 +1043,10 @@ export default function StockDashboard() {
             divisionName: trimText(item.divisionName),
             finish: trimText(item.finish),
             grade: trimText(item.grade),
-            sizeLabel: trimText(item.sizeLabel),
+            sizeLabel: composedSizeLabel,
             sizeUnit: trimText(item.sizeUnit) || 'mm',
+            widthMm,
+            lengthMm,
             hsnCode: trimText(item.hsnCode),
             thicknessMm: item.thicknessMm === '' ? null : toNumber(item.thicknessMm),
             piecesPerBox,
@@ -1007,6 +1115,8 @@ export default function StockDashboard() {
             grade: item.grade || undefined,
             sizeLabel: item.sizeLabel || undefined,
             sizeUnit: item.sizeUnit || undefined,
+            widthMm: item.widthMm ?? undefined,
+            lengthMm: item.lengthMm ?? undefined,
             hsnCode: item.hsnCode || undefined,
             thicknessMm: item.thicknessMm ?? undefined,
             piecesPerBox: item.piecesPerBox || undefined,
@@ -1676,7 +1786,7 @@ export default function StockDashboard() {
                       <div className={FORM_CARD_CLASS}>
                         <FormSectionTitle icon={FileText} title={tc.purchaseBasics} description={tc.purchaseBasicsDesc} />
                         <div className="mt-3 grid gap-4 md:grid-cols-2">
-                          <StockFormField control={arrivalForm.control} name="supplierName" label={t('supplier')} placeholder="Supplier Name..." list="sg-supplierName" />
+                          <SuggestComboboxField control={arrivalForm.control} name="supplierName" label={t('supplier')} placeholder="Supplier Name..." options={suggestions.supplierName} />
                           <StockFormField control={arrivalForm.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." />
                           <StockDateField control={arrivalForm.control} name="invoiceDate" label={tc.invoiceDate} placeholder={tc.invoiceDate} />
                           <StockFormField control={arrivalForm.control} name="handlingCostPercent" label="Handling Cost %" type="number" placeholder="1.0" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.1" />
@@ -1701,11 +1811,12 @@ export default function StockDashboard() {
                       <div className={FORM_CARD_CLASS}>
                         <FormSectionTitle icon={Truck} title={tc.transportInvoice} />
                         <div className="mt-3 grid gap-4 md:grid-cols-2">
-                          <StockFormField control={arrivalForm.control} name="transporterName" label={tc.transporter} placeholder="Transport company" list="sg-transporterName" />
+                          
+                          <SuggestComboboxField control={arrivalForm.control} name="transporterName" label={tc.transporter} placeholder="Transport company" options={suggestions.transporterName} />
                           <StockFormField control={arrivalForm.control} name="truckLicensePlate" label={t('truck')} placeholder="RJ 14 XY 0000" list="sg-truckLicensePlate" />
                           <StockFormField control={arrivalForm.control} name="driverName" label={t('driver')} placeholder="Driver Name..." list="sg-driverName" />
-                          <StockFormField control={arrivalForm.control} name="originCity" label={tc.originCity} placeholder="Source city" list="sg-originCity" />
-                          <StockFormField control={arrivalForm.control} name="destinationWarehouseName" label={tc.destinationWarehouse} placeholder="Warehouse name" list="sg-destinationWarehouseName" />
+                          <SuggestComboboxField control={arrivalForm.control} name="originCity" label={tc.originCity} placeholder="Source city" options={suggestions.originCity} />
+                          <SuggestComboboxField control={arrivalForm.control} name="destinationWarehouseName" label={tc.destinationWarehouse} placeholder="Warehouse name" options={suggestions.destinationWarehouseName} />
                           <StockMoneyField control={arrivalForm.control} name="transportCost" label={t('transportCost')} hint={tc.amountInInr} />
                           <StockMoneyField control={arrivalForm.control} name="laborCost" label={t('laborCost')} hint={tc.amountInInr} />
                           <StockFormField control={arrivalForm.control} name="freightWeightKg" label="Freight Weight (kg)" type="number" placeholder="0" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.01" />
@@ -1739,6 +1850,15 @@ export default function StockDashboard() {
                           {arrivalItemsFieldArray.fields.map((fieldRow, index) => {
                             const item = arrivalItems[index] || fieldRow;
                             const isCatalogItem = Boolean(item?.itemId);
+                            const _sizeSqm = parseSizeLabelSqm(item?.sizeLabel);
+                            const _piecesPerBox = toNumber(item?.piecesPerBox);
+                            const _sqmPerBox = _sizeSqm && _piecesPerBox > 0 ? _sizeSqm * _piecesPerBox : null;
+                            const _orderedBoxes = toNumber(item?.orderedBoxes);
+                            const _wholeQty = toNumber(item?.wholeQty);
+                            const _brokenQty = toNumber(item?.brokenQty);
+                            const orderedQtySqmDisplay = _sqmPerBox != null ? round3(_sqmPerBox * _orderedBoxes) : null;
+                            const wholeQtySqmDisplay = _sqmPerBox != null ? round3(_sqmPerBox * _wholeQty) : null;
+                            const brokenQtySqmDisplay = _sqmPerBox != null ? round3(_sqmPerBox * _brokenQty) : null;
 
                             return (
                               <div key={fieldRow.id} className="overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
@@ -1751,7 +1871,7 @@ export default function StockDashboard() {
                                 </div>
                                 <div className="p-4 space-y-4">
                                   {/* Tile name + qty row */}
-                                  <div className="grid gap-3 grid-cols-[minmax(0,1fr)_120px_120px]">
+                                  <div>
                                     <div>
                                       <label className={FORM_LABEL_CLASS}>{language === 'hi' ? 'टाइल नाम' : 'Tile Name'}</label>
                                       <FormField
@@ -1760,16 +1880,15 @@ export default function StockDashboard() {
                                         render={({ field }) => (
                                           <FormItem>
                                             <FormControl>
-                                              <Input
-                                                {...field}
+                                              <SuggestCombobox
                                                 value={field.value ?? ''}
-                                                onChange={(event) => handleArrivalItemNameChange(index, event.target.value)}
-                                                className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                onChange={(v) => handleArrivalItemNameChange(index, v)}
+                                                onBlur={field.onBlur}
+                                                options={(data?.activeItems || []).map((it) => it.name).filter(Boolean)}
                                                 placeholder={tc.typeTileName}
-                                                list="arrival-item-options"
+                                                className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                                               />
                                             </FormControl>
-                                            <div className="mt-1 text-[11px] text-muted-foreground">{tc.itemAutofillHint}</div>
                                             <FormMessage className="text-xs" />
                                           </FormItem>
                                         )}
@@ -1804,6 +1923,39 @@ export default function StockDashboard() {
                                       )}
                                     />
                                   </div>
+                                  {/* Computed sqm (read-only) */}
+                                  <div className="grid gap-3 sm:grid-cols-3">
+                                    <div>
+                                      <label className={FORM_LABEL_CLASS}>Ordered Qty (sqm)</label>
+                                      <Input
+                                        readOnly
+                                        tabIndex={-1}
+                                        value={orderedQtySqmDisplay ?? ''}
+                                        placeholder="—"
+                                        className="mt-1 w-full rounded-lg border border-border bg-muted/40 px-2.5 py-2 text-sm text-foreground shadow-sm outline-none"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className={FORM_LABEL_CLASS}>Whole Qty (sqm)</label>
+                                      <Input
+                                        readOnly
+                                        tabIndex={-1}
+                                        value={wholeQtySqmDisplay ?? ''}
+                                        placeholder="—"
+                                        className="mt-1 w-full rounded-lg border border-border bg-muted/40 px-2.5 py-2 text-sm text-foreground shadow-sm outline-none"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className={FORM_LABEL_CLASS}>Broken Qty (sqm)</label>
+                                      <Input
+                                        readOnly
+                                        tabIndex={-1}
+                                        value={brokenQtySqmDisplay ?? ''}
+                                        placeholder="—"
+                                        className="mt-1 w-full rounded-lg border border-border bg-muted/40 px-2.5 py-2 text-sm text-foreground shadow-sm outline-none"
+                                      />
+                                    </div>
+                                  </div>
                                   {/* New tile detail section */}
                                   <div>
                                     <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-foreground/70">
@@ -1812,17 +1964,17 @@ export default function StockDashboard() {
                                     </div>
                                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                                       <StockFormField control={arrivalForm.control} name={`items.${index}.brandName`} label="Brand" placeholder="Brand" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} list="sg-brandName" />
-                                      <StockFormField control={arrivalForm.control} name={`items.${index}.divisionName`} label="Division" placeholder="Division" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" list="sg-divisionName" />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.divisionName`} label="Division" placeholder="Division" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" list="sg-divisionName" disabled={isCatalogItem} />
                                       <StockFormField control={arrivalForm.control} name={`items.${index}.finish`} label="Finish" placeholder="Finish" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} list="sg-finish" />
                                       <StockFormField control={arrivalForm.control} name={`items.${index}.grade`} label="Quality" placeholder="Premium / Standard" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} list="sg-grade" />
-                                      <StockFormField control={arrivalForm.control} name={`items.${index}.sizeLabel`} label="Size" placeholder="800x800" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled={isCatalogItem} list="sg-sizeLabel" />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.sizeWidthMm`} label="Size Width (mm)" type="number" placeholder="800" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.01" disabled={isCatalogItem} />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.sizeLengthMm`} label="Size Length (mm)" type="number" placeholder="800" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.01" disabled={isCatalogItem} />
                                       <StockFormField control={arrivalForm.control} name={`items.${index}.piecesPerBox`} label="Pieces / Box" type="number" placeholder="2" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" disabled={isCatalogItem} />
                                       <StockFormField control={arrivalForm.control} name={`items.${index}.reorderLevel`} label="Reorder Level" type="number" placeholder="20" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" disabled />
                                       <StockFormField control={arrivalForm.control} name={`items.${index}.sizeUnit`} label="Size Unit" placeholder="mm" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" disabled />
-                                      <StockFormField control={arrivalForm.control} name={`items.${index}.hsnCode`} label="HSN Code" placeholder="HSN Code" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" list="sg-hsnCode" />
-                                      <StockFormField control={arrivalForm.control} name={`items.${index}.thicknessMm`} label="Thickness (mm)" type="number" placeholder="Thickness (mm)" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.01" />
-                                      <StockFormField control={arrivalForm.control} name={`items.${index}.qtySqm`} label="Quantity (sqm)" type="number" placeholder="Quantity (sqm)" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.001" />
-                                      <StockFormField control={arrivalForm.control} name={`items.${index}.costPerSqm`} label="Cost / sqm" type="number" placeholder="Cost / sqm" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.01" />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.hsnCode`} label="HSN Code" placeholder="HSN Code" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" list="sg-hsnCode" disabled={isCatalogItem} />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.thicknessMm`} label="Thickness (mm)" type="number" placeholder="Thickness (mm)" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.01" disabled={isCatalogItem} />
+                                      <StockFormField control={arrivalForm.control} name={`items.${index}.costPerSqm`} label="Cost / sqm" type="number" placeholder="Cost / sqm" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" min="0" step="0.01" disabled={isCatalogItem} />
                                       <StockFormField control={arrivalForm.control} name={`items.${index}.description`} label="Description" placeholder="Description" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 lg:col-span-2" disabled={isCatalogItem} />
                                     </div>
                                   </div>
@@ -2526,6 +2678,18 @@ export default function StockDashboard() {
                                   <div className={INVOICE_CLASSES.mobileKey}>{tc.wholeBox}</div>
                                   <div className={INVOICE_CLASSES.mobileValue}>{item.received_whole_qty ?? item.loaded_whole_qty ?? 0}</div>
                                 </div>
+                                <div>
+                                  <div className={INVOICE_CLASSES.mobileKey}>Ordered (sqm)</div>
+                                  <div className={INVOICE_CLASSES.mobileValue}>{item.ordered_qty_sqm != null ? Number(item.ordered_qty_sqm).toFixed(3) : '—'}</div>
+                                </div>
+                                <div>
+                                  <div className={INVOICE_CLASSES.mobileKey}>Whole (sqm)</div>
+                                  <div className={INVOICE_CLASSES.mobileValue}>{item.whole_qty_sqm != null ? Number(item.whole_qty_sqm).toFixed(3) : '—'}</div>
+                                </div>
+                                <div>
+                                  <div className={INVOICE_CLASSES.mobileKey}>Broken (sqm)</div>
+                                  <div className={INVOICE_CLASSES.mobileValue}>{item.broken_qty_sqm != null ? Number(item.broken_qty_sqm).toFixed(3) : '—'}</div>
+                                </div>
                                 <div className="col-span-2">
                                   <div className={INVOICE_CLASSES.mobileKey}>{tc.totalSqmQty}</div>
                                   <div className={INVOICE_CLASSES.mobileValue}>
@@ -2537,66 +2701,6 @@ export default function StockDashboard() {
                           ))}
                         </div>
                       ) : null}
-                      <div className={isInboundPreview ? `hidden md:block ${INVOICE_CLASSES.tableWrap}` : 'overflow-hidden rounded-2xl border border-border bg-card'}>
-                        <table className="w-full text-left text-sm">
-                          <thead className={isInboundPreview ? INVOICE_CLASSES.tableHead : 'bg-muted/70 text-muted-foreground'}>
-                            <tr>
-                              {isInboundPreview ? (
-                                <>
-                                  <th className={INVOICE_CLASSES.tableHeadCell}>{tc.srNo}</th>
-                                  <th className={INVOICE_CLASSES.tableHeadCell}>{tc.description}</th>
-                                  <th className={INVOICE_CLASSES.tableHeadCell}>HSN</th>
-                                  <th className={INVOICE_CLASSES.tableHeadCell}>{t('size')}</th>
-                                  <th className={`${INVOICE_CLASSES.tableHeadCell} text-right`}>{tc.wholeBox}</th>
-                                  <th className={`${INVOICE_CLASSES.tableHeadCell} text-right`}>{tc.totalSqmQty}</th>
-                                </>
-                              ) : (
-                                <>
-                                  <th className="px-3 py-2">{t('sku')}</th>
-                                  <th className="px-3 py-2">{t('name')}</th>
-                                  <th className="px-3 py-2">HSN</th>
-                                  <th className="px-3 py-2">{tc.division}</th>
-                                  <th className="px-3 py-2 text-right">{tc.sqm}</th>
-                                  <th className="px-3 py-2 text-right">{tc.costPerSqm}</th>
-                                  <th className="px-3 py-2 text-right">{t('whole')}</th>
-                                  <th className="px-3 py-2 text-right">{t('broken')}</th>
-                                  <th className="px-3 py-2">{t('notes')}</th>
-                                </>
-                              )}
-                            </tr>
-                          </thead>
-                          <tbody className={isInboundPreview ? 'bg-white dark:bg-slate-950' : 'divide-y divide-border bg-card'}>
-                            {previewItemPagination.rows.map((item, index) => (
-                              <tr key={item.id || `preview-item-${index}`} className={isInboundPreview ? INVOICE_CLASSES.tableRow : ''}>
-                                {isInboundPreview ? (
-                                  <>
-                                    <td className={`${INVOICE_CLASSES.tableCell} ${INVOICE_CLASSES.monoCell}`}>{index + 1}</td>
-                                    <td className={INVOICE_CLASSES.tableCell}>{item.item_name || '—'} {item.finish ? `(${item.finish})` : ''}</td>
-                                    <td className={`${INVOICE_CLASSES.tableCell} ${INVOICE_CLASSES.monoCell}`}>{item.hsn_code || '—'}</td>
-                                    <td className={`${INVOICE_CLASSES.tableCell} ${INVOICE_CLASSES.monoCell}`}>{item.size_label || '—'}</td>
-                                    <td className={`${INVOICE_CLASSES.tableCell} ${INVOICE_CLASSES.monoCell} text-right`}>{item.received_whole_qty ?? item.loaded_whole_qty ?? 0}</td>
-                                    <td className={`${INVOICE_CLASSES.tableCell} ${INVOICE_CLASSES.monoCell} text-right`}>
-                                      {item.qty_sqm != null ? Number(item.qty_sqm).toFixed(3) : Number((item.received_whole_qty ?? 0) + (item.received_broken_qty ?? 0)).toFixed(0)}
-                                    </td>
-                                  </>
-                                ) : (
-                                  <>
-                                    <td className="px-3 py-2 font-medium text-foreground">{item.sku}</td>
-                                    <td className="px-3 py-2 text-foreground/80">{item.item_name}</td>
-                                    <td className="px-3 py-2 text-muted-foreground">{item.hsn_code || '—'}</td>
-                                    <td className="px-3 py-2 text-muted-foreground">{item.division_name || item.department || '—'}</td>
-                                    <td className="px-3 py-2 text-right">{item.qty_sqm != null ? Number(item.qty_sqm).toFixed(3) : '—'}</td>
-                                    <td className="px-3 py-2 text-right">{item.cost_per_sqm != null ? Number(item.cost_per_sqm).toFixed(2) : '—'}</td>
-                                    <td className="px-3 py-2 text-right">{item.loaded_whole_qty ?? item.received_whole_qty ?? 0}</td>
-                                    <td className="px-3 py-2 text-right">{item.loaded_broken_qty ?? item.received_broken_qty ?? 0}</td>
-                                    <td className="px-3 py-2 text-muted-foreground">{item.notes || '—'}</td>
-                                  </>
-                                )}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
                       <PaginationControls
                         page={previewItemPagination.page}
                         pageCount={previewItemPagination.pageCount}

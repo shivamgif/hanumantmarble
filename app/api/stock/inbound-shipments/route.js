@@ -20,18 +20,33 @@ function generateSku({ brandName, typeName, sizeLabel, itemName }) {
   return parts.join('-').replace(/-+/g, '-').replace(/^-|-$/g, '') || generateReference('TILE');
 }
 
+function parseSizeLabelSqm(label) {
+  if (!label) return null;
+  const match = String(label).match(/(\d+(?:\.\d+)?)\s*[x×*]\s*(\d+(?:\.\d+)?)/i);
+  if (!match) return null;
+  const w = Number(match[1]);
+  const l = Number(match[2]);
+  if (!w || !l) return null;
+  return (w * l) / 1_000_000;
+}
+
 function computeSqmValues(item, size) {
   const widthMm = size?.width_mm;
   const lengthMm = size?.length_mm;
-  const piecesPerBox = item.piecesPerBox;
+  const piecesPerBox = Number(item?.pieces_per_box ?? item?.piecesPerBox) || null;
 
-  if (!widthMm || !lengthMm) {
+  let sqmPerTile = null;
+  if (widthMm && lengthMm) {
+    sqmPerTile = (widthMm * lengthMm) / 1_000_000;
+  } else {
+    sqmPerTile = parseSizeLabelSqm(size?.label || item?.sizeLabel || item?.size_label);
+  }
+
+  if (!sqmPerTile) {
     return { sqmPerBox: null, sqmPerTile: null };
   }
 
-  const sqmPerTile = (widthMm * lengthMm) / 1_000_000;
   const sqmPerBox = piecesPerBox ? sqmPerTile * piecesPerBox : null;
-
   return { sqmPerBox, sqmPerTile };
 }
 
@@ -60,7 +75,7 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
   }
 
   const brand = await upsertNamedRecord({ table: 'stock_brands', value: item.brandName });
-  await upsertNamedRecord({ table: 'stock_types', value: item.typeName });
+  await upsertNamedRecord({ table: 'stock_types', value: item.typeName || 'Tile' });
   const size = await upsertNamedRecord({
     table: 'stock_sizes',
     column: 'label',
@@ -398,12 +413,20 @@ export async function POST(request) {
       const orderedBoxes = Number(row.orderedBoxes || 0);
       const item = await upsertItemMaster(row, orderedBoxes);
 
-      const { sqmPerBox, sqmPerTile } = computeSqmValues(item,
-        { width_mm: item.width_mm || row.widthMm, length_mm: item.length_mm || row.lengthMm }
+      const sizeRow = item.size_id
+        ? (await sql(`SELECT label, width_mm, length_mm FROM stock_sizes WHERE id = $1 LIMIT 1`, [item.size_id]))[0]
+        : null;
+      const { sqmPerBox, sqmPerTile } = computeSqmValues(
+        { ...item, piecesPerBox: row.piecesPerBox, sizeLabel: row.sizeLabel },
+        {
+          width_mm: sizeRow?.width_mm || item.width_mm || row.widthMm,
+          length_mm: sizeRow?.length_mm || item.length_mm || row.lengthMm,
+          label: sizeRow?.label || row.sizeLabel,
+        }
       );
 
       const whole_qty_sqm = sqmPerBox != null ? Number((sqmPerBox * Number(row.wholeQty || 0)).toFixed(3)) : null;
-      const broken_qty_sqm = sqmPerTile != null ? Number((sqmPerTile * Number(row.brokenQty || 0)).toFixed(3)) : null;
+      const broken_qty_sqm = sqmPerBox != null ? Number((sqmPerBox * Number(row.brokenQty || 0)).toFixed(3)) : null;
       const ordered_qty_sqm = sqmPerBox != null ? Number((sqmPerBox * orderedBoxes).toFixed(3)) : null;
       const total_cost = ordered_qty_sqm != null && row.costPerSqm
         ? Number((ordered_qty_sqm * Number(row.costPerSqm)).toFixed(2))

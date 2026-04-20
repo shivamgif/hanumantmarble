@@ -18,7 +18,10 @@ export async function GET(request) {
   }
 
   try {
-    const pick = (rows, col) => rows.map((r) => r[col]).filter((v) => v != null && String(v).trim() !== '');
+    const pick = (result, col) => {
+      const rows = result?.status === 'fulfilled' ? result.value : [];
+      return rows.map((r) => r[col]).filter((v) => v != null && String(v).trim() !== '');
+    };
 
     const [
       suppliers,
@@ -35,7 +38,7 @@ export async function GET(request) {
       drivers,
       trucks,
       paymentModes,
-    ] = await Promise.all([
+    ] = await Promise.allSettled([
       sql('SELECT DISTINCT name FROM stock_suppliers WHERE name IS NOT NULL ORDER BY name', []),
       sql('SELECT DISTINCT name FROM stock_transporters WHERE name IS NOT NULL ORDER BY name', []),
       sql('SELECT DISTINCT name FROM stock_items WHERE name IS NOT NULL ORDER BY name', []),
@@ -46,7 +49,14 @@ export async function GET(request) {
       sql('SELECT DISTINCT label AS size_label FROM stock_sizes WHERE label IS NOT NULL ORDER BY label', []),
       sql('SELECT DISTINCT hsn_code FROM stock_inbound_shipment_items WHERE hsn_code IS NOT NULL ORDER BY hsn_code', []),
       sql('SELECT DISTINCT origin_city FROM stock_inbound_shipments WHERE origin_city IS NOT NULL ORDER BY origin_city', []),
-      sql('SELECT DISTINCT destination_warehouse_name FROM stock_inbound_shipments WHERE destination_warehouse_name IS NOT NULL ORDER BY destination_warehouse_name', []),
+      sql(
+        `SELECT DISTINCT name AS destination_warehouse_name FROM (
+           SELECT name FROM stock_locations WHERE name IS NOT NULL AND is_active = true
+           UNION
+           SELECT destination_warehouse_name AS name FROM stock_inbound_shipments WHERE destination_warehouse_name IS NOT NULL
+         ) s WHERE name IS NOT NULL AND trim(name) <> '' ORDER BY destination_warehouse_name`,
+        []
+      ),
       sql('SELECT DISTINCT driver_name FROM stock_inbound_shipments WHERE driver_name IS NOT NULL ORDER BY driver_name', []),
       sql('SELECT DISTINCT truck_license_plate FROM stock_inbound_shipments WHERE truck_license_plate IS NOT NULL ORDER BY truck_license_plate', []),
       sql("SELECT DISTINCT payment_mode FROM stock_inbound_shipments WHERE payment_mode IS NOT NULL AND payment_mode <> '' ORDER BY payment_mode", []),

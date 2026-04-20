@@ -31,12 +31,20 @@ export async function GET(request) {
            i.tiles_per_box,
            i.pieces_per_box,
            i.thickness_mm,
+           i.finish,
+           i.grade,
            i.unit_of_measure,
            b.name AS brand_name,
            t.name AS type_name,
            d.name AS division_name,
            s.label AS size_label,
-           s.unit AS size_unit
+           s.unit AS size_unit,
+           (SELECT isi.hsn_code FROM stock_inbound_shipment_items isi
+              WHERE isi.item_id = i.id AND isi.hsn_code IS NOT NULL
+              ORDER BY isi.id DESC LIMIT 1) AS hsn_code,
+           (SELECT isi.cost_per_sqm FROM stock_inbound_shipment_items isi
+              WHERE isi.item_id = i.id AND isi.cost_per_sqm IS NOT NULL
+              ORDER BY isi.id DESC LIMIT 1) AS cost_per_sqm
          FROM stock_items i
          LEFT JOIN stock_brands b ON b.id = i.brand_id
          LEFT JOIN stock_types t ON t.id = i.type_id
@@ -67,6 +75,8 @@ export async function GET(request) {
            s.approval_status,
            s.total_whole_qty,
            s.total_broken_qty,
+           s.grand_total,
+           s.freight_weight_kg,
            COALESCE(submitter.name, submitter.email, s.created_by, '—') AS generated_by,
            COALESCE(submitter.role, 'stock_maintainer') AS generated_by_role,
            CASE

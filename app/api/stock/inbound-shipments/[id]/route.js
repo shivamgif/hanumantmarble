@@ -273,19 +273,78 @@ export async function GET(request, context) {
   try {
     const { id } = await context.params;
     const rows = await sql(
-      `SELECT * FROM stock_inbound_shipments WHERE id = $1 LIMIT 1`,
+      `SELECT s.*,
+              s.truck_license_plate_snapshot AS truck_license_plate,
+              s.truck_number_snapshot AS truck_number,
+              s.driver_name_snapshot AS driver_name,
+              s.driver_phone_snapshot AS driver_phone,
+              sup.name AS supplier_name,
+              sup.gst_number AS supplier_gst_number,
+              sup.address AS supplier_address,
+              sup.phone AS supplier_phone,
+              sup.email AS supplier_email,
+              tr.name AS transporter_name,
+              tr.phone AS transporter_phone,
+              loc.name AS destination_warehouse_name
+       FROM stock_inbound_shipments s
+       LEFT JOIN stock_suppliers sup ON sup.id = s.supplier_id
+       LEFT JOIN stock_transporters tr ON tr.id = s.transporter_id
+       LEFT JOIN stock_locations loc ON loc.id = s.destination_location_id
+       WHERE s.id = $1 LIMIT 1`,
       [id]
     );
 
     const items = await sql(
-      `SELECT isi.*, i.name, i.sku,
+      `WITH size_parsed AS (
+         SELECT id,
+                label,
+                unit,
+                width_mm,
+                length_mm,
+                COALESCE(width_mm, NULLIF((regexp_match(label, '(\\d+(?:\\.\\d+)?)\\s*[x×*]\\s*(\\d+(?:\\.\\d+)?)', 'i'))[1], '')::numeric) AS w_mm,
+                COALESCE(length_mm, NULLIF((regexp_match(label, '(\\d+(?:\\.\\d+)?)\\s*[x×*]\\s*(\\d+(?:\\.\\d+)?)', 'i'))[2], '')::numeric) AS l_mm
+           FROM stock_sizes
+       )
+       SELECT isi.*,
+              i.name AS item_name,
+              i.name,
+              i.sku,
+              i.finish,
+              i.grade,
+              i.thickness_mm,
+              i.pieces_per_box,
+              b.name AS brand_name,
+              sz.label AS size_label,
+              sz.unit AS size_unit,
               COALESCE(d.name, 'General') AS division_name,
               COALESCE(d.name, 'General') AS department,
-              isi.whole_qty_sqm, isi.broken_qty_sqm, isi.ordered_qty_sqm, isi.total_cost
+              isi.total_cost,
+              COALESCE(
+                isi.ordered_qty_sqm,
+                CASE WHEN sz.w_mm IS NOT NULL AND sz.l_mm IS NOT NULL AND i.pieces_per_box IS NOT NULL
+                  THEN ROUND(((sz.w_mm * sz.l_mm) / 1000000.0) * i.pieces_per_box * COALESCE(isi.ordered_qty, 0), 3)
+                  ELSE NULL END
+              ) AS ordered_qty_sqm,
+              COALESCE(
+                isi.whole_qty_sqm,
+                CASE WHEN sz.w_mm IS NOT NULL AND sz.l_mm IS NOT NULL AND i.pieces_per_box IS NOT NULL
+                  THEN ROUND(((sz.w_mm * sz.l_mm) / 1000000.0) * i.pieces_per_box * COALESCE(isi.received_whole_qty, 0), 3)
+                  ELSE NULL END
+              ) AS whole_qty_sqm,
+              COALESCE(
+                isi.broken_qty_sqm,
+                CASE WHEN sz.w_mm IS NOT NULL AND sz.l_mm IS NOT NULL
+                  THEN ROUND(((sz.w_mm * sz.l_mm) / 1000000.0) * COALESCE(isi.received_broken_qty, 0), 3)
+                  ELSE NULL END
+              ) AS broken_qty_sqm,
+              COALESCE(isi.qty_sqm, isi.ordered_qty_sqm, 0) AS qty_sqm
        FROM stock_inbound_shipment_items isi
        JOIN stock_items i ON i.id = isi.item_id
+       LEFT JOIN stock_brands b ON b.id = i.brand_id
+       LEFT JOIN size_parsed sz ON sz.id = i.size_id
        LEFT JOIN stock_divisions d ON d.id = i.division_id
-       WHERE isi.inbound_shipment_id = $1`,
+       WHERE isi.inbound_shipment_id = $1
+       ORDER BY isi.id ASC`,
       [id]
     );
 
