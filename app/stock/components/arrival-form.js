@@ -1,7 +1,7 @@
 'use client';
 
-import { Boxes, FileText, ReceiptText, Sparkles, Truck } from 'lucide-react';
-import { Plus } from 'lucide-react';
+import { memo, useMemo } from 'react';
+import { Boxes, FileText, Plus, ReceiptText, Sparkles, Truck } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,7 +17,7 @@ import {
 } from './stock-form-fields';
 import { FORM_CARD_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS, parseSizeLabelSqm, round3, toNumber } from '../lib/stock-utils';
 
-function ArrivalItemRow({ index, fieldRow, control, item, activeItems, onItemNameChange, tc, language }) {
+const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, item, activeItems, itemNames, onItemNameChange, tc, language }) {
   const isCatalogItem = Boolean(item?.itemId);
   const _sizeSqm = parseSizeLabelSqm(item?.sizeLabel);
   const _piecesPerBox = toNumber(item?.piecesPerBox);
@@ -42,7 +42,7 @@ function ArrivalItemRow({ index, fieldRow, control, item, activeItems, onItemNam
       <div className="p-4 space-y-4">
         <div>
           <div>
-            <label className={FORM_LABEL_CLASS}>{language === 'hi' ? 'टाइल नाम' : 'Tile Name'}</label>
+            <div className={FORM_LABEL_CLASS}>{language === 'hi' ? 'टाइल नाम' : 'Tile Name'}</div>
             <FormField
               control={control}
               name={`items.${index}.itemName`}
@@ -53,7 +53,7 @@ function ArrivalItemRow({ index, fieldRow, control, item, activeItems, onItemNam
                       value={field.value ?? ''}
                       onChange={(v) => onItemNameChange(index, v)}
                       onBlur={field.onBlur}
-                      options={(activeItems || []).map((it) => it.name).filter(Boolean)}
+                      options={itemNames}
                       placeholder={tc.typeTileName}
                       className={`mt-1 ${itemInputClass}`}
                     />
@@ -98,7 +98,7 @@ function ArrivalItemRow({ index, fieldRow, control, item, activeItems, onItemNam
             { label: 'Broken Qty (sqm)', value: brokenQtySqmDisplay },
           ].map(({ label, value }) => (
             <div key={label}>
-              <label className={FORM_LABEL_CLASS}>{label}</label>
+              <div className={FORM_LABEL_CLASS}>{label}</div>
               <Input readOnly tabIndex={-1} value={value ?? ''} placeholder="—" className="mt-1 w-full rounded-lg border border-border bg-muted/40 px-2.5 py-2 text-sm text-foreground shadow-sm outline-none" />
             </div>
           ))}
@@ -127,7 +127,7 @@ function ArrivalItemRow({ index, fieldRow, control, item, activeItems, onItemNam
       </div>
     </div>
   );
-}
+});
 
 export function ArrivalFormContent({
   form,
@@ -148,6 +148,7 @@ export function ArrivalFormContent({
   language,
 }) {
   const percentFieldClass = 'w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20';
+  const itemNames = useMemo(() => (activeItems || []).map((it) => it.name).filter(Boolean), [activeItems]);
 
   return (
     <Form {...form}>
@@ -188,7 +189,7 @@ export function ArrivalFormContent({
           <div className="flex justify-between items-center mb-2 gap-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
               <Boxes className="h-4 w-4 text-primary" />
-              <label>{t('items')}</label>
+              <span>{t('items')}</span>
             </div>
             <button
               type="button"
@@ -210,6 +211,7 @@ export function ArrivalFormContent({
                 control={form.control}
                 item={watchedItems[index] || fieldRow}
                 activeItems={activeItems}
+                itemNames={itemNames}
                 onItemNameChange={onItemNameChange}
                 tc={tc}
                 language={language}

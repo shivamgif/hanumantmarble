@@ -1,16 +1,17 @@
 'use client';
 
+import { useCallback } from 'react';
 import { Boxes } from 'lucide-react';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
 
 export function StockItemsTable({ pagination, sort, setSort, search, setSearch, openPreview, t, tc }) {
-  function toggleSort(key) {
+  const toggleSort = useCallback((key) => {
     setSort((current) => ({
       key,
       direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
     }));
-  }
+  }, [setSort]);
 
   return (
     <div className="stock-tab-panel" key="stock-panel-items">

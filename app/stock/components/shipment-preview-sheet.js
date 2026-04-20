@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback, useMemo } from 'react';
 import { Calendar, Hash, Truck } from 'lucide-react';
 import EntryPreviewSheet, { PreviewKeyValueGrid } from '@/components/ui/entry-preview-sheet';
 import PaginationControls from '@/components/ui/pagination-controls';
@@ -33,7 +34,7 @@ function renderDocumentPreview(document) {
 export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPagination, setPreviewItemsPage, tc }) {
   const isInboundPreview = previewState.kind === 'arrival';
 
-  const inboundMetaItems = [
+  const inboundMetaItems = useMemo(() => [
     { label: 'Status', value: previewState.record?.status },
     { label: 'Approval', value: previewState.record?.approval_status },
     { label: 'Driver', value: previewState.record?.driver_name },
@@ -43,11 +44,11 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
     { label: 'Total Whole', value: previewState.record?.total_whole_qty },
     { label: 'Total Broken', value: previewState.record?.total_broken_qty },
     { label: 'Notes', value: previewState.record?.notes },
-  ];
+  ], [previewState.record]);
 
   const hasTechnicalSubBar = Boolean(previewState.record?.eway_bill_number || previewState.record?.irn_number);
 
-  const stockSections = previewState.kind === 'stock'
+  const stockSections = useMemo(() => previewState.kind === 'stock'
     ? [
       {
         title: 'Item Details',
@@ -131,7 +132,7 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
       },
       previewState.items?.length
         ? {
-          title:'Line Items',
+          title:'Items',
           children: (
             <>
               {isInboundPreview ? (
@@ -216,12 +217,15 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
           ),
         }
         : null,
-    ];
+    ]
+  , [previewState, tc, isInboundPreview, previewItemPagination, setPreviewItemsPage, inboundMetaItems]);
+
+  const handleOpenChange = useCallback((open) => { if (!open) closePreview(); }, [closePreview]);
 
   return (
     <EntryPreviewSheet
       open={previewState.open}
-      onOpenChange={(open) => { if (!open) closePreview(); }}
+      onOpenChange={handleOpenChange}
       title={previewState.title}
       description={previewState.description}
       summary={

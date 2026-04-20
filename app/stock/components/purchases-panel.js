@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback } from 'react';
 import { PackageCheck, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -39,12 +40,12 @@ export function PurchasesPanel({
   tc,
   language,
 }) {
-  function toggleSort(key) {
+  const toggleSort = useCallback((key) => {
     setArrivalSort((current) => ({
       key,
       direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
     }));
-  }
+  }, [setArrivalSort]);
 
   return (
     <div className="stock-tab-panel" key="stock-panel-purchases">
@@ -65,9 +66,13 @@ export function PurchasesPanel({
               </span>
             </button>
             <SheetContent side="right" className="w-full max-w-none overflow-y-auto bg-white dark:bg-slate-950 md:w-[50vw]">
-              <SheetHeader>
-                <SheetTitle>{tc.logNewPurchase}</SheetTitle>
-                <SheetDescription>{tc.purchaseSheetDesc}</SheetDescription>
+              <SheetHeader className="border-b border-border pb-4">
+                <div className="flex items-center gap-3">
+                  <div>
+                    <SheetTitle className="text-base">{tc.logNewPurchase}</SheetTitle>
+                    <SheetDescription className="text-xs">{tc.purchaseSheetDesc}</SheetDescription>
+                  </div>
+                </div>
               </SheetHeader>
               <ArrivalFormContent
                 form={arrivalForm}

@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback } from 'react';
 import { PackageCheck, Plus, Send } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -35,12 +36,12 @@ export function DispatchesPanel({
   tc,
   language,
 }) {
-  function toggleSort(key) {
+  const toggleSort = useCallback((key) => {
     setDispatchSort((current) => ({
       key,
       direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
     }));
-  }
+  }, [setDispatchSort]);
 
   return (
     <div className="stock-tab-panel" key="stock-panel-dispatches">
@@ -61,9 +62,6 @@ export function DispatchesPanel({
             <SheetContent side="right" className="w-full max-w-none overflow-y-auto bg-white dark:bg-slate-950 md:w-[50vw]">
               <SheetHeader className="border-b border-border pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                    <Send className="h-5 w-5" />
-                  </div>
                   <div>
                     <SheetTitle className="text-base">{t('logNewDispatch')}</SheetTitle>
                     <SheetDescription className="text-xs">{t('logNewDispatchDesc')}</SheetDescription>

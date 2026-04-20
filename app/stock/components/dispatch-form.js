@@ -1,7 +1,7 @@
 'use client';
 
-import { Boxes, CreditCard, Send, Truck } from 'lucide-react';
-import { Plus } from 'lucide-react';
+import { memo, useMemo } from 'react';
+import { Boxes, CreditCard, Plus, Send, Truck } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,11 +10,77 @@ import {
   AttachmentField,
   FormSectionTitle,
   InlineNotice,
-  StockDateTimeField,
+  StockDateField,
   StockFormField,
   StockMoneyField,
 } from './stock-form-fields';
 import { FORM_CARD_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS } from '../lib/stock-utils';
+
+const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control, activeItems, itemOptions, t, language }) {
+  const itemInputClass = 'w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20';
+
+  return (
+    <div key={fieldRow.id} className="overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-muted/30 px-4 py-2.5">
+        <span className="text-xs font-semibold text-foreground">{language === 'hi' ? 'आइटम' : 'Item'} {index + 1}</span>
+      </div>
+      <div className="p-4 space-y-4">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <FormField
+            control={control}
+            name={`items.${index}.itemId`}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className={FORM_LABEL_CLASS}>{t('sku')} / {t('name')}</FormLabel>
+                <FormControl>
+                  <Select value={field.value || undefined} onValueChange={field.onChange}>
+                    <SelectTrigger className={`mt-1 ${itemInputClass}`}>
+                      <SelectValue placeholder={t('selectItem')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(activeItems || []).map((stockItem) => (
+                        <SelectItem key={stockItem.id} value={String(stockItem.id)}>
+                          {stockItem.sku} - {stockItem.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <FormMessage className="text-xs" />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name={`items.${index}.loadedWholeQty`}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className={FORM_LABEL_CLASS}>{t('whole')}</FormLabel>
+                <FormControl>
+                  <Input {...field} value={field.value ?? ''} type="number" min="0" placeholder="0" className={`mt-1 ${itemInputClass}`} />
+                </FormControl>
+                <FormMessage className="text-xs" />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name={`items.${index}.loadedBrokenQty`}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className={FORM_LABEL_CLASS}>{t('broken')}</FormLabel>
+                <FormControl>
+                  <Input {...field} value={field.value ?? ''} type="number" min="0" placeholder="0" className={`mt-1 ${itemInputClass}`} />
+                </FormControl>
+                <FormMessage className="text-xs" />
+              </FormItem>
+            )}
+          />
+        </div>
+      </div>
+    </div>
+  );
+});
 
 export function DispatchFormContent({
   form,
@@ -31,6 +97,8 @@ export function DispatchFormContent({
   tc,
   language,
 }) {
+  const itemOptions = useMemo(() => (activeItems || []).map((stockItem) => ({ id: stockItem.id, sku: stockItem.sku, name: stockItem.name })), [activeItems]);
+
   return (
     <Form {...form}>
       <form className="mt-5 space-y-4" onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
@@ -41,32 +109,30 @@ export function DispatchFormContent({
             title={language === 'hi' ? 'डिस्पैच की मूल जानकारी' : 'Dispatch Basics'}
             description={language === 'hi' ? 'इस डिस्पैच के लिए मुख्य विवरण भरें।' : 'Fill in the core details for this dispatch.'}
           />
-          <div className="mt-3 grid grid-cols-2 gap-4">
+          <div className="mt-3 grid gap-4 md:grid-cols-2">
             <StockFormField control={form.control} name="shipmentNumber" label={t('dispatchNo')} placeholder="DSP-202X..." className={FORM_INPUT_CLASS} autoFocus />
             <StockFormField control={form.control} name="customerName" label={t('customer')} placeholder="Customer Name..." className={FORM_INPUT_CLASS} />
+            <StockFormField control={form.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." className={FORM_INPUT_CLASS} />
+            <StockDateField control={form.control} name="dispatchDate" label={tc.date} placeholder={tc.date} />
+            <StockFormField control={form.control} name="salespersonName" label={t('salesperson')} placeholder="Salesperson..." className={FORM_INPUT_CLASS} />
+            <AttachmentField label={tc.salesInvoicePhoto} file={attachments.salesInvoice} onChange={(file) => setAttachment('salesInvoice', file)} hint={tc.salesInvoiceHint} />
+            <AttachmentField label={tc.gatepassPhoto} file={attachments.gatepass} onChange={(file) => setAttachment('gatepass', file)} accept="image/*" hint={tc.gatepassHint} />
+         
           </div>
         </div>
         <div className={FORM_CARD_CLASS}>
           <FormSectionTitle icon={Truck} title={language === 'hi' ? 'डिस्पैच और वाहन' : 'Transport & Vehicle'} />
-          <div className="mt-3 grid grid-cols-2 gap-4">
+          <div className="mt-3 grid gap-4 md:grid-cols-2">
             <StockFormField control={form.control} name="truckLicensePlate" label={t('truck')} placeholder="RJ 14 XY 0000" className={FORM_INPUT_CLASS} />
             <StockFormField control={form.control} name="driverName" label={t('driver')} placeholder="Driver Name..." className={FORM_INPUT_CLASS} />
-            <StockFormField control={form.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." className={FORM_INPUT_CLASS} />
-            <StockDateTimeField control={form.control} name="dispatchDate" label={tc.date} placeholder={tc.date} />
-            <StockFormField control={form.control} name="salespersonName" label={t('salesperson')} placeholder="Salesperson..." className={FORM_INPUT_CLASS} />
-            <AttachmentField label={tc.salesInvoicePhoto} file={attachments.salesInvoice} onChange={(file) => setAttachment('salesInvoice', file)} hint={tc.salesInvoiceHint} />
-            <AttachmentField label={tc.gatepassPhoto} file={attachments.gatepass} onChange={(file) => setAttachment('gatepass', file)} accept="image/*" hint={tc.gatepassHint} />
-          </div>
+            <div className="mt-3 grid gap-4 md:grid-cols-2">
+              <StockMoneyField control={form.control} name="transportCost" label={t('transportCost')} hint={tc.amountInInr} />
+              <StockMoneyField control={form.control} name="laborCost" label={t('laborCost')} hint={tc.amountInInr} />
+            </div>
+           </div>
         </div>
-        <div className={FORM_CARD_CLASS}>
-          <FormSectionTitle icon={CreditCard} title={language === 'hi' ? 'खर्च' : 'Charges'} />
-          <div className="mt-3 grid grid-cols-2 gap-4">
-            <StockMoneyField control={form.control} name="transportCost" label={t('transportCost')} hint={tc.amountInInr} />
-            <StockMoneyField control={form.control} name="laborCost" label={t('laborCost')} hint={tc.amountInInr} />
-          </div>
-        </div>
-        <div className={FORM_CARD_CLASS}>
-          <div className="flex items-center justify-between gap-4">
+        <div className="rounded-2xl bg-muted/20 p-0">
+          <div className="flex justify-between items-center mb-2 gap-4 px-4 pt-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
               <Boxes className="h-4 w-4 text-primary" />
               <span>{t('items')}</span>
@@ -82,67 +148,18 @@ export function DispatchFormContent({
               </span>
             </button>
           </div>
-          <div className="mt-3 grid grid-cols-[minmax(0,1fr)_100px_100px] gap-2 px-1">
-            <div className={FORM_LABEL_CLASS}>{t('sku')} / {t('name')}</div>
-            <div className={FORM_LABEL_CLASS}>{t('whole')}</div>
-            <div className={FORM_LABEL_CLASS}>{t('broken')}</div>
-          </div>
-          <div className="mt-2 space-y-2">
+          <div className="mt-3 space-y-3 pb-4">
             {itemsFieldArray.fields.map((fieldRow, index) => (
-              <div key={fieldRow.id} className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
-                <div className="border-b border-border/60 bg-muted/30 px-3 py-2">
-                  <span className="text-xs font-semibold text-foreground">{language === 'hi' ? 'आइटम' : 'Item'} {index + 1}</span>
-                </div>
-                <div className="grid grid-cols-[minmax(0,1fr)_100px_100px] gap-2 p-3 items-start">
-                  <FormField
-                    control={form.control}
-                    name={`items.${index}.itemId`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Select value={field.value || undefined} onValueChange={field.onChange}>
-                            <SelectTrigger className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20">
-                              <SelectValue placeholder={t('selectItem')} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {(activeItems || []).map((stockItem) => (
-                                <SelectItem key={stockItem.id} value={String(stockItem.id)}>
-                                  {stockItem.sku} - {stockItem.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`items.${index}.loadedWholeQty`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Input {...field} value={field.value ?? ''} type="number" min="0" placeholder="0" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`items.${index}.loadedBrokenQty`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Input {...field} value={field.value ?? ''} type="number" min="0" placeholder="0" className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
+              <DispatchItemRow
+                key={fieldRow.id}
+                index={index}
+                fieldRow={fieldRow}
+                control={form.control}
+                activeItems={activeItems}
+                itemOptions={itemOptions}
+                t={t}
+                language={language}
+              />
             ))}
           </div>
         </div>

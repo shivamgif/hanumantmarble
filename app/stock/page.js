@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuthUser } from '@/lib/auth-client';
@@ -36,8 +36,11 @@ import { ShipmentPreviewSheet } from './components/shipment-preview-sheet';
 
 export default function StockDashboard() {
   const { language } = useLanguage();
-  const t = (key) => getTranslation(`stock.dashboard.${key}`, language);
-  const tc = {
+  const t = useCallback(
+    (key) => getTranslation(`stock.dashboard.${key}`, language),
+    [language]
+  );
+  const tc = useMemo(() => ({
     stockOperations: language === 'hi' ? 'स्टॉक संचालन' : 'Stock Operations',
     stockSubtitle: language === 'hi' ? 'मेंटेनर्स के लिए केंद्रित दृश्य: वर्तमान स्टॉक, खरीद और डिस्पैच।' : 'Focused view for maintainers: current stock, purchases, and dispatches.',
     searchItems: language === 'hi' ? 'SKU, नाम, साइज या मात्रा से आइटम खोजें' : 'Search items by SKU, name, size, or quantities',
@@ -105,7 +108,7 @@ export default function StockDashboard() {
     paginationPrevious: language === 'hi' ? 'पिछला' : 'Previous',
     paginationNext: language === 'hi' ? 'अगला' : 'Next',
     paginationPage: language === 'hi' ? 'पेज' : 'Page',
-  };
+  }), [language]);
 
   const { user, isLoading: userLoading } = useAuthUser();
   const router = useRouter();
@@ -172,11 +175,11 @@ export default function StockDashboard() {
 
   const canCreateArrival = accessRole !== 'salesperson';
 
-  async function refreshDashboard() {
+  const refreshDashboard = useCallback(async () => {
     const json = await fetchDashboardData();
     setData(json);
     return json;
-  }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -213,7 +216,7 @@ export default function StockDashboard() {
     loadSuggestions();
 
     return () => { mounted = false; };
-  }, [user, userLoading]);
+  }, [user?.id, userLoading]);
 
   useEffect(() => {
     let mounted = true;
@@ -249,11 +252,11 @@ export default function StockDashboard() {
     return json.document;
   }
 
-  function closePreview() {
+  const closePreview = useCallback(() => {
     setPreviewState((current) => ({ ...current, open: false }));
-  }
+  }, []);
 
-  async function openShipmentPreview(kind, row) {
+  const openShipmentPreview = useCallback(async (kind, row) => {
     const shipmentType = kind === 'arrival' ? 'inbound_shipment' : 'outbound_shipment';
     const endpoint = kind === 'arrival'
       ? `/api/stock/inbound-shipments/${row.id}`
@@ -308,9 +311,9 @@ export default function StockDashboard() {
         error: fetchError.message,
       });
     }
-  }
+  }, []);
 
-  function openStockItemPreview(item) {
+  const openStockItemPreview = useCallback((item) => {
     setPreviewItemsPage(1);
     setPreviewState({
       open: true,
@@ -323,9 +326,9 @@ export default function StockDashboard() {
       documents: [],
       error: null,
     });
-  }
+  }, []);
 
-  function autoPopulateArrivalItem(index, matchedItem) {
+  const autoPopulateArrivalItem = useCallback((index, matchedItem) => {
     const item = arrivalForm.getValues(`items.${index}`);
     arrivalForm.setValue(`items.${index}`, {
       ...item,
@@ -346,9 +349,9 @@ export default function StockDashboard() {
       hsnCode: matchedItem.hsn_code || item.hsnCode,
       costPerSqm: matchedItem.cost_per_sqm != null ? String(matchedItem.cost_per_sqm) : item.costPerSqm,
     }, { shouldDirty: true, shouldValidate: true });
-  }
+  }, [arrivalForm]);
 
-  function handleArrivalItemNameChange(index, value) {
+  const handleArrivalItemNameChange = useCallback((index, value) => {
     arrivalForm.setValue(`items.${index}.itemName`, value, { shouldDirty: true, shouldValidate: true });
     const matchedItem = findMatchingActiveItem(data?.activeItems, value);
     if (matchedItem) {
@@ -356,12 +359,12 @@ export default function StockDashboard() {
       return;
     }
     arrivalForm.setValue(`items.${index}.itemId`, '', { shouldDirty: true, shouldValidate: true });
-  }
+  }, [arrivalForm, data?.activeItems, autoPopulateArrivalItem]);
 
-  function addArrivalItemRow() { arrivalItemsFieldArray.append(createArrivalItemRow()); }
-  function addDispatchItemRow() { dispatchItemsFieldArray.append(createDispatchItemRow()); }
+  const addArrivalItemRow = useCallback(() => { arrivalItemsFieldArray.append(createArrivalItemRow()); }, [arrivalItemsFieldArray]);
+  const addDispatchItemRow = useCallback(() => { dispatchItemsFieldArray.append(createDispatchItemRow()); }, [dispatchItemsFieldArray]);
 
-  async function handleArrivalSubmit(values) {
+  const handleArrivalSubmit = useCallback(async (values) => {
     setArrivalNotice(null);
     setArrivalSubmitting(true);
 
@@ -517,9 +520,9 @@ export default function StockDashboard() {
     } finally {
       setArrivalSubmitting(false);
     }
-  }
+  }, [canCreateArrival, arrivalForm, arrivalAttachments, resetArrivalAttachments, setArrivalSheetOpen, refreshDashboard]);
 
-  async function handleDispatchSubmit(values) {
+  const handleDispatchSubmit = useCallback(async (values) => {
     setDispatchNotice(null);
     setDispatchSubmitting(true);
 
@@ -589,15 +592,15 @@ export default function StockDashboard() {
     } finally {
       setDispatchSubmitting(false);
     }
-  }
+  }, [dispatchForm, dispatchAttachments, resetDispatchAttachments, setDispatchSheetOpen, refreshDashboard]);
 
-  function handleArrivalInvalid() {
+  const handleArrivalInvalid = useCallback(() => {
     setArrivalNotice({ type: 'error', message: 'Please fix the highlighted purchase fields and try again.' });
-  }
+  }, []);
 
-  function handleDispatchInvalid() {
+  const handleDispatchInvalid = useCallback(() => {
     setDispatchNotice({ type: 'error', message: 'Please fix the highlighted dispatch fields and try again.' });
-  }
+  }, []);
 
   const tableViewTabs = [
     { id: 'dispatches', label: t('dispatches') },
@@ -607,7 +610,7 @@ export default function StockDashboard() {
 
   const purchaseSourceRows = data?.recentPurchases || data?.recentArrivals || [];
 
-  const arrivalRows = getSortedRows(
+  const arrivalRows = useMemo(() => getSortedRows(
     purchaseSourceRows.filter((shipment) => {
       const query = normalizeSearchValue(arrivalSearch);
       if (!query) return true;
@@ -621,9 +624,9 @@ export default function StockDashboard() {
       quantities: (s) => Number(s.total_whole_qty || 0) + Number(s.total_broken_qty || 0),
       status: (s) => s.status || '',
     }
-  );
+  ), [purchaseSourceRows, arrivalSearch, arrivalSort]);
 
-  const dispatchRows = getSortedRows(
+  const dispatchRows = useMemo(() => getSortedRows(
     (data?.recentDispatches || []).filter((shipment) => {
       const query = normalizeSearchValue(dispatchSearch);
       if (!query) return true;
@@ -637,9 +640,9 @@ export default function StockDashboard() {
       quantities: (s) => Number(s.total_whole_qty || 0) + Number(s.total_broken_qty || 0),
       status: (s) => s.status || '',
     }
-  );
+  ), [data?.recentDispatches, dispatchSearch, dispatchSort]);
 
-  const stockRows = getSortedRows(
+  const stockRows = useMemo(() => getSortedRows(
     (data?.activeItems || []).filter((item) => {
       const query = normalizeSearchValue(stockSearch);
       if (!query) return true;
@@ -654,12 +657,12 @@ export default function StockDashboard() {
       broken: (item) => Number(item.current_broken_qty || 0),
       reorder: (item) => Number(item.reorder_level || 0),
     }
-  );
+  ), [data?.activeItems, stockSearch, stockSort]);
 
-  const stockPagination = paginateRows(stockRows, stockPage, DEFAULT_PAGE_SIZE);
-  const arrivalPagination = paginateRows(arrivalRows, arrivalPage, DEFAULT_PAGE_SIZE);
-  const dispatchPagination = paginateRows(dispatchRows, dispatchPage, DEFAULT_PAGE_SIZE);
-  const previewItemPagination = paginateRows(previewState.items || [], previewItemsPage, DEFAULT_PAGE_SIZE);
+  const stockPagination = useMemo(() => paginateRows(stockRows, stockPage, DEFAULT_PAGE_SIZE), [stockRows, stockPage]);
+  const arrivalPagination = useMemo(() => paginateRows(arrivalRows, arrivalPage, DEFAULT_PAGE_SIZE), [arrivalRows, arrivalPage]);
+  const dispatchPagination = useMemo(() => paginateRows(dispatchRows, dispatchPage, DEFAULT_PAGE_SIZE), [dispatchRows, dispatchPage]);
+  const previewItemPagination = useMemo(() => paginateRows(previewState.items || [], previewItemsPage, DEFAULT_PAGE_SIZE), [previewState.items, previewItemsPage]);
 
   useEffect(() => { setStockPage((p) => Math.min(p, stockPagination.pageCount)); }, [stockPagination.pageCount]);
   useEffect(() => { setArrivalPage((p) => Math.min(p, arrivalPagination.pageCount)); }, [arrivalPagination.pageCount]);
@@ -726,19 +729,24 @@ export default function StockDashboard() {
     return () => clearTimeout(timeoutId);
   }, [highlightedShipmentKey]);
 
-  const totalWholeStock = (data?.activeItems || []).reduce((sum, item) => sum + Number(item.current_whole_qty || 0), 0);
-  const totalBrokenStock = (data?.activeItems || []).reduce((sum, item) => sum + Number(item.current_broken_qty || 0), 0);
-  const totalStockUnits = totalWholeStock + totalBrokenStock;
-  const pendingArrivals = (data?.recentPurchases || data?.recentArrivals || []).filter((item) => String(item.status || '').toLowerCase().includes('pending')).length;
-  const pendingDispatches = (data?.recentDispatches || []).filter((item) => String(item.status || '').toLowerCase().includes('pending')).length;
-  const riskItems = (data?.activeItems || []).filter((item) => Number(item.reorder_level || 0) > 0 && (Number(item.current_whole_qty || 0) + Number(item.current_broken_qty || 0)) <= Number(item.reorder_level || 0)).length;
+  const { totalWholeStock, totalBrokenStock, totalStockUnits, pendingArrivals, pendingDispatches, riskItems } = useMemo(() => {
+    const whole = (data?.activeItems || []).reduce((sum, item) => sum + Number(item.current_whole_qty || 0), 0);
+    const broken = (data?.activeItems || []).reduce((sum, item) => sum + Number(item.current_broken_qty || 0), 0);
+    const total = whole + broken;
+    const pending = (data?.recentPurchases || data?.recentArrivals || []).filter((item) => String(item.status || '').toLowerCase().includes('pending')).length;
+    const dispatchPending = (data?.recentDispatches || []).filter((item) => String(item.status || '').toLowerCase().includes('pending')).length;
+    const risk = (data?.activeItems || []).filter((item) => Number(item.reorder_level || 0) > 0 && (Number(item.current_whole_qty || 0) + Number(item.current_broken_qty || 0)) <= Number(item.reorder_level || 0)).length;
+    return { totalWholeStock: whole, totalBrokenStock: broken, totalStockUnits: total, pendingArrivals: pending, pendingDispatches: dispatchPending, riskItems: risk };
+  }, [data?.activeItems, data?.recentPurchases, data?.recentArrivals, data?.recentDispatches]);
 
-  const stockStats = [
+  const stockStats = useMemo(() => [
     { label: 'Total Stock', value: totalStockUnits, trend: totalStockUnits ? Math.round((totalWholeStock / totalStockUnits) * 100) : 0, trendLabel: 'Whole ratio', icon: Boxes, accent: 'from-[#E07A00]/20 to-[#E07A00]/5' },
     { label: 'Pending Purchases', value: pendingArrivals, trend: pendingArrivals === 0 ? 100 : -Math.min(pendingArrivals * 10, 100), trendLabel: 'Queue health', icon: PackageCheck, accent: 'from-[#1A1A54]/25 to-[#1A1A54]/10' },
     { label: 'Pending Dispatches', value: pendingDispatches, trend: pendingDispatches === 0 ? 100 : -Math.min(pendingDispatches * 10, 100), trendLabel: 'Dispatch readiness', icon: BarChart3, accent: 'from-[#F59E0B]/25 to-[#F59E0B]/10' },
     { label: 'Reorder Risks', value: riskItems, trend: riskItems === 0 ? 100 : -Math.min(riskItems * 12, 100), trendLabel: 'Safety score', icon: CircleAlert, accent: 'from-[#1A1A54]/20 to-[#E07A00]/15' },
-  ];
+  ], [totalStockUnits, totalWholeStock, pendingArrivals, pendingDispatches, riskItems]);
+
+  const stockPaginationWithPage = useMemo(() => ({ ...stockPagination, setPage: setStockPage }), [stockPagination]);
 
   if (loading) {
     return (
@@ -785,7 +793,7 @@ export default function StockDashboard() {
 
       {activeTableView === 'items' && (
         <StockItemsTable
-          pagination={{ ...stockPagination, setPage: setStockPage }}
+          pagination={stockPaginationWithPage}
           sort={stockSort}
           setSort={setStockSort}
           search={stockSearch}

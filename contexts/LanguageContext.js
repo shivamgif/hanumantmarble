@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
 const LanguageContext = createContext();
 
@@ -14,14 +14,18 @@ export function LanguageProvider({ children }) {
     }
   }, []);
 
-  const toggleLanguage = () => {
-    const newLanguage = language === 'en' ? 'hi' : 'en';
-    setLanguage(newLanguage);
-    localStorage.setItem('language', newLanguage);
-  };
+  const toggleLanguage = useCallback(() => {
+    setLanguage((prev) => {
+      const newLanguage = prev === 'en' ? 'hi' : 'en';
+      localStorage.setItem('language', newLanguage);
+      return newLanguage;
+    });
+  }, []);
+
+  const contextValue = useMemo(() => ({ language, toggleLanguage }), [language, toggleLanguage]);
 
   return (
-    <LanguageContext.Provider value={{ language, toggleLanguage }}>
+    <LanguageContext.Provider value={contextValue}>
       {children}
     </LanguageContext.Provider>
   );

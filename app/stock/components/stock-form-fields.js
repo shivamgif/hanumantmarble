@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { UploadCloud } from 'lucide-react';
 import {
   Form,
@@ -70,10 +70,22 @@ export function SuggestCombobox({ value, onChange, options = [], placeholder, cl
   const [open, setOpen] = useState(false);
   const current = String(value ?? '');
   const needle = current.trim().toLowerCase();
-  const filtered = (options || [])
+  const filtered = useMemo(() => (options || [])
     .filter((opt) => opt != null && String(opt).trim() !== '')
     .filter((opt) => (needle ? String(opt).toLowerCase().includes(needle) : true))
-    .slice(0, 50);
+    .slice(0, 50), [options, needle]);
+
+  const handleChange = useCallback((e) => {
+    onChange(e.target.value);
+    if (!open) setOpen(true);
+  }, [onChange, open]);
+
+  const handleFocus = useCallback(() => setOpen(true), []);
+
+  const handleBlur = useCallback((e) => {
+    setTimeout(() => setOpen(false), 120);
+    onBlur?.(e);
+  }, [onBlur]);
 
   return (
     <Popover open={open && filtered.length > 0} onOpenChange={setOpen}>
@@ -81,15 +93,9 @@ export function SuggestCombobox({ value, onChange, options = [], placeholder, cl
         <Input
           ref={inputRef}
           value={current}
-          onChange={(e) => {
-            onChange(e.target.value);
-            if (!open) setOpen(true);
-          }}
-          onFocus={() => setOpen(true)}
-          onBlur={(e) => {
-            setTimeout(() => setOpen(false), 120);
-            onBlur?.(e);
-          }}
+          onChange={handleChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           placeholder={placeholder}
           className={className || FORM_INPUT_CLASS}
           disabled={disabled}
