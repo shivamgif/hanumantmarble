@@ -35,7 +35,11 @@ export function DispatchesPanel({
   t,
   tc,
   language,
+  userRole,
+  onNewDispatch,
+  onEdit,
 }) {
+  const canEdit = ['admin', 'manager'].includes(userRole);
   const toggleSort = useCallback((key) => {
     setDispatchSort((current) => ({
       key,
@@ -51,7 +55,7 @@ export function DispatchesPanel({
           <Sheet open={dispatchSheetOpen} onOpenChange={setDispatchSheetOpen}>
             <button
               type="button"
-              onClick={() => setDispatchSheetOpen(true)}
+              onClick={onNewDispatch}
               className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
             >
               <span className="inline-flex items-center gap-1.5">
@@ -82,6 +86,7 @@ export function DispatchesPanel({
                 t={t}
                 tc={tc}
                 language={language}
+                userRole={userRole}
               />
             </SheetContent>
           </Sheet>
@@ -112,21 +117,39 @@ export function DispatchesPanel({
                   </button>
                   <Badge variant={getStatusVariant(d.status)}>{d.status}</Badge>
                 </div>
-                <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">{Number(d.total_whole_qty || 0)} whole / {Number(d.total_broken_qty || 0)} broken</p>
+                <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">
+                  {d.customer_name || '—'}
+                  {d.customer_phone_number ? ` • ${d.customer_phone_number}` : ''}
+                </p>
+                <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{Number(d.total_whole_qty || 0)} whole / {Number(d.total_broken_qty || 0)} broken</p>
+                {(Number(d.total_return_whole_qty || 0) > 0 || Number(d.total_return_broken_qty || 0) > 0) ? (
+                  <p className="text-xs text-rose-700 dark:text-rose-300">Return: {Number(d.total_return_whole_qty || 0)} whole / {Number(d.total_return_broken_qty || 0)} broken</p>
+                ) : null}
                 {expanded ? (
                   <div className="mt-2 space-y-1 text-[11px] text-slate-500 dark:text-slate-400">
                     <p className="truncate">{d.product_names || d.product_skus || '—'}</p>
                     <p>By: {d.generated_by || '—'}</p>
                   </div>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={() => setDispatchExpandedId((current) => (current === d.id ? null : d.id))}
-                  className="mt-2 rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                  aria-label={expanded ? 'Collapse dispatch details' : 'Expand dispatch details'}
-                >
-                  {expanded ? 'Collapse' : 'Expand'}
-                </button>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDispatchExpandedId((current) => (current === d.id ? null : d.id))}
+                    className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                    aria-label={expanded ? 'Collapse dispatch details' : 'Expand dispatch details'}
+                  >
+                    {expanded ? 'Collapse' : 'Expand'}
+                  </button>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      className="rounded-lg bg-blue-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-blue-700"
+                      onClick={e => { e.stopPropagation(); onEdit(d); }}
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
               </article>
             );
           })}
@@ -142,10 +165,21 @@ export function DispatchesPanel({
                   <button type="button" onClick={() => toggleSort('shipment')} className="font-medium hover:text-foreground">{t('dispatchNo')}</button>
                 </th>
                 <th className="px-3 py-2">
+                  <span className="font-medium">Customer</span>
+                </th>
+                <th className="px-3 py-2">
                   <button type="button" onClick={() => toggleSort('products')} className="font-medium hover:text-foreground">Products</button>
                 </th>
                 <th className="px-3 py-2 text-right">
                   <button type="button" onClick={() => toggleSort('quantities')} className="font-medium hover:text-foreground">Quantities</button>
+                </th>
+                {canEdit && (
+                  <th className="px-3 py-2 text-right">
+                    <span className="font-medium">Edit</span>
+                  </th>
+                )}
+                <th className="px-3 py-2 text-right">
+                  <span className="font-medium">Return</span>
                 </th>
                 <th className="px-3 py-2">
                   <button type="button" onClick={() => toggleSort('status')} className="font-medium hover:text-foreground">{t('status')}</button>
@@ -172,10 +206,35 @@ export function DispatchesPanel({
                 >
                   <td className="px-3 py-2 text-muted-foreground">{formatDateTime(d.dispatch_date || d.created_at)}</td>
                   <td className="px-3 py-2 font-mono font-medium text-primary">{d.shipment_number}</td>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    <div>{d.customer_name || '—'}</div>
+                    {d.customer_phone_number ? <div className="text-[10px]">{d.customer_phone_number}</div> : null}
+                  </td>
                   <td className="px-3 py-2">
                     <div className="max-w-[260px] truncate" title={d.product_names || d.product_skus || ''}>{d.product_names || d.product_skus || '—'}</div>
                   </td>
-                  <td className="px-3 py-2 text-right">{Number(d.total_whole_qty || 0)} whole / {Number(d.total_broken_qty || 0)} broken</td>
+                  <td className="px-3 py-2 text-right">
+                    {Number(d.total_whole_qty || 0)} whole / {Number(d.total_broken_qty || 0)} broken
+                  </td>
+                  {canEdit && (
+                    <td className="px-3 py-2 text-right">
+                      <button
+                        type="button"
+                        className="rounded-md bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
+                        onClick={e => {
+                          e.stopPropagation();
+                          onEdit(d);
+                        }}
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  )}
+                  <td className="px-3 py-2 text-right text-rose-700 dark:text-rose-300">
+                    {(Number(d.total_return_whole_qty || 0) > 0 || Number(d.total_return_broken_qty || 0) > 0)
+                      ? `${Number(d.total_return_whole_qty || 0)} whole / ${Number(d.total_return_broken_qty || 0)} broken`
+                      : '—'}
+                  </td>
                   <td className="px-3 py-2"><Badge variant={getStatusVariant(d.status)}>{d.status}</Badge></td>
                   <td className="px-3 py-2 text-muted-foreground">
                     <div className="flex items-center gap-2">
@@ -188,7 +247,7 @@ export function DispatchesPanel({
               ))}
               {dispatchPagination.total === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-3 py-10">
+                  <td colSpan="8" className="px-3 py-10">
                     <div className="flex flex-col items-center justify-center gap-3 text-center">
                       <PackageCheck className="h-6 w-6 text-slate-400" />
                       <p className="text-sm text-slate-500 dark:text-slate-400">{tc.noDispatches}</p>

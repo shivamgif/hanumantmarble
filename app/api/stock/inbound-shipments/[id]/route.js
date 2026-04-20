@@ -538,6 +538,106 @@ export async function PATCH(request, context) {
       return NextResponse.json({ shipment: rows[0], changeRequest: changeRequestRows[0] });
     }
 
+    // Full update: resolve supplier/transporter by name, update all fields, replace items
+    if (action === 'update') {
+      let resolvedSupplierId = null;
+      let resolvedTransporterId = null;
+      let resolvedLocationId = null;
+
+      if (body.supplierName) {
+        const sRows = await sql('SELECT id FROM stock_suppliers WHERE lower(name) = lower($1) LIMIT 1', [body.supplierName.trim()]);
+        resolvedSupplierId = sRows[0]?.id || null;
+      }
+      if (body.transporterName) {
+        const tRows = await sql('SELECT id FROM stock_transporters WHERE lower(name) = lower($1) LIMIT 1', [body.transporterName.trim()]);
+        resolvedTransporterId = tRows[0]?.id || null;
+      }
+      if (body.destinationWarehouseName) {
+        const lRows = await sql('SELECT id FROM stock_locations WHERE lower(name) = lower($1) LIMIT 1', [body.destinationWarehouseName.trim()]);
+        resolvedLocationId = lRows[0]?.id || null;
+      }
+
+      const updatedRows = await sql(
+        `UPDATE stock_inbound_shipments
+         SET shipment_number = COALESCE($1, shipment_number),
+             supplier_id = COALESCE($2, supplier_id),
+             truck_license_plate_snapshot = COALESCE($3, truck_license_plate_snapshot),
+             truck_number_snapshot = COALESCE($3, truck_number_snapshot),
+             driver_name_snapshot = COALESCE($4, driver_name_snapshot),
+             invoice_number = COALESCE($5, invoice_number),
+             invoice_date = COALESCE($6, invoice_date),
+             origin_city = COALESCE($7, origin_city),
+             destination_location_id = COALESCE($8, destination_location_id),
+             transporter_id = COALESCE($9, transporter_id),
+             payment_status = COALESCE($10, payment_status),
+             paid_amount = COALESCE($11::numeric, paid_amount),
+             payment_date = COALESCE($12, payment_date),
+             payment_reference = COALESCE($13, payment_reference),
+             payment_mode = COALESCE($14, payment_mode),
+             delivery_cost = COALESCE($15::numeric, delivery_cost),
+             unloading_labour_cost = COALESCE($16::numeric, unloading_labour_cost),
+             handling_cost_percent = COALESCE($17::numeric, handling_cost_percent),
+             fuel_cost_percent = COALESCE($18::numeric, fuel_cost_percent),
+             gst_percent = COALESCE($19::numeric, gst_percent),
+             freight_weight_kg = COALESCE($20::numeric, freight_weight_kg),
+             notes = COALESCE($21, notes),
+             updated_at = NOW()
+         WHERE id = $22
+         RETURNING *`,
+        [
+          body.shipmentNumber || null,
+          resolvedSupplierId,
+          body.truckLicensePlate || null,
+          body.driverName || null,
+          body.invoiceNumber || null,
+          body.invoiceDate || null,
+          body.originCity || null,
+          resolvedLocationId,
+          resolvedTransporterId,
+          body.paymentStatus || null,
+          body.paidAmount != null && body.paidAmount !== '' ? Number(body.paidAmount) : null,
+          body.paymentDate || null,
+          body.paymentReference || null,
+          body.paymentMode || null,
+          (body.deliveryCost ?? body.transportCost) != null && (body.deliveryCost ?? body.transportCost) !== '' ? Number(body.deliveryCost ?? body.transportCost) : null,
+          (body.unloadingLabourCost) != null && body.unloadingLabourCost !== '' ? Number(body.unloadingLabourCost) : null,
+          body.handlingCostPercent != null ? Number(body.handlingCostPercent) : null,
+          body.fuelCostPercent != null ? Number(body.fuelCostPercent) : null,
+          body.gstPercent != null ? Number(body.gstPercent) : null,
+          body.freightWeightKg != null && body.freightWeightKg !== '' ? Number(body.freightWeightKg) : null,
+          body.notes || null,
+          id,
+        ]
+      );
+
+      if (body.items && Array.isArray(body.items)) {
+        const approvalCheck = await sql('SELECT approval_status FROM stock_inbound_shipments WHERE id = $1', [id]);
+        if (approvalCheck[0]?.approval_status !== 'approved') {
+          await sql('DELETE FROM stock_inbound_shipment_items WHERE inbound_shipment_id = $1', [id]);
+          for (const item of body.items) {
+            if (!item.itemId) continue;
+            await sql(
+              `INSERT INTO stock_inbound_shipment_items
+                 (inbound_shipment_id, item_id, received_whole_qty, received_broken_qty, ordered_qty, cost_per_sqm, hsn_code, notes)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+              [
+                id,
+                Number(item.itemId),
+                item.wholeQty || 0,
+                item.brokenQty || 0,
+                item.orderedBoxes || null,
+                item.costPerSqm || null,
+                item.hsnCode || null,
+                item.notes || null,
+              ]
+            );
+          }
+        }
+      }
+
+      return NextResponse.json({ shipment: updatedRows[0] });
+    }
+
     // Handle line item updates if provided
     if (body.items && Array.isArray(body.items)) {
       for (const itemUpdate of body.items) {

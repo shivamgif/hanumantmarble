@@ -137,6 +137,8 @@ export default function StockDashboard() {
   const [stockPage, setStockPage] = useState(1);
   const [arrivalPage, setArrivalPage] = useState(1);
   const [dispatchPage, setDispatchPage] = useState(1);
+  const [editingArrivalId, setEditingArrivalId] = useState(null);
+  const [editingDispatchId, setEditingDispatchId] = useState(null);
   const [previewItemsPage, setPreviewItemsPage] = useState(1);
   const [previewState, setPreviewState] = useState({
     open: false,
@@ -422,10 +424,15 @@ export default function StockDashboard() {
       if (items.some((item) => !item.itemId && (!item.itemName || !item.brandName || !item.sizeLabel))) throw new Error('Pick an existing tile from autocomplete or enter tile name, brand, and size for a new tile.');
       if (items.some((item) => item.wholeQty === 0 && item.brokenQty === 0)) throw new Error('Enter whole or broken quantity for each purchase row.');
 
-      const response = await fetch('/api/stock/inbound-shipments', {
-        method: 'POST',
+      const endpoint = editingArrivalId
+        ? `/api/stock/inbound-shipments/${editingArrivalId}`
+        : '/api/stock/inbound-shipments';
+
+      const response = await fetch(endpoint, {
+        method: editingArrivalId ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: editingArrivalId ? 'update' : undefined,
           purchaseNumber: trimText(values.shipmentNumber) || undefined,
           purchaseDate: values.invoiceDate || undefined,
           shipmentNumber: trimText(values.shipmentNumber) || undefined,
@@ -484,7 +491,11 @@ export default function StockDashboard() {
       arrivalForm.reset(createInitialArrivalDraft());
       resetArrivalAttachments();
       setArrivalSheetOpen(false);
-      setArrivalNotice({ type: 'success', message: `Purchase ${json.shipment?.shipment_number || 'submitted'} sent for review.` });
+      const arrivalSuccessMsg = editingArrivalId
+        ? `Purchase ${json.shipment?.shipment_number || ''} updated.`
+        : `Purchase ${json.shipment?.shipment_number || 'submitted'} sent for review.`;
+      setArrivalNotice({ type: 'success', message: arrivalSuccessMsg });
+      setEditingArrivalId(null);
 
       try {
         const linkedInvoice = await uploadShipmentDocument({
@@ -521,6 +532,128 @@ export default function StockDashboard() {
       setArrivalSubmitting(false);
     }
   }, [canCreateArrival, arrivalForm, arrivalAttachments, resetArrivalAttachments, setArrivalSheetOpen, refreshDashboard]);
+  
+  const handleNewArrival = useCallback(() => {
+    setEditingArrivalId(null);
+    arrivalForm.reset(createInitialArrivalDraft());
+    setArrivalNotice(null);
+    setArrivalSheetOpen(true);
+  }, [arrivalForm, setArrivalSheetOpen]);
+
+  const handleEditArrival = useCallback(async (row) => {
+    setArrivalNotice({ type: 'info', message: 'Loading purchase details...' });
+    setArrivalSheetOpen(true);
+    setEditingArrivalId(row.id);
+
+    try {
+      const response = await fetch(`/api/stock/inbound-shipments/${row.id}`);
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || 'Failed to load purchase details');
+
+      const s = json.shipment;
+      const items = json.items || [];
+
+      arrivalForm.reset({
+        shipmentNumber: s.shipment_number || '',
+        supplierName: s.supplier_name || '',
+        truckLicensePlate: s.truck_license_plate || s.truck_license_plate_snapshot || '',
+        driverName: s.driver_name || s.driver_name_snapshot || '',
+        invoiceNumber: s.invoice_number || '',
+        invoiceDate: s.invoice_date ? s.invoice_date.split('T')[0] : '',
+        originCity: s.origin_city || '',
+        destinationWarehouseName: s.destination_warehouse_name || '',
+        paymentStatus: s.payment_status || 'unpaid',
+        paidAmount: s.paid_amount ?? '',
+        paymentDate: s.payment_date ? s.payment_date.split('T')[0] : '',
+        paymentReference: s.payment_reference || '',
+        paymentMode: s.payment_mode || '',
+        transporterName: s.transporter_name || '',
+        transportCost: s.delivery_cost ?? '',
+        laborCost: s.unloading_labour_cost ?? '',
+        handlingCostPercent: s.handling_cost_percent != null ? String(s.handling_cost_percent) : '1.0',
+        fuelCostPercent: s.fuel_cost_percent != null ? String(s.fuel_cost_percent) : '5.0',
+        gstPercent: s.gst_percent != null ? String(s.gst_percent) : '18.0',
+        freightWeightKg: s.freight_weight_kg != null ? String(s.freight_weight_kg) : '',
+        notes: s.notes || '',
+        items: items.length > 0 ? items.map(item => ({
+          itemId: String(item.item_id),
+          itemName: item.item_name || '',
+          brandName: item.brand_name || '',
+          divisionName: item.division_name || '',
+          finish: item.finish || '',
+          grade: item.grade || '',
+          sizeLabel: item.size_label || '',
+          sizeWidthMm: '',
+          sizeLengthMm: '',
+          sizeUnit: item.size_unit || 'mm',
+          hsnCode: item.hsn_code || '',
+          thicknessMm: item.thickness_mm != null ? String(item.thickness_mm) : '',
+          piecesPerBox: item.pieces_per_box != null ? String(item.pieces_per_box) : '',
+          reorderLevel: '',
+          description: item.description || '',
+          orderedBoxes: item.ordered_qty != null ? String(item.ordered_qty) : '',
+          wholeQty: String(item.received_whole_qty ?? 0),
+          brokenQty: String(item.received_broken_qty ?? 0),
+          costPerSqm: item.cost_per_sqm != null ? String(item.cost_per_sqm) : '',
+          qtySqm: item.qty_sqm != null ? String(item.qty_sqm) : '',
+          notes: item.notes || '',
+        })) : [createArrivalItemRow()],
+      });
+      setArrivalNotice(null);
+    } catch (err) {
+      setArrivalNotice({ type: 'error', message: err.message });
+    }
+  }, [arrivalForm, setArrivalSheetOpen]);
+
+  const handleNewDispatch = useCallback(() => {
+    setEditingDispatchId(null);
+    dispatchForm.reset(createInitialDispatchDraft());
+    setDispatchNotice(null);
+    setDispatchSheetOpen(true);
+  }, [dispatchForm, setDispatchSheetOpen]);
+
+  const handleEditDispatch = useCallback(async (row) => {
+    setDispatchNotice({ type: 'info', message: 'Loading dispatch details...' });
+    setDispatchSheetOpen(true);
+    setEditingDispatchId(row.id);
+    
+    try {
+      const response = await fetch(`/api/stock/outbound-shipments/${row.id}`);
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || 'Failed to load dispatch details');
+
+      const shipment = json.shipment;
+      const items = json.items || [];
+
+      dispatchForm.reset({
+        shipmentNumber: shipment.shipment_number || '',
+        customerName: shipment.customer_name || '',
+        customerPhoneNumber: shipment.customer_phone_number || '',
+        truckLicensePlate: shipment.truck_license_plate_snapshot || shipment.truck_number_snapshot || '',
+        driverName: shipment.driver_name_snapshot || '',
+        invoiceNumber: shipment.invoice_number || '',
+        salespersonName: shipment.salesperson_name || '',
+        dispatchDate: (shipment.dispatch_date || shipment.created_at) ? (() => {
+          const d = new Date(shipment.dispatch_date || shipment.created_at);
+          const pad = (n) => String(n).padStart(2, '0');
+          return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        })() : '',
+        transportCost: shipment.transport_cost ?? '',
+        laborCost: shipment.loading_labour_cost ?? '',
+        notes: shipment.notes || '',
+        items: items.map(item => ({
+          itemId: String(item.item_id),
+          loadedWholeQty: String(item.loaded_whole_qty ?? 0),
+          notes: item.notes || '',
+          returnWholeQty: item.returned_whole_qty != null ? String(item.returned_whole_qty) : '',
+          returnBrokenQty: item.returned_broken_qty != null ? String(item.returned_broken_qty) : '',
+        })),
+      });
+      setDispatchNotice(null);
+    } catch (err) {
+      setDispatchNotice({ type: 'error', message: err.message });
+    }
+  }, [dispatchForm, setDispatchSheetOpen]);
 
   const handleDispatchSubmit = useCallback(async (values) => {
     setDispatchNotice(null);
@@ -534,37 +667,45 @@ export default function StockDashboard() {
         .map((item) => ({
           itemId: trimText(item.itemId),
           loadedWholeQty: toNumber(item.loadedWholeQty),
-          loadedBrokenQty: toNumber(item.loadedBrokenQty),
+          returnWholeQty: item.returnWholeQty === '' ? null : toNumber(item.returnWholeQty),
+          returnBrokenQty: item.returnBrokenQty === '' ? null : toNumber(item.returnBrokenQty),
           notes: trimText(item.notes),
         }))
-        .filter((item) => item.itemId || item.loadedWholeQty > 0 || item.loadedBrokenQty > 0 || item.notes);
+        .filter((item) => item.itemId || item.loadedWholeQty > 0 || (item.returnWholeQty != null && item.returnWholeQty > 0) || (item.returnBrokenQty != null && item.returnBrokenQty > 0) || item.notes);
 
       if (items.length === 0) throw new Error('Add at least one dispatch item.');
       if (items.some((item) => !item.itemId)) throw new Error('Select a stock item for each dispatch row.');
-      if (items.some((item) => item.loadedWholeQty === 0 && item.loadedBrokenQty === 0)) throw new Error('Enter whole or broken quantity for each dispatch row.');
+      
+      const payload = {
+        shipmentNumber: trimText(values.shipmentNumber) || undefined,
+        customerName,
+        customerPhoneNumber: trimText(values.customerPhoneNumber) || undefined,
+        truckLicensePlate: trimText(values.truckLicensePlate) || undefined,
+        truckNumber: trimText(values.truckLicensePlate) || undefined,
+        driverName: trimText(values.driverName) || undefined,
+        invoiceNumber: trimText(values.invoiceNumber) || undefined,
+        salespersonName: trimText(values.salespersonName) || undefined,
+        dispatchDate: values.dispatchDate || undefined,
+        transportCost: toNumber(values.transportCost),
+        loadingLabourCost: toNumber(values.laborCost),
+        notes: trimText(values.notes) || undefined,
+        items: items.map((item) => ({
+          itemId: Number(item.itemId),
+          loadedWholeQty: item.loadedWholeQty,
+          returnWholeQty: item.returnWholeQty,
+          returnBrokenQty: item.returnBrokenQty,
+          notes: item.notes || undefined,
+        })),
+      };
 
-      const response = await fetch('/api/stock/outbound-shipments', {
-        method: 'POST',
+      const endpoint = editingDispatchId 
+        ? `/api/stock/outbound-shipments/${editingDispatchId}`
+        : '/api/stock/outbound-shipments';
+      
+      const response = await fetch(endpoint, {
+        method: editingDispatchId ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          shipmentNumber: trimText(values.shipmentNumber) || undefined,
-          customerName,
-          truckLicensePlate: trimText(values.truckLicensePlate) || undefined,
-          truckNumber: trimText(values.truckLicensePlate) || undefined,
-          driverName: trimText(values.driverName) || undefined,
-          invoiceNumber: trimText(values.invoiceNumber) || undefined,
-          salespersonName: trimText(values.salespersonName) || undefined,
-          dispatchDate: values.dispatchDate || undefined,
-          transportCost: toNumber(values.transportCost),
-          loadingLabourCost: toNumber(values.laborCost),
-          notes: trimText(values.notes) || undefined,
-          items: items.map((item) => ({
-            itemId: Number(item.itemId),
-            loadedWholeQty: item.loadedWholeQty,
-            loadedBrokenQty: item.loadedBrokenQty,
-            notes: item.notes || undefined,
-          })),
-        }),
+        body: JSON.stringify(editingDispatchId ? { ...payload, action: 'update' } : payload),
       });
 
       const json = await response.json();
@@ -573,7 +714,9 @@ export default function StockDashboard() {
       dispatchForm.reset(createInitialDispatchDraft());
       resetDispatchAttachments();
       setDispatchSheetOpen(false);
-      setDispatchNotice({ type: 'success', message: `Dispatch ${json.shipment?.shipment_number || 'submitted'} sent for review.` });
+      const successMsg = editingDispatchId ? `Dispatch ${json.shipment?.shipment_number || ''} updated.` : `Dispatch ${json.shipment?.shipment_number || 'submitted'} sent for review.`;
+      setDispatchNotice({ type: 'success', message: successMsg });
+      setEditingDispatchId(null);
 
       try {
         await uploadShipmentDocument({ entityType: 'outbound_shipment', entityId: json.shipment?.id, documentType: 'sales_invoice', file: dispatchAttachments.salesInvoice, documentNumber: trimText(values.invoiceNumber) || undefined, notes: trimText(values.notes) || undefined });
@@ -592,7 +735,7 @@ export default function StockDashboard() {
     } finally {
       setDispatchSubmitting(false);
     }
-  }, [dispatchForm, dispatchAttachments, resetDispatchAttachments, setDispatchSheetOpen, refreshDashboard]);
+  }, [dispatchForm, dispatchAttachments, resetDispatchAttachments, setDispatchSheetOpen, refreshDashboard, editingDispatchId]);
 
   const handleArrivalInvalid = useCallback(() => {
     setArrivalNotice({ type: 'error', message: 'Please fix the highlighted purchase fields and try again.' });
@@ -713,6 +856,7 @@ export default function StockDashboard() {
       setArrivalSheetOpen(true);
     } else if (requestedNewForm === 'dispatch') {
       setActiveTableView('dispatches');
+      setEditingDispatchId(null);
       setArrivalSheetOpen(false);
       setDispatchSheetOpen(true);
     }
@@ -835,6 +979,9 @@ export default function StockDashboard() {
           t={t}
           tc={tc}
           language={language}
+          userRole={accessRole}
+          onNewArrival={handleNewArrival}
+          onEdit={handleEditArrival}
         />
       )}
 
@@ -865,6 +1012,9 @@ export default function StockDashboard() {
           t={t}
           tc={tc}
           language={language}
+          userRole={accessRole}
+          onNewDispatch={handleNewDispatch}
+          onEdit={handleEditDispatch}
         />
       )}
 

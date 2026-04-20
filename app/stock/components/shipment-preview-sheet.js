@@ -118,13 +118,16 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
               { label: 'Shipment No.', value: previewState.record?.shipment_number },
               { label: 'Status', value: previewState.record?.status },
               { label: 'Approval', value: previewState.record?.approval_status },
+              { label: 'Customer', value: previewState.record?.customer_name },
+              { label: 'Customer Phone', value: previewState.record?.customer_phone_number },
               { label: 'Truck', value: previewState.record?.truck_license_plate || previewState.record?.truck_number },
               { label: 'Driver', value: previewState.record?.driver_name },
               { label: 'Invoice No.', value: previewState.record?.invoice_number },
               { label: 'Gatepass No.', value: previewState.record?.gatepass_number },
-              { label: 'Customer', value: previewState.record?.customer_name },
               { label: 'Total Whole', value: previewState.record?.total_whole_qty },
               { label: 'Total Broken', value: previewState.record?.total_broken_qty },
+              { label: 'Return Whole', value: previewState.record?.total_return_whole_qty },
+              { label: 'Return Broken', value: previewState.record?.total_return_broken_qty },
               { label: 'Notes', value: previewState.record?.notes },
             ]}
           />
@@ -135,51 +138,72 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
           title:'Items',
           children: (
             <>
-              {isInboundPreview ? (
-                <div className={INVOICE_CLASSES.mobileGrid}>
-                  {previewItemPagination.rows.map((item, index) => (
-                    <article key={`inbound-mobile-item-${item.id || index}`} className={INVOICE_CLASSES.mobileCard}>
-                      <div className={INVOICE_CLASSES.mobileCardHeader}>Line {index + 1}</div>
-                      <div className="mt-2 grid grid-cols-2 gap-2">
-                        <div>
-                          <div className={INVOICE_CLASSES.mobileKey}>{tc.description}</div>
-                          <div className={INVOICE_CLASSES.mobileValue}>{item.item_name || '—'} {item.finish ? `(${item.finish})` : ''}</div>
-                        </div>
-                        <div>
-                          <div className={INVOICE_CLASSES.mobileKey}>HSN</div>
-                          <div className={INVOICE_CLASSES.mobileValue}>{item.hsn_code || '—'}</div>
-                        </div>
-                        <div>
-                          <div className={INVOICE_CLASSES.mobileKey}>Size</div>
-                          <div className={INVOICE_CLASSES.mobileValue}>{item.size_label || '—'}</div>
-                        </div>
-                        <div>
-                          <div className={INVOICE_CLASSES.mobileKey}>{tc.wholeBox}</div>
-                          <div className={INVOICE_CLASSES.mobileValue}>{item.received_whole_qty ?? item.loaded_whole_qty ?? 0}</div>
-                        </div>
-                        <div>
-                          <div className={INVOICE_CLASSES.mobileKey}>Ordered (sqm)</div>
-                          <div className={INVOICE_CLASSES.mobileValue}>{item.ordered_qty_sqm != null ? Number(item.ordered_qty_sqm).toFixed(3) : '—'}</div>
-                        </div>
-                        <div>
-                          <div className={INVOICE_CLASSES.mobileKey}>Whole (sqm)</div>
-                          <div className={INVOICE_CLASSES.mobileValue}>{item.whole_qty_sqm != null ? Number(item.whole_qty_sqm).toFixed(3) : '—'}</div>
-                        </div>
-                        <div>
-                          <div className={INVOICE_CLASSES.mobileKey}>Broken (sqm)</div>
-                          <div className={INVOICE_CLASSES.mobileValue}>{item.broken_qty_sqm != null ? Number(item.broken_qty_sqm).toFixed(3) : '—'}</div>
-                        </div>
-                        <div className="col-span-2">
-                          <div className={INVOICE_CLASSES.mobileKey}>{tc.totalSqmQty}</div>
-                          <div className={INVOICE_CLASSES.mobileValue}>
-                            {item.qty_sqm != null ? Number(item.qty_sqm).toFixed(3) : Number((item.received_whole_qty ?? 0) + (item.received_broken_qty ?? 0)).toFixed(0)}
-                          </div>
-                        </div>
+              <div className={INVOICE_CLASSES.mobileGrid}>
+                {previewItemPagination.rows.map((item, index) => (
+                  <article key={`shipment-item-${item.id || index}`} className={INVOICE_CLASSES.mobileCard}>
+                    <div className={INVOICE_CLASSES.mobileCardHeader}>Line {index + 1}</div>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <div>
+                        <div className={INVOICE_CLASSES.mobileKey}>{tc.description}</div>
+                        <div className={INVOICE_CLASSES.mobileValue}>{item.item_name || '—'} {item.finish ? `(${item.finish})` : ''}</div>
                       </div>
-                    </article>
-                  ))}
-                </div>
-              ) : null}
+                      <div>
+                        <div className={INVOICE_CLASSES.mobileKey}>Size</div>
+                        <div className={INVOICE_CLASSES.mobileValue}>{item.size_label || '—'}</div>
+                      </div>
+                      {isInboundPreview ? (
+                        <>
+                          <div>
+                            <div className={INVOICE_CLASSES.mobileKey}>HSN</div>
+                            <div className={INVOICE_CLASSES.mobileValue}>{item.hsn_code || '—'}</div>
+                          </div>
+                          <div>
+                            <div className={INVOICE_CLASSES.mobileKey}>{tc.wholeBox}</div>
+                            <div className={INVOICE_CLASSES.mobileValue}>{item.received_whole_qty ?? item.loaded_whole_qty ?? 0}</div>
+                          </div>
+                          <div>
+                            <div className={INVOICE_CLASSES.mobileKey}>Ordered (sqm)</div>
+                            <div className={INVOICE_CLASSES.mobileValue}>{item.ordered_qty_sqm != null ? Number(item.ordered_qty_sqm).toFixed(3) : '—'}</div>
+                          </div>
+                          <div>
+                            <div className={INVOICE_CLASSES.mobileKey}>Whole (sqm)</div>
+                            <div className={INVOICE_CLASSES.mobileValue}>{item.whole_qty_sqm != null ? Number(item.whole_qty_sqm).toFixed(3) : '—'}</div>
+                          </div>
+                          <div>
+                            <div className={INVOICE_CLASSES.mobileKey}>Broken (sqm)</div>
+                            <div className={INVOICE_CLASSES.mobileValue}>{item.broken_qty_sqm != null ? Number(item.broken_qty_sqm).toFixed(3) : '—'}</div>
+                          </div>
+                          <div className="col-span-2">
+                            <div className={INVOICE_CLASSES.mobileKey}>{tc.totalSqmQty}</div>
+                            <div className={INVOICE_CLASSES.mobileValue}>
+                              {item.qty_sqm != null ? Number(item.qty_sqm).toFixed(3) : Number((item.received_whole_qty ?? 0) + (item.received_broken_qty ?? 0)).toFixed(0)}
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            <div className={INVOICE_CLASSES.mobileKey}>Loaded Whole</div>
+                            <div className={INVOICE_CLASSES.mobileValue}>{item.loaded_whole_qty ?? 0}</div>
+                          </div>
+                          <div>
+                            <div className={INVOICE_CLASSES.mobileKey}>Loaded Broken</div>
+                            <div className={INVOICE_CLASSES.mobileValue}>{item.loaded_broken_qty ?? 0}</div>
+                          </div>
+                          <div>
+                            <div className={INVOICE_CLASSES.mobileKey}>Return Whole</div>
+                            <div className={INVOICE_CLASSES.mobileValue}>{item.returned_whole_qty ?? 0}</div>
+                          </div>
+                          <div>
+                            <div className={INVOICE_CLASSES.mobileKey}>Return Broken</div>
+                            <div className={INVOICE_CLASSES.mobileValue}>{item.returned_broken_qty ?? 0}</div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
               <PaginationControls
                 page={previewItemPagination.page}
                 pageCount={previewItemPagination.pageCount}

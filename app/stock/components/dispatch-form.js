@@ -16,8 +16,9 @@ import {
 } from './stock-form-fields';
 import { FORM_CARD_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS } from '../lib/stock-utils';
 
-const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control, activeItems, itemOptions, t, language }) {
+const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control, activeItems, itemOptions, t, language, userRole }) {
   const itemInputClass = 'w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20';
+  const canEditReturns = ['admin', 'manager'].includes(userRole);
 
   return (
     <div key={fieldRow.id} className="overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
@@ -25,7 +26,7 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
         <span className="text-xs font-semibold text-foreground">{language === 'hi' ? 'आइटम' : 'Item'} {index + 1}</span>
       </div>
       <div className="p-4 space-y-4">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="mt-3 grid gap-4 md:grid-cols-2">
           <FormField
             control={control}
             name={`items.${index}.itemId`}
@@ -37,7 +38,7 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
                     <SelectTrigger className={`mt-1 ${itemInputClass}`}>
                       <SelectValue placeholder={t('selectItem')} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className={FORM_INPUT_CLASS}>
                       {(activeItems || []).map((stockItem) => (
                         <SelectItem key={stockItem.id} value={String(stockItem.id)}>
                           {stockItem.sku} - {stockItem.name}
@@ -63,14 +64,28 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
               </FormItem>
             )}
           />
+          {/* Return fields, only visible to admin/manager (UI logic to be added) */}
           <FormField
             control={control}
-            name={`items.${index}.loadedBrokenQty`}
+            name={`items.${index}.returnWholeQty`}
             render={({ field }) => (
               <FormItem>
-                <FormLabel className={FORM_LABEL_CLASS}>{t('broken')}</FormLabel>
+                <FormLabel className={FORM_LABEL_CLASS}>Return Whole</FormLabel>
                 <FormControl>
-                  <Input {...field} value={field.value ?? ''} type="number" min="0" placeholder="0" className={`mt-1 ${itemInputClass}`} />
+                  <Input {...field} value={field.value ?? ''} type="number" min="0" placeholder="0" className={`mt-1 ${itemInputClass}`} disabled={!canEditReturns} />
+                </FormControl>
+                <FormMessage className="text-xs" />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name={`items.${index}.returnBrokenQty`}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className={FORM_LABEL_CLASS}>Return Broken</FormLabel>
+                <FormControl>
+                  <Input {...field} value={field.value ?? ''} type="number" min="0" placeholder="0" className={`mt-1 ${itemInputClass}`} disabled={!canEditReturns} />
                 </FormControl>
                 <FormMessage className="text-xs" />
               </FormItem>
@@ -96,6 +111,7 @@ export function DispatchFormContent({
   t,
   tc,
   language,
+  userRole,
 }) {
   const itemOptions = useMemo(() => (activeItems || []).map((stockItem) => ({ id: stockItem.id, sku: stockItem.sku, name: stockItem.name })), [activeItems]);
 
@@ -112,6 +128,7 @@ export function DispatchFormContent({
           <div className="mt-3 grid gap-4 md:grid-cols-2">
             <StockFormField control={form.control} name="shipmentNumber" label={t('dispatchNo')} placeholder="DSP-202X..." className={FORM_INPUT_CLASS} autoFocus />
             <StockFormField control={form.control} name="customerName" label={t('customer')} placeholder="Customer Name..." className={FORM_INPUT_CLASS} />
+            <StockFormField control={form.control} name="customerPhoneNumber" label="Customer Phone" placeholder="+91 9876543210" type="tel" className={FORM_INPUT_CLASS} />
             <StockFormField control={form.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." className={FORM_INPUT_CLASS} />
             <StockDateField control={form.control} name="dispatchDate" label={tc.date} placeholder={tc.date} />
             <StockFormField control={form.control} name="salespersonName" label={t('salesperson')} placeholder="Salesperson..." className={FORM_INPUT_CLASS} />
@@ -125,11 +142,11 @@ export function DispatchFormContent({
           <div className="mt-3 grid gap-4 md:grid-cols-2">
             <StockFormField control={form.control} name="truckLicensePlate" label={t('truck')} placeholder="RJ 14 XY 0000" className={FORM_INPUT_CLASS} />
             <StockFormField control={form.control} name="driverName" label={t('driver')} placeholder="Driver Name..." className={FORM_INPUT_CLASS} />
-            <div className="mt-3 grid gap-4 md:grid-cols-2">
+           </div>
+           <div className="mt-3 grid gap-4 md:grid-cols-2">
               <StockMoneyField control={form.control} name="transportCost" label={t('transportCost')} hint={tc.amountInInr} />
               <StockMoneyField control={form.control} name="laborCost" label={t('laborCost')} hint={tc.amountInInr} />
             </div>
-           </div>
         </div>
         <div className="rounded-2xl bg-muted/20 p-0">
           <div className="flex justify-between items-center mb-2 gap-4 px-4 pt-4">
@@ -159,6 +176,7 @@ export function DispatchFormContent({
                 itemOptions={itemOptions}
                 t={t}
                 language={language}
+                userRole={userRole}
               />
             ))}
           </div>

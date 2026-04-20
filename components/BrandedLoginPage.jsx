@@ -47,30 +47,28 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
     setIsSocialSubmitting(true);
 
     try {
-      await authClient.signIn.social({
+      const { data, error } = await authClient.signIn.social({
         provider: socialProvider,
         callbackURL: returnTo || '/',
       });
+
+      if (error) {
+        const message = String(error.message || '').toLowerCase();
+
+        if (message.includes('provider not found')) {
+          setSignInError(`Sign-in provider "${socialProvider}" is not configured on the server yet.`);
+        } else if (message.includes('too many requests') || message.includes('429') || message.includes('rate limit')) {
+          const retryAt = Date.now() + 60_000;
+          setSocialRetryAfter(retryAt);
+          setSignInError('Too many sign-in attempts. Please wait 60 seconds and try again.');
+        } else if (message.includes('invalid origin') || message.includes('forbidden') || message.includes('403')) {
+          setSignInError('This app origin is not trusted by Better Auth. Add the current localhost origin to trusted origins and restart the dev server.');
+        } else {
+          setSignInError(error.message || 'Unable to start sign-in. Please try again.');
+        }
+        return;
+      }
     } catch (signInFailure) {
-      const message = String(signInFailure?.message || '').toLowerCase();
-
-      if (message.includes('provider not found')) {
-        setSignInError(`Sign-in provider "${socialProvider}" is not configured on the server yet.`);
-        return;
-      }
-
-      if (message.includes('too many requests') || message.includes('429') || message.includes('rate limit')) {
-        const retryAt = Date.now() + 60_000;
-        setSocialRetryAfter(retryAt);
-        setSignInError('Too many sign-in attempts. Please wait 60 seconds and try again.');
-        return;
-      }
-
-      if (message.includes('invalid origin') || message.includes('forbidden') || message.includes('403')) {
-        setSignInError('This app origin is not trusted by Better Auth. Add the current localhost origin to trusted origins and restart the dev server.');
-        return;
-      }
-
       setSignInError('Unable to start sign-in. Please try again.');
     } finally {
       setIsSocialSubmitting(false);
@@ -99,11 +97,21 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
 
     try {
       if (authMode === 'signup') {
-        await authClient.signUp.email({
+        const { data: signupData, error: signupError } = await authClient.signUp.email({
           email: cleanEmail,
           password: cleanPassword,
           name: cleanName,
         });
+
+        if (signupError) {
+          const message = String(signupError.message || '').toLowerCase();
+          if (message.includes('already exists') || message.includes('user_exists')) {
+            setSignInError('This email is already registered. Try signing in instead.');
+          } else {
+            setSignInError(signupError.message || 'Unable to create account.');
+          }
+          return;
+        }
         
         // Show success message briefly for signup before signing in and redirecting
         setShowSignupSuccess(true);
@@ -111,22 +119,27 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
         setShowSignupSuccess(false);
       }
 
-      await authClient.signIn.email({
+      const { data: signinData, error: signinError } = await authClient.signIn.email({
         email: cleanEmail,
         password: cleanPassword,
       });
 
+      if (signinError) {
+        const message = String(signinError.message || '').toLowerCase();
+
+        if (message.includes('invalid') || message.includes('credentials') || message.includes('not found')) {
+          setSignInError('Invalid email or password. If this user was created before Better Auth migration, use "Create account" once with the same email/password to provision credentials.');
+        } else if (message.includes('too many requests') || message.includes('429')) {
+          setSignInError('Too many attempts. Please try again later.');
+        } else {
+          setSignInError(signinError.message || 'Unable to sign in. Please try again.');
+        }
+        return;
+      }
+
       router.replace(returnTo || '/');
     } catch (authFailure) {
-      const message = String(authFailure?.message || '').toLowerCase();
-
-      if (message.includes('invalid') || message.includes('credentials')) {
-        setSignInError('Invalid email or password. If this user was created before Better Auth migration, use "Create account" once with the same email/password to provision credentials.');
-      } else if (message.includes('already exists') || message.includes('user_exists')) {
-        setSignInError('This email is already registered. Try signing in instead.');
-      } else {
-        setSignInError('Unable to complete email/password authentication.');
-      }
+      setSignInError('An unexpected authentication error occurred.');
     } finally {
       setIsSubmitting(false);
     }

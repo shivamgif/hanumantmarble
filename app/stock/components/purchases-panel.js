@@ -39,7 +39,11 @@ export function PurchasesPanel({
   t,
   tc,
   language,
+  userRole,
+  onNewArrival,
+  onEdit,
 }) {
+  const canEdit = ['admin', 'manager'].includes(userRole);
   const toggleSort = useCallback((key) => {
     setArrivalSort((current) => ({
       key,
@@ -55,7 +59,7 @@ export function PurchasesPanel({
           <Sheet open={arrivalSheetOpen} onOpenChange={setArrivalSheetOpen}>
             <button
               type="button"
-              onClick={() => setArrivalSheetOpen(true)}
+              onClick={onNewArrival || (() => setArrivalSheetOpen(true))}
               className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-55"
               disabled={!canCreateArrival}
               title={!canCreateArrival ? tc.insufficientNewPurchase : undefined}
@@ -141,14 +145,25 @@ export function PurchasesPanel({
                     <p>By: {a.generated_by || '—'}</p>
                   </div>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={() => setArrivalExpandedId((current) => (current === a.id ? null : a.id))}
-                  className="mt-2 rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                  aria-label={expanded ? 'Collapse purchase details' : 'Expand purchase details'}
-                >
-                  {expanded ? 'Collapse' : 'Expand'}
-                </button>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setArrivalExpandedId((current) => (current === a.id ? null : a.id))}
+                    className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-[#E07A00]/20 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                    aria-label={expanded ? 'Collapse purchase details' : 'Expand purchase details'}
+                  >
+                    {expanded ? 'Collapse' : 'Expand'}
+                  </button>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      className="rounded-lg bg-blue-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-blue-700"
+                      onClick={e => { e.stopPropagation(); onEdit(a); }}
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
               </article>
             );
           })}
@@ -176,6 +191,7 @@ export function PurchasesPanel({
                   <button type="button" onClick={() => toggleSort('grandTotal')} className="font-medium hover:text-foreground">Grand Total</button>
                 </th>
                 <th className="px-3 py-2 text-right">Freight (kg)</th>
+                {canEdit && <th className="px-3 py-2 text-right"><span className="font-medium">Edit</span></th>}
                 <th className="px-3 py-2">
                   <button type="button" onClick={() => toggleSort('status')} className="font-medium hover:text-foreground">{t('status')}</button>
                 </th>
@@ -226,6 +242,17 @@ export function PurchasesPanel({
                     <div>INR {Number(a.grand_total || 0).toFixed(2)}</div>
                   </td>
                   <td className="px-3 py-2 text-right text-muted-foreground">{Number(a.freight_weight_kg || 0).toFixed(2)}</td>
+                  {canEdit && (
+                    <td className="px-3 py-2 text-right">
+                      <button
+                        type="button"
+                        className="rounded-md bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
+                        onClick={e => { e.stopPropagation(); onEdit(a); }}
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  )}
                   <td className="px-3 py-2"><Badge variant={getStatusVariant(a.status)}>{a.status}</Badge></td>
                   <td className="px-3 py-2 text-muted-foreground">
                     <div className="flex items-center gap-2">

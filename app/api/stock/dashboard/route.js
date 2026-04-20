@@ -130,28 +130,33 @@ export async function GET(request) {
            ORDER BY created_at DESC
            LIMIT 20
          )
-         SELECT 
-            sos.id, 
-            sos.shipment_number, 
-            sos.truck_license_plate_snapshot AS truck_license_plate, 
-            sos.driver_name_snapshot AS driver_name, 
-            sos.created_at AS dispatch_date, 
-            sos.status, 
-            sos.approval_status,
-            COALESCE(SUM(soi.loaded_whole_qty), 0) as total_whole_qty,
-            COALESCE(SUM(soi.loaded_broken_qty), 0) as total_broken_qty,
-            COALESCE(MAX(submitter.name), MAX(submitter.email), MAX(sos.created_by), '—') AS generated_by,
-            COALESCE(MAX(submitter.role), 'stock_maintainer') AS generated_by_role,
-            CASE
-              WHEN sos.approval_status = 'approved' THEN COALESCE(MAX(approver.name), MAX(approver.email), '—')
-              ELSE '—'
-            END AS approved_by
-         FROM recent_sos sos
-         LEFT JOIN stock_outbound_shipment_items soi ON sos.id = soi.outbound_shipment_id
-         LEFT JOIN stock_app_users submitter ON submitter.id = sos.submitted_by_user_id
-         LEFT JOIN stock_app_users approver ON approver.id = sos.approved_by_user_id
-         GROUP BY sos.id, sos.shipment_number, sos.truck_license_plate_snapshot, sos.driver_name_snapshot, sos.created_at, sos.status, sos.approval_status, sos.approval_status
-         ORDER BY sos.created_at DESC`,
+          SELECT 
+             sos.id, 
+             sos.shipment_number, 
+             sos.truck_license_plate_snapshot AS truck_license_plate, 
+             sos.driver_name_snapshot AS driver_name, 
+             sos.created_at AS dispatch_date, 
+             sos.status, 
+             sos.approval_status,
+             c.name AS customer_name,
+             c.phone AS customer_phone_number,
+             COALESCE(SUM(soi.loaded_whole_qty), 0) as total_whole_qty,
+             COALESCE(SUM(soi.loaded_broken_qty), 0) as total_broken_qty,
+             COALESCE(SUM(soi.returned_whole_qty), 0) as total_return_whole_qty,
+             COALESCE(SUM(soi.returned_broken_qty), 0) as total_return_broken_qty,
+             COALESCE(MAX(submitter.name), MAX(submitter.email), MAX(sos.created_by), '—') AS generated_by,
+             COALESCE(MAX(submitter.role), 'stock_maintainer') AS generated_by_role,
+             CASE
+               WHEN sos.approval_status = 'approved' THEN COALESCE(MAX(approver.name), MAX(approver.email), '—')
+               ELSE '—'
+             END AS approved_by
+          FROM recent_sos sos
+          LEFT JOIN stock_outbound_shipment_items soi ON sos.id = soi.outbound_shipment_id
+          LEFT JOIN stock_app_users submitter ON submitter.id = sos.submitted_by_user_id
+          LEFT JOIN stock_app_users approver ON approver.id = sos.approved_by_user_id
+          LEFT JOIN stock_customers c ON c.id = sos.customer_id
+          GROUP BY sos.id, sos.shipment_number, sos.truck_license_plate_snapshot, sos.driver_name_snapshot, sos.created_at, sos.status, sos.approval_status, c.name, c.phone
+          ORDER BY sos.created_at DESC`,
         []
       ),
     ]);

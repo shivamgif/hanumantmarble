@@ -28,8 +28,10 @@ export function createDispatchItemRow() {
   return {
     itemId: '',
     loadedWholeQty: '0',
-    loadedBrokenQty: '0',
+    // loadedBrokenQty removed
     notes: '',
+    returnWholeQty: '',
+    returnBrokenQty: '',
   };
 }
 
@@ -72,6 +74,7 @@ export function createInitialDispatchDraft() {
   return {
     shipmentNumber: '',
     customerName: '',
+    customerPhoneNumber: '',
     truckLicensePlate: '',
     driverName: '',
     invoiceNumber: '',

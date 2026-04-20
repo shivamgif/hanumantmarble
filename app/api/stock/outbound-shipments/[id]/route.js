@@ -3,7 +3,34 @@ import { ensureDatabaseAvailable, generateReference, getStockContext, hasAnyStoc
 import { sql, withTransaction } from '@/lib/db';
 
 async function loadShipmentWithItems(id) {
-  const shipmentRows = await sql('SELECT * FROM stock_outbound_shipments WHERE id = $1 LIMIT 1', [id]);
+  const shipmentRows = await sql(
+    `SELECT sos.*,
+            sos.truck_license_plate_snapshot AS truck_license_plate,
+            sos.driver_name_snapshot AS driver_name,
+            c.name AS customer_name,
+            c.phone AS customer_phone_number,
+            sp.name AS salesperson_name,
+            COALESCE(agg.total_whole_qty, 0) AS total_whole_qty,
+            COALESCE(agg.total_broken_qty, 0) AS total_broken_qty,
+            COALESCE(agg.total_return_whole_qty, 0) AS total_return_whole_qty,
+            COALESCE(agg.total_return_broken_qty, 0) AS total_return_broken_qty
+     FROM stock_outbound_shipments sos
+     LEFT JOIN stock_customers c ON c.id = sos.customer_id
+     LEFT JOIN stock_sales_people sp ON sp.id = sos.salesperson_id
+     LEFT JOIN (
+       SELECT outbound_shipment_id,
+              SUM(loaded_whole_qty) AS total_whole_qty,
+              SUM(loaded_broken_qty) AS total_broken_qty,
+              SUM(returned_whole_qty) AS total_return_whole_qty,
+              SUM(returned_broken_qty) AS total_return_broken_qty
+       FROM stock_outbound_shipment_items
+       WHERE outbound_shipment_id = $1
+       GROUP BY outbound_shipment_id
+     ) agg ON agg.outbound_shipment_id = sos.id
+     WHERE sos.id = $1
+     LIMIT 1`,
+    [id]
+  );
   const shipment = shipmentRows[0] || null;
 
   if (!shipment) {
@@ -316,39 +343,81 @@ export async function PATCH(request, context) {
       return NextResponse.json({ shipment: rows[0], changeRequest: changeRequestRows[0] });
     }
 
-    const rows = await sql(
-      `UPDATE stock_outbound_shipments
-       SET truck_license_plate_snapshot = COALESCE($1, truck_license_plate_snapshot),
-           truck_number_snapshot = COALESCE($2, truck_number_snapshot),
-           driver_name_snapshot = COALESCE($3, driver_name_snapshot),
-           driver_phone_snapshot = COALESCE($4, driver_phone_snapshot),
-           gatepass_number = COALESCE($5, gatepass_number),
-           invoice_number = COALESCE($6, invoice_number),
-           loading_labour_cost = COALESCE($7, loading_labour_cost),
-           transport_cost = COALESCE($8, transport_cost),
-           notes = COALESCE($9, notes),
-           customer_id = COALESCE($11::bigint, customer_id),
-           salesperson_id = COALESCE($12::bigint, salesperson_id),
-           updated_at = NOW()
-       WHERE id = $10
-       RETURNING *`,
-      [
-        body.truckLicensePlate || null,
-        body.truckNumber || null,
-        body.driverName || null,
-        body.driverPhone || null,
-        body.gatepassNumber || null,
-        body.invoiceNumber || null,
-        body.loadingLabourCost ?? null,
-        body.transportCost ?? null,
-        body.notes || null,
-        id,
-        body.customerId ? Number(body.customerId) : null,      // $11
-        body.salespersonId ? Number(body.salespersonId) : null, // $12
-      ]
-    );
+    const result = await withTransaction(async (tx) => {
+      // Resolve IDs from names if provided
+      let resolvedCustomerId = null;
+      let resolvedSalespersonId = null;
 
-    return NextResponse.json({ shipment: rows[0] });
+      if (body.customerName) {
+        const cRows = await tx('SELECT id FROM stock_customers WHERE lower(name) = lower($1) LIMIT 1', [body.customerName.trim()]);
+        resolvedCustomerId = cRows[0]?.id || null;
+      }
+
+      if (body.salespersonName) {
+        const sRows = await tx('SELECT id FROM stock_sales_people WHERE lower(name) = lower($1) LIMIT 1', [body.salespersonName.trim()]);
+        resolvedSalespersonId = sRows[0]?.id || null;
+      }
+
+      const shipmentRows = await tx(
+        `UPDATE stock_outbound_shipments
+         SET shipment_number = COALESCE($1, shipment_number),
+             customer_id = COALESCE($2, customer_id),
+             truck_license_plate_snapshot = COALESCE($3, truck_license_plate_snapshot),
+             truck_number_snapshot = COALESCE($4, truck_number_snapshot),
+             driver_name_snapshot = COALESCE($5, driver_name_snapshot),
+             invoice_number = COALESCE($6, invoice_number),
+             dispatch_date = COALESCE($7, dispatch_date),
+             transport_cost = COALESCE($8, transport_cost),
+             loading_labour_cost = COALESCE($9, loading_labour_cost),
+             notes = COALESCE($10, notes),
+             salesperson_id = COALESCE($11, salesperson_id),
+             updated_at = NOW()
+         WHERE id = $12
+         RETURNING *`,
+        [
+          body.shipmentNumber || null,
+          resolvedCustomerId,
+          body.truckLicensePlate || null,
+          body.truckNumber || null,
+          body.driverName || null,
+          body.invoiceNumber || null,
+          body.dispatchDate || null,
+          body.transportCost ?? null,
+          body.loadingLabourCost ?? null,
+          body.notes || null,
+          resolvedSalespersonId,
+          id,
+        ]
+      );
+
+      if (body.items && Array.isArray(body.items)) {
+        // Delete existing items
+        await tx(`DELETE FROM stock_outbound_shipment_items WHERE outbound_shipment_id = $1`, [id]);
+
+        // Insert new items
+        for (const item of body.items) {
+          await tx(
+            `INSERT INTO stock_outbound_shipment_items (
+              outbound_shipment_id, item_id, loaded_whole_qty, loaded_broken_qty,
+              returned_whole_qty, returned_broken_qty, notes
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [
+              id,
+              item.itemId,
+              item.loadedWholeQty || 0,
+              item.loadedBrokenQty || 0,
+              item.returnWholeQty || 0,
+              item.returnBrokenQty || 0,
+              item.notes || null,
+            ]
+          );
+        }
+      }
+
+      return { shipment: shipmentRows[0] };
+    });
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Failed to update outbound shipment:', error);
     return NextResponse.json({ error: 'Failed to update shipment', detail: error.message }, { status: 500 });
