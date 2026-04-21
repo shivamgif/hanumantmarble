@@ -72,16 +72,24 @@ function TrendCapsule({ value, isPositive }) {
   );
 }
 
-function AnalyticsCard({ title, subtitle, topRight, contextBar, children, className = '' }) {
+function AnalyticsCard({ title, subtitle, topRight, contextBar, insight, showInsight, children, className = '' }) {
   return (
     <div className={`${CLASSES.card} ${className}`}>
       <div className="flex items-start justify-between mb-3">
         <div>
           <h3 className={CLASSES.title}>{title}</h3>
-          {subtitle && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{subtitle}</p>}
+          {subtitle && <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{subtitle}</p>}
         </div>
         {topRight}
       </div>
+      {showInsight && insight && (
+        <div className="mb-4 p-3 rounded-2xl bg-brand-primary/5 border border-brand-primary/10 animate-scale-in">
+          <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 font-medium">
+            <span className="font-bold text-brand-primary uppercase mr-1.5 text-[9px] tracking-wider">Analysis:</span>
+            {insight}
+          </p>
+        </div>
+      )}
       {contextBar && (
         <div className="mb-4 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
           <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium italic">{contextBar}</p>
@@ -92,45 +100,64 @@ function AnalyticsCard({ title, subtitle, topRight, contextBar, children, classN
   );
 }
 
-function StockHealthScorecard({ data }) {
-  const healthy = data.reduce((s, d) => s + Math.max(0, Number(d.total || 0) - Number(d.atRisk || 0)), 0);
-  const atRiskCount = data.reduce((s, d) => {
-    const total = Number(d.total || 0);
-    const risk = Number(d.atRisk || 0);
-    const ratio = total > 0 ? risk / total : 0;
-    return ratio >= 0.3 && ratio < 0.6 ? s + risk : s;
-  }, 0);
+function StockHealthScorecard({ data, showInsight }) {
+  const healthy = data.reduce((s, d) => s + Math.max(0, Number(d.total_items || 0) - Number(d.at_risk || 0)), 0);
+  const atRiskCount = data.reduce((s, d) => s + Number(d.at_risk || 0), 0);
   const critical = data.filter((d) => {
-    const total = Number(d.total || 0);
-    const risk = Number(d.atRisk || 0);
+    const total = Number(d.total_items || 0);
+    const risk = Number(d.at_risk || 0);
     return total > 0 && risk / total > 0.6;
   }).length;
 
   const metrics = [
-    { label: 'Healthy Items', value: healthy, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20', icon: Activity },
-    { label: 'At Risk Units', value: atRiskCount, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-100 dark:border-amber-500/20', icon: AlertCircle },
-    { label: 'Critical Divisions', value: critical, color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-500/10', border: 'border-rose-100 dark:border-rose-500/20', icon: TrendingDown },
+    { 
+      label: 'Optimal Stock', 
+      value: healthy, 
+      color: 'text-emerald-600 dark:text-emerald-400', 
+      bg: 'bg-emerald-50 dark:bg-emerald-500/10', 
+      description: 'Items with sufficient quantity for current demand.' 
+    },
+    { 
+      label: 'Low Stock', 
+      value: atRiskCount, 
+      color: 'text-amber-600 dark:text-amber-400', 
+      bg: 'bg-amber-50 dark:bg-amber-500/10', 
+      description: 'Units reaching reorder levels soon.' 
+    },
+    { 
+      label: 'Key Concerns', 
+      value: critical, 
+      color: 'text-rose-600 dark:text-rose-400', 
+      bg: 'bg-rose-50 dark:bg-rose-500/10', 
+      description: 'Divisions with high risk of stockouts.' 
+    },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
       {metrics.map((m) => (
-        <div className="rounded-3xl border border-slate-200/60 bg-white/80 backdrop-blur-sm p-6 shadow-sm dark:bg-slate-900/80 dark:border-slate-800/60 hover:-translate-y-1 transition-transform" key={m.label}>
-          <div className="flex items-center justify-between mb-4">
-            <div className={`w-12 h-12 flex items-center justify-center rounded-xl border ${m.bg} ${m.border}`}>
-              <m.icon className={`h-6 w-6 ${m.color}`} />
+        <div className="rounded-3xl border border-slate-200/60 bg-white/80 backdrop-blur-sm p-6 shadow-sm dark:bg-slate-900/80 dark:border-slate-800/60 transition-all group overflow-hidden" key={m.label}>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">Inventory Health</span>
+              <div className={`w-2 h-2 rounded-full ${m.bg.replace('bg-', 'bg-opacity-100 bg-')}`} />
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">Inventory Status</span>
+            <div className="text-slate-600 dark:text-slate-400 text-xs font-semibold">{m.label}</div>
+            <div className={`text-4xl font-extrabold font-mono mt-1 tracking-tighter ${m.color}`}>{formatCompactNumber(m.value)}</div>
+            {showInsight && (
+              <p className="mt-4 text-[10px] leading-relaxed text-slate-400 dark:text-slate-500 animate-slide-up border-t border-slate-100 dark:border-slate-800 pt-3 italic">
+                {m.description}
+              </p>
+            )}
           </div>
-          <div className="text-slate-500 text-sm font-medium">{m.label}</div>
-          <div className={`text-3xl font-extrabold font-mono mt-1 tracking-tight text-slate-900 dark:text-slate-100 ${m.color}`}>{formatCompactNumber(m.value)}</div>
+          <div className={`absolute -right-4 -bottom-4 w-24 h-24 rounded-full ${m.bg} opacity-10 group-hover:scale-150 transition-transform duration-700`} />
         </div>
       ))}
     </div>
   );
 }
 
-function SalesRevenueChart({ data }) {
+function SalesRevenueChart({ data, showInsight }) {
   const containerRef = useRef(null);
   const [width, setWidth] = useState(500);
   const [hoveredIndex, setHoveredIndex] = useState(null);
@@ -174,13 +201,15 @@ function SalesRevenueChart({ data }) {
   const isPositive = trend >= 0;
 
   const peakPoint = points.reduce((best, p) => (Number(p.d.total || 0) > Number(best.d.total || 0) ? p : best), points[0]);
-  const peakLabel = peakPoint ? `Peak volume of ${formatCompactNumber(peakPoint.d.total)} units detected on ${formatMonthLabel(peakPoint.d.month || peakPoint.d.bucket)}` : null;
+  const peakLabel = peakPoint ? `Highest activity: ${formatCompactNumber(peakPoint.d.total)} units in ${formatMonthLabel(peakPoint.d.month || peakPoint.d.bucket)}` : null;
 
   return (
     <AnalyticsCard
-      title="Sales Volume"
-      subtitle="Monthly outbound analytics"
+      title="Sales Activity Trend"
+      subtitle="Monthly outbound unit volume"
       contextBar={peakLabel}
+      insight="This shows the total units leaving the warehouse. Spikes often correlate with seasonal promotions or high-performing sales periods."
+      showInsight={showInsight}
       topRight={<TrendCapsule value={trend} isPositive={isPositive} />}
     >
       <div
@@ -250,7 +279,7 @@ function SalesRevenueChart({ data }) {
   );
 }
 
-function TopDivisionsChart({ data }) {
+function TopDivisionsChart({ data, showInsight }) {
   const containerRef = useRef(null);
   const [width, setWidth] = useState(500);
   const [hoveredIndex, setHoveredIndex] = useState(null);
@@ -269,19 +298,20 @@ function TopDivisionsChart({ data }) {
       </AnalyticsCard>
     );
 
-  const topDivisions = [...data].sort((a, b) => Number(b.total || 0) - Number(a.total || 0)).slice(0, 5);
-  const maxVal = Math.max(...topDivisions.map((d) => Number(d.total || 0)), 1);
+  const topDivisions = [...data].sort((a, b) => Number(b.total_items || 0) - Number(a.total_items || 0)).slice(0, 5);
+  const maxVal = Math.max(...topDivisions.map((d) => Number(d.total_items || 0)), 1);
   const topDiv = topDivisions[0];
 
   return (
     <AnalyticsCard
-      title="Top Selling Divisions"
-      subtitle="Volume by division"
-      contextBar={topDiv ? `${topDiv.division || 'Top division'} leads with ${formatCompactNumber(topDiv.total)} units — highest contribution this period.` : null}
+      title="Division Contribution"
+      subtitle="Total volume per division"
+      insight="Focus efforts on divisions with high volume to maximize impact. Low volume might indicate niche markets or slow replenishment."
+      showInsight={showInsight}
     >
-      <div className="space-y-4" ref={containerRef}>
+      <div className="space-y-5" ref={containerRef}>
         {topDivisions.map((d, i) => {
-          const wPercent = (Number(d.total || 0) / maxVal) * 100;
+          const actualPercent = (Number(d.total_items || 1) / maxVal) * 100;
           const color = INDUSTRIAL_COLORS[i % INDUSTRIAL_COLORS.length];
           return (
             <div
@@ -290,18 +320,13 @@ function TopDivisionsChart({ data }) {
               onMouseEnter={() => setHoveredIndex(i)}
               onMouseLeave={() => setHoveredIndex(null)}
             >
-              <div className="flex justify-between text-xs font-bold mb-1">
-                <span className="text-slate-700 dark:text-slate-300">{d.division || 'Unknown'}</span>
-                <span className="font-mono text-slate-900 dark:text-white">{formatCompactNumber(d.total)}</span>
+              <div className="flex justify-between text-xs font-bold mb-1.5 px-0.5">
+                <span className="text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[10px]">{d.division || 'Unknown'}</span>
+                <span className="font-mono text-slate-900 dark:text-white">{formatCompactNumber(d.total_items)}</span>
               </div>
-              <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${wPercent}%`, backgroundColor: color }} />
+              <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800/50 rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-1000 ease-out" style={{ width: `${actualPercent}%`, backgroundColor: color }} />
               </div>
-              {hoveredIndex === i && (
-                <div className="absolute right-0 -top-8 z-20 pointer-events-none rounded-xl bg-slate-900 dark:bg-slate-800 text-white p-2 shadow-xl text-[10px] font-mono whitespace-nowrap">
-                  {Number(d.total).toLocaleString()} units
-                </div>
-              )}
             </div>
           );
         })}
@@ -310,7 +335,7 @@ function TopDivisionsChart({ data }) {
   );
 }
 
-function MonthlyCostVolumeChart({ data }) {
+function MonthlyCostVolumeChart({ data, showInsight }) {
   const containerRef = useRef(null);
   const [width, setWidth] = useState(500);
   const [hoveredIndex, setHoveredIndex] = useState(null);
@@ -333,7 +358,7 @@ function MonthlyCostVolumeChart({ data }) {
 
   if (!chartData || chartData.length === 0)
     return (
-      <AnalyticsCard title="Monthly Cost vs Volume" subtitle="No data">
+      <AnalyticsCard title="Flow Analysis" subtitle="No data">
         <div className="h-64 flex items-center justify-center">—</div>
       </AnalyticsCard>
     );
@@ -343,22 +368,23 @@ function MonthlyCostVolumeChart({ data }) {
   const innerH = height - pad.t - pad.b;
   const innerW = width - pad.l - pad.r;
   const maxVal = Math.max(...chartData.map((d) => Math.max(d.costIn, d.soldOut)), 1);
-  const barWidth = Math.max(10, (innerW / chartData.length) * 0.3);
+  const barWidth = Math.max(10, (innerW / chartData.length) * 0.25);
 
   const peakSoldOut = chartData.reduce((best, d) => (d.soldOut > best.soldOut ? d : best), chartData[0]);
 
   return (
     <AnalyticsCard
-      title="Monthly Cost vs Volume"
-      subtitle="Financial flow overview"
-      contextBar={peakSoldOut ? `Peak volume of ${formatCompactNumber(peakSoldOut.soldOut)} units detected on ${formatMonthLabel(peakSoldOut.month || peakSoldOut.bucket)}` : null}
+      title="Business Flow Analysis"
+      subtitle="Matching Inbound Cost vs Outbound Volume"
+      insight="Compares what we bring in (Cost) vs what we send out (Units). A healthy gap indicates efficient stock rotation and balanced inventory levels."
+      showInsight={showInsight}
       topRight={
         <div className="flex gap-4">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em]">
-            <span className="w-3 h-3 rounded-full bg-rose-500" /> Cost In
+          <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-[0.1em]">
+            <span className="w-2 h-2 rounded-full bg-rose-500" /> Inbound
           </div>
-          <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em]">
-            <span className="w-3 h-3 rounded-full bg-emerald-500" /> Sold Out
+          <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-[0.1em]">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" /> Outbound
           </div>
         </div>
       }
@@ -521,15 +547,16 @@ function LeaderboardRow({ row, i }) {
   );
 }
 
-function Leaderboard({ ranking }) {
+function Leaderboard({ ranking, showInsight }) {
   return (
     <AnalyticsCard
-      title="Sales Leaders"
-      subtitle="Top performing personnel"
-      topRight={<Trophy className="h-4 w-4 text-amber-500" />}
+      title="Sales Performance"
+      subtitle="Personnel volume ranking"
+      insight="Higher volume per person often indicates expertise. Consistency (stars) shows who maintains performance over time."
+      showInsight={showInsight}
       className="col-span-1 lg:col-span-2 xl:col-span-1"
     >
-      <div>
+      <div className="space-y-1">
         {ranking.slice(0, 5).map((row, i) => (
           <LeaderboardRow key={row.name || row.salesperson} row={row} i={i} />
         ))}
@@ -544,6 +571,7 @@ export default function AnalyticsDashboard() {
   const router = useRouter();
   const [adminAnalytics, setAdminAnalytics] = useState(null);
   const [analyticsRangeMonths, setAnalyticsRangeMonths] = useState(6);
+  const [showInsights, setShowInsights] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -609,23 +637,35 @@ export default function AnalyticsDashboard() {
             <ChevronRight className="h-3 w-3" />
             <span className="text-slate-900 dark:text-white">Analytics</span>
           </nav>
-          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Business Intelligence</h1>
-          {dispatchTrend.length >= 2 && (
-            <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 italic">
-              Current trend indicates a{' '}
-              <span className={`font-black ${overallTrend >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                {overallTrend >= 0 ? '+' : ''}{overallTrend.toFixed(1)}%
-              </span>{' '}
-              {overallTrend >= 0 ? 'increase' : 'decrease'} compared to the previous period.
-            </p>
-          )}
+          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">Business Logic</h1>
+          <div className="flex items-center gap-4 mt-2">
+            {dispatchTrend.length >= 2 && (
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                Warehouse activity is{' '}
+                <span className={`font-bold ${overallTrend >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                  {overallTrend >= 0 ? 'up' : 'down'} {Math.abs(overallTrend).toFixed(1)}%
+                </span>{' '}
+                this period.
+              </p>
+            )}
+            <button
+              onClick={() => setShowInsights(!showInsights)}
+              className={`flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${
+                showInsights 
+                ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' 
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              Analysis: {showInsights ? 'Active' : 'Off'}
+            </button>
+          </div>
         </div>
-        <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-900 p-1 self-start border border-slate-200 dark:border-slate-800">
+        <div className="inline-flex rounded-2xl bg-slate-100/50 dark:bg-slate-900/50 p-1 self-start border border-slate-200/40 dark:border-slate-800/40 backdrop-blur-sm">
           {[3, 6, 12].map((m) => (
             <button
               key={m}
               onClick={() => setAnalyticsRangeMonths(m)}
-              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${analyticsRangeMonths === m ? 'bg-white dark:bg-slate-800 text-brand-primary shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+              className={`px-5 py-2 text-[10px] font-black rounded-xl transition-all ${analyticsRangeMonths === m ? 'bg-white dark:bg-slate-800 text-brand-primary shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
             >
               {m}M
             </button>
@@ -633,41 +673,53 @@ export default function AnalyticsDashboard() {
         </div>
       </header>
 
-      <StockHealthScorecard data={divisionRisk} />
+      <StockHealthScorecard data={divisionRisk} showInsight={showInsights} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        <div className="col-span-1 lg:col-span-2 space-y-6">
-          <SalesRevenueChart data={dispatchTrend} />
-          <MonthlyCostVolumeChart data={dispatchTrend} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8">
+        <div className="col-span-1 lg:col-span-2 space-y-6 lg:space-y-8">
+          <SalesRevenueChart data={dispatchTrend} showInsight={showInsights} />
+          <MonthlyCostVolumeChart data={dispatchTrend} showInsight={showInsights} />
         </div>
-        <div className="col-span-1 space-y-6">
-          <TopDivisionsChart data={divisionRisk} />
-          <Leaderboard ranking={salespersonRanking} />
+        <div className="col-span-1 space-y-6 lg:space-y-8">
+          <TopDivisionsChart data={divisionRisk} showInsight={showInsights} />
+          <Leaderboard ranking={salespersonRanking} showInsight={showInsights} />
         </div>
       </div>
 
-      <AnalyticsCard title="At Risk Divisions" subtitle="Inventory threshold monitoring">
-        <div className="overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800">
+      <AnalyticsCard 
+        title="Stock Risk Inventory" 
+        subtitle="Divisions needing attention"
+        insight="Target 'Action Required' status first. These divisions have items critically below their safety reorder levels."
+        showInsight={showInsights}
+      >
+        <div className="overflow-x-auto rounded-3xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
           <table className="w-full text-left text-sm min-w-[600px]">
-            <thead className="bg-slate-50/50 dark:bg-slate-900/50">
-              <tr>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">Division</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 text-right">Healthy</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 text-right">At Risk</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 text-right">Action</th>
+            <thead>
+              <tr className="border-b border-slate-100 dark:border-slate-800">
+                <th className="px-6 py-4 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">Division Name</th>
+                <th className="px-6 py-4 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 text-right">Available</th>
+                <th className="px-6 py-4 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 text-right">Low Stock</th>
+                <th className="px-6 py-4 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 text-right">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+            <tbody className="divide-y divide-slate-50 dark:divide-slate-800/30">
               {divisionRisk.slice(0, 8).map((d) => {
-                const healthy = (d.total || 0) - (d.atRisk || 0);
-                const riskRatio = (d.atRisk || 0) / (d.total || 1);
+                const healthy = (d.total_items || 0) - (d.at_risk || 0);
+                const riskRatio = (d.at_risk || 0) / (d.total_items || 1);
+                const isCritical = riskRatio > 0.4;
+                
                 return (
-                  <tr key={d.division} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors">
-                    <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100">{d.division}</td>
-                    <td className="px-6 py-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">{formatCompactNumber(healthy)}</td>
-                    <td className="px-6 py-4 text-right font-mono font-bold text-amber-600 dark:text-amber-400">{formatCompactNumber(d.atRisk)}</td>
+                  <tr key={d.division} className="group hover:bg-slate-100/50 dark:hover:bg-slate-800/20 transition-colors">
+                    <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 text-xs">{d.division}</td>
+                    <td className="px-6 py-4 text-right font-mono text-emerald-600 dark:text-emerald-400 font-bold text-xs">{formatCompactNumber(healthy)}</td>
+                    <td className="px-6 py-4 text-right font-mono text-amber-600 dark:text-amber-400 font-bold text-xs">{formatCompactNumber(d.at_risk)}</td>
                     <td className="px-6 py-4 text-right">
-                      <span className={`inline-block w-2.5 h-2.5 rounded-full ring-4 ${riskRatio > 0.4 ? 'bg-rose-500 ring-rose-500/20 animate-pulse' : 'bg-emerald-500 ring-emerald-500/20'}`} />
+                      <div className="flex items-center justify-end gap-2 text-[10px] font-bold">
+                        <span className={isCritical ? 'text-rose-500' : 'text-emerald-500'}>
+                          {isCritical ? 'Action Required' : 'Stable'}
+                        </span>
+                        <span className={`inline-block w-2 h-2 rounded-full ring-4 ${isCritical ? 'bg-rose-500 ring-rose-500/10' : 'bg-emerald-500 ring-emerald-500/10'}`} />
+                      </div>
                     </td>
                   </tr>
                 );

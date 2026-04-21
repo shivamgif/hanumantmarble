@@ -20,9 +20,11 @@ export default function StockTopbar({
   runDashboardSearch,
   primaryModifierAriaLabel,
   primaryModifierLabel,
+  shiftModifierLabel,
   navigationItems,
   isActiveRoute,
 }) {
+
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200/30 bg-white/90 backdrop-blur-md dark:border-white/8 dark:bg-slate-950/90">
       <div className="mx-auto w-full max-w-[1600px]">
@@ -33,7 +35,7 @@ export default function StockTopbar({
             <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{tc.stockOpsApprovals}</p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <div className="relative flex items-center">
               <Search className="pointer-events-none absolute left-3 h-3.5 w-3.5 text-slate-400" />
               <input
@@ -52,10 +54,21 @@ export default function StockTopbar({
                 className="h-9 w-72 rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-sm text-slate-700 outline-none transition-all focus:border-[#E07A00]/40 focus:ring-2 focus:ring-[#E07A00]/15 dark:border-white/10 dark:bg-slate-900 dark:text-slate-200 dark:focus:border-[#E07A00]/30"
               />
             </div>
-            <div className="flex items-center gap-1" aria-label="Keyboard shortcuts">
-              <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-mono text-slate-400 dark:border-white/10 dark:bg-slate-900 dark:text-slate-500">{primaryModifierLabel}K</kbd>
-              <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-mono text-slate-400 dark:border-white/10 dark:bg-slate-900 dark:text-slate-500">⇧P</kbd>
-              <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-mono text-slate-400 dark:border-white/10 dark:bg-slate-900 dark:text-slate-500">⇧D</kbd>
+            {/* Improved keyboard shortcuts display */}
+            <div className="flex items-center gap-2" aria-label="Keyboard shortcuts">
+              <div className="flex items-center gap-1 group relative">
+                <kbd className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-mono text-slate-600 shadow-sm dark:border-white/10 dark:bg-slate-900 dark:text-slate-200">{primaryModifierLabel} K</kbd>
+                <span className="hidden group-hover:block absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-2 py-1 text-xs text-white shadow-lg">Quick Search</span>
+              </div>
+              <div className="flex items-center gap-1 group relative">
+                <kbd className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-mono text-slate-600 shadow-sm dark:border-white/10 dark:bg-slate-900 dark:text-slate-200">{primaryModifierLabel} {shiftModifierLabel} P</kbd>
+                <span className="hidden group-hover:block absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-2 py-1 text-xs text-white shadow-lg">Open Purchases</span>
+              </div>
+              <div className="flex items-center gap-1 group relative">
+                <kbd className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-mono text-slate-600 shadow-sm dark:border-white/10 dark:bg-slate-900 dark:text-slate-200">{primaryModifierLabel} {shiftModifierLabel} D</kbd>
+                <span className="hidden group-hover:block absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-2 py-1 text-xs text-white shadow-lg">Open Dispatches</span>
+              </div>
+              <span className="ml-2 text-xs text-slate-400 dark:text-slate-500">Shortcuts</span>
             </div>
           </div>
         </div>

@@ -30,15 +30,15 @@ export default function StockLayout({ children }) {
   const { resolvedTheme, setTheme } = useTheme();
   const pathname = usePathname();
   const router = useRouter();
-  
+
   const dashboardSearchRef = useRef(null);
   const [dashboardSearchValue, setDashboardSearchValue] = useState('');
-  
+
   const { accessLoading, hasResolvedAccessOnce, accessApproved, accessMessage, accessRole } = useStockAccess(user);
-  
+
   const notificationsState = useStockNotifications({ user, accessApproved });
   const { isApplePlatform } = useStockShortcuts({ dashboardSearchRef });
-  
+
   const t = (key) => getTranslation(`stock.layout.${key}`, language);
   const tc = {
     brandFull: language === 'hi' ? 'हनुमंत मार्बल' : 'Hanumant Marble',
@@ -71,9 +71,10 @@ export default function StockLayout({ children }) {
     open: language === 'hi' ? 'खोलें' : 'Open',
     searchHint: language === 'hi' ? 'खोजें या कमांड चलाएं…' : 'Search or run commands…',
   };
-  
+
   const isDarkTheme = resolvedTheme === 'dark';
-  const primaryModifierLabel = isApplePlatform ? 'CMD' : 'CTRL';
+  const primaryModifierLabel = isApplePlatform ? 'CMD + ' : 'Ctrl + ';
+  const shiftModifierLabel = isApplePlatform ? 'Shift +' : 'Shift + ';
   const primaryModifierAriaLabel = isApplePlatform ? 'Command' : 'Control';
   const isUnauthorizedError = error?.message === 'Unauthorized' || error?.status === 401;
 
@@ -263,10 +264,11 @@ export default function StockLayout({ children }) {
           runDashboardSearch={runDashboardSearch}
           primaryModifierAriaLabel={primaryModifierAriaLabel}
           primaryModifierLabel={primaryModifierLabel}
+          shiftModifierLabel={shiftModifierLabel}
           navigationItems={navigationItems}
           isActiveRoute={isActiveRoute}
         />
-        
+
         <main className="flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
           <div className="mx-auto w-full max-w-[1600px]">
             {children}

@@ -42,6 +42,16 @@
   100% { background-position: 0% 50%; }
 }
 
+@keyframes float-subtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes draw-path {
+  from { stroke-dashoffset: 1000; }
+  to { stroke-dashoffset: 0; }
+}
+
 @keyframes stock-tab-panel-enter {
   from {
     opacity: 0;
@@ -218,8 +228,25 @@
   }
 
   .card-shine:hover::after {
-    opacity: 1;
+    opacity: 0;
     transform: rotate(45deg) translate(50%, 50%);
+  }
+
+  /* Premium Analytics Utilities */
+  .glass-panel {
+    @apply backdrop-blur-md bg-[rgba(var(--bi-glass))] border border-[hsl(var(--bi-glass-border))] shadow-sm;
+  }
+
+  .industrial-gradient {
+    background: linear-gradient(135deg, hsl(var(--bi-navy)) 0%, hsl(var(--bi-slate)) 100%);
+  }
+
+  .orange-glow {
+    box-shadow: 0 0 20px -5px hsl(var(--bi-orange) / 0.4);
+  }
+
+  .text-tight {
+    letter-spacing: -0.025em;
   }
 }
  
@@ -255,6 +282,13 @@
     --ring: #e07a00;
  
     --radius: 0.5rem;
+
+    /* Industrial Dashboard Tokens */
+    --bi-navy: 240 52% 21%;
+    --bi-orange: 33 100% 44%;
+    --bi-slate: 215 25% 27%;
+    --bi-glass: 255 255 255 / 0.7;
+    --bi-glass-border: 214 32% 91%;
   }
  
   .dark {
@@ -286,6 +320,13 @@
     --destructive-foreground: #f8fafc;
  
     --ring: #e07a00;
+
+    /* Industrial Dashboard Tokens Dark */
+    --bi-navy: 240 52% 15%;
+    --bi-orange: 33 100% 50%;
+    --bi-slate: 215 25% 15%;
+    --bi-glass: 15 23 42 / 0.8;
+    --bi-glass-border: 217 33% 18%;
   }
 }
  

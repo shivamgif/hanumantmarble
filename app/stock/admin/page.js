@@ -16,7 +16,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowRightLeft, BarChart2, ChevronDown, Eye, EyeOff, PackageSearch, ShieldAlert, UsersRound } from 'lucide-react';
+import { ArrowRightLeft, BarChart2, ChevronDown, ChevronRight, Eye, EyeOff, PackageSearch, ShieldAlert, UsersRound } from 'lucide-react';
+
+function formatCompactNumber(value) {
+  return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(Number(value || 0));
+}
 
 function formatDateTime(value) {
   if (!value) {
@@ -155,6 +159,7 @@ export default function AdminDashboard() {
   const [dispatchPage, setDispatchPage] = useState(1);
   const [changeRequestPage, setChangeRequestPage] = useState(1);
   const [userPage, setUserPage] = useState(1);
+  const [showInsights, setShowInsights] = useState(true);
   const [changeRequests, setChangeRequests] = useState([]);
   const [highlightedChangeRequestId, setHighlightedChangeRequestId] = useState(null);
   const [processedDeepLink, setProcessedDeepLink] = useState('');
@@ -820,8 +825,30 @@ export default function AdminDashboard() {
   if (!data) return null;
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-4 lg:space-y-6">
-      <h1 className="text-xl font-bold text-foreground lg:text-2xl">{t('adminTitle')}</h1>
+    <div className="mx-auto max-w-[1600px] space-y-6 lg:space-y-8 animate-fade-in font-sans" style={{ fontFamily: 'Inter, sans-serif' }}>
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <nav className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 mb-2">
+            <span className="text-slate-900 dark:text-white">{t('adminTitle')}</span>
+          </nav>
+          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">Intelligence Hub</h1>
+          <div className="flex items-center gap-4 mt-2">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+              Operational oversight and system management logic.
+            </p>
+            <button
+              onClick={() => setShowInsights(!showInsights)}
+              className={`flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${
+                showInsights 
+                ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' 
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              Analysis: {showInsights ? 'Active' : 'Off'}
+            </button>
+          </div>
+        </div>
+      </header>
 
       {actionNotice ? (
         <div
@@ -840,36 +867,36 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <div className={`${CLASSES.heroGrid} xl:col-span-2`}>
-          {summaryTiles.map((stat) => (
-            <Link
-              key={stat.label}
-              href={stat.href}
-              className={`${CLASSES.heroCard} ${CLASSES.actionButton}`}
-            >
-              <div className="flex items-start justify-between">
-                <p className={`${CLASSES.heroLabel} min-w-0 truncate`}>{stat.label}</p>
-                <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${stat.iconAccent || 'bg-[#E07A00]/10 text-[#E07A00]'}`}>
-                  <stat.icon className="h-4 w-4" />
-                </span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+        {summaryTiles.map((stat, i) => (
+          <div key={stat.label} className="rounded-3xl border border-slate-200/60 bg-white/80 backdrop-blur-sm p-6 shadow-sm dark:bg-slate-900/80 dark:border-slate-800/60 transition-all group overflow-hidden relative">
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">{stat.label}</span>
+                <div className={`w-2 h-2 rounded-full ${stat.trend > 0 ? 'bg-emerald-500' : 'bg-brand-primary'}`} />
               </div>
-              <p className={`${CLASSES.heroValue} font-mono`}>{stat.value}</p>
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                {stat.subMetrics.map((item) => (
-                  <span key={`${stat.label}-${item.label}`} className="inline-flex min-w-0 items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
-                    <span>{item.label}</span>
-                    <span className="font-mono text-slate-700 dark:text-slate-200">{item.value}</span>
-                  </span>
+              <div className="text-4xl font-extrabold font-mono tracking-tighter text-slate-900 dark:text-slate-100">{formatCompactNumber(stat.value)}</div>
+              
+              <div className="mt-4 flex items-center gap-4 border-t border-slate-50 dark:border-slate-800 pt-3">
+                {stat.subMetrics.map((sm) => (
+                  <div key={sm.label} className="flex flex-col">
+                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">{sm.label}</span>
+                    <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">{formatCompactNumber(sm.value)}</span>
+                  </div>
                 ))}
-                <span className={`${CLASSES.heroBadgeBase} shrink-0 ${stat.trend > 0 ? 'bg-[#E07A00]/10 text-[#E07A00]' : 'bg-[#1A1A54]/10 text-[#1A1A54] dark:bg-[#1A1A54]/20 dark:text-slate-100'}`}>
-                  {stat.trend > 0 ? 'Up' : 'Down'}
-                </span>
               </div>
-            </Link>
-          ))}
-        </div>
 
+              {showInsights && (
+                <p className="mt-4 text-[10px] leading-relaxed text-slate-500 dark:text-slate-400 italic animate-slide-up bg-slate-50 dark:bg-slate-800/40 p-2 rounded-xl">
+                  {i === 0 ? "Monitors active users and pending onboarding requests." :
+                   i === 1 ? "Critical queue representing items awaiting administrative sign-off." :
+                   i === 2 ? "High-level summary of physical units currently in warehouse custody." :
+                   "Calculated flow differential between arrivals and dispatches."}
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
 
       <Link
@@ -888,67 +915,73 @@ export default function AdminDashboard() {
         <span className="text-xs font-semibold text-[#E07A00]">View →</span>
       </Link>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-        <div className="rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4 xl:col-span-2">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground">{ta.operationalAlerts}</h3>
-            <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:gap-8">
+        <div className="rounded-3xl border border-slate-200/60 bg-white/80 backdrop-blur-sm p-5 pb-6 shadow-sm dark:bg-slate-900/80 dark:border-slate-800/60 lg:col-span-2">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 underline decoration-brand-primary/30 underline-offset-4">{ta.operationalAlerts}</h3>
+            <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-slate-500">
               {operationalAlerts.length || 0} {ta.active}
             </span>
           </div>
           {operationalAlerts.length ? (
-            <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+            <div className="space-y-3">
               {operationalAlerts.map((alert) => (
                 <Link
                   key={alert.title}
                   href={alert.href}
-                  className={`block rounded-xl border px-3 py-2 transition hover:-translate-y-0.5 hover:shadow-sm ${
+                  className={`block rounded-2xl border px-4 py-3 transition-all hover:scale-[1.02] ${
                     alert.level === 'critical'
-                      ? 'border-rose-200 bg-rose-50/80 text-rose-800'
+                      ? 'border-rose-200 bg-rose-50/50 text-rose-800 dark:border-rose-500/20 dark:bg-rose-500/5 dark:text-rose-400'
                       : alert.level === 'warning'
-                        ? 'border-amber-200 bg-amber-50/80 text-amber-800'
-                        : 'border-sky-200 bg-sky-50/80 text-sky-800'
+                        ? 'border-amber-200 bg-amber-50/50 text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/5 dark:text-amber-400'
+                        : 'border-sky-200 bg-sky-50/50 text-sky-800 dark:border-sky-500/20 dark:bg-sky-500/5 dark:text-sky-400'
                   }`}
                 >
-                  <p className="text-sm font-semibold">{alert.title}</p>
-                  <p className="mt-1 text-xs opacity-80">{alert.message}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-bold tracking-tight">{alert.title}</p>
+                    <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
+                  </div>
+                  <p className="mt-1 text-[11px] leading-relaxed opacity-75 font-medium">{alert.message}</p>
                 </Link>
               ))}
             </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-emerald-200 bg-emerald-50/60 px-3 py-4 text-sm text-emerald-700">
-              All clear. No critical alerts right now.
+            <div className="rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/30 px-4 py-6 text-center">
+              <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest italic">All systems clear</p>
             </div>
           )}
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4 xl:col-span-3">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground">{ta.recentActivity}</h3>
-            <span className="text-xs text-muted-foreground">{ta.liveOpsSnapshot}</span>
+        <div className="rounded-3xl border border-slate-200/60 bg-white/80 backdrop-blur-sm p-5 pb-6 shadow-sm dark:bg-slate-900/80 dark:border-slate-800/60 lg:col-span-3">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 underline decoration-brand-secondary/30 underline-offset-4">{ta.recentActivity}</h3>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{ta.liveOpsSnapshot}</span>
           </div>
           {recentActivity.length ? (
-            <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+            <div className="space-y-2">
               {recentActivity.map((event) => (
                 <Link
                   key={event.id}
                   href={event.href}
-                  className="flex items-start justify-between gap-3 rounded-xl border border-border/80 bg-muted/20 px-3 py-2 transition hover:border-primary/30 hover:bg-primary/5"
+                  className="flex items-center justify-between gap-4 p-3 rounded-2xl border border-transparent hover:border-slate-100 hover:bg-slate-50 dark:hover:border-slate-800 dark:hover:bg-slate-800/40 transition-all group"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground">{event.title}</p>
-                    <p className="truncate text-xs text-muted-foreground">{event.subtitle}</p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">By {event.by} • {formatDateTime(event.at)}</p>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-brand-primary transition-colors">{event.title}</p>
+                    <p className="truncate text-[10px] font-medium text-slate-500 uppercase tracking-wide mt-0.5">{event.subtitle}</p>
+                    <p className="mt-1 text-[10px] text-slate-400 font-medium">By {event.by} • {formatDateTime(event.at)}</p>
                   </div>
-                  <span className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${event.kind === 'arrival' ? 'bg-[#E07A00]/10 text-[#E07A00]' : 'bg-[#1A1A54]/10 text-[#1A1A54] dark:bg-[#1A1A54]/20 dark:text-slate-100'}`}>
-                    {event.status || event.kind}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest ${event.kind === 'arrival' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-brand-primary/10 text-brand-primary'}`}>
+                      {event.status || event.kind}
+                    </span>
+                    <ChevronRight className="h-3 w-3 text-slate-300 group-hover:text-slate-500 transition-colors" />
+                  </div>
                 </Link>
               ))}
             </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
-              No activity recorded yet.
+            <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-center">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest italic">No recent log entries</p>
             </div>
           )}
         </div>
@@ -1260,7 +1293,7 @@ export default function AdminDashboard() {
                   placeholder="10-digit phone"
                 />
               </label>
-            </div>
+          </div>
             <div className="grid gap-4 md:grid-cols-2">
               <label>
                 <Label className={FORM_LABEL_CLASS}>{t('email')}</Label>
@@ -1310,16 +1343,16 @@ export default function AdminDashboard() {
                     placeholder="12+ chars, 3 of 4 types"
                     minLength={12}
                   />
-                  <button
-                    type="button"
+          <button
+            type="button"
                     onClick={() => setShowPrimaryPassword((current) => !current)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
                     aria-label={showPrimaryPassword ? 'Hide password' : 'Show password'}
                     aria-pressed={showPrimaryPassword}
                   >
                     {showPrimaryPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
+          </button>
+        </div>
                 <p className="mt-1 text-xs text-muted-foreground">Use at least 12 characters and include 3 of 4 types: lowercase, uppercase, number, and symbol.</p>
               </label>
               <label className={FORM_PANEL_CLASS}>
@@ -1420,7 +1453,7 @@ export default function AdminDashboard() {
                         <span className="relative flex h-2 w-2">
                           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                           <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                        </span>
+                      </span>
                       ) : (
                         <span className="inline-flex h-2 w-2 rounded-full bg-rose-500" />
                       )}
