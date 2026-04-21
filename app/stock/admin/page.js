@@ -226,6 +226,34 @@ export default function AdminDashboard() {
     },
   });
 
+  const [resetPasswordModal, setResetPasswordModal] = useState({ open: false, email: '', newPassword: '', confirm: '', loading: false, error: null, success: false });
+
+  async function handleResetPassword() {
+    const { email, newPassword, confirm } = resetPasswordModal;
+    const passwordError = validateStockPassword(newPassword);
+    if (passwordError) {
+      setResetPasswordModal((s) => ({ ...s, error: passwordError }));
+      return;
+    }
+    if (newPassword !== confirm) {
+      setResetPasswordModal((s) => ({ ...s, error: 'Passwords do not match.' }));
+      return;
+    }
+    setResetPasswordModal((s) => ({ ...s, loading: true, error: null }));
+    try {
+      const response = await fetch('/api/stock/users/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, newPassword }),
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || 'Failed to reset password');
+      setResetPasswordModal((s) => ({ ...s, loading: false, success: true }));
+    } catch (err) {
+      setResetPasswordModal((s) => ({ ...s, loading: false, error: err.message }));
+    }
+  }
+
   useEffect(() => {
     let mounted = true;
     async function loadData() {
@@ -1830,6 +1858,15 @@ export default function AdminDashboard() {
                             Suspend Identity
                           </button>
                         </div>
+                        <div className="mt-3">
+                          <button
+                            type="button"
+                            onClick={() => setResetPasswordModal({ open: true, email: previewState.record?.email || '', newPassword: '', confirm: '', loading: false, error: null, success: false })}
+                            className="w-full py-3 rounded-xl bg-slate-700 text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-600"
+                          >
+                            Reset Password
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ),
@@ -1900,6 +1937,74 @@ export default function AdminDashboard() {
               ]
         }
       />
+
+      {resetPasswordModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 shadow-2xl">
+            <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-slate-100 mb-1">Reset Password</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">{resetPasswordModal.email}</p>
+
+            {resetPasswordModal.success ? (
+              <div className="space-y-4">
+                <p className="text-xs font-bold text-emerald-600">Password reset successfully. The user can now sign in with the new password.</p>
+                <button
+                  type="button"
+                  onClick={() => setResetPasswordModal((s) => ({ ...s, open: false }))}
+                  className="w-full py-3 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest"
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1">New Password</label>
+                  <input
+                    type="password"
+                    value={resetPasswordModal.newPassword}
+                    onChange={(e) => setResetPasswordModal((s) => ({ ...s, newPassword: e.target.value, error: null }))}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                    placeholder="Min 8 characters"
+                    disabled={resetPasswordModal.loading}
+                  />
+                </div>
+                <div>
+                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1">Confirm Password</label>
+                  <input
+                    type="password"
+                    value={resetPasswordModal.confirm}
+                    onChange={(e) => setResetPasswordModal((s) => ({ ...s, confirm: e.target.value, error: null }))}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                    placeholder="Repeat password"
+                    disabled={resetPasswordModal.loading}
+                  />
+                </div>
+                {resetPasswordModal.error && (
+                  <p className="text-xs font-bold text-red-500">{resetPasswordModal.error}</p>
+                )}
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setResetPasswordModal((s) => ({ ...s, open: false }))}
+                    disabled={resetPasswordModal.loading}
+                    className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResetPassword}
+                    disabled={resetPasswordModal.loading || !resetPasswordModal.newPassword}
+                    className="flex-1 py-3 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+                  >
+                    {resetPasswordModal.loading ? 'Saving…' : 'Set Password'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
