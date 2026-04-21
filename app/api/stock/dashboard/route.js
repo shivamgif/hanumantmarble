@@ -39,6 +39,8 @@ export async function GET(request) {
            d.name AS division_name,
            s.label AS size_label,
            s.unit AS size_unit,
+           s.width_mm,
+           s.length_mm,
            (SELECT isi.hsn_code FROM stock_inbound_shipment_items isi
               WHERE isi.item_id = i.id AND isi.hsn_code IS NOT NULL
               ORDER BY isi.id DESC LIMIT 1) AS hsn_code,

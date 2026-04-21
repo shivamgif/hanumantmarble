@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useMemo } from 'react';
-import { Boxes, CreditCard, Plus, Send, Truck, ChevronRight } from 'lucide-react';
+import { Boxes, CreditCard, Plus, Send, Truck, ChevronRight, X } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,7 +16,7 @@ import {
 } from './stock-form-fields';
 import { FORM_CARD_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS } from '../lib/stock-utils';
 
-const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control, activeItems, itemOptions, t, tc, language, userRole }) {
+const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control, activeItems, itemOptions, t, tc, language, userRole, totalItems, onRemoveItem }) {
   const canEditReturns = ['admin', 'manager'].includes(userRole);
 
   return (
@@ -26,6 +26,16 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
           <span className="h-1.5 w-1.5 rounded-full bg-brand-primary animate-pulse" />
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-100">{tc.itemLabel} {index + 1}</span>
         </div>
+        {totalItems > 1 && (
+          <button
+            type="button"
+            onClick={() => onRemoveItem(index)}
+            className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+            title="Remove item"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
       <div className="p-4 space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
@@ -148,6 +158,8 @@ export function DispatchFormContent({
                   tc={tc}
                   language={language}
                   userRole={userRole}
+                  totalItems={itemsFieldArray.fields.length}
+                  onRemoveItem={(i) => itemsFieldArray.remove(i)}
                 />
               ))}
             </div>

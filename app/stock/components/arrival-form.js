@@ -1,10 +1,11 @@
 'use client';
 
 import { memo, useMemo } from 'react';
-import { Boxes, FileText, Plus, ReceiptText, Sparkles, Truck, ChevronRight } from 'lucide-react';
+import { Boxes, FileText, Plus, ReceiptText, Sparkles, Truck, ChevronRight, X } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AttachmentField,
   FormSectionTitle,
@@ -17,7 +18,7 @@ import {
 } from './stock-form-fields';
 import { FORM_CARD_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS, parseSizeLabelSqm, round3, toNumber } from '../lib/stock-utils';
 
-const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, item, activeItems, itemNames, onItemNameChange, t, tc, language }) {
+const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, item, activeItems, itemNames, onItemNameChange, t, tc, language, totalItems, onRemoveItem }) {
   const isCatalogItem = Boolean(item?.itemId);
   const _sizeSqm = parseSizeLabelSqm(item?.sizeLabel);
   const _piecesPerBox = toNumber(item?.piecesPerBox);
@@ -36,9 +37,21 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
           <span className="h-1.5 w-1.5 rounded-full bg-brand-primary animate-pulse" />
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-100">{tc.itemLabel} {index + 1}</span>
         </div>
-        <span className={`rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-widest shadow-sm ${isCatalogItem ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400' : 'border-amber-500/20 bg-amber-500/10 text-amber-400'}`}>
-          {isCatalogItem ? tc.autofilledCatalog : tc.newTileEntry}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-widest shadow-sm ${isCatalogItem ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400' : 'border-amber-500/20 bg-amber-500/10 text-amber-400'}`}>
+            {isCatalogItem ? tc.autofilledCatalog : tc.newTileEntry}
+          </span>
+          {totalItems > 1 && (
+            <button
+              type="button"
+              onClick={() => onRemoveItem(index)}
+              className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+              title="Remove item"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
       <div className="p-4 space-y-5">
         <div className="grid gap-5 md:grid-cols-2">
@@ -89,9 +102,75 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StockFormField control={control} name={`items.${index}.brandName`} label={tc.brand} placeholder={tc.brand} disabled={isCatalogItem} list="sg-brandName" />
-            <StockFormField control={control} name={`items.${index}.divisionName`} label={tc.division} placeholder={tc.division} list="sg-divisionName" disabled={isCatalogItem} />
-            <StockFormField control={control} name={`items.${index}.finish`} label={tc.finish} placeholder={tc.finish} disabled={isCatalogItem} list="sg-finish" />
-            <StockFormField control={control} name={`items.${index}.grade`} label={tc.quality} placeholder="Premium / Standard" disabled={isCatalogItem} list="sg-grade" />
+            <FormField
+              control={control}
+              name={`items.${index}.divisionName`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className={FORM_LABEL_CLASS}>{tc.division}</FormLabel>
+                  <FormControl>
+                    <Select value={field.value || ''} onValueChange={field.onChange} disabled={isCatalogItem}>
+                      <SelectTrigger className={FORM_INPUT_CLASS}>
+                        <SelectValue placeholder={tc.division} />
+                      </SelectTrigger>
+                      <SelectContent className="glass-panel">
+                        <SelectItem value="Ceramic">Ceramic</SelectItem>
+                        <SelectItem value="Eternity (GVT)">Eternity (GVT)</SelectItem>
+                        <SelectItem value="Vitronite (PVT)">Vitronite (PVT)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage className="text-xs" />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={control}
+              name={`items.${index}.finish`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className={FORM_LABEL_CLASS}>{tc.finish}</FormLabel>
+                  <FormControl>
+                    <Select value={field.value || ''} onValueChange={field.onChange} disabled={isCatalogItem}>
+                      <SelectTrigger className={FORM_INPUT_CLASS}>
+                        <SelectValue placeholder={tc.finish} />
+                      </SelectTrigger>
+                      <SelectContent className="glass-panel">
+                        <SelectItem value="Polished">Polished</SelectItem>
+                        <SelectItem value="Vitrified">Vitrified</SelectItem>
+                        <SelectItem value="Matte">Matte</SelectItem>
+                        <SelectItem value="Satin">Satin</SelectItem>
+                        <SelectItem value="Carving">Carving</SelectItem>
+                        <SelectItem value="High-gloss">High-gloss</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage className="text-xs" />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={control}
+              name={`items.${index}.grade`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className={FORM_LABEL_CLASS}>{tc.quality}</FormLabel>
+                  <FormControl>
+                    <Select value={field.value || ''} onValueChange={field.onChange} disabled={isCatalogItem}>
+                      <SelectTrigger className={FORM_INPUT_CLASS}>
+                        <SelectValue placeholder={tc.quality} />
+                      </SelectTrigger>
+                      <SelectContent className="glass-panel">
+                        <SelectItem value="Premium">Premium</SelectItem>
+                        <SelectItem value="Standard">Standard</SelectItem>
+                        <SelectItem value="Commercial">Commercial</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage className="text-xs" />
+                </FormItem>
+              )}
+            />
             <StockFormField control={control} name={`items.${index}.sizeWidthMm`} label={`${tc.width} (${tc.mm})`} type="number" placeholder="800" min="0" step="0.01" disabled={isCatalogItem} />
             <StockFormField control={control} name={`items.${index}.sizeLengthMm`} label={`${tc.length} (${tc.mm})`} type="number" placeholder="800" min="0" step="0.01" disabled={isCatalogItem} />
             <StockFormField control={control} name={`items.${index}.piecesPerBox`} label={tc.piecesPerBox} type="number" placeholder="2" min="0" disabled={isCatalogItem} />
@@ -196,6 +275,8 @@ export function ArrivalFormContent({
                 t={t}
                 tc={tc}
                 language={language}
+                totalItems={itemsFieldArray.fields.length}
+                onRemoveItem={(i) => itemsFieldArray.remove(i)}
               />
             ))}
           </div>

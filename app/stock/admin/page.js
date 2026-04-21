@@ -1823,7 +1823,6 @@ export default function AdminDashboard() {
                           { label: 'Full Name', value: previewState.record?.full_name, isBold: true },
                           { label: 'Email Address', value: previewState.record?.email },
                           { label: 'Primary Contact', value: previewState.record?.phone_number },
-                          { label: 'System Role', value: previewState.record?.role },
                           { label: 'Department', value: previewState.record?.department || 'General' },
                           { label: 'Status', value: previewState.record?.is_active ? 'Active Identity' : 'Suspended' },
                         ].map((item) => (
@@ -1835,6 +1834,109 @@ export default function AdminDashboard() {
                           </div>
                         ))}
                       </div>
+
+                      <div className="p-6 rounded-3xl border border-slate-200/60 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/20">
+                        <div className="flex items-center gap-3 mb-6">
+                          <ShieldCheck className="h-5 w-5 text-brand-primary" />
+                          <h4 className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Permissions & Role Configuration</h4>
+                        </div>
+                        <form onSubmit={(e) => {
+                          e.preventDefault();
+                          handleUpdateUser(
+                            previewState.record?.id,
+                            {
+                              role: previewUserForm.watch('role'),
+                              canManageUsers: previewUserForm.watch('canManageUsers'),
+                              canApproveChanges: previewUserForm.watch('canApproveChanges'),
+                              canViewDashboard: previewUserForm.watch('canViewDashboard'),
+                            },
+                            'User permissions updated successfully.'
+                          );
+                        }} className="space-y-6">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                              <Label className={FORM_LABEL_CLASS}>System Role</Label>
+                              <Select
+                                value={previewUserForm.watch('role') || 'stock_maintainer'}
+                                onValueChange={(value) => previewUserForm.setValue('role', value, { shouldDirty: true })}
+                              >
+                                <SelectTrigger className="h-11 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="stock_maintainer">Stock Maintainer</SelectItem>
+                                  <SelectItem value="salesperson">Salesperson</SelectItem>
+                                  <SelectItem value="manager">Manager</SelectItem>
+                                  <SelectItem value="admin">Admin</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          <div className="space-y-4">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Permission Flags</p>
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
+                                <Checkbox
+                                  checked={previewUserForm.watch('canViewDashboard') || false}
+                                  onChange={(e) => previewUserForm.setValue('canViewDashboard', e.target.checked, { shouldDirty: true })}
+                                  id="dashboard-flag"
+                                />
+                                <label htmlFor="dashboard-flag" className="flex-1 cursor-pointer">
+                                  <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Can See Dashboard</p>
+                                  <p className="text-[9px] text-slate-500 dark:text-slate-400">Access to analytics and dashboard features</p>
+                                </label>
+                              </div>
+                              <div className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
+                                <Checkbox
+                                  checked={previewUserForm.watch('canManageUsers') || false}
+                                  onChange={(e) => previewUserForm.setValue('canManageUsers', e.target.checked, { shouldDirty: true })}
+                                  id="manage-users-flag"
+                                />
+                                <label htmlFor="manage-users-flag" className="flex-1 cursor-pointer">
+                                  <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Can Manage Users</p>
+                                  <p className="text-[9px] text-slate-500 dark:text-slate-400">Create, edit, and manage user accounts</p>
+                                </label>
+                              </div>
+                              <div className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
+                                <Checkbox
+                                  checked={previewUserForm.watch('canApproveChanges') || false}
+                                  onChange={(e) => previewUserForm.setValue('canApproveChanges', e.target.checked, { shouldDirty: true })}
+                                  id="approve-changes-flag"
+                                />
+                                <label htmlFor="approve-changes-flag" className="flex-1 cursor-pointer">
+                                  <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Can Approve Changes</p>
+                                  <p className="text-[9px] text-slate-500 dark:text-slate-400">Approve shipments and change requests</p>
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/50">
+                            <button
+                              type="submit"
+                              disabled={actionLoading === `user-${previewState.record?.id}-update`}
+                              className="flex-1 py-3 rounded-xl bg-brand-primary text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-50 hover:brightness-110 transition-all"
+                            >
+                              {actionLoading === `user-${previewState.record?.id}-update` ? 'Saving...' : 'Save Permissions'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => previewUserForm.reset({
+                                role: previewState.record?.role || 'stock_maintainer',
+                                status: previewState.record?.status || 'active',
+                                canManageUsers: Boolean(previewState.record?.can_manage_users),
+                                canApproveChanges: Boolean(previewState.record?.can_approve_changes),
+                                canViewDashboard: Boolean(previewState.record?.can_view_dashboard),
+                              })}
+                              className="px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-300 text-[10px] font-black uppercase tracking-widest transition-all"
+                            >
+                              Reset
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+
                       <div className="p-6 rounded-3xl border border-brand-primary/20 bg-brand-primary/5">
                         <div className="flex items-center gap-3 mb-4">
                           <ShieldCheck className="h-5 w-5 text-brand-primary" />
