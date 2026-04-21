@@ -952,7 +952,6 @@ export default function StockDashboard() {
           </p>
         </div>
       </header>
-      <StockStatsGrid stats={stockStats} language={language} t={t} />
 
 
       <div className="rounded-[1.75rem] border border-slate-200/60 bg-slate-100/30 p-1.5 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/30">
