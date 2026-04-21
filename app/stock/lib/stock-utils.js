@@ -209,40 +209,46 @@ export function getSortedRows(rows, sortState, accessors) {
   return sortedRows;
 }
 
-export const FORM_LABEL_CLASS = 'block text-[11px] font-semibold uppercase tracking-[0.08em] text-foreground/70';
-export const FORM_INPUT_CLASS = 'mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary/50 focus:ring-2 focus:ring-primary/15';
-export const FORM_CARD_CLASS = 'rounded-xl border border-border/70 bg-muted/15 p-4';
+export const FORM_LABEL_CLASS = 'block text-[10px] font-black uppercase tracking-[0.2em] text-foreground/40 mb-1.5';
+export const FORM_INPUT_CLASS = 'w-full rounded-xl border border-border/60 bg-background/50 px-3.5 py-2.5 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10 backdrop-blur-sm';
+export const FORM_CARD_CLASS = 'glass-panel rounded-2xl p-4 sm:p-5 border border-white/5 shadow-xl transition-all duration-300';
 
 export const CLASSES = {
-  contentWrap: 'mx-auto w-full max-w-[1600px] space-y-5',
-  topCard: 'rounded-xl border border-slate-200/70 bg-white p-4 dark:border-slate-700/70 dark:bg-slate-900',
-  interactiveCard: 'rounded-xl border border-slate-200/70 bg-white dark:border-slate-700/70 dark:bg-slate-900',
+  contentWrap: 'mx-auto w-full max-w-[1600px] space-y-4 sm:space-y-6',
+  topCard: 'glass-panel rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-10',
+  interactiveCard: 'glass-panel rounded-2xl sm:rounded-3xl transition-all duration-300 hover:shadow-lg',
+  card: 'glass-panel rounded-3xl sm:rounded-[2rem] p-5 sm:p-6 lg:p-8 transition-all duration-500 hover:shadow-xl group/card',
+  cardCompact: 'glass-panel rounded-2xl sm:rounded-3xl p-3 sm:p-4 lg:p-6 transition-all duration-300 hover:shadow-md group/card',
+  title: 'text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 group-hover/card:text-brand-primary transition-colors',
+  grid: 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3',
+  heroGrid: 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6',
   statGrid: 'grid grid-cols-2 gap-3 lg:grid-cols-4',
-  statCard: 'min-w-0 rounded-xl border border-slate-200/70 bg-white p-4 will-change-transform transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-slate-300/80 sm:p-5 dark:border-slate-700/70 dark:bg-slate-900 dark:hover:border-slate-600',
-  statLabel: 'text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400',
-  statValue: 'mt-1.5 text-2xl font-bold text-slate-900 sm:text-3xl dark:text-white',
+  statCard: 'min-w-0 glass-panel rounded-2xl p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md sm:p-5',
+  statLabel: 'text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400',
+  statValue: 'mt-1.5 text-2xl font-black text-slate-900 sm:text-3xl dark:text-white leading-none tracking-tighter',
   iconButton: 'h-8 w-8 rounded-lg hover:bg-slate-100 transition-colors active:scale-95 dark:hover:bg-slate-800',
+  mobileScroll: 'flex overflow-x-auto no-scrollbar gap-2 pb-2',
 };
 
 export const INVOICE_CLASSES = {
-  surface: 'rounded-2xl border border-slate-200/70 bg-white dark:border-slate-800 dark:bg-slate-950',
-  commandCard: 'rounded-2xl border border-slate-200/80 bg-white p-4 m-4 shadow-sm dark:border-slate-800 dark:bg-slate-950',
-  supplierTitle: 'text-xl font-bold text-slate-900 dark:text-white',
-  supplierMeta: 'mt-1 text-xs text-slate-500 dark:text-slate-400',
-  logisticsGrid: 'grid grid-cols-2 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800',
-  logisticsCell: 'border-b border-r border-slate-200 bg-slate-50/50 p-3 last:border-r-0 dark:border-slate-800 dark:bg-slate-900/50',
-  logisticsLabel: 'flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400',
-  logisticsValue: 'mt-1 text-sm font-mono font-semibold text-slate-900 dark:text-slate-100',
-  subBar: 'flex flex-wrap gap-6 rounded-lg bg-slate-100 px-4 py-2 text-[10px] font-mono text-slate-500 dark:bg-slate-800/50 dark:text-slate-300',
-  tableWrap: 'overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800',
-  tableHead: 'bg-slate-900 text-white text-[10px] uppercase tracking-widest',
-  tableHeadCell: 'px-4 py-3 font-semibold',
-  tableRow: 'border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900/40',
-  tableCell: 'px-4 py-3 text-sm text-slate-700 dark:text-slate-200',
-  monoCell: 'font-mono text-sm text-slate-800 dark:text-slate-100',
-  mobileGrid: '',
-  mobileCard: 'rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950',
-  mobileCardHeader: 'rounded-lg bg-slate-900 px-2.5 py-1.5 text-[10px] uppercase tracking-[0.14em] text-white',
-  mobileKey: 'text-[10px] uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400',
-  mobileValue: 'font-mono text-xs text-slate-900 dark:text-slate-100',
+  surface: 'glass-panel rounded-2xl sm:rounded-3xl border border-white/5 shadow-2xl overflow-hidden',
+  commandCard: 'glass-panel rounded-2xl border border-white/10 bg-white/5 p-5 m-4 shadow-xl backdrop-blur-md',
+  supplierTitle: 'text-2xl font-black text-slate-900 dark:text-white tracking-tighter',
+  supplierMeta: 'mt-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 opacity-70',
+  logisticsGrid: 'grid grid-cols-2 overflow-hidden rounded-2xl border border-white/10 shadow-inner',
+  logisticsCell: 'border-b border-r border-white/5 bg-white/5 p-4 last:border-r-0 dark:bg-slate-900/40',
+  logisticsLabel: 'flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-brand-primary opacity-80',
+  logisticsValue: 'mt-2 text-sm font-black tracking-tight text-slate-900 dark:text-slate-100',
+  subBar: 'flex flex-wrap gap-6 rounded-xl bg-slate-900 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-300 shadow-lg',
+  tableWrap: 'overflow-hidden rounded-2xl border border-white/10 shadow-xl',
+  tableHead: 'bg-slate-900 text-white text-[9px] font-black uppercase tracking-[0.25em]',
+  tableHeadCell: 'px-5 py-4',
+  tableRow: 'border-b border-white/5 hover:bg-slate-500/5 transition-colors duration-300',
+  tableCell: 'px-5 py-4 text-sm font-medium text-slate-700 dark:text-slate-200',
+  monoCell: 'font-mono text-sm font-bold text-slate-800 dark:text-slate-100',
+  mobileGrid: 'space-y-4',
+  mobileCard: 'glass-panel rounded-2xl border border-white/10 p-5 shadow-lg relative overflow-hidden group',
+  mobileCardHeader: 'absolute top-0 right-0 rounded-bl-xl bg-slate-900 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-white shadow-xl',
+  mobileKey: 'text-[9px] font-black uppercase tracking-[0.15em] text-slate-500/60',
+  mobileValue: 'mt-1 text-[11px] font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight',
 };

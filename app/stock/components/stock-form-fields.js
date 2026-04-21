@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { UploadCloud } from 'lucide-react';
+import { UploadCloud, ChevronRight } from 'lucide-react';
 import {
   Form,
   FormControl,
@@ -21,33 +21,37 @@ export function InlineNotice({ notice }) {
 
   const toneClasses =
     notice.type === 'error'
-      ? 'border-red-200 bg-red-50 text-red-700'
+      ? 'border-red-200/50 bg-red-500/10 text-red-600 dark:text-red-400'
       : notice.type === 'warning'
-        ? 'border-amber-200 bg-amber-50 text-amber-800'
-        : 'border-emerald-200 bg-emerald-50 text-emerald-700';
+        ? 'border-amber-200/50 bg-amber-500/10 text-amber-700 dark:text-amber-400'
+        : 'border-emerald-200/50 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400';
 
-  return <div className={`rounded-lg border px-3 py-2 text-sm ${toneClasses}`}>{notice.message}</div>;
+  return (
+    <div className={`flex items-start gap-2.5 rounded-2xl border px-4 py-3.5 text-[11px] font-bold leading-relaxed shadow-sm animate-scale-in ${toneClasses}`}>
+      <span className="mt-0.5 inline-block shrink-0 h-1.5 w-1.5 rounded-full bg-current opacity-80" />
+      {notice.message}
+    </div>
+  );
 }
 
 export function AttachmentField({ label, accept = 'image/*,.pdf', onChange, file, hint }) {
   return (
-    <label className="block cursor-pointer">
-      <span className={`${FORM_LABEL_CLASS} mb-2 flex items-center gap-2`}>{label}</span>
+    <label className="block cursor-pointer min-w-0">
+      <span className={FORM_LABEL_CLASS}>{label}</span>
       <input
         type="file"
         accept={accept}
         className="sr-only"
         onChange={(event) => onChange(event.target.files?.[0] || null)}
       />
-      <div className="rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-4 transition hover:border-primary/50 hover:bg-primary/10">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-background text-primary shadow-sm">
-            <UploadCloud className="h-5 w-5" />
+      <div className="glass-panel group rounded-2xl border border-white/5 bg-primary/5 p-3.5 sm:p-4 transition-all duration-300 hover:bg-primary/10 hover:shadow-lg active:scale-[0.98] min-w-0">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-slate-800 text-primary shadow-sm group-hover:scale-110 transition-transform duration-500">
+            <UploadCloud className="h-5 w-5 sm:h-6 sm:w-6" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold text-foreground">{file ? 'Replace file' : 'Choose file'}</div>
-            <div className="mt-1 text-[11px] text-muted-foreground">{hint || 'Attach a photo or PDF.'}</div>
-            <div className="mt-2 text-xs font-medium text-primary">{file ? file.name : 'Click to upload'}</div>
+            <div className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-foreground truncate">{file ? 'Replace file' : 'Choose file'}</div>
+            <div className="mt-0.5 sm:mt-1 truncate text-xs font-medium text-primary">{file ? file.name : (hint || 'Attach photo / PDF')}</div>
           </div>
         </div>
       </div>
@@ -55,12 +59,17 @@ export function AttachmentField({ label, accept = 'image/*,.pdf', onChange, file
   );
 }
 
-export function FormSectionTitle({ icon: Icon, title, description }) {
+export function FormSectionTitle({ icon: Icon, title, description, category = 'Form Section' }) {
   return (
-    <div className="flex items-start gap-3">
-      <div>
-        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        {description ? <p className="mt-1 text-xs text-muted-foreground">{description}</p> : null}
+    <div className="flex items-start gap-4 mb-4">
+      <div className="space-y-1.5">
+        <nav className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
+          <span>{category}</span>
+          <ChevronRight className="h-2.5 w-2.5 opacity-50" />
+          <span className="text-brand-primary">Control</span>
+        </nav>
+        <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">{title}</h3>
+        {description ? <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold leading-relaxed opacity-70">{description}</p> : null}
       </div>
     </div>
   );
@@ -193,8 +202,8 @@ export function StockMoneyField({ control, name, label, hint, placeholder = '0.0
         <FormItem>
           <FormLabel className={FORM_LABEL_CLASS}>{label}</FormLabel>
           <FormControl>
-            <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">₹</span>
+            <div className="relative group/money">
+              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[13px] font-black text-brand-primary/60 transition-colors group-focus-within/money:text-brand-primary">₹</span>
               <Input
                 {...field}
                 value={field.value ?? ''}
@@ -202,7 +211,7 @@ export function StockMoneyField({ control, name, label, hint, placeholder = '0.0
                 min="0"
                 step="0.01"
                 placeholder={placeholder}
-                className="w-full rounded-xl border border-border bg-background py-2.5 pl-12 pr-3 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className={`${FORM_INPUT_CLASS} pl-10`}
               />
             </div>
           </FormControl>

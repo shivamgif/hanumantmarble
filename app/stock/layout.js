@@ -269,14 +269,24 @@ export default function StockLayout({ children }) {
           isActiveRoute={isActiveRoute}
         />
 
-        <main className="flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
+        <main className="flex-1 px-3 py-8 sm:px-8 lg:px-12">
           <div className="mx-auto w-full max-w-[1600px]">
             {children}
           </div>
         </main>
 
-        <footer className="border-t border-slate-200/60 bg-white/60 px-4 py-3 text-center text-xs text-slate-400 sm:px-6 lg:px-8 dark:border-white/8 dark:bg-slate-950/60 dark:text-slate-600">
-          <p>{t('footerTitle')} • {t('footerUpdated')}: {new Date().toLocaleString()}</p>
+        <footer className="mx-auto mb-8 w-full max-w-[1600px] px-3 sm:px-8 lg:px-12">
+          <div className="rounded-3xl sm:rounded-[2rem] border border-slate-100 bg-white/40 px-5 py-4 sm:px-8 sm:py-5 text-center text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 dark:border-white/5 dark:bg-slate-950/40 dark:text-slate-600 shadow-sm backdrop-blur-md">
+            <p className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+              <span className="text-brand-primary opacity-60">Operational Protocol</span>
+              <span className="hidden sm:inline opacity-20">•</span>
+              <span>{t('footerTitle')}</span>
+              <span className="hidden sm:inline opacity-20">•</span>
+              <span className="text-slate-900 dark:text-slate-300">Live Status: Stable</span>
+              <span className="hidden sm:inline opacity-20">•</span>
+              <span className="hidden sm:inline">{t('footerUpdated')}: {new Date().toLocaleString()}</span>
+            </p>
+          </div>
         </footer>
       </div>
 

@@ -1,13 +1,13 @@
 'use client';
 
 import { useCallback } from 'react';
-import { PackageCheck, Plus } from 'lucide-react';
+import { ChevronRight, PackageCheck, Plus, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
 import { ArrivalFormContent } from './arrival-form';
-import { formatDateTime, getGeneratedByRoleLabel, getStatusVariant } from '../lib/stock-utils';
+import { formatDateTime, getGeneratedByRoleLabel, getStatusVariant, CLASSES, FORM_INPUT_CLASS } from '../lib/stock-utils';
 
 export function PurchasesPanel({
   arrivalForm,
@@ -53,20 +53,34 @@ export function PurchasesPanel({
 
   return (
     <div className="stock-tab-panel" key="stock-panel-purchases">
-      <section id="purchases" className="flex h-full flex-col overflow-hidden scroll-mt-6 rounded-xl border border-slate-200/70 bg-white dark:border-slate-700/70 dark:bg-slate-900">
-        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/60 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/40">
-          <h2 className="text-sm font-semibold text-foreground">{tc.purchases}</h2>
+      <button
+        type="button"
+        onClick={onNewArrival || (() => setArrivalSheetOpen(true))}
+        className="flex mb-6 justify-end items-center gap-2 rounded-full bg-primary px-4 py-2 text-[11px] font-black uppercase tracking-widest text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+        disabled={!canCreateArrival}
+        title={!canCreateArrival ? tc.insufficientNewPurchase : undefined}
+      >
+        <Plus className="h-4 w-4" />
+        {tc.newPurchase}
+      </button>
+
+      <section id="purchases" className="flex h-full flex-col overflow-hidden scroll-mt-6 glass-panel rounded-2xl sm:rounded-3xl border border-slate-200/60 dark:border-white/5 shadow-2xl transition-all duration-500">
+        <div className="flex items-start justify-between p-4 sm:p-5 border-b border-slate-200/60 bg-slate-50/40 dark:bg-slate-900/40 px-6 py-5">
+          <div className="space-y-1.5">
+            <nav className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-slate-400">
+              <span>Inventory Hub</span>
+              <ChevronRight className="h-2.5 w-2.5 opacity-50" />
+              <span className="text-brand-primary">Purchases</span>
+            </nav>
+            <div className="flex items-center gap-3">
+              <h3 className="text-sm font-black text-slate-900 dark:text-white tracking-tight">{tc.purchases}</h3>
+              <span className="rounded-full bg-brand-primary/10 border border-brand-primary/20 px-3 py-1 text-[9px] font-black uppercase tracking-widest tabular-nums text-brand-primary shadow-sm">
+                {arrivalPagination.total} {t('items')}
+              </span>
+            </div>
+          </div>
           <Sheet open={arrivalSheetOpen} onOpenChange={setArrivalSheetOpen}>
-            <button
-              type="button"
-              onClick={onNewArrival || (() => setArrivalSheetOpen(true))}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={!canCreateArrival}
-              title={!canCreateArrival ? tc.insufficientNewPurchase : undefined}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              {tc.newPurchase}
-            </button>
+
             <SheetContent side="right" className="w-full max-w-none overflow-y-auto bg-white dark:bg-slate-950 md:w-[50vw]">
               <SheetHeader className="border-b border-border pb-4">
                 <div className="flex items-center gap-3">
@@ -102,20 +116,23 @@ export function PurchasesPanel({
             Insufficient permission: salespeople can create dispatches but cannot create purchases.
           </div>
         ) : null}
-        <div className="sticky top-0 z-10 border-b border-slate-100 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
-          <input
-            type="search"
-            value={arrivalSearch}
-            onChange={(event) => setArrivalSearch(event.target.value)}
-            placeholder="Search purchases by date, product, qty, truck, or status"
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-          />
+        <div className="sticky top-0 z-10 border-b border-slate-200/60 bg-white/50 px-3 py-2.5 backdrop-blur-md dark:bg-slate-900/50">
+          <div className="relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 transition-colors group-focus-within:text-brand-primary" />
+            <input
+              type="search"
+              value={arrivalSearch}
+              onChange={(event) => setArrivalSearch(event.target.value)}
+              placeholder="Search purchases by date, product, qty, truck, or status"
+              className={`${FORM_INPUT_CLASS} pl-11`}
+            />
+          </div>
         </div>
-        <div className="space-y-3 p-3 md:hidden">
+        <div className="space-y-4 p-3 md:hidden">
           {arrivalPagination.rows.map((a) => {
             const expanded = arrivalExpandedId === a.id;
             return (
-              <article key={`arrival-mobile-${a.id}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/60">
+              <article key={`arrival-mobile-${a.id}`} className="glass-panel rounded-2xl border border-white/5 p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-2">
                   <button
                     type="button"
@@ -166,42 +183,45 @@ export function PurchasesPanel({
             );
           })}
         </div>
-        <div className="overflow-x-auto flex-1">
-          <table className="hidden w-full text-xs text-left whitespace-nowrap md:table">
-            <thead className="sticky top-0 bg-slate-50/90 font-medium text-slate-600 dark:bg-slate-900/90 dark:text-slate-300">
-              <tr>
-                <th className="px-3 py-2">
-                  <button type="button" onClick={() => toggleSort('datetime')} className="font-medium hover:text-foreground">{tc.datetime}</button>
-                </th>
-                <th className="px-3 py-2">
-                  <button type="button" onClick={() => toggleSort('shipment')} className="font-medium hover:text-foreground">{t('shipmentNo')}</button>
-                </th>
-                <th className="px-3 py-2">{tc.invoice}</th>
-                <th className="px-3 py-2">{tc.route}</th>
-                <th className="px-3 py-2">{tc.payment}</th>
-                <th className="px-3 py-2">
-                  <button type="button" onClick={() => toggleSort('products')} className="font-medium hover:text-foreground">Products</button>
-                </th>
-                <th className="px-3 py-2 text-right">
-                  <button type="button" onClick={() => toggleSort('quantities')} className="font-medium hover:text-foreground">Quantities</button>
-                </th>
-                <th className="px-3 py-2 text-right">
-                  <button type="button" onClick={() => toggleSort('grandTotal')} className="font-medium hover:text-foreground">Grand Total</button>
-                </th>
-                <th className="px-3 py-2 text-right">Freight (kg)</th>
-                {canEdit && <th className="px-3 py-2 text-right"><span className="font-medium">Edit</span></th>}
-                <th className="px-3 py-2">
-                  <button type="button" onClick={() => toggleSort('status')} className="font-medium hover:text-foreground">{t('status')}</button>
-                </th>
-                <th className="px-3 py-2">{tc.generatedBy}</th>
-                <th className="px-3 py-2">{tc.approvedBy}</th>
+        <div className="overflow-x-auto [scrollbar-width:thin] flex-1">
+          <table className="hidden w-full text-left whitespace-nowrap md:table border-collapse">
+            <thead className="sticky top-0 z-20 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xl">
+              <tr className="border-b border-slate-200/60 dark:border-white/5">
+                {[
+                  { id: 'datetime', label: tc.datetime },
+                  { id: 'shipment', label: t('shipmentNo') },
+                  { id: 'invoice', label: tc.invoice },
+                  { id: 'route', label: tc.route },
+                  { id: 'payment', label: tc.payment },
+                  { id: 'products', label: 'Products' },
+                  { id: 'quantities', label: 'Quantities', align: 'right' },
+                  { id: 'grandTotal', label: 'Grand Total', align: 'right' },
+                  { id: 'freight', label: 'Freight (kg)', align: 'right' },
+                  ...(canEdit ? [{ id: 'edit', label: 'Edit', align: 'right' }] : []),
+                  { id: 'status', label: t('status') },
+                  { id: 'generatedBy', label: tc.generatedBy },
+                  { id: 'approvedBy', label: tc.approvedBy },
+                ].map((col) => (
+                  <th key={col.id} className={`px-4 py-3 ${col.align === 'right' ? 'text-right' : ''}`}>
+                    <button
+                      type="button"
+                      onClick={() => col.id !== 'invoice' && col.id !== 'route' && col.id !== 'payment' && col.id !== 'freight' && col.id !== 'edit' && col.id !== 'generatedBy' && col.id !== 'approvedBy' ? toggleSort(col.id) : undefined}
+                      className={`text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 flex items-center gap-2 group/th ${col.id !== 'invoice' && col.id !== 'route' && col.id !== 'payment' && col.id !== 'freight' && col.id !== 'edit' && col.id !== 'generatedBy' && col.id !== 'approvedBy' ? 'hover:text-brand-primary' : 'cursor-default transition-all duration-300'}`}
+                    >
+                      {col.label}
+                      {col.id !== 'invoice' && col.id !== 'route' && col.id !== 'payment' && col.id !== 'freight' && col.id !== 'edit' && col.id !== 'generatedBy' && col.id !== 'approvedBy' && (
+                        <span className={`h-1 w-1 rounded-full bg-brand-primary opacity-0 transition-opacity ${arrivalSort.key === col.id ? 'opacity-100' : 'group-hover/th:opacity-40'}`} />
+                      )}
+                    </button>
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-slate-100 dark:divide-white/5">
               {arrivalPagination.rows.map((a) => (
                 <tr
                   key={a.id}
-                  className={`cursor-pointer transition hover:bg-slate-50 focus-within:bg-slate-50 dark:hover:bg-slate-800/40 dark:focus-within:bg-slate-800/40 ${highlightedShipmentKey === `arrival-${a.id}` ? 'bg-primary/10 ring-1 ring-primary/40' : 'odd:bg-white even:bg-slate-50/70 dark:odd:bg-slate-900 dark:even:bg-slate-900/70'}`}
+                  className={`group/row cursor-pointer transition-all duration-300 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 ${highlightedShipmentKey === `arrival-${a.id}` ? 'bg-primary/10 ring-1 ring-primary/40' : 'odd:bg-white even:bg-slate-50/70 dark:odd:bg-slate-900 dark:even:bg-slate-900/70'}`}
                   onClick={() => openShipmentPreview('arrival', a)}
                   tabIndex={0}
                   role="button"
@@ -213,52 +233,59 @@ export function PurchasesPanel({
                   }}
                   title="Click to preview"
                 >
-                  <td className="px-3 py-2 text-muted-foreground">{formatDateTime(a.arrival_date || a.created_at)}</td>
-                  <td className="px-3 py-2 font-mono font-medium text-primary">{a.shipment_number}</td>
-                  <td className="px-3 py-2 text-muted-foreground">
-                    <div>{a.invoice_number || '—'}</div>
-                    <div className="text-[10px]">{a.invoice_date ? formatDateTime(a.invoice_date) : '—'}</div>
+                  <td className="px-4 py-3 text-[11px] text-muted-foreground tabular-nums">{formatDateTime(a.arrival_date || a.created_at)}</td>
+                  <td className="px-4 py-3">
+                    <span className="font-mono text-[10px] font-black tracking-tight text-brand-primary bg-brand-primary/5 px-2 py-1 rounded-md border border-brand-primary/20 transition-colors group-hover/row:bg-brand-primary/10">
+                      {a.shipment_number}
+                    </span>
                   </td>
-                  <td className="px-3 py-2 text-muted-foreground">
-                    <div className="max-w-[170px] truncate" title={`${a.origin_city || '—'} to ${a.destination_warehouse_name || '—'}`}>
+                  <td className="px-4 py-3 text-[11px] text-muted-foreground">
+                    <div className="font-black text-slate-700 dark:text-slate-300">{a.invoice_number || '—'}</div>
+                    <div className="text-[9px] font-bold opacity-60 uppercase">{a.invoice_date ? formatDateTime(a.invoice_date) : '—'}</div>
+                  </td>
+                  <td className="px-4 py-3 text-[11px] text-muted-foreground">
+                    <div className="max-w-[170px] truncate font-bold text-slate-700 dark:text-slate-300" title={`${a.origin_city || '—'} to ${a.destination_warehouse_name || '—'}`}>
                       {a.origin_city || '—'} to {a.destination_warehouse_name || '—'}
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-muted-foreground">
-                    <div className="uppercase text-[10px] font-semibold">{a.payment_status || 'unpaid'}</div>
-                    {a.paid_amount != null ? <div className="text-[10px]">INR {Number(a.paid_amount).toFixed(2)}</div> : null}
+                  <td className="px-4 py-3 text-[11px] text-muted-foreground">
+                    <div className="uppercase text-[9px] font-black tracking-widest text-slate-500">{a.payment_status || 'unpaid'}</div>
+                    {a.paid_amount != null ? <div className="text-[10px] font-black tabular-nums text-slate-900 dark:text-white">INR {Number(a.paid_amount).toFixed(2)}</div> : null}
                   </td>
-                  <td className="px-3 py-2">
-                    <div className="max-w-[260px] truncate" title={a.product_names || a.product_skus || ''}>{a.product_names || a.product_skus || '—'}</div>
-                    <div className="mt-0.5 text-[10px] text-muted-foreground">{a.divisions || 'General'}</div>
+                  <td className="px-4 py-3">
+                    <div className="max-w-[260px] truncate text-xs font-black text-slate-900 dark:text-white" title={a.product_names || a.product_skus || ''}>{a.product_names || a.product_skus || '—'}</div>
+                    <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground opacity-60">{a.divisions || 'General'}</div>
                   </td>
-                  <td className="px-3 py-2 text-right">
-                    {Number(a.total_whole_qty || 0)} whole / {Number(a.total_broken_qty || 0)} broken
-                    <div className="text-[10px] text-muted-foreground">{Number(a.total_qty_sqm || 0).toFixed(3)} sqm</div>
+                  <td className="px-4 py-3 text-right">
+                    <div className="text-xs font-black text-slate-900 dark:text-white tabular-nums">
+                      {Number(a.total_whole_qty || 0)} <span className="text-[9px] font-bold text-slate-400 mr-1 uppercase">W</span>
+                      / {Number(a.total_broken_qty || 0)} <span className="text-[9px] font-bold text-slate-400 uppercase">B</span>
+                    </div>
+                    <div className="text-[9px] font-bold text-muted-foreground tabular-nums">{Number(a.total_qty_sqm || 0).toFixed(3)} SQM</div>
                   </td>
-                  <td className="px-3 py-2 text-right">
-                    <div>INR {Number(a.grand_total || 0).toFixed(2)}</div>
+                  <td className="px-4 py-3 text-right">
+                    <div className="text-xs font-black text-slate-900 dark:text-white tabular-nums">INR {Number(a.grand_total || 0).toFixed(2)}</div>
                   </td>
-                  <td className="px-3 py-2 text-right text-muted-foreground">{Number(a.freight_weight_kg || 0).toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right text-[11px] font-bold text-muted-foreground tabular-nums">{Number(a.freight_weight_kg || 0).toFixed(2)}</td>
                   {canEdit && (
-                    <td className="px-3 py-2 text-right">
+                    <td className="px-4 py-3 text-right">
                       <button
                         type="button"
-                        className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground transition hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        className="rounded-md border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
                         onClick={e => { e.stopPropagation(); onEdit(a); }}
                       >
                         Edit
                       </button>
                     </td>
                   )}
-                  <td className="px-3 py-2"><Badge variant={getStatusVariant(a.status)}>{a.status}</Badge></td>
-                  <td className="px-3 py-2 text-muted-foreground">
+                  <td className="px-4 py-3"><Badge variant={getStatusVariant(a.status)}>{a.status}</Badge></td>
+                  <td className="px-4 py-3 text-[11px] text-muted-foreground">
                     <div className="flex items-center gap-2">
-                      <span>{a.generated_by || '—'}</span>
-                      <Badge variant="neutral" className="text-[10px]">{getGeneratedByRoleLabel(a.generated_by_role)}</Badge>
+                      <span className="font-bold">{a.generated_by || '—'}</span>
+                      <Badge variant="neutral" className="text-[9px] font-black uppercase tracking-tighter px-1">{getGeneratedByRoleLabel(a.generated_by_role)}</Badge>
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-muted-foreground">{a.approved_by || '—'}</td>
+                  <td className="px-4 py-3 text-[11px] font-bold text-muted-foreground">{a.approved_by || '—'}</td>
                 </tr>
               ))}
               {arrivalPagination.total === 0 ? (
@@ -281,20 +308,22 @@ export function PurchasesPanel({
             </tbody>
           </table>
         </div>
-        <PaginationControls
-          page={arrivalPagination.page}
-          pageCount={arrivalPagination.pageCount}
-          total={arrivalPagination.total}
-          pageSize={DEFAULT_PAGE_SIZE}
-          onPageChange={setArrivalPage}
-          labels={{
-            showing: tc.paginationShowing,
-            of: tc.paginationOf,
-            previous: tc.paginationPrevious,
-            next: tc.paginationNext,
-            page: tc.paginationPage,
-          }}
-        />
+        <div className="px-6 py-4 bg-slate-50/40 dark:bg-slate-900/40 border-t border-slate-200/60 dark:border-white/5">
+          <PaginationControls
+            page={arrivalPagination.page}
+            pageCount={arrivalPagination.pageCount}
+            total={arrivalPagination.total}
+            pageSize={DEFAULT_PAGE_SIZE}
+            onPageChange={setArrivalPage}
+            labels={{
+              showing: tc.paginationShowing,
+              of: tc.paginationOf,
+              previous: tc.paginationPrevious,
+              next: tc.paginationNext,
+              page: tc.paginationPage,
+            }}
+          />
+        </div>
       </section>
     </div>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
-import { Calendar, Hash, Truck } from 'lucide-react';
+import { Calendar, Hash, Truck, ChevronRight, FileText, Sparkles } from 'lucide-react';
 import EntryPreviewSheet, { PreviewKeyValueGrid } from '@/components/ui/entry-preview-sheet';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
@@ -9,16 +9,21 @@ import { formatDateTime, INVOICE_CLASSES } from '../lib/stock-utils';
 
 function renderDocumentPreview(document) {
   if (!document?.file_url) {
-    return <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500">No preview available.</div>;
+    return <div className="glass-panel rounded-2xl border border-white/5 bg-white/5 p-6 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">No preview available</div>;
   }
 
   if (document.mime_type?.startsWith('image/')) {
     return (
-      <img
-        src={document.file_url}
-        alt={document.file_name || 'Document preview'}
-        className="max-h-80 w-full rounded-2xl border border-slate-200 object-contain bg-black/5"
-      />
+      <div className="relative group overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50 shadow-2xl">
+        <img
+          src={document.file_url}
+          alt={document.file_name || 'Document preview'}
+          className="max-h-96 w-full object-contain transition-transform duration-700 group-hover:scale-105"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-4">
+          <div className="text-[10px] font-black uppercase tracking-widest text-white shadow-sm">Visual Verification Hub</div>
+        </div>
+      </div>
     );
   }
 
@@ -26,7 +31,7 @@ function renderDocumentPreview(document) {
     <iframe
       src={document.file_url}
       title={document.file_name || 'Document preview'}
-      className="h-80 w-full rounded-2xl border border-slate-200 bg-white"
+      className="h-96 w-full rounded-2xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-sm"
     />
   );
 }
@@ -73,64 +78,113 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
         children: isInboundPreview ? (
           <div className={INVOICE_CLASSES.surface}>
             <div className={INVOICE_CLASSES.commandCard}>
-              <div className="grid gap-4 md:grid-cols-[1.15fr_1fr] md:items-start">
-                <div>
-                  <div className={INVOICE_CLASSES.supplierTitle}>{previewState.record?.supplier_name || 'Supplier'}</div>
-                  <div className={INVOICE_CLASSES.supplierMeta}>GSTIN: {previewState.record?.supplier_gst_number || '—'}</div>
-                  <div className={INVOICE_CLASSES.supplierMeta}>{previewState.record?.supplier_address || 'Address not available'}</div>
-                  <div className="mt-3 font-mono text-xs font-semibold text-[#E07A00]">{previewState.record?.shipment_number || '—'}</div>
+              <div className="grid gap-6 md:grid-cols-[1fr_1.2fr] md:items-start">
+                <div className="space-y-4">
+                   <div className="space-y-1">
+                    <nav className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
+                      <span>Logistics Origin</span>
+                      <ChevronRight className="h-2.5 w-2.5 opacity-50" />
+                      <span className="text-brand-primary">Node</span>
+                    </nav>
+                    <div className={INVOICE_CLASSES.supplierTitle}>{previewState.record?.supplier_name || 'Supplier'}</div>
+                  </div>
+                  <div className="space-y-1.5 opacity-80">
+                    <div className={INVOICE_CLASSES.supplierMeta}>GSTIN: {previewState.record?.supplier_gst_number || '—'}</div>
+                    <div className={INVOICE_CLASSES.supplierMeta}>{previewState.record?.supplier_address || 'Address not available'}</div>
+                  </div>
+                  <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-100 shadow-lg">
+                    {previewState.record?.shipment_number || '—'}
+                  </div>
                 </div>
                 <div className={INVOICE_CLASSES.logisticsGrid}>
                   <div className={INVOICE_CLASSES.logisticsCell}>
-                    <div className={INVOICE_CLASSES.logisticsLabel}><Hash className="h-3 w-3" />{tc.invoiceNoLabel}</div>
+                    <div className={INVOICE_CLASSES.logisticsLabel}><Hash className="h-2.5 w-2.5" />{tc.invoiceNoLabel}</div>
                     <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.invoice_number || '—'}</div>
                   </div>
                   <div className={INVOICE_CLASSES.logisticsCell}>
-                    <div className={INVOICE_CLASSES.logisticsLabel}><Calendar className="h-3 w-3" />{tc.date}</div>
+                    <div className={INVOICE_CLASSES.logisticsLabel}><Calendar className="h-2.5 w-2.5" />{tc.date}</div>
                     <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.invoice_date ? formatDateTime(previewState.record?.invoice_date) : '—'}</div>
                   </div>
                   <div className={INVOICE_CLASSES.logisticsCell}>
-                    <div className={INVOICE_CLASSES.logisticsLabel}><Truck className="h-3 w-3" />{tc.vehicleNo}</div>
+                    <div className={INVOICE_CLASSES.logisticsLabel}><Truck className="h-2.5 w-2.5" />{tc.vehicleNo}</div>
                     <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.truck_license_plate || previewState.record?.truck_number || '—'}</div>
                   </div>
                   <div className={INVOICE_CLASSES.logisticsCell}>
-                    <div className={INVOICE_CLASSES.logisticsLabel}><Truck className="h-3 w-3" />{tc.transporter}</div>
+                    <div className={INVOICE_CLASSES.logisticsLabel}><Truck className="h-2.5 w-2.5" />{tc.transporter}</div>
                     <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.transporter_name || '—'}</div>
                   </div>
                 </div>
               </div>
             </div>
             {hasTechnicalSubBar ? (
-              <div className="px-4 pb-4">
+              <div className="px-5 pb-5">
                 <div className={INVOICE_CLASSES.subBar}>
                   {previewState.record?.eway_bill_number ? <span>E-WAY: {previewState.record?.eway_bill_number}</span> : null}
                   {previewState.record?.irn_number ? <span>IRN: {previewState.record?.irn_number}</span> : null}
                 </div>
               </div>
             ) : null}
-            <div className="px-4 pb-4">
+            <div className="px-5 pb-5">
               <PreviewKeyValueGrid items={inboundMetaItems} />
             </div>
           </div>
         ) : (
-          <PreviewKeyValueGrid
-            items={[
-              { label: 'Shipment No.', value: previewState.record?.shipment_number },
-              { label: 'Status', value: previewState.record?.status },
-              { label: 'Approval', value: previewState.record?.approval_status },
-              { label: 'Customer', value: previewState.record?.customer_name },
-              { label: 'Customer Phone', value: previewState.record?.customer_phone_number },
-              { label: 'Truck', value: previewState.record?.truck_license_plate || previewState.record?.truck_number },
-              { label: 'Driver', value: previewState.record?.driver_name },
-              { label: 'Invoice No.', value: previewState.record?.invoice_number },
-              { label: 'Gatepass No.', value: previewState.record?.gatepass_number },
-              { label: 'Total Whole', value: previewState.record?.total_whole_qty },
-              { label: 'Total Broken', value: previewState.record?.total_broken_qty },
-              { label: 'Return Whole', value: previewState.record?.total_return_whole_qty },
-              { label: 'Return Broken', value: previewState.record?.total_return_broken_qty },
-              { label: 'Notes', value: previewState.record?.notes },
-            ]}
-          />
+          <div className={INVOICE_CLASSES.surface}>
+            <div className={INVOICE_CLASSES.commandCard}>
+              <div className="grid gap-6 md:grid-cols-[1fr_1.2fr] md:items-start">
+                <div className="space-y-4">
+                   <div className="space-y-1">
+                    <nav className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
+                      <span>Target Entity</span>
+                      <ChevronRight className="h-2.5 w-2.5 opacity-50" />
+                      <span className="text-brand-primary">Terminal</span>
+                    </nav>
+                    <div className={INVOICE_CLASSES.supplierTitle}>{previewState.record?.customer_name || 'Customer'}</div>
+                  </div>
+                   <div className="space-y-1.5 opacity-80">
+                    <div className={INVOICE_CLASSES.supplierMeta}>CONTACT: {previewState.record?.customer_phone_number || '—'}</div>
+                    <div className={INVOICE_CLASSES.supplierMeta}>{previewState.record?.customer_address || 'Address not available'}</div>
+                  </div>
+                  <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-100 shadow-lg">
+                    {previewState.record?.shipment_number || '—'}
+                  </div>
+                </div>
+                <div className={INVOICE_CLASSES.logisticsGrid}>
+                  <div className={INVOICE_CLASSES.logisticsCell}>
+                    <div className={INVOICE_CLASSES.logisticsLabel}><Hash className="h-2.5 w-2.5" />{tc.invoiceNoLabel}</div>
+                    <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.invoice_number || '—'}</div>
+                  </div>
+                   <div className={INVOICE_CLASSES.logisticsCell}>
+                    <div className={INVOICE_CLASSES.logisticsLabel}><Calendar className="h-2.5 w-2.5" />{tc.date}</div>
+                    <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.dispatch_date ? formatDateTime(previewState.record?.dispatch_date) : '—'}</div>
+                  </div>
+                   <div className={INVOICE_CLASSES.logisticsCell}>
+                    <div className={INVOICE_CLASSES.logisticsLabel}><Truck className="h-2.5 w-2.5" />{tc.vehicleNo}</div>
+                    <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.truck_license_plate || previewState.record?.truck_number || '—'}</div>
+                  </div>
+                  <div className={INVOICE_CLASSES.logisticsCell}>
+                    <div className={INVOICE_CLASSES.logisticsLabel}><Hash className="h-2.5 w-2.5" />GATEPASS</div>
+                    <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.gatepass_number || '—'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="px-5 pb-5">
+              <PreviewKeyValueGrid
+                items={[
+                  { label: 'Status', value: previewState.record?.status },
+                  { label: 'Approval', value: previewState.record?.approval_status },
+                  { label: 'Salesperson', value: previewState.record?.salesperson_name },
+                  { label: 'Driver', value: previewState.record?.driver_name },
+                  { label: 'Total Whole', value: previewState.record?.total_whole_qty },
+                  { label: 'Total Broken', value: previewState.record?.total_broken_qty },
+                  { label: 'Return Whole', value: previewState.record?.total_return_whole_qty },
+                  { label: 'Return Broken', value: previewState.record?.total_return_broken_qty },
+                  { label: 'Notes', value: previewState.record?.notes },
+                ]}
+              />
+            </div>
+          </div>
         ),
       },
       previewState.items?.length
@@ -226,15 +280,19 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
         ? {
           title: 'Linked Documents',
           children: (
-            <div className="grid gap-4 xl:grid-cols-2">
+            <div className="grid gap-6 xl:grid-cols-2">
               {previewState.documents.map((document) => (
-                <section key={document.id} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-                  <div className="border-b border-border bg-muted/40 px-4 py-3">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{document.document_type}</div>
-                    <div className="mt-1 text-sm font-medium text-foreground">{document.document_number || document.file_name}</div>
-                    <div className="mt-1 truncate text-xs text-muted-foreground">{document.file_name}</div>
+                <section key={document.id} className="glass-panel overflow-hidden rounded-2xl border border-white/5 shadow-xl transition-all duration-300 hover:shadow-2xl">
+                  <div className="border-b border-white/5 bg-slate-900/40 px-5 py-4">
+                    <nav className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 mb-1">
+                      <span>Intelligence Case</span>
+                      <ChevronRight className="h-2.5 w-2.5 opacity-50" />
+                      <span className="text-brand-primary">{document.document_type}</span>
+                    </nav>
+                    <div className="mt-2 text-base font-black text-slate-900 dark:text-white tracking-tight">{document.document_number || (language === 'hi' ? 'दस्तावेज़' : 'Document')}</div>
+                    <div className="mt-1 truncate text-[11px] font-bold text-slate-500 opacity-60">{document.file_name}</div>
                   </div>
-                  <div className="p-4">{renderDocumentPreview(document)}</div>
+                  <div className="p-5">{renderDocumentPreview(document)}</div>
                 </section>
               ))}
             </div>

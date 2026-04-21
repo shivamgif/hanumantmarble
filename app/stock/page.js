@@ -5,7 +5,7 @@ import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuthUser } from '@/lib/auth-client';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { BarChart3, Boxes, CircleAlert, PackageCheck } from 'lucide-react';
+import { BarChart3, Boxes, CircleAlert, PackageCheck, ChevronRight } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
@@ -213,7 +213,7 @@ export default function StockDashboard() {
         if (!response.ok) return;
         const json = await response.json();
         if (mounted && json?.suggestions) setSuggestions(json.suggestions);
-      } catch {}
+      } catch { }
     }
     loadSuggestions();
 
@@ -230,7 +230,7 @@ export default function StockDashboard() {
         const json = await response.json();
         if (!mounted) return;
         if (response.ok) setAccessRole(String(json.role || 'stock_maintainer'));
-      } catch {}
+      } catch { }
     }
 
     loadAccessRole();
@@ -532,7 +532,7 @@ export default function StockDashboard() {
       setArrivalSubmitting(false);
     }
   }, [canCreateArrival, arrivalForm, arrivalAttachments, resetArrivalAttachments, setArrivalSheetOpen, refreshDashboard]);
-  
+
   const handleNewArrival = useCallback(() => {
     setEditingArrivalId(null);
     arrivalForm.reset(createInitialArrivalDraft());
@@ -616,7 +616,7 @@ export default function StockDashboard() {
     setDispatchNotice({ type: 'info', message: 'Loading dispatch details...' });
     setDispatchSheetOpen(true);
     setEditingDispatchId(row.id);
-    
+
     try {
       const response = await fetch(`/api/stock/outbound-shipments/${row.id}`);
       const json = await response.json();
@@ -675,7 +675,7 @@ export default function StockDashboard() {
 
       if (items.length === 0) throw new Error('Add at least one dispatch item.');
       if (items.some((item) => !item.itemId)) throw new Error('Select a stock item for each dispatch row.');
-      
+
       const payload = {
         shipmentNumber: trimText(values.shipmentNumber) || undefined,
         customerName,
@@ -698,10 +698,10 @@ export default function StockDashboard() {
         })),
       };
 
-      const endpoint = editingDispatchId 
+      const endpoint = editingDispatchId
         ? `/api/stock/outbound-shipments/${editingDispatchId}`
         : '/api/stock/outbound-shipments';
-      
+
       const response = await fetch(endpoint, {
         method: editingDispatchId ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -894,13 +894,17 @@ export default function StockDashboard() {
 
   if (loading) {
     return (
-      <div className={CLASSES.contentWrap}>
-        <div className={CLASSES.statGrid}>
+      <div className="space-y-12 p-4 sm:p-6 lg:p-12 animate-pulse">
+        <div className="flex flex-col gap-4">
+          <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 rounded" />
+          <div className="h-16 sm:h-20 w-full sm:w-3/4 max-w-lg bg-slate-200 dark:bg-slate-800 rounded-2xl sm:rounded-[2.5rem]" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={`stock-stat-skeleton-${index}`} className="h-32 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
+            <div key={`op-stat-skeleton-${index}`} className="h-40 rounded-3xl sm:rounded-[2rem] bg-slate-200 dark:bg-slate-800" />
           ))}
         </div>
-        <div className="h-64 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
+        <div className="h-96 rounded-3xl sm:rounded-[2.5rem] bg-slate-200 dark:bg-slate-800" />
       </div>
     );
   }
@@ -908,16 +912,32 @@ export default function StockDashboard() {
   if (!data) return null;
 
   return (
-    <div className={CLASSES.contentWrap}>
-      <div className={CLASSES.topCard}>
-        <h1 className="text-lg font-semibold text-foreground">{tc.stockOperations}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{tc.stockSubtitle}</p>
-      </div>
+    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-12 space-y-10 lg:space-y-16 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
+      <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-10">
+        <div className="space-y-4 max-w-4xl">
+          <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-4">
+            <span className="text-slate-400">Inventory</span>
+            <ChevronRight className="h-3 w-3 opacity-50" />
+            <span className="text-slate-900 dark:text-white">Operational Node</span>
+          </nav>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+            <h1 className="text-5xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter leading-[0.9]">
+              Stock<br className="sm:hidden" /> Control
+            </h1>
+            <div className="flex items-center self-start sm:self-center gap-3 px-5 py-2 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 text-[10px] font-black uppercase tracking-widest border border-orange-500/20 shadow-sm whitespace-nowrap">
+              <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse" />
+              Real-time Flow
+            </div>
+          </div>
+          <p className="text-lg text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-3xl">
+            {tc.stockSubtitle}
+          </p>
+        </div>
+      </header>
 
-      <StockStatsGrid stats={stockStats} />
 
-      <div className="rounded-2xl border border-slate-200/60 bg-white p-2 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900">
-        <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="rounded-[1.75rem] border border-slate-200/60 bg-slate-100/30 p-1.5 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/30">
+        <div className="flex items-center gap-1">
           {tableViewTabs.map((tab) => {
             const isActive = activeTableView === tab.id;
             return (
@@ -925,8 +945,10 @@ export default function StockDashboard() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTableView(tab.id)}
-                className={`whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold transition ${isActive ? 'bg-primary text-primary-foreground shadow-sm duration-300' : 'text-muted-foreground duration-300 hover:bg-muted/80 hover:text-foreground'}`}
-                aria-label={`Switch to ${tab.label}`}
+                className={`flex-1 px-3 sm:px-6 py-3 text-[10px] sm:text-xs font-black uppercase tracking-widest rounded-2xl transition-all duration-500 ${isActive
+                  ? 'bg-white dark:bg-slate-800 text-brand-primary shadow-xl scale-[1.02] orange-glow'
+                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                  }`}
               >
                 {tab.label}
               </button>
@@ -936,16 +958,19 @@ export default function StockDashboard() {
       </div>
 
       {activeTableView === 'items' && (
-        <StockItemsTable
-          pagination={stockPaginationWithPage}
-          sort={stockSort}
-          setSort={setStockSort}
-          search={stockSearch}
-          setSearch={setStockSearch}
-          openPreview={openStockItemPreview}
-          t={t}
-          tc={tc}
-        />
+        <div className="space-y-6">
+          <StockStatsGrid stats={stockStats} />
+          <StockItemsTable
+            pagination={stockPaginationWithPage}
+            sort={stockSort}
+            setSort={setStockSort}
+            search={stockSearch}
+            setSearch={setStockSearch}
+            openPreview={openStockItemPreview}
+            t={t}
+            tc={tc}
+          />
+        </div>
       )}
 
       {activeTableView === 'purchases' && (

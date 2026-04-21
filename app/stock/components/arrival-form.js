@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useMemo } from 'react';
-import { Boxes, FileText, Plus, ReceiptText, Sparkles, Truck } from 'lucide-react';
+import { Boxes, FileText, Plus, ReceiptText, Sparkles, Truck, ChevronRight } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,18 +29,19 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
   const wholeQtySqmDisplay = _sqmPerBox != null ? round3(_sqmPerBox * _wholeQty) : null;
   const brokenQtySqmDisplay = _sqmPerBox != null ? round3(_sqmPerBox * _brokenQty) : null;
 
-  const itemInputClass = 'w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20';
-
   return (
-    <div key={fieldRow.id} className="overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-muted/30 px-4 py-2.5">
-        <span className="text-xs font-semibold text-foreground">{tc.itemLabel} {index + 1}</span>
-        <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${isCatalogItem ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-400' : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400'}`}>
+    <div key={fieldRow.id} className="glass-panel rounded-2xl border border-white/5 shadow-xl transition-all duration-500 overflow-hidden group/item">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 bg-slate-900/40 px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-brand-primary animate-pulse" />
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-100">{tc.itemLabel} {index + 1}</span>
+        </div>
+        <span className={`rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-widest shadow-sm ${isCatalogItem ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400' : 'border-amber-500/20 bg-amber-500/10 text-amber-400'}`}>
           {isCatalogItem ? tc.autofilledCatalog : tc.newTileEntry}
         </span>
       </div>
-      <div className="p-4 space-y-4">
-        <div>
+      <div className="p-4 space-y-5">
+        <div className="grid gap-5 md:grid-cols-2">
           <div>
             <div className={FORM_LABEL_CLASS}>{language === 'hi' ? 'टाइल नाम' : 'Tile Name'}</div>
             <FormField
@@ -55,7 +56,7 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
                       onBlur={field.onBlur}
                       options={itemNames}
                       placeholder={tc.typeTileName}
-                      className={`mt-1 ${itemInputClass}`}
+                      className={FORM_INPUT_CLASS}
                     />
                   </FormControl>
                   <FormMessage className="text-xs" />
@@ -63,65 +64,41 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
               )}
             />
           </div>
-          <StockFormField control={control} name={`items.${index}.orderedBoxes`} label="Ordered Boxes" type="number" placeholder="0" className={itemInputClass} min="0" />
-          <FormField
-            control={control}
-            name={`items.${index}.wholeQty`}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className={FORM_LABEL_CLASS}>{tc.wholeBox}</FormLabel>
-                <FormControl>
-                  <Input {...field} value={field.value ?? ''} type="number" min="0" placeholder="0" className={`mt-1 ${itemInputClass}`} />
-                </FormControl>
-                <FormMessage className="text-xs" />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={control}
-            name={`items.${index}.brokenQty`}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className={FORM_LABEL_CLASS}>{tc.brokenTiles}</FormLabel>
-                <FormControl>
-                  <Input {...field} value={field.value ?? ''} type="number" min="0" placeholder="0" className={`mt-1 ${itemInputClass}`} />
-                </FormControl>
-                <FormMessage className="text-xs" />
-              </FormItem>
-            )}
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <StockFormField control={control} name={`items.${index}.orderedBoxes`} label="Ordered" type="number" placeholder="0" min="0" />
+            <StockFormField control={control} name={`items.${index}.wholeQty`} label={tc.wholeBox} type="number" min="0" placeholder="0" />
+            <StockFormField control={control} name={`items.${index}.brokenQty`} label={tc.brokenTiles} type="number" min="0" placeholder="0" />
+          </div>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3 p-3 rounded-xl bg-slate-500/5 border border-white/5">
           {[
-            { label: 'Ordered Qty (sqm)', value: orderedQtySqmDisplay },
-            { label: 'Whole Qty (sqm)', value: wholeQtySqmDisplay },
-            { label: 'Broken Qty (sqm)', value: brokenQtySqmDisplay },
+            { label: 'Ordered (sqm)', value: orderedQtySqmDisplay },
+            { label: 'Whole (sqm)', value: wholeQtySqmDisplay },
+            { label: 'Broken (sqm)', value: brokenQtySqmDisplay },
           ].map(({ label, value }) => (
             <div key={label}>
-              <div className={FORM_LABEL_CLASS}>{label}</div>
-              <Input readOnly tabIndex={-1} value={value ?? ''} placeholder="—" className="mt-1 w-full rounded-lg border border-border bg-muted/40 px-2.5 py-2 text-sm text-foreground shadow-sm outline-none" />
+              <div className="text-[9px] font-black uppercase tracking-widest text-slate-500/60 mb-1">{label}</div>
+              <div className="text-sm font-black text-slate-900 dark:text-white tabular-nums tracking-tight">{value ?? '—'}</div>
             </div>
           ))}
         </div>
         <div>
-          <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-foreground/70">
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            {isCatalogItem ? 'Catalog Details' : 'New Tile Details'}
+          <div className="mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+            <Sparkles className="h-3.5 w-3.5 text-brand-primary" />
+            {isCatalogItem ? 'Catalog Intelligence' : 'Technical Entry'}
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <StockFormField control={control} name={`items.${index}.brandName`} label="Brand" placeholder="Brand" className={itemInputClass} disabled={isCatalogItem} list="sg-brandName" />
-            <StockFormField control={control} name={`items.${index}.divisionName`} label="Division" placeholder="Division" className={itemInputClass} list="sg-divisionName" disabled={isCatalogItem} />
-            <StockFormField control={control} name={`items.${index}.finish`} label="Finish" placeholder="Finish" className={itemInputClass} disabled={isCatalogItem} list="sg-finish" />
-            <StockFormField control={control} name={`items.${index}.grade`} label="Quality" placeholder="Premium / Standard" className={itemInputClass} disabled={isCatalogItem} list="sg-grade" />
-            <StockFormField control={control} name={`items.${index}.sizeWidthMm`} label="Size Width (mm)" type="number" placeholder="800" className={itemInputClass} min="0" step="0.01" disabled={isCatalogItem} />
-            <StockFormField control={control} name={`items.${index}.sizeLengthMm`} label="Size Length (mm)" type="number" placeholder="800" className={itemInputClass} min="0" step="0.01" disabled={isCatalogItem} />
-            <StockFormField control={control} name={`items.${index}.piecesPerBox`} label="Pieces / Box" type="number" placeholder="2" className={itemInputClass} min="0" disabled={isCatalogItem} />
-            <StockFormField control={control} name={`items.${index}.reorderLevel`} label="Reorder Level" type="number" placeholder="20" className={itemInputClass} min="0" disabled />
-            <StockFormField control={control} name={`items.${index}.sizeUnit`} label="Size Unit" placeholder="mm" className={itemInputClass} disabled />
-            <StockFormField control={control} name={`items.${index}.hsnCode`} label="HSN Code" placeholder="HSN Code" className={itemInputClass} list="sg-hsnCode" disabled={isCatalogItem} />
-            <StockFormField control={control} name={`items.${index}.thicknessMm`} label="Thickness (mm)" type="number" placeholder="Thickness (mm)" className={itemInputClass} min="0" step="0.01" disabled={isCatalogItem} />
-            <StockFormField control={control} name={`items.${index}.costPerSqm`} label="Cost / sqm" type="number" placeholder="Cost / sqm" className={itemInputClass} min="0" step="0.01" disabled={isCatalogItem} />
-            <StockFormField control={control} name={`items.${index}.description`} label="Description" placeholder="Description" className={`${itemInputClass} lg:col-span-2`} disabled={isCatalogItem} />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StockFormField control={control} name={`items.${index}.brandName`} label="Brand" placeholder="Brand" disabled={isCatalogItem} list="sg-brandName" />
+            <StockFormField control={control} name={`items.${index}.divisionName`} label="Division" placeholder="Division" list="sg-divisionName" disabled={isCatalogItem} />
+            <StockFormField control={control} name={`items.${index}.finish`} label="Finish" placeholder="Finish" disabled={isCatalogItem} list="sg-finish" />
+            <StockFormField control={control} name={`items.${index}.grade`} label="Quality" placeholder="Premium / Standard" disabled={isCatalogItem} list="sg-grade" />
+            <StockFormField control={control} name={`items.${index}.sizeWidthMm`} label="Width (mm)" type="number" placeholder="800" min="0" step="0.01" disabled={isCatalogItem} />
+            <StockFormField control={control} name={`items.${index}.sizeLengthMm`} label="Length (mm)" type="number" placeholder="800" min="0" step="0.01" disabled={isCatalogItem} />
+            <StockFormField control={control} name={`items.${index}.piecesPerBox`} label="Pcs / Box" type="number" placeholder="2" min="0" disabled={isCatalogItem} />
+            <StockFormField control={control} name={`items.${index}.hsnCode`} label="HSN" placeholder="HSN" list="sg-hsnCode" disabled={isCatalogItem} />
+            <StockFormField control={control} name={`items.${index}.thicknessMm`} label="Thick (mm)" type="number" min="0" step="0.01" disabled={isCatalogItem} />
+            <StockFormField control={control} name={`items.${index}.costPerSqm`} label="Cost / sqm" type="number" min="0" step="0.01" disabled={isCatalogItem} />
+            <StockFormField control={control} name={`items.${index}.description`} label="Description" placeholder="Notes..." className="lg:col-span-2" disabled={isCatalogItem} />
           </div>
         </div>
       </div>
@@ -160,21 +137,21 @@ export function ArrivalFormContent({
         ))}
         <InlineNotice notice={notice} />
         <div className={FORM_CARD_CLASS}>
-          <FormSectionTitle icon={FileText} title={tc.purchaseBasics} description={tc.purchaseBasicsDesc} />
-          <div className="mt-3 grid gap-4 md:grid-cols-2">
+          <FormSectionTitle category="Intake Strategy" icon={FileText} title={tc.purchaseBasics} description={tc.purchaseBasicsDesc} />
+          <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
             <SuggestComboboxField control={form.control} name="supplierName" label={t('supplier')} placeholder="Supplier Name..." options={suggestions.supplierName} />
             <StockFormField control={form.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." />
             <StockDateField control={form.control} name="invoiceDate" label={tc.invoiceDate} placeholder={tc.invoiceDate} />
-            <StockFormField control={form.control} name="handlingCostPercent" label="Handling Cost %" type="number" placeholder="1.0" className={percentFieldClass} min="0" step="0.1" />
-            <StockFormField control={form.control} name="fuelCostPercent" label="Fuel Cost %" type="number" placeholder="5.0" className={percentFieldClass} min="0" step="0.1" />
-            <StockFormField control={form.control} name="gstPercent" label="GST %" type="number" placeholder="18.0" className={percentFieldClass} min="0" step="0.1" />
+            <StockFormField control={form.control} name="handlingCostPercent" label="Handling Cost %" type="number" placeholder="1.0" min="0" step="0.1" />
+            <StockFormField control={form.control} name="fuelCostPercent" label="Fuel Cost %" type="number" placeholder="5.0" min="0" step="0.1" />
+            <StockFormField control={form.control} name="gstPercent" label="GST %" type="number" placeholder="18.0" min="0" step="0.1" />
             <AttachmentField label={tc.invoicePhoto} file={attachments.purchaseInvoice} onChange={(file) => setAttachment('purchaseInvoice', file)} hint={tc.invoicePhotoHint} />
             <AttachmentField label={tc.transporterBillPhoto} file={attachments.transporterBill} onChange={(file) => setAttachment('transporterBill', file)} accept="image/*" hint={tc.transporterBillHint} />
           </div>
         </div>
         <div className={FORM_CARD_CLASS}>
-          <FormSectionTitle icon={Truck} title={tc.transportInvoice} />
-          <div className="mt-3 grid gap-4 md:grid-cols-2">
+          <FormSectionTitle category="Mobility Details" icon={Truck} title={tc.transportInvoice} />
+          <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
             <SuggestComboboxField control={form.control} name="transporterName" label={tc.transporter} placeholder="Transport company" options={suggestions.transporterName} />
             <StockFormField control={form.control} name="truckLicensePlate" label={t('truck')} placeholder="RJ 14 XY 0000" list="sg-truckLicensePlate" />
             <StockFormField control={form.control} name="driverName" label={t('driver')} placeholder="Driver Name..." list="sg-driverName" />
@@ -182,27 +159,30 @@ export function ArrivalFormContent({
             <SuggestComboboxField control={form.control} name="destinationWarehouseName" label={tc.destinationWarehouse} placeholder="Warehouse name" options={suggestions.destinationWarehouseName} />
             <StockMoneyField control={form.control} name="transportCost" label={t('transportCost')} hint={tc.amountInInr} />
             <StockMoneyField control={form.control} name="laborCost" label={t('laborCost')} hint={tc.amountInInr} />
-            <StockFormField control={form.control} name="freightWeightKg" label="Freight Weight (kg)" type="number" placeholder="0" className={percentFieldClass} min="0" step="0.01" />
+            <StockFormField control={form.control} name="freightWeightKg" label="Freight Weight (kg)" type="number" placeholder="0" min="0" step="0.01" />
           </div>
         </div>
-        <div className="rounded-2xl bg-muted/20 p-0">
-          <div className="flex justify-between items-center mb-2 gap-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <Boxes className="h-4 w-4 text-primary" />
-              <span>{t('items')}</span>
+        <div className={FORM_CARD_CLASS}>
+          <div className="flex justify-between items-center mb-4 gap-4 px-1">
+            <div className="space-y-1">
+              <nav className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
+                <span>Inventory Hub</span>
+                <ChevronRight className="h-2.5 w-2.5 opacity-50" />
+                <span className="text-brand-primary">Assets</span>
+              </nav>
+              <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">{t('items')}</h3>
             </div>
+
+          </div>
+          <div className="space-y-4">
             <button
               type="button"
               onClick={onAddItem}
-              className="rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary transition hover:bg-primary/15"
+              className="inline-flex mb-4 items-center gap-2 rounded-full bg-brand-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95"
             >
-              <span className="inline-flex items-center gap-1.5">
-                <Plus className="h-3.5 w-3.5" />
-                {t('addItem')}
-              </span>
+              <Plus className="h-3.5 w-3.5" />
+              {t('addItem')}
             </button>
-          </div>
-          <div className="space-y-3">
             {itemsFieldArray.fields.map((fieldRow, index) => (
               <ArrivalItemRow
                 key={fieldRow.id}
@@ -227,7 +207,7 @@ export function ArrivalFormContent({
               <FormItem>
                 <FormLabel className={FORM_LABEL_CLASS}>{t('notes')}</FormLabel>
                 <FormControl>
-                  <Textarea {...field} value={field.value ?? ''} className={FORM_INPUT_CLASS} rows={2} />
+                  <Textarea {...field} value={field.value ?? ''} className={FORM_INPUT_CLASS} rows={3} />
                 </FormControl>
                 <FormMessage className="text-xs" />
               </FormItem>
@@ -237,10 +217,10 @@ export function ArrivalFormContent({
         <button
           type="submit"
           disabled={submitting}
-          className="mt-4 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-6 w-full rounded-2xl bg-brand-primary px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-brand-primary/20 transition-all hover:brightness-110 hover:scale-[1.01] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <span className="inline-flex items-center gap-2">
-            <ReceiptText className="h-4 w-4" />
+          <span className="inline-flex items-center gap-3">
+            <ReceiptText className="h-5 w-5" />
             {submitting ? tc.submitting : (language === 'hi' ? 'खरीद जमा करें' : 'Submit Purchase')}
           </span>
         </button>
