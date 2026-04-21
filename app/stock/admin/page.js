@@ -172,41 +172,6 @@ export default function AdminDashboard() {
   const { language } = useLanguage();
   const searchParams = useSearchParams();
   const t = (key) => getTranslation(`stock.admin.${key}`, language);
-  const ta = {
-    operationalAlerts: language === 'hi' ? 'संचालन अलर्ट' : 'Operational Alerts',
-    active: language === 'hi' ? 'सक्रिय' : 'active',
-    recentActivity: language === 'hi' ? 'हाल की गतिविधि' : 'Recent Activity',
-    liveOpsSnapshot: language === 'hi' ? 'लाइव संचालन स्नैपशॉट' : 'Live operations snapshot',
-    approvals: language === 'hi' ? 'अनुमोदन' : 'Approvals',
-    changes: language === 'hi' ? 'परिवर्तन' : 'Changes',
-    users: language === 'hi' ? 'उपयोगकर्ता' : 'Users',
-    maintainer: language === 'hi' ? 'मेंटेनर' : 'Maintainer',
-    changeRequests: language === 'hi' ? 'परिवर्तन अनुरोध' : 'Change Requests',
-    requestNo: language === 'hi' ? 'अनुरोध संख्या' : 'Request No',
-    source: language === 'hi' ? 'स्रोत' : 'Source',
-    type: language === 'hi' ? 'प्रकार' : 'Type',
-    priority: language === 'hi' ? 'प्राथमिकता' : 'Priority',
-    requestedBy: language === 'hi' ? 'अनुरोधकर्ता' : 'Requested By',
-    noChangeRequests: language === 'hi' ? 'कोई परिवर्तन अनुरोध नहीं मिला।' : 'No change requests found.',
-    department: language === 'hi' ? 'विभाग' : 'Department',
-    password: language === 'hi' ? 'पासवर्ड' : 'Password',
-    confirmPassword: language === 'hi' ? 'पासवर्ड की पुष्टि करें' : 'Confirm Password',
-    user: language === 'hi' ? 'उपयोगकर्ता' : 'User',
-    role: language === 'hi' ? 'भूमिका' : 'Role',
-    actions: language === 'hi' ? 'कार्रवाई' : 'Actions',
-    status: language === 'hi' ? 'स्थिति' : 'Status',
-    sku: language === 'hi' ? 'SKU' : 'SKU',
-    name: language === 'hi' ? 'नाम' : 'Name',
-    whole: language === 'hi' ? 'संपूर्ण' : 'Whole',
-    broken: language === 'hi' ? 'टूटी' : 'Broken',
-    noUsersFound: language === 'hi' ? 'कोई उपयोगकर्ता नहीं मिला।' : 'No users found.',
-    loadingPreview: language === 'hi' ? 'पूर्वावलोकन लोड हो रहा है…' : 'Loading preview…',
-    paginationShowing: language === 'hi' ? 'दिखाए जा रहे हैं' : 'Showing',
-    paginationOf: language === 'hi' ? 'में से' : 'of',
-    paginationPrevious: language === 'hi' ? 'पिछला' : 'Previous',
-    paginationNext: language === 'hi' ? 'अगला' : 'Next',
-    paginationPage: language === 'hi' ? 'पेज' : 'Page',
-  };
   const { user } = useAuthUser();
   const [data, setData] = useState(null);
   const [analyticsData, setAnalyticsData] = useState(null);
@@ -711,51 +676,51 @@ export default function AdminDashboard() {
 
   const summaryTiles = [
     {
-      label: 'Team Accounts',
+      label: t('teamAccounts'),
       value: totalUsers,
       href: '/stock?view=items',
       icon: UsersRound,
       trend: activeUsers - pendingUsers,
       iconAccent: 'bg-[#1A1A54]/10 text-[#1A1A54]',
       subMetrics: [
-        { label: 'Active', value: activeUsers },
-        { label: 'Pending', value: pendingUsers },
+        { label: t('active'), value: activeUsers },
+        { label: t('pending'), value: pendingUsers },
       ],
     },
     {
-      label: 'Approval Queue',
+      label: t('approvalQueue'),
       value: pendingReviews,
       href: '#approval-queue',
       icon: ShieldAlert,
       trend: pendingReviews > 0 ? -pendingReviews : 1,
       iconAccent: 'bg-[#F59E0B]/15 text-[#E07A00]',
       subMetrics: [
-        { label: 'Inbound', value: Number(analyticsData?.summary?.pending_inbound_reviews || 0) },
-        { label: 'Outbound', value: Number(analyticsData?.summary?.pending_outbound_reviews || 0) },
+        { label: language === 'hi' ? 'आवक' : 'Inbound', value: Number(analyticsData?.summary?.pending_inbound_reviews || 0) },
+        { label: language === 'hi' ? 'जावक' : 'Outbound', value: Number(analyticsData?.summary?.pending_outbound_reviews || 0) },
       ],
     },
     {
-      label: 'Stored Units',
+      label: t('storedUnits'),
       value: Number(analyticsData?.summary?.total_whole_stored || 0) + Number(analyticsData?.summary?.total_broken_stored || 0),
       href: '/stock?view=items',
       icon: PackageSearch,
       trend: Number(analyticsData?.summary?.total_whole_stored || 0) - Number(analyticsData?.summary?.total_broken_stored || 0),
       iconAccent: 'bg-[#E07A00]/10 text-[#E07A00]',
       subMetrics: [
-        { label: 'Whole', value: Number(analyticsData?.summary?.total_whole_stored || 0) },
-        { label: 'Broken', value: Number(analyticsData?.summary?.total_broken_stored || 0) },
+        { label: t('whole'), value: Number(analyticsData?.summary?.total_whole_stored || 0) },
+        { label: t('broken'), value: Number(analyticsData?.summary?.total_broken_stored || 0) },
       ],
     },
     {
-      label: 'Net Movement',
+      label: t('netMovement'),
       value: totalIncoming - totalOutgoing,
       href: '/stock?view=arrivals',
       icon: ArrowRightLeft,
       trend: totalIncoming - totalOutgoing,
       iconAccent: 'bg-[#1A1A54]/10 text-[#1A1A54]',
       subMetrics: [
-        { label: 'Incoming', value: totalIncoming },
-        { label: 'Outgoing', value: totalOutgoing },
+        { label: language === 'hi' ? 'आवक' : 'Incoming', value: totalIncoming },
+        { label: language === 'hi' ? 'जावक' : 'Outgoing', value: totalOutgoing },
       ],
     },
   ];
@@ -801,8 +766,8 @@ export default function AdminDashboard() {
   }, null);
 
   const movementSummary = movementPeak
-    ? `High-volume day detected on ${new Date(movementPeak.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })} with ${movementPeak.total} units moved.`
-    : 'Waiting for enough movement history to identify a high-volume day.';
+    ? `${language === 'hi' ? 'उच्च मात्रा वाला दिन' : 'High-volume day detected on'} ${new Date(movementPeak.date).toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-IN', { day: 'numeric', month: 'long', year: 'numeric' })} ${language === 'hi' ? 'को' : 'with'} ${movementPeak.total} ${t('units')} ${language === 'hi' ? 'के साथ पाया गया।' : 'moved.'}`
+    : language === 'hi' ? 'उच्च मात्रा वाले दिन की पहचान करने के लिए पर्याप्त गतिविधि इतिहास की प्रतीक्षा की जा रही है।' : 'Waiting for enough movement history to identify a high-volume day.';
 
   const lowStockCount = (analyticsData?.activeItems || []).filter((item) => {
     const available = Number(item.current_whole_qty || 0) + Number(item.current_broken_qty || 0);
@@ -818,32 +783,32 @@ export default function AdminDashboard() {
     pendingReviews > 0
       ? {
         level: 'critical',
-        title: 'Pending approvals need action',
-        message: `${pendingReviews} shipment${pendingReviews > 1 ? 's' : ''} waiting in review queue.`,
+        title: t('pendingApprovalsAction'),
+        message: `${pendingReviews} ${language === 'hi' ? 'शिपमेंट समीक्षा कतार में प्रतीक्षा कर रहे हैं।' : `shipment${pendingReviews > 1 ? 's' : ''} waiting in review queue.`}`,
         href: '#approval-queue',
       }
       : null,
     lowStockCount > 0
       ? {
         level: 'warning',
-        title: 'Low stock risk detected',
-        message: `${lowStockCount} item${lowStockCount > 1 ? 's are' : ' is'} at or below reorder level.`,
+        title: t('lowStockRisk'),
+        message: `${lowStockCount} ${language === 'hi' ? 'आइटम पुन: क्रय स्तर पर या उससे नीचे हैं।' : `item${lowStockCount > 1 ? 's are' : ' is'} at or below reorder level.`}`,
         href: '/stock?view=items',
       }
       : null,
     brokenRatio >= 0.08
       ? {
         level: 'warning',
-        title: 'Broken stock ratio is high',
-        message: `${(brokenRatio * 100).toFixed(1)}% of stock is marked broken. Investigate damage sources.`,
+        title: t('brokenStockRatioHigh'),
+        message: `${(brokenRatio * 100).toFixed(1)}% ${language === 'hi' ? 'स्टॉक को टूटा हुआ चिह्नित किया गया है। क्षति स्रोतों की जाँच करें।' : 'of stock is marked broken. Investigate damage sources.'}`,
         href: '/stock?view=items',
       }
       : null,
     latestTrendPoint && latestTrendPoint.outbound > latestTrendPoint.inbound
       ? {
         level: 'info',
-        title: 'Outflow is above inflow today',
-        message: `Outgoing ${latestTrendPoint.outbound} vs incoming ${latestTrendPoint.inbound} on latest trend day.`,
+        title: t('outflowAboveInflow'),
+        message: `${language === 'hi' ? 'आज जावक' : 'Outgoing'} ${latestTrendPoint.outbound} ${language === 'hi' ? 'बनाम आवक' : 'vs incoming'} ${latestTrendPoint.inbound} ${language === 'hi' ? 'है।' : 'on latest trend day.'}`,
         href: '/stock?view=dispatches',
       }
       : null,
@@ -853,7 +818,7 @@ export default function AdminDashboard() {
     ...(analyticsData?.recentArrivals || []).map((shipment) => ({
       id: `arrival-${shipment.id}`,
       kind: 'arrival',
-      title: `Arrival ${shipment.shipment_number}`,
+      title: `${language === 'hi' ? 'आगमन' : 'Arrival'} ${shipment.shipment_number}`,
       subtitle: `${Number(shipment.total_whole_qty || 0)} whole + ${Number(shipment.total_broken_qty || 0)} broken`,
       by: shipment.generated_by || '—',
       at: shipment.arrival_date || shipment.created_at,
@@ -863,7 +828,7 @@ export default function AdminDashboard() {
     ...(analyticsData?.recentDispatches || []).map((shipment) => ({
       id: `dispatch-${shipment.id}`,
       kind: 'dispatch',
-      title: `Dispatch ${shipment.shipment_number}`,
+      title: `${language === 'hi' ? 'डिस्पैच' : 'Dispatch'} ${shipment.shipment_number}`,
       subtitle: `${Number(shipment.total_whole_qty || 0)} whole + ${Number(shipment.total_broken_qty || 0)} broken`,
       by: shipment.generated_by || '—',
       at: shipment.dispatch_date || shipment.created_at,
@@ -908,33 +873,33 @@ export default function AdminDashboard() {
           </nav>
           <div className="flex flex-col sm:flex-row sm:items-center gap-6">
             <h1 className="text-5xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter leading-[0.9]">
-              Admin<br className="sm:hidden" /> Hub
+              {t('adminTitle').split(' ')[0]}<br className="sm:hidden" /> {t('adminTitle').split(' ')[1] || 'Hub'}
             </h1>
             <div className="flex items-center self-start sm:self-center gap-3 px-5 py-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest border border-emerald-500/20 shadow-sm whitespace-nowrap">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              Operational Core
+              {t('operationalCore')}
             </div>
           </div>
           <p className="text-lg text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-3xl">
-            System governance and administrative logic identified <span className="font-black text-slate-900 dark:text-white underline decoration-brand-primary/30 decoration-8 underline-offset-4">{pendingReviews} pending items</span> requiring oversight. System stability is currently <span className="font-black text-emerald-600">Active</span>.
+            {t('governanceIdentified')} <span className="font-black text-slate-900 dark:text-white underline decoration-brand-primary/30 decoration-8 underline-offset-4">{pendingReviews} {t('pendingArrivals')}</span> {t('requiringOversight')} <span className="font-black text-emerald-600">{t('activeStatus')}</span>.
           </p>
         </div>
 
         <div className="flex flex-row justify-between sm:flex-row items-stretch sm:items-center gap-4">
-          <button
-            onClick={() => setShowInsights(!showInsights)}
-            className={`flex items-center justify-center p-4 rounded-[1.5rem] bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/5 hover:shadow-xl transition-all active:scale-95 group ${showInsights ? 'text-brand-primary' : 'text-slate-400'}`}
-            title="Toggle Logic Insights"
-          >
-            <Activity className="h-6 w-6" />
-          </button>
-          <button
-            onClick={() => refreshDashboard()}
-            className="flex items-center justify-center gap-3 px-8 py-4 rounded-[1.5rem] bg-brand-primary text-white text-xs font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-lg active:scale-95 hover:shadow-brand-primary/20"
-          >
-            <FileText className="h-5 w-5" />
-            Sync Logs
-          </button>
+            <button
+              onClick={() => setShowInsights(!showInsights)}
+              className={`flex items-center justify-center p-4 rounded-[1.5rem] bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/5 hover:shadow-xl transition-all active:scale-95 group ${showInsights ? 'text-brand-primary' : 'text-slate-400'}`}
+              title={t('toggleInsights')}
+            >
+              <Activity className="h-6 w-6" />
+            </button>
+            <button
+              onClick={() => refreshDashboard()}
+              className="flex items-center justify-center gap-3 px-8 py-4 rounded-[1.5rem] bg-brand-primary text-white text-xs font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-lg active:scale-95 hover:shadow-brand-primary/20"
+            >
+              <FileText className="h-5 w-5" />
+              {t('syncLogs')}
+            </button>
         </div>
       </header>
 
@@ -966,9 +931,9 @@ export default function AdminDashboard() {
                     <Icon className={`h-8 w-8 ${m.iconAccent.split(' ')[1]}`} />
                   </div>
                   <div className="flex flex-col items-end">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">System Metric</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{t('systemMetric')}</span>
                     <span className={`text-[10px] font-black px-3 py-1 rounded-full mt-2 ${isPositive ? 'text-emerald-600 bg-emerald-500/10' : 'text-rose-600 bg-rose-500/10'}`}>
-                      {isPositive ? '+' : ''}{m.trend} Units
+                      {isPositive ? '+' : ''}{m.trend} {t('units')}
                     </span>
                   </div>
                 </div>
@@ -978,12 +943,12 @@ export default function AdminDashboard() {
 
                   {showInsights && (
                     <div className="mt-6 p-3 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50 animate-scale-in">
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-loose mb-2">Deep Logic:</p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-loose mb-2">{t('deepLogic')}</p>
                       <p className="text-[10px] leading-relaxed text-slate-500 dark:text-slate-400 font-medium">
-                        {i === 0 ? "Monitors active users and pending onboarding requests." :
-                          i === 1 ? "Critical queue representing items awaiting administrative sign-off." :
-                            i === 2 ? "High-level summary of physical units currently in warehouse custody." :
-                              "Calculated flow differential between arrivals and dispatches."}
+                        {i === 0 ? t('insightSummary') :
+                          i === 1 ? t('insightQueue') :
+                            i === 2 ? t('insightSnapshot') :
+                              t('insightFlow')}
                       </p>
                       <div className="mt-3 flex gap-4 border-t border-slate-100 dark:border-slate-800 pt-2">
                         {m.subMetrics.map((sm) => (
@@ -1014,29 +979,29 @@ export default function AdminDashboard() {
             <BarChart2 className="h-4 w-4" />
           </span>
           <div>
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">Analytics Dashboard</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Purchase, dispatch, inventory &amp; salesperson performance</p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">{t('analyticsDashboard')}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t('analyticsDashboardDesc')}</p>
           </div>
         </div>
-        <span className="text-xs font-semibold text-[#E07A00]">View →</span>
+        <span className="text-xs font-semibold text-[#E07A00]">{t('viewArrow')}</span>
       </Link>
 
       <section className="space-y-12">
         <div className="flex items-center gap-6">
-          <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">I. Operational Overview</h2>
+          <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">I. {t('operationalOverview')}</h2>
           <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
         </div>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-5 lg:gap-12">
           <AnalyticsCard
-            title={ta.operationalAlerts}
-            subtitle="Critical system events requiring attention"
-            insight="Action items generated by system logic. Priority should be given to 'Critical' status alerts to maintain operational flow."
+            title={t('operationalAlerts')}
+            subtitle={t('criticalEventsSubtitle')}
+            insight={t('criticalEventsInsight')}
             showInsight={showInsights}
             className="lg:col-span-2"
             topRight={
               <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-slate-500">
-                {operationalAlerts.length || 0} {ta.active}
+                {operationalAlerts.length || 0} {t('active')}
               </span>
             }
           >
@@ -1069,9 +1034,9 @@ export default function AdminDashboard() {
           </AnalyticsCard>
 
           <AnalyticsCard
-            title={ta.recentActivity}
-            subtitle={ta.liveOpsSnapshot}
-            insight="Real-time log of administrative actions. Use this to audit recent changes and shipment transitions."
+            title={t('recentActivity')}
+            subtitle={t('adminActivitySubtitle')}
+            insight={t('adminActivitySubtitle')}
             showInsight={showInsights}
             className="lg:col-span-3"
           >
@@ -1110,7 +1075,7 @@ export default function AdminDashboard() {
 
       <div className="rounded-[1.75rem] border border-slate-200/60 bg-slate-100/30 p-1.5 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/30">
         <div className="flex items-center gap-1">
-          {[{ id: 'approvals', label: ta.approvals }, { id: 'changes', label: ta.changes }, { id: 'users', label: ta.users }].map((tab) => {
+          {[{ id: 'approvals', label: t('approvals') }, { id: 'changes', label: t('changes') }, { id: 'users', label: t('users') }].map((tab) => {
             const isActive = mobileSection === tab.id;
             return (
               <button
@@ -1132,15 +1097,15 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 gap-4">
         <section id="approval-queue" className={`space-y-12 ${mobileSection === 'approvals' ? '' : 'hidden'}`}>
           <div className="flex items-center gap-6">
-            <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">II. Approval Workflow</h2>
+            <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">II. {t('approvalQueue')}</h2>
             <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 lg:gap-12">
             <AnalyticsCard
               title={t('pendingArrivals')}
-              subtitle="Inbound shipments awaiting validation"
-              insight="Incoming inventory must be verified against purchase orders. Confirm unit counts and physical integrity before approval."
+              subtitle={t('inboundQueueSubtitle')}
+              insight={t('inboundQueueInsight')}
               showInsight={showInsights}
             >
               <div className="hidden md:block overflow-x-auto rounded-3xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
@@ -1148,7 +1113,7 @@ export default function AdminDashboard() {
                   <thead className="sticky top-0 z-20 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xl">
                     <tr className="border-b border-slate-200/60 dark:border-white/5">
                       <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('shipmentNo')}</th>
-                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{ta.maintainer}</th>
+                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('maintainer')}</th>
                       <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('boxesQty')}</th>
                       <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
                     </tr>
@@ -1221,7 +1186,7 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{ta.maintainer}</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('maintainer')}</p>
                       <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{item.maintainer_name || '-'}</p>
                     </div>
                     <div className="flex gap-2 pt-2">
@@ -1260,15 +1225,15 @@ export default function AdminDashboard() {
                 total={arrivalPagination.total}
                 pageSize={DEFAULT_PAGE_SIZE}
                 onPageChange={setArrivalPage}
-                labels={{ showing: ta.paginationShowing, of: ta.paginationOf, previous: ta.paginationPrevious, next: ta.paginationNext, page: ta.paginationPage }}
+                labels={{ showing: t('paginationShowing'), of: t('paginationOf'), previous: t('paginationPrevious'), next: t('paginationNext'), page: t('paginationPage') }}
                 className="mt-6 border-t pt-4 border-slate-100 dark:border-slate-800"
               />
             </AnalyticsCard>
 
             <AnalyticsCard
               title={t('pendingDispatches')}
-              subtitle="Outbound shipments awaiting validation"
-              insight="Verification of outgoing stock ensures inventory accuracy and order fulfillment reliability."
+              subtitle={t('outboundQueueSubtitle')}
+              insight={t('outboundQueueInsight')}
               showInsight={showInsights}
             >
               <div className="hidden md:block overflow-x-auto rounded-3xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
@@ -1388,7 +1353,7 @@ export default function AdminDashboard() {
                 total={dispatchPagination.total}
                 pageSize={DEFAULT_PAGE_SIZE}
                 onPageChange={setDispatchPage}
-                labels={{ showing: ta.paginationShowing, of: ta.paginationOf, previous: ta.paginationPrevious, next: ta.paginationNext, page: ta.paginationPage }}
+                labels={{ showing: t('paginationShowing'), of: t('paginationOf'), previous: t('paginationPrevious'), next: t('paginationNext'), page: t('paginationPage') }}
                 className="mt-6 border-t pt-4 border-slate-100 dark:border-slate-800"
               />
             </AnalyticsCard>
@@ -1397,25 +1362,25 @@ export default function AdminDashboard() {
 
         <section className={`space-y-12 ${mobileSection === 'changes' ? '' : 'hidden'}`}>
           <div className="flex items-center gap-6">
-            <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">III. System Governance</h2>
+            <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">III. {t('changes')}</h2>
             <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
           </div>
 
           <AnalyticsCard
-            title={ta.changeRequests}
-            subtitle="Audit log of state modifications"
-            insight="Change requests track modifications to historical records. Approve adjustments after verifying the supporting evidence."
+            title={t('changeRequests')}
+            subtitle={t('changeRequestsSubtitle')}
+            insight={t('changeRequestsInsight')}
             showInsight={showInsights}
           >
             <div id="change-requests-panel" className="hidden md:block overflow-x-auto rounded-3xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="sticky top-0 z-20 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xl">
                   <tr className="border-b border-slate-200/60 dark:border-white/5">
-                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{ta.requestNo}</th>
-                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{ta.source}</th>
-                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{ta.type}</th>
-                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{ta.status}</th>
-                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 text-right">{ta.requestedBy}</th>
+                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('requestNo')}</th>
+                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('source')}</th>
+                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('type')}</th>
+                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('status')}</th>
+                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 text-right">{t('requestedBy')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-white/5">
@@ -1444,7 +1409,7 @@ export default function AdminDashboard() {
                     </tr>
                   ))}
                   {changeRequestPagination.total === 0 && (
-                    <tr><td colSpan="5" className="px-6 py-8 text-center text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] italic">{ta.noChangeRequests}</td></tr>
+                    <tr><td colSpan="5" className="px-6 py-8 text-center text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] italic">{t('noChangeRequests')}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -1463,7 +1428,7 @@ export default function AdminDashboard() {
                 >
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">{ta.requestNo}</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">{t('requestNo')}</p>
                       <p className="text-sm font-black text-brand-primary">{item.request_number || `CR-${item.id}`}</p>
                     </div>
                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black tracking-widest uppercase border ${getStatusVariant(item.status) === 'approved' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
@@ -1475,22 +1440,22 @@ export default function AdminDashboard() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">{ta.type}</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">{t('type')}</p>
                       <p className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">{item.request_type}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">{ta.requestedBy}</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">{t('requestedBy')}</p>
                       <p className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">{item.requested_by_name || '—'}</p>
                     </div>
                   </div>
                   <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/5">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">{ta.source}</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">{t('source')}</p>
                     <p className="text-xs font-bold text-slate-900 dark:text-white uppercase">{item.source_entity_type} #{item.source_entity_id}</p>
                   </div>
                 </div>
               ))}
               {changeRequestPagination.total === 0 && (
-                <div className="p-8 text-center text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] italic bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">{ta.noChangeRequests}</div>
+                <div className="p-8 text-center text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] italic bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">{t('noChangeRequests')}</div>
               )}
             </div>
             <PaginationControls
@@ -1499,7 +1464,7 @@ export default function AdminDashboard() {
               total={changeRequestPagination.total}
               pageSize={DEFAULT_PAGE_SIZE}
               onPageChange={setChangeRequestPage}
-              labels={{ showing: ta.paginationShowing, of: ta.paginationOf, previous: ta.paginationPrevious, next: ta.paginationNext, page: ta.paginationPage }}
+              labels={{ showing: t('paginationShowing'), of: t('paginationOf'), previous: t('paginationPrevious'), next: t('paginationNext'), page: t('paginationPage') }}
               className="mt-6 border-t pt-4 border-slate-100 dark:border-slate-800"
             />
           </AnalyticsCard>
@@ -1507,14 +1472,14 @@ export default function AdminDashboard() {
 
         <section id="users-contacts" className={`space-y-12 ${mobileSection === 'users' ? '' : 'hidden'}`}>
           <div className="flex items-center gap-6">
-            <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">IV. Personnel Governance</h2>
+            <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">IV. {t('users')}</h2>
             <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
           </div>
 
           <AnalyticsCard
             title={t('usersSalespersons')}
-            subtitle="System access and operational roles"
-            insight="Manage internal staff and sales partners. Ensure roles are assigned according to the principle of least privilege."
+            subtitle={t('userManagementSubtitle')}
+            insight={t('userManagementInsight')}
             showInsight={showInsights}
             topRight={
               <button
@@ -1522,7 +1487,7 @@ export default function AdminDashboard() {
                 onClick={() => setShowUserForm((current) => !current)}
                 className="px-6 py-2 rounded-xl bg-brand-primary text-white text-[10px] font-black uppercase tracking-widest shadow-lg hover:brightness-110 active:scale-95 transition-all outline-none border-none"
               >
-                {showUserForm ? 'Close Form' : t('addUserContact')}
+                {showUserForm ? (language === 'hi' ? 'फॉर्म बंद करें' : 'Close Form') : t('addUserContact')}
               </button>
             }
           >
@@ -1531,7 +1496,7 @@ export default function AdminDashboard() {
                 <form onSubmit={handleSaveUser} className="space-y-8">
                   <div className="flex items-center gap-4 mb-6">
                     <div className="w-10 h-px bg-brand-primary/30" />
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-primary">Onboarding Protocol</h4>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-primary">{language === 'hi' ? 'ऑनबोर्डिंग प्रोटोकॉल' : 'Onboarding Protocol'}</h4>
                   </div>
 
                   {userFormNotice && (
@@ -1566,10 +1531,10 @@ export default function AdminDashboard() {
                           <SelectValue placeholder={t('role')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="stock_maintainer">Stock Maintainer</SelectItem>
-                          <SelectItem value="salesperson">Salesperson</SelectItem>
-                          <SelectItem value="manager">Manager</SelectItem>
-                          <SelectItem value="admin">System Admin</SelectItem>
+                          <SelectItem value="stock_maintainer">{language === 'hi' ? 'स्टॉक मेंटेनर' : 'Stock Maintainer'}</SelectItem>
+                          <SelectItem value="salesperson">{language === 'hi' ? 'सेल्सपर्शन' : 'Salesperson'}</SelectItem>
+                          <SelectItem value="manager">{language === 'hi' ? 'मैनेजर' : 'Manager'}</SelectItem>
+                          <SelectItem value="admin">{language === 'hi' ? 'सिस्टम एडमिन' : 'System Admin'}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1577,7 +1542,7 @@ export default function AdminDashboard() {
 
                   <div className="grid gap-6 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{ta.password}</Label>
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{t('password')}</Label>
                       <div className="relative">
                         <Input {...createUserForm.register('password')} type={showPrimaryPassword ? 'text' : 'password'} className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold pr-12" placeholder="Secure token" />
                         <button type="button" onClick={() => setShowPrimaryPassword(!showPrimaryPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
@@ -1586,7 +1551,7 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{ta.confirmPassword}</Label>
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{t('confirmPassword')}</Label>
                       <div className="relative">
                         <Input value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} type={showConfirmPassword ? 'text' : 'password'} className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold pr-12" placeholder="Verify token" />
                         <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
@@ -1602,7 +1567,7 @@ export default function AdminDashboard() {
                       disabled={actionLoading === 'user-save'}
                       className="flex-1 h-14 rounded-2xl bg-slate-900 transition-all hover:bg-black text-white text-xs font-black uppercase tracking-widest disabled:opacity-50"
                     >
-                      {actionLoading === 'user-save' ? 'Processing...' : 'Authorize Identity'}
+                       {actionLoading === 'user-save' ? (language === 'hi' ? 'प्रसंस्करण...' : 'Processing...') : (language === 'hi' ? 'पहचान अधिकृत करें' : 'Authorize Identity')}
                     </button>
                     <button
                       type="button"
@@ -1616,7 +1581,7 @@ export default function AdminDashboard() {
                       }}
                       className="px-8 h-14 rounded-2xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 text-xs font-black uppercase tracking-widest transition-all"
                     >
-                      Cancel
+                       {language === 'hi' ? 'रद्द करें' : 'Cancel'}
                     </button>
                   </div>
                   <input type="hidden" {...createUserForm.register('status')} readOnly />
@@ -1628,10 +1593,10 @@ export default function AdminDashboard() {
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="sticky top-0 z-20 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xl">
                   <tr className="border-b border-slate-200/60 dark:border-white/5">
-                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{ta.user}</th>
-                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{ta.role}</th>
-                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{ta.status}</th>
-                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 text-right">{ta.actions}</th>
+                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('user')}</th>
+                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('role')}</th>
+                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('status')}</th>
+                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-white/5">
@@ -1699,7 +1664,7 @@ export default function AdminDashboard() {
                     </tr>
                   ))}
                   {userPagination.total === 0 && (
-                    <tr><td colSpan="4" className="px-8 py-12 text-center text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] italic">{ta.noUsersFound}</td></tr>
+                    <tr><td colSpan="4" className="px-8 py-12 text-center text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] italic">{t('noUsersFound')}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -1765,7 +1730,7 @@ export default function AdminDashboard() {
                 </div>
               ))}
               {userPagination.total === 0 && (
-                <div className="p-8 text-center text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] italic bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">{ta.noUsersFound}</div>
+                <div className="p-8 text-center text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] italic bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">{t('noUsersFound')}</div>
               )}
             </div>
             <PaginationControls
@@ -1774,7 +1739,7 @@ export default function AdminDashboard() {
               total={userPagination.total}
               pageSize={DEFAULT_PAGE_SIZE}
               onPageChange={setUserPage}
-              labels={{ showing: ta.paginationShowing, of: ta.paginationOf, previous: ta.paginationPrevious, next: ta.paginationNext, page: ta.paginationPage }}
+              labels={{ showing: t('paginationShowing'), of: t('paginationOf'), previous: t('paginationPrevious'), next: t('paginationNext'), page: t('paginationPage') }}
               className="mt-6 border-t pt-4 border-slate-100 dark:border-slate-800"
             />
           </AnalyticsCard>
@@ -1788,7 +1753,7 @@ export default function AdminDashboard() {
         description={previewState.description}
         summary={
           previewState.loading ? (
-            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 animate-pulse">{ta.loadingPreview}</div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 animate-pulse">{t('loadingPreview')}</div>
           ) : previewState.error ? (
             <div className="text-[10px] font-black uppercase tracking-widest text-rose-500">{previewState.error}</div>
           ) : null

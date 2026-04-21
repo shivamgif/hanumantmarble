@@ -61,9 +61,9 @@ export function DispatchesPanel({
         <div className="flex items-start justify-between p-4 sm:p-5 border-b border-slate-200/60 bg-slate-50/40 dark:bg-slate-900/40 px-6 py-5">
           <div className="space-y-1.5">
             <nav className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-slate-400">
-              <span>Inventory Hub</span>
+              <span>{tc.inventoryHub}</span>
               <ChevronRight className="h-2.5 w-2.5 opacity-50" />
-              <span className="text-brand-primary">Dispatches</span>
+              <span className="text-brand-primary">{tc.dispatches}</span>
             </nav>
             <div className="flex items-center gap-3">
               <h3 className="text-sm font-black text-slate-900 dark:text-white tracking-tight">{t('dispatches')}</h3>
@@ -141,25 +141,25 @@ export function DispatchesPanel({
                 {expanded ? (
                   <div className="mt-2 space-y-1 text-[11px] text-slate-500 dark:text-slate-400">
                     <p className="truncate">{d.product_names || d.product_skus || '—'}</p>
-                    <p>By: {d.generated_by || '—'}</p>
+                    <p>{t('by')}: {d.generated_by || '—'}</p>
                   </div>
                 ) : null}
                 <div className="mt-2 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setDispatchExpandedId((current) => (current === d.id ? null : d.id))}
-                    className="rounded-lg border border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground transition hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700"
-                    aria-label={expanded ? 'Collapse dispatch details' : 'Expand dispatch details'}
-                  >
-                    {expanded ? 'Collapse' : 'Expand'}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setDispatchExpandedId((current) => (current === d.id ? null : d.id))}
+                      className="rounded-lg border border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground transition hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700"
+                      aria-label={expanded ? tc.collapse : tc.expand}
+                    >
+                      {expanded ? tc.collapse : tc.expand}
+                    </button>
                   {canEdit && (
                     <button
                       type="button"
                       className="rounded-lg border border-border px-2 py-1 text-[11px] font-semibold text-foreground transition hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20"
                       onClick={e => { e.stopPropagation(); onEdit(d); }}
                     >
-                      Edit
+                      {tc.edit}
                     </button>
                   )}
                 </div>
@@ -174,11 +174,11 @@ export function DispatchesPanel({
                 {[
                   { id: 'datetime', label: tc.datetime },
                   { id: 'shipment', label: t('dispatchNo') },
-                  { id: 'customer', label: 'Customer' },
-                  { id: 'products', label: 'Products' },
-                  { id: 'quantities', label: 'Quantities', align: 'right' },
-                  ...(canEdit ? [{ id: 'edit', label: 'Edit', align: 'right' }] : []),
-                  { id: 'return', label: 'Return', align: 'right' },
+                  { id: 'customer', label: tc.customer },
+                  { id: 'products', label: tc.products },
+                  { id: 'quantities', label: tc.quantities, align: 'right' },
+                  ...(canEdit ? [{ id: 'edit', label: tc.edit, align: 'right' }] : []),
+                  { id: 'return', label: tc.return, align: 'right' },
                   { id: 'status', label: t('status') },
                   { id: 'generatedBy', label: tc.generatedBy },
                   { id: 'approvedBy', label: tc.approvedBy },
@@ -243,7 +243,7 @@ export function DispatchesPanel({
                           onEdit(d);
                         }}
                       >
-                        Edit
+                        {tc.edit}
                       </button>
                     </td>
                   )}

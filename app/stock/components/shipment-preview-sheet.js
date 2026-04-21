@@ -9,7 +9,7 @@ import { formatDateTime, INVOICE_CLASSES } from '../lib/stock-utils';
 
 function renderDocumentPreview(document) {
   if (!document?.file_url) {
-    return <div className="glass-panel rounded-2xl border border-white/5 bg-white/5 p-6 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">No preview available</div>;
+    return <div className="glass-panel rounded-2xl border border-white/5 bg-white/5 p-6 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">{tc.noPreview}</div>;
   }
 
   if (document.mime_type?.startsWith('image/')) {
@@ -21,7 +21,7 @@ function renderDocumentPreview(document) {
           className="max-h-96 w-full object-contain transition-transform duration-700 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-4">
-          <div className="text-[10px] font-black uppercase tracking-widest text-white shadow-sm">Visual Verification Hub</div>
+          <div className="text-[10px] font-black uppercase tracking-widest text-white shadow-sm">{tc.visualVerificationHub}</div>
         </div>
       </div>
     );
@@ -40,33 +40,33 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
   const isInboundPreview = previewState.kind === 'arrival';
 
   const inboundMetaItems = useMemo(() => [
-    { label: 'Status', value: previewState.record?.status },
-    { label: 'Approval', value: previewState.record?.approval_status },
-    { label: 'Driver', value: previewState.record?.driver_name },
-    { label: 'Origin City', value: previewState.record?.origin_city },
-    { label: 'Destination Warehouse', value: previewState.record?.destination_warehouse_name },
-    { label: 'Payment Status', value: previewState.record?.payment_status },
-    { label: 'Total Whole', value: previewState.record?.total_whole_qty },
-    { label: 'Total Broken', value: previewState.record?.total_broken_qty },
-    { label: 'Notes', value: previewState.record?.notes },
-  ], [previewState.record]);
+    { label: tc.status, value: previewState.record?.status },
+    { label: tc.approval, value: previewState.record?.approval_status },
+    { label: tc.driver, value: previewState.record?.driver_name },
+    { label: tc.originCity, value: previewState.record?.origin_city },
+    { label: tc.destinationWarehouse, value: previewState.record?.destination_warehouse_name },
+    { label: tc.paymentStatus, value: previewState.record?.payment_status },
+    { label: tc.totalWhole, value: previewState.record?.total_whole_qty },
+    { label: tc.totalBroken, value: previewState.record?.total_broken_qty },
+    { label: tc.notes, value: previewState.record?.notes },
+  ], [previewState.record, tc]);
 
   const hasTechnicalSubBar = Boolean(previewState.record?.eway_bill_number || previewState.record?.irn_number);
 
   const stockSections = useMemo(() => previewState.kind === 'stock'
     ? [
       {
-        title: 'Item Details',
+        title: tc.itemDetails,
         children: (
           <PreviewKeyValueGrid
             items={[
-              { label: 'Name', value: previewState.record?.name },
-              { label: 'Finish', value: previewState.record?.finish },
-              { label: 'Quality', value: previewState.record?.grade },
-              { label: 'Size', value: previewState.record?.size_label },
-              { label: 'Whole Qty', value: previewState.record?.current_whole_qty },
-              { label: 'Broken Qty', value: previewState.record?.current_broken_qty },
-              { label: 'Reorder Level', value: previewState.record?.reorder_level },
+              { label: tc.name, value: previewState.record?.name },
+              { label: tc.finish, value: previewState.record?.finish },
+              { label: tc.quality, value: previewState.record?.grade },
+              { label: tc.size, value: previewState.record?.size_label },
+              { label: tc.wholeQty, value: previewState.record?.current_whole_qty },
+              { label: tc.brokenQty, value: previewState.record?.current_broken_qty },
+              { label: tc.reorderLevel, value: previewState.record?.reorder_level },
             ]}
           />
         ),
@@ -74,7 +74,7 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
     ]
     : [
       {
-        title: 'Details',
+        title: tc.details,
         children: isInboundPreview ? (
           <div className={INVOICE_CLASSES.surface}>
             <div className={INVOICE_CLASSES.commandCard}>
@@ -82,9 +82,9 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
                 <div className="space-y-4">
                    <div className="space-y-1">
                     <nav className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
-                      <span>Logistics Origin</span>
+                      <span>{tc.logisticsOrigin}</span>
                       <ChevronRight className="h-2.5 w-2.5 opacity-50" />
-                      <span className="text-brand-primary">Node</span>
+                      <span className="text-brand-primary">{tc.node}</span>
                     </nav>
                     <div className={INVOICE_CLASSES.supplierTitle}>{previewState.record?.supplier_name || 'Supplier'}</div>
                   </div>
@@ -135,9 +135,9 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
                 <div className="space-y-4">
                    <div className="space-y-1">
                     <nav className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
-                      <span>Target Entity</span>
+                      <span>{tc.targetEntity}</span>
                       <ChevronRight className="h-2.5 w-2.5 opacity-50" />
-                      <span className="text-brand-primary">Terminal</span>
+                      <span className="text-brand-primary">{tc.terminal}</span>
                     </nav>
                     <div className={INVOICE_CLASSES.supplierTitle}>{previewState.record?.customer_name || 'Customer'}</div>
                   </div>
@@ -172,15 +172,15 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
             <div className="px-5 pb-5">
               <PreviewKeyValueGrid
                 items={[
-                  { label: 'Status', value: previewState.record?.status },
-                  { label: 'Approval', value: previewState.record?.approval_status },
-                  { label: 'Salesperson', value: previewState.record?.salesperson_name },
-                  { label: 'Driver', value: previewState.record?.driver_name },
-                  { label: 'Total Whole', value: previewState.record?.total_whole_qty },
-                  { label: 'Total Broken', value: previewState.record?.total_broken_qty },
-                  { label: 'Return Whole', value: previewState.record?.total_return_whole_qty },
-                  { label: 'Return Broken', value: previewState.record?.total_return_broken_qty },
-                  { label: 'Notes', value: previewState.record?.notes },
+                  { label: tc.status, value: previewState.record?.status },
+                  { label: tc.approval, value: previewState.record?.approval_status },
+                  { label: tc.salesperson, value: previewState.record?.salesperson_name },
+                  { label: tc.driver, value: previewState.record?.driver_name },
+                  { label: tc.totalWhole, value: previewState.record?.total_whole_qty },
+                  { label: tc.totalBroken, value: previewState.record?.total_broken_qty },
+                  { label: tc.returnWhole, value: previewState.record?.total_return_whole_qty },
+                  { label: tc.returnBroken, value: previewState.record?.total_return_broken_qty },
+                  { label: tc.notes, value: previewState.record?.notes },
                 ]}
               />
             </div>
@@ -189,26 +189,26 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
       },
       previewState.items?.length
         ? {
-          title:'Items',
+          title: tc.itemsTitle,
           children: (
             <>
               <div className={INVOICE_CLASSES.mobileGrid}>
                 {previewItemPagination.rows.map((item, index) => (
                   <article key={`shipment-item-${item.id || index}`} className={INVOICE_CLASSES.mobileCard}>
-                    <div className={INVOICE_CLASSES.mobileCardHeader}>Line {index + 1}</div>
+                    <div className={INVOICE_CLASSES.mobileCardHeader}>{tc.line} {index + 1}</div>
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       <div>
                         <div className={INVOICE_CLASSES.mobileKey}>{tc.description}</div>
                         <div className={INVOICE_CLASSES.mobileValue}>{item.item_name || '—'} {item.finish ? `(${item.finish})` : ''}</div>
                       </div>
                       <div>
-                        <div className={INVOICE_CLASSES.mobileKey}>Size</div>
+                        <div className={INVOICE_CLASSES.mobileKey}>{tc.size}</div>
                         <div className={INVOICE_CLASSES.mobileValue}>{item.size_label || '—'}</div>
                       </div>
                       {isInboundPreview ? (
                         <>
                           <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>HSN</div>
+                            <div className={INVOICE_CLASSES.mobileKey}>{tc.hsn}</div>
                             <div className={INVOICE_CLASSES.mobileValue}>{item.hsn_code || '—'}</div>
                           </div>
                           <div>
@@ -216,15 +216,15 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
                             <div className={INVOICE_CLASSES.mobileValue}>{item.received_whole_qty ?? item.loaded_whole_qty ?? 0}</div>
                           </div>
                           <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>Ordered (sqm)</div>
+                            <div className={INVOICE_CLASSES.mobileKey}>{tc.orderedSqm}</div>
                             <div className={INVOICE_CLASSES.mobileValue}>{item.ordered_qty_sqm != null ? Number(item.ordered_qty_sqm).toFixed(3) : '—'}</div>
                           </div>
                           <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>Whole (sqm)</div>
+                            <div className={INVOICE_CLASSES.mobileKey}>{tc.wholeSqm}</div>
                             <div className={INVOICE_CLASSES.mobileValue}>{item.whole_qty_sqm != null ? Number(item.whole_qty_sqm).toFixed(3) : '—'}</div>
                           </div>
                           <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>Broken (sqm)</div>
+                            <div className={INVOICE_CLASSES.mobileKey}>{tc.brokenSqm}</div>
                             <div className={INVOICE_CLASSES.mobileValue}>{item.broken_qty_sqm != null ? Number(item.broken_qty_sqm).toFixed(3) : '—'}</div>
                           </div>
                           <div className="col-span-2">
@@ -237,19 +237,19 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
                       ) : (
                         <>
                           <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>Loaded Whole</div>
+                            <div className={INVOICE_CLASSES.mobileKey}>{tc.loadedWhole}</div>
                             <div className={INVOICE_CLASSES.mobileValue}>{item.loaded_whole_qty ?? 0}</div>
                           </div>
                           <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>Loaded Broken</div>
+                            <div className={INVOICE_CLASSES.mobileKey}>{tc.loadedBroken}</div>
                             <div className={INVOICE_CLASSES.mobileValue}>{item.loaded_broken_qty ?? 0}</div>
                           </div>
                           <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>Return Whole</div>
+                            <div className={INVOICE_CLASSES.mobileKey}>{tc.returnWhole}</div>
                             <div className={INVOICE_CLASSES.mobileValue}>{item.returned_whole_qty ?? 0}</div>
                           </div>
                           <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>Return Broken</div>
+                            <div className={INVOICE_CLASSES.mobileKey}>{tc.returnBroken}</div>
                             <div className={INVOICE_CLASSES.mobileValue}>{item.returned_broken_qty ?? 0}</div>
                           </div>
                         </>
@@ -278,14 +278,14 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
         : null,
       previewState.documents?.length
         ? {
-          title: 'Linked Documents',
+          title: tc.linkedDocuments,
           children: (
             <div className="grid gap-6 xl:grid-cols-2">
               {previewState.documents.map((document) => (
                 <section key={document.id} className="glass-panel overflow-hidden rounded-2xl border border-white/5 shadow-xl transition-all duration-300 hover:shadow-2xl">
                   <div className="border-b border-white/5 bg-slate-900/40 px-5 py-4">
                     <nav className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 mb-1">
-                      <span>Intelligence Case</span>
+                      <span>{tc.intelligenceCase}</span>
                       <ChevronRight className="h-2.5 w-2.5 opacity-50" />
                       <span className="text-brand-primary">{document.document_type}</span>
                     </nav>

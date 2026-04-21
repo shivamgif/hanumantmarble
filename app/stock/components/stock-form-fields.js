@@ -34,7 +34,7 @@ export function InlineNotice({ notice }) {
   );
 }
 
-export function AttachmentField({ label, accept = 'image/*,.pdf', onChange, file, hint }) {
+ export function AttachmentField({ label, accept = 'image/*,.pdf', onChange, file, hint, tc }) {
   return (
     <label className="block cursor-pointer min-w-0">
       <span className={FORM_LABEL_CLASS}>{label}</span>
@@ -50,8 +50,8 @@ export function AttachmentField({ label, accept = 'image/*,.pdf', onChange, file
             <UploadCloud className="h-5 w-5 sm:h-6 sm:w-6" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-foreground truncate">{file ? 'Replace file' : 'Choose file'}</div>
-            <div className="mt-0.5 sm:mt-1 truncate text-xs font-medium text-primary">{file ? file.name : (hint || 'Attach photo / PDF')}</div>
+            <div className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-foreground truncate">{file ? tc.replaceFile : tc.chooseFile}</div>
+            <div className="mt-0.5 sm:mt-1 truncate text-xs font-medium text-primary">{file ? file.name : (hint || tc.attachHint)}</div>
           </div>
         </div>
       </div>
@@ -59,14 +59,14 @@ export function AttachmentField({ label, accept = 'image/*,.pdf', onChange, file
   );
 }
 
-export function FormSectionTitle({ icon: Icon, title, description, category = 'Form Section' }) {
+ export function FormSectionTitle({ icon: Icon, title, description, category, tc }) {
   return (
     <div className="flex items-start gap-4 mb-4">
       <div className="space-y-1.5">
         <nav className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
-          <span>{category}</span>
+          <span>{category || tc.formSection}</span>
           <ChevronRight className="h-2.5 w-2.5 opacity-50" />
-          <span className="text-brand-primary">Control</span>
+          <span className="text-brand-primary">{tc.controlLabel}</span>
         </nav>
         <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">{title}</h3>
         {description ? <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold leading-relaxed opacity-70">{description}</p> : null}

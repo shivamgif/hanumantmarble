@@ -61,16 +61,16 @@ export function PurchasesPanel({
         title={!canCreateArrival ? tc.insufficientNewPurchase : undefined}
       >
         <Plus className="h-4 w-4" />
-        {tc.newPurchase}
+        {tc.logNewPurchase}
       </button>
 
       <section id="purchases" className="flex h-full flex-col overflow-hidden scroll-mt-6 glass-panel rounded-2xl sm:rounded-3xl border border-slate-200/60 dark:border-white/5 shadow-2xl transition-all duration-500">
         <div className="flex items-start justify-between p-4 sm:p-5 border-b border-slate-200/60 bg-slate-50/40 dark:bg-slate-900/40 px-6 py-5">
           <div className="space-y-1.5">
             <nav className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-slate-400">
-              <span>Inventory Hub</span>
+              <span>{tc.inventoryHub}</span>
               <ChevronRight className="h-2.5 w-2.5 opacity-50" />
-              <span className="text-brand-primary">Purchases</span>
+              <span className="text-brand-primary">{tc.purchases}</span>
             </nav>
             <div className="flex items-center gap-3">
               <h3 className="text-sm font-black text-slate-900 dark:text-white tracking-tight">{tc.purchases}</h3>
@@ -113,7 +113,7 @@ export function PurchasesPanel({
         </div>
         {!canCreateArrival ? (
           <div className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            Insufficient permission: salespeople can create dispatches but cannot create purchases.
+            {tc.insufficientNewPurchase}
           </div>
         ) : null}
         <div className="sticky top-0 z-10 border-b border-slate-200/60 bg-white/50 px-3 py-2.5 backdrop-blur-md dark:bg-slate-900/50">
@@ -123,7 +123,7 @@ export function PurchasesPanel({
               type="search"
               value={arrivalSearch}
               onChange={(event) => setArrivalSearch(event.target.value)}
-              placeholder="Search purchases by date, product, qty, truck, or status"
+              placeholder={tc.searchPurchases}
               className={`${FORM_INPUT_CLASS} pl-11`}
             />
           </div>
@@ -165,9 +165,9 @@ export function PurchasesPanel({
                     type="button"
                     onClick={() => setArrivalExpandedId((current) => (current === a.id ? null : a.id))}
                     className="rounded-lg border border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground transition hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    aria-label={expanded ? 'Collapse purchase details' : 'Expand purchase details'}
+                    aria-label={expanded ? tc.collapse : tc.expand}
                   >
-                    {expanded ? 'Collapse' : 'Expand'}
+                    {expanded ? tc.collapse : tc.expand}
                   </button>
                   {canEdit && (
                     <button
@@ -175,7 +175,7 @@ export function PurchasesPanel({
                       className="rounded-lg border border-border px-2 py-1 text-[11px] font-semibold text-foreground transition hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20"
                       onClick={e => { e.stopPropagation(); onEdit(a); }}
                     >
-                      Edit
+                      {tc.edit}
                     </button>
                   )}
                 </div>
@@ -193,11 +193,11 @@ export function PurchasesPanel({
                   { id: 'invoice', label: tc.invoice },
                   { id: 'route', label: tc.route },
                   { id: 'payment', label: tc.payment },
-                  { id: 'products', label: 'Products' },
-                  { id: 'quantities', label: 'Quantities', align: 'right' },
-                  { id: 'grandTotal', label: 'Grand Total', align: 'right' },
-                  { id: 'freight', label: 'Freight (kg)', align: 'right' },
-                  ...(canEdit ? [{ id: 'edit', label: 'Edit', align: 'right' }] : []),
+                  { id: 'products', label: tc.products },
+                  { id: 'quantities', label: tc.quantities, align: 'right' },
+                  { id: 'grandTotal', label: tc.grandTotal, align: 'right' },
+                  { id: 'freight', label: `${tc.freight} (kg)`, align: 'right' },
+                  ...(canEdit ? [{ id: 'edit', label: tc.edit, align: 'right' }] : []),
                   { id: 'status', label: t('status') },
                   { id: 'generatedBy', label: tc.generatedBy },
                   { id: 'approvedBy', label: tc.approvedBy },
@@ -274,7 +274,7 @@ export function PurchasesPanel({
                         className="rounded-md border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
                         onClick={e => { e.stopPropagation(); onEdit(a); }}
                       >
-                        Edit
+                        {tc.edit}
                       </button>
                     </td>
                   )}

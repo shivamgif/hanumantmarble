@@ -34,7 +34,6 @@ function SidebarNavItem({ Icon, Label, Href, IsActive }) {
 export default function StockSidebar({
   classes,
   t,
-  tc,
   language,
   toggleLanguage,
   setNotificationOpen,

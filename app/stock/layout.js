@@ -207,8 +207,8 @@ export default function StockLayout({ children }) {
                 />
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{tc.brandFull}</p>
-                <p className="text-sm text-muted-foreground">{tc.stockAccess}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{language === 'hi' ? 'हनुमंत मार्बल' : 'Hanumant Marble'}</p>
+                <p className="text-sm text-muted-foreground">{getTranslation('stock.layout.stockAccess', language)}</p>
               </div>
             </div>
             <h1 className="text-2xl font-bold text-foreground">{t('waitingApproval')}</h1>
@@ -234,7 +234,6 @@ export default function StockLayout({ children }) {
       <StockSidebar
         classes={CLASSES}
         t={t}
-        tc={tc}
         language={language}
         toggleLanguage={toggleLanguage}
         setNotificationOpen={notificationsState.setNotificationOpen}
@@ -250,7 +249,6 @@ export default function StockLayout({ children }) {
       <div className="relative z-10 flex min-h-screen flex-col lg:pl-60">
         <StockTopbar
           t={t}
-          tc={tc}
           language={language}
           toggleLanguage={toggleLanguage}
           setNotificationOpen={notificationsState.setNotificationOpen}
@@ -291,7 +289,7 @@ export default function StockLayout({ children }) {
       </div>
 
       <StockNotificationsSheet
-        tc={tc}
+        t={t}
         accessRole={accessRole}
         notificationOpen={notificationsState.notificationOpen}
         setNotificationOpen={notificationsState.setNotificationOpen}

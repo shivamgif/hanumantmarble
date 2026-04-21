@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { getTranslation } from '@/lib/translations';
 import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { useRouter } from 'next/navigation';
@@ -110,7 +111,11 @@ function AnalyticsCard({ title, subtitle, topRight, contextBar, insight, showIns
       </div>
     </div>
   );
-} function StockHealthScorecard({ data, showInsight }) {
+}
+
+function StockHealthScorecard({ data, showInsight }) {
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   const healthy = data.reduce((s, d) => s + Math.max(0, Number(d.total_items || 0) - Number(d.at_risk || 0)), 0);
   const totalItems = data.reduce((s, d) => s + Number(d.total_items || 0), 0);
   const atRiskCount = data.reduce((s, d) => s + Number(d.at_risk || 0), 0);
@@ -118,9 +123,9 @@ function AnalyticsCard({ title, subtitle, topRight, contextBar, insight, showIns
 
   const metrics = [
     {
-      label: 'Operational Stability',
+      label: t('operationalStability'),
       value: `${(healthyRatio * 100).toFixed(1)}%`,
-      subValue: `${formatCompactNumber(healthy)} healthy line items`,
+      subValue: `${formatCompactNumber(healthy)} ${t('healthyLineItems')}`,
       color: 'text-emerald-600 dark:text-emerald-400',
       bg: 'bg-emerald-500/10',
       border: 'border-emerald-500/20',
@@ -128,9 +133,9 @@ function AnalyticsCard({ title, subtitle, topRight, contextBar, insight, showIns
       trend: '+2.4%'
     },
     {
-      label: 'Inventory Vulnerability',
+      label: t('inventoryVulnerability'),
       value: formatCompactNumber(atRiskCount),
-      subValue: 'Units below reorder threshold',
+      subValue: t('unitsBelowThreshold'),
       color: 'text-amber-600 dark:text-amber-400',
       bg: 'bg-amber-500/10',
       border: 'border-amber-500/20',
@@ -138,14 +143,14 @@ function AnalyticsCard({ title, subtitle, topRight, contextBar, insight, showIns
       trend: '-12%'
     },
     {
-      label: 'Stock Longevity',
-      value: '42 Days',
-      subValue: 'Estimated runway at current pace',
+      label: t('stockLongevity'),
+      value: `42 ${t('days')}`,
+      subValue: t('estimatedRunway'),
       color: 'text-brand-primary',
       bg: 'bg-brand-primary/10',
       border: 'border-brand-primary/20',
       icon: ShieldCheck,
-      trend: 'Optimal'
+      trend: language === 'hi' ? 'इष्टतम' : 'Optimal'
     },
   ];
 
@@ -159,7 +164,7 @@ function AnalyticsCard({ title, subtitle, topRight, contextBar, insight, showIns
                 <m.icon className={`h-8 w-8 ${m.color}`} />
               </div>
               <div className="flex flex-col items-end">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Logistics KPI</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{t('logisticsKPI')}</span>
                 <span className={`text-[10px] font-black px-3 py-1 rounded-full mt-2 ${m.color} ${m.bg} border ${m.border}`}>
                   {m.trend}
                 </span>
@@ -181,6 +186,8 @@ function AnalyticsCard({ title, subtitle, topRight, contextBar, insight, showIns
 }
 
 function SalesRevenueChart({ data, showInsight }) {
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   const containerRef = useRef(null);
   const [width, setWidth] = useState(500);
   const [hoveredIndex, setHoveredIndex] = useState(null);
@@ -195,7 +202,7 @@ function SalesRevenueChart({ data, showInsight }) {
 
   if (!data || data.length === 0)
     return (
-      <AnalyticsCard title="Sales Volume" subtitle="No data">
+      <AnalyticsCard title={t('salesVolume')} subtitle={t('noData')}>
         <div className="h-64 flex items-center justify-center">—</div>
       </AnalyticsCard>
     );
@@ -224,14 +231,14 @@ function SalesRevenueChart({ data, showInsight }) {
   const isPositive = trend >= 0;
 
   const peakPoint = points.reduce((best, p) => (Number(p.d.total || 0) > Number(best.d.total || 0) ? p : best), points[0]);
-  const peakLabel = peakPoint ? `Highest activity: ${formatCompactNumber(peakPoint.d.total)} units in ${formatMonthLabel(peakPoint.d.month || peakPoint.d.bucket)}` : null;
+  const peakLabel = peakPoint ? `${t('highestActivity')}: ${formatCompactNumber(peakPoint.d.total)} ${t('unitsIn')} ${formatMonthLabel(peakPoint.d.month || peakPoint.d.bucket)}` : null;
 
   return (
     <AnalyticsCard
-      title="Sales Activity Trend"
-      subtitle="Monthly outbound unit volume"
+      title={t('activityTrend')}
+      subtitle={t('monthlyOutboundVolume')}
       contextBar={peakLabel}
-      insight="This shows the total units leaving the warehouse. Spikes often correlate with seasonal promotions or high-performing sales periods."
+      insight={t('analysisActivity')}
       showInsight={showInsight}
       topRight={<TrendCapsule value={trend} isPositive={isPositive} />}
     >
@@ -294,7 +301,7 @@ function SalesRevenueChart({ data, showInsight }) {
             style={{ left: points[hoveredIndex].x, top: points[hoveredIndex].y - 80, transform: 'translateX(-50%)' }}
           >
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">{formatMonthLabel(points[hoveredIndex].d.month || points[hoveredIndex].d.bucket)}</p>
-            <p className="text-lg font-black font-sans tracking-tight">{formatCompactNumber(points[hoveredIndex].d.total)} units</p>
+            <p className="text-lg font-black font-sans tracking-tight">{formatCompactNumber(points[hoveredIndex].d.total)} {t('units')}</p>
           </div>
         )}
       </div>
@@ -303,6 +310,8 @@ function SalesRevenueChart({ data, showInsight }) {
 }
 
 function TopDivisionsChart({ data, showInsight }) {
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   const containerRef = useRef(null);
   const [width, setWidth] = useState(500);
   const [hoveredIndex, setHoveredIndex] = useState(null);
@@ -316,7 +325,7 @@ function TopDivisionsChart({ data, showInsight }) {
 
   if (!data || data.length === 0)
     return (
-      <AnalyticsCard title="Top Selling Divisions" subtitle="No data">
+      <AnalyticsCard title={t('topSellingDivisions')} subtitle={t('noData')}>
         <div className="h-64 flex items-center justify-center">—</div>
       </AnalyticsCard>
     );
@@ -326,9 +335,9 @@ function TopDivisionsChart({ data, showInsight }) {
 
   return (
     <AnalyticsCard
-      title="Division Contribution"
-      subtitle="Performance by supply chain unit"
-      insight="Focus efforts on divisions with high volume to maximize impact. Portfolio stability remains optimal across high-performing sectors."
+      title={t('divisionContribution')}
+      subtitle={t('performanceByUnit')}
+      insight={t('analysisDivision')}
       showInsight={showInsight}
     >
       <div className="space-y-6" ref={containerRef}>
@@ -363,6 +372,8 @@ function TopDivisionsChart({ data, showInsight }) {
 }
 
 function MonthlyCostVolumeChart({ data, showInsight }) {
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   const containerRef = useRef(null);
   const [width, setWidth] = useState(500);
   const [hoveredIndex, setHoveredIndex] = useState(null);
@@ -385,7 +396,7 @@ function MonthlyCostVolumeChart({ data, showInsight }) {
 
   if (!chartData || chartData.length === 0)
     return (
-      <AnalyticsCard title="Flow Analysis" subtitle="No data">
+      <AnalyticsCard title={t('flowAnalysis')} subtitle={t('noData')}>
         <div className="h-64 flex items-center justify-center">—</div>
       </AnalyticsCard>
     );
@@ -399,17 +410,17 @@ function MonthlyCostVolumeChart({ data, showInsight }) {
 
   return (
     <AnalyticsCard
-      title="Business Flow Analysis"
-      subtitle="Matching Inbound Cost vs Outbound Volume"
-      insight="Compares what we bring in (Cost) vs what we send out (Units). A healthy gap indicates efficient stock rotation and balanced inventory levels."
+      title={t('businessFlow')}
+      subtitle={t('inboundOutboundMatch')}
+      insight={t('analysisFlow')}
       showInsight={showInsight}
       topRight={
         <div className="flex gap-4">
           <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] shadow-sm bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-800">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]" /> Inbound
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]" /> {t('inbound')}
           </div>
           <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] shadow-sm bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-800">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" /> Outbound
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" /> {t('outbound')}
           </div>
         </div>
       }
@@ -467,8 +478,8 @@ function MonthlyCostVolumeChart({ data, showInsight }) {
           >
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">{formatMonthLabel(chartData[hoveredIndex].month)}</p>
             <div className="flex flex-col gap-2 text-sm font-black tracking-tight">
-              <span className="text-rose-400 flex items-center justify-between gap-4">Inbound: <span>{formatCompactNumber(chartData[hoveredIndex].costIn)}</span></span>
-              <span className="text-emerald-400 flex items-center justify-between gap-4">Outbound: <span>{formatCompactNumber(chartData[hoveredIndex].soldOut)}</span></span>
+              <span className="text-rose-400 flex items-center justify-between gap-4">{t('inbound')}: <span>{formatCompactNumber(chartData[hoveredIndex].costIn)}</span></span>
+              <span className="text-emerald-400 flex items-center justify-between gap-4">{t('outbound')}: <span>{formatCompactNumber(chartData[hoveredIndex].soldOut)}</span></span>
             </div>
           </div>
         )}
@@ -478,6 +489,8 @@ function MonthlyCostVolumeChart({ data, showInsight }) {
 }
 
 function LeaderboardRow({ row, i }) {
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   const [expanded, setExpanded] = useState(false);
 
   const monthlyData = [
@@ -528,7 +541,7 @@ function LeaderboardRow({ row, i }) {
 
       {expanded && (
         <div className="p-6 bg-slate-50/50 dark:bg-slate-950/30 border-t border-slate-100 dark:border-slate-800 animate-slide-up">
-          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 mb-5">Monthly Distribution</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 mb-5">{t('monthlyDistribution')}</p>
           <div className="flex items-end gap-3 h-28">
             {monthlyData.map((d, idx) => (
               <div className="flex-1 flex flex-col items-center gap-2 group/bar relative" key={idx}>
@@ -537,7 +550,7 @@ function LeaderboardRow({ row, i }) {
                 </div>
                 <span className="text-[9px] font-black uppercase text-slate-400">{formatMonthLabel(d.month)}</span>
                 <div className="absolute -top-10 opacity-0 group-hover/bar:opacity-100 transition-all bg-slate-900/95 backdrop-blur-sm text-white text-[10px] font-black px-3 py-2 rounded-xl pointer-events-none whitespace-nowrap z-10 shadow-xl border border-white/10 scale-90 group-hover/bar:scale-100">
-                  {formatCompactNumber(d.total)} Units
+                  {formatCompactNumber(d.total)} {t('units')}
                 </div>
               </div>
             ))}
@@ -549,11 +562,13 @@ function LeaderboardRow({ row, i }) {
 }
 
 function Leaderboard({ ranking, showInsight }) {
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   return (
     <AnalyticsCard
-      title="Sales Performance"
-      subtitle="Personnel volume ranking"
-      insight="Higher volume per person often indicates expertise. Consistency marks identify personnel with stable performance across multiple periods."
+      title={t('salesPerformance')}
+      subtitle={t('personnelRanking')}
+      insight={t('analysisPersonnel')}
       showInsight={showInsight}
       className="col-span-1 lg:col-span-2 xl:col-span-1"
     >
@@ -567,6 +582,8 @@ function Leaderboard({ ranking, showInsight }) {
 }
 
 export default function AnalyticsDashboard() {
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   const { user } = useAuthUser();
   const { accessRole, accessLoading, hasResolvedAccessOnce } = useStockAccess(user);
   const router = useRouter();
@@ -643,25 +660,25 @@ export default function AnalyticsDashboard() {
       <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-10">
         <div className="space-y-4 max-w-4xl">
           <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-4">
-            <Link href="/stock/admin" className="hover:text-brand-primary transition-colors">Operational Core</Link>
+            <Link href="/stock/admin" className="hover:text-brand-primary transition-colors">{t('operationalCore')}</Link>
             <ChevronRight className="h-3 w-3 opacity-50" />
-            <span className="text-slate-900 dark:text-white">Business Intelligence</span>
+            <span className="text-slate-900 dark:text-white">{t('businessIntelligence')}</span>
           </nav>
           <div className="flex flex-col sm:flex-row sm:items-center gap-6">
             <h1 className="text-3xl sm:text-4xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter leading-[0.9]">
-              Executive<br className="sm:hidden" /> Dashboard
+              {t('executiveDashboard').split(' ')[0]}<br className="sm:hidden" /> {t('executiveDashboard').split(' ')[1]}
             </h1>
             <div className="flex items-center self-start sm:self-center gap-3 px-5 py-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest border border-emerald-500/20 shadow-sm whitespace-nowrap">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              Live Context
+              {t('liveContext')}
             </div>
           </div>
           <p className="text-lg text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-3xl">
-            Operational analysis identified a{' '}
+            {t('operationalAnalysisIdentified')}{' '}
             <span className={`font-black ${overallTrend >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-              {overallTrend >= 0 ? '+' : ''}{overallTrend.toFixed(1)}% {overallTrend >= 0 ? 'acceleration' : 'deceleration'}
+              {overallTrend >= 0 ? '+' : ''}{overallTrend.toFixed(1)}% {overallTrend >= 0 ? t('acceleration') : t('deceleration')}
             </span>{' '}
-            in logistics throughput over the last {analyticsRangeMonths} months. Portfolio stability remains <span className="font-black text-slate-900 dark:text-white underline decoration-brand-primary/30 decoration-8 underline-offset-4">optimal</span>.
+            {t('logisticsThroughputOver')} {analyticsRangeMonths} {t('monthsPortfolioStability')} <span className="font-black text-slate-900 dark:text-white underline decoration-brand-primary/30 decoration-8 underline-offset-4">{t('optimal')}</span>.
           </p>
         </div>
 
@@ -692,7 +709,7 @@ export default function AnalyticsDashboard() {
               className="flex items-center justify-center gap-3 px-4 py-4 rounded-[1.5rem] bg-brand-primary text-white text-xs font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-lg active:scale-95 hover:shadow-brand-primary/20"
             >
               <FileText className="h-5 w-5" />
-              Summary
+              {t('summary')}
             </button>
           </div>
         </div>
@@ -700,7 +717,7 @@ export default function AnalyticsDashboard() {
 
       <section className="space-y-12">
         <div className="flex items-center gap-6">
-          <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">I. Operational Dynamics</h2>
+          <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">I. {t('operationalDynamics')}</h2>
           <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
         </div>
         <StockHealthScorecard data={divisionRisk} showInsight={showInsights} />
@@ -719,23 +736,23 @@ export default function AnalyticsDashboard() {
 
       <section className="space-y-12">
         <div className="flex items-center gap-6">
-          <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">II. Risk Inventory</h2>
+          <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">II. {t('riskInventory')}</h2>
           <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
         </div>
         <AnalyticsCard
-          title="Stock Risk Inventory"
-          subtitle="Divisions needing attention"
-          insight="Target 'Action Required' status first. These divisions have items critically below their safety reorder levels."
+          title={t('riskInventory')}
+          subtitle={t('divisionsNeedingAttention')}
+          insight={t('analysisRisk')}
           showInsight={showInsights}
         >
           <div className="hidden md:block overflow-x-auto rounded-[2rem] border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
             <table className="w-full text-left text-sm min-w-[600px]">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800">
-                  <th className="px-8 py-6 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Division Name</th>
-                  <th className="px-8 py-6 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 text-right">Available</th>
-                  <th className="px-8 py-6 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 text-right">Low Stock</th>
-                  <th className="px-8 py-6 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 text-right">Status</th>
+                  <th className="px-8 py-6 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">{t('divisionName')}</th>
+                  <th className="px-8 py-6 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 text-right">{t('available')}</th>
+                  <th className="px-8 py-6 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 text-right">{t('lowStock')}</th>
+                  <th className="px-8 py-6 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 text-right">{t('status')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-800/30">
@@ -752,7 +769,7 @@ export default function AnalyticsDashboard() {
                       <td className="px-8 py-6 text-right">
                         <div className="flex items-center justify-end gap-3 text-[10px] font-black uppercase tracking-widest">
                           <span className={isCritical ? 'text-rose-500' : 'text-emerald-500'}>
-                            {isCritical ? 'Action Required' : 'Stable'}
+                            {isCritical ? t('actionRequired') : t('stable')}
                           </span>
                           <span className={`inline-block w-2.5 h-2.5 rounded-full ring-4 ${isCritical ? 'bg-rose-500 ring-rose-500/10 animate-pulse' : 'bg-emerald-500 ring-emerald-500/10'}`} />
                         </div>
@@ -778,17 +795,17 @@ export default function AnalyticsDashboard() {
                   <div className="flex justify-between items-start">
                     <p className="text-sm font-black text-slate-900 dark:text-white">{d.division}</p>
                     <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
-                      <span className={isCritical ? 'text-rose-500' : 'text-emerald-500'}>{isCritical ? 'Critical' : 'Stable'}</span>
+                      <span className={isCritical ? 'text-rose-500' : 'text-emerald-500'}>{isCritical ? t('critical') : t('stable')}</span>
                       <span className={`w-2 h-2 rounded-full ${isCritical ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100 dark:border-white/5">
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Available</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('available')}</p>
                       <p className="text-xs font-black text-emerald-600">{formatCompactNumber(healthy)}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Low Stock</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('lowStock')}</p>
                       <p className="text-xs font-black text-amber-600">{formatCompactNumber(d.at_risk)}</p>
                     </div>
                   </div>

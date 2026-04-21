@@ -20,9 +20,9 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/60 bg-slate-50/40 dark:bg-slate-900/40 px-6 py-5">
           <div className="space-y-1.5">
             <nav className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-slate-400">
-              <span>Inventory Hub</span>
+              <span>{tc.inventoryHub}</span>
               <ChevronRight className="h-2.5 w-2.5 opacity-50" />
-              <span className="text-brand-primary">Stock Ledger</span>
+              <span className="text-brand-primary">{tc.stockLedger}</span>
             </nav>
             <div className="flex items-center gap-3">
               <h3 className="text-sm font-black text-slate-900 dark:text-white tracking-tight">{t('currentStock')}</h3>
@@ -93,7 +93,7 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
                   </td>
                   <td className="px-4 py-3">
                     <div className="text-xs font-black text-slate-900 dark:text-white transition-transform group-hover/row:translate-x-1 duration-300">{item.name}</div>
-                    <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest opacity-60">General Assets</div>
+                    <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest opacity-60">{t('category')}</div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="text-xs font-bold text-slate-400">{item.size_label}</div>

@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { Bell, Languages, MoonStar, SunMedium, LogOut, Search } from 'lucide-react';
 
 export default function StockTopbar({
-  tc,
   t,
   language,
   toggleLanguage,
@@ -31,8 +30,8 @@ export default function StockTopbar({
         {/* Desktop bar */}
         <div className="hidden h-20 items-center justify-between gap-10 px-8 md:flex">
           <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500 mb-1">{tc.erpWorkspace}</p>
-            <p className="text-xs font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest">{tc.stockOpsApprovals}</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500 mb-1">{t('erpWorkspace')}</p>
+            <p className="text-xs font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest">{t('stockOpsApprovals')}</p>
           </div>
 
           <div className="flex flex-1 items-center justify-end gap-6">
@@ -41,7 +40,7 @@ export default function StockTopbar({
               <input
                 ref={dashboardSearchRef}
                 type="text"
-                placeholder={tc.searchHint}
+                placeholder={t('searchHint')}
                 value={dashboardSearchValue}
                 onChange={(event) => setDashboardSearchValue(event.target.value)}
                 onKeyDown={(event) => {
@@ -106,7 +105,7 @@ export default function StockTopbar({
         {/* Mobile bar */}
         <div className="md:hidden">
           <div className="flex h-16 items-center justify-between gap-4 px-6">
-            <Link href="/stock" className="flex items-center gap-3 min-w-0" aria-label={tc.dashboardAria}>
+            <Link href="/stock" className="flex items-center gap-3 min-w-0" aria-label={t('dashboardAria')}>
               <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-center">
                 <Image src="/logo.png" alt="Hanumant Marble logo" width={22} height={22} className="object-contain" />
               </div>
@@ -140,13 +139,13 @@ export default function StockTopbar({
             </div>
           </div>
 
-          <nav className="flex items-center gap-1.5 overflow-x-auto border-t border-slate-100/50 px-4 py-3 dark:border-white/5 scrollbar-none" aria-label={tc.mobileNav}>
+          <nav className="flex items-center gap-1.5 overflow-x-auto border-t border-slate-100/50 px-4 py-3 dark:border-white/5 scrollbar-none" aria-label={t('mobileNav')}>
             {navigationItems.map((item) => {
               const active = isActiveRoute(item.href);
               let mobileLabel;
-              if (item.href === '/stock/admin') mobileLabel = tc.adminHub;
-              else if (item.href === '/stock/analytics') mobileLabel = tc.analytics;
-              else mobileLabel = tc.dashboard;
+              if (item.href === '/stock/admin') mobileLabel = t('adminDashboard');
+              else if (item.href === '/stock/analytics') mobileLabel = t('analytics');
+              else mobileLabel = t('dashboard');
 
               return (
                 <Link

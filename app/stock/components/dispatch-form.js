@@ -16,7 +16,7 @@ import {
 } from './stock-form-fields';
 import { FORM_CARD_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS } from '../lib/stock-utils';
 
-const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control, activeItems, itemOptions, t, language, userRole }) {
+const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control, activeItems, itemOptions, t, tc, language, userRole }) {
   const canEditReturns = ['admin', 'manager'].includes(userRole);
 
   return (
@@ -24,7 +24,7 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 bg-slate-900/40 px-4 py-2.5">
         <div className="flex items-center gap-2">
           <span className="h-1.5 w-1.5 rounded-full bg-brand-primary animate-pulse" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-100">{language === 'hi' ? 'आइटम' : 'Item'} {index + 1}</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-100">{tc.itemLabel} {index + 1}</span>
         </div>
       </div>
       <div className="p-4 space-y-4">
@@ -55,8 +55,8 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
           />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <StockFormField control={control} name={`items.${index}.loadedWholeQty`} label={t('whole')} type="number" min="0" placeholder="0" />
-            <StockFormField control={control} name={`items.${index}.returnWholeQty`} label="Ret. Whol" type="number" min="0" placeholder="0" disabled={!canEditReturns} />
-            <StockFormField control={control} name={`items.${index}.returnBrokenQty`} label="Ret. Brok" type="number" min="0" placeholder="0" disabled={!canEditReturns} />
+            <StockFormField control={control} name={`items.${index}.returnWholeQty`} label={tc.retWhole} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
+            <StockFormField control={control} name={`items.${index}.returnBrokenQty`} label={tc.retBrok} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
           </div>
         </div>
       </div>
@@ -90,22 +90,23 @@ export function DispatchFormContent({
           <FormSectionTitle
             category="Outbound Strategy"
             icon={Send}
-            title={language === 'hi' ? 'डिस्पैच की मूल जानकारी' : 'Dispatch Basics'}
-            description={language === 'hi' ? 'इस डिस्पैच के लिए मुख्य विवरण भरें।' : 'Fill in the core details for this dispatch.'}
+            title={tc.dispatchBasics}
+            description={tc.dispatchBasicsDesc}
+            tc={tc}
           />
           <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
             <StockFormField control={form.control} name="shipmentNumber" label={t('dispatchNo')} placeholder="DSP-202X..." autoFocus />
             <StockFormField control={form.control} name="customerName" label={t('customer')} placeholder="Customer Name..." />
-            <StockFormField control={form.control} name="customerPhoneNumber" label="Customer Phone" placeholder="+91 9876543210" type="tel" />
+            <StockFormField control={form.control} name="customerPhoneNumber" label={tc.customerPhone} placeholder="+91 9876543210" type="tel" />
             <StockFormField control={form.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." />
             <StockDateField control={form.control} name="dispatchDate" label={tc.date} placeholder={tc.date} />
             <StockFormField control={form.control} name="salespersonName" label={t('salesperson')} placeholder="Salesperson..." />
-            <AttachmentField label={tc.salesInvoicePhoto} file={attachments.salesInvoice} onChange={(file) => setAttachment('salesInvoice', file)} hint={tc.salesInvoiceHint} />
-            <AttachmentField label={tc.gatepassPhoto} file={attachments.gatepass} onChange={(file) => setAttachment('gatepass', file)} accept="image/*" hint={tc.gatepassHint} />
+            <AttachmentField label={tc.salesInvoicePhoto} file={attachments.salesInvoice} onChange={(file) => setAttachment('salesInvoice', file)} hint={tc.salesInvoiceHint} tc={tc} />
+            <AttachmentField label={tc.gatepassPhoto} file={attachments.gatepass} onChange={(file) => setAttachment('gatepass', file)} accept="image/*" hint={tc.gatepassHint} tc={tc} />
           </div>
         </div>
         <div className={FORM_CARD_CLASS}>
-          <FormSectionTitle category="Mobility Details" icon={Truck} title={language === 'hi' ? 'डिस्पैच और वाहन' : 'Transport & Vehicle'} />
+          <FormSectionTitle category="Mobility Details" icon={Truck} title={tc.transportAndVehicle} tc={tc} />
           <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
             <StockFormField control={form.control} name="truckLicensePlate" label={t('truck')} placeholder="RJ 14 XY 0000" />
             <StockFormField control={form.control} name="driverName" label={t('driver')} placeholder="Driver Name..." />
@@ -118,9 +119,9 @@ export function DispatchFormContent({
             <div className="flex justify-between items-center mb-4 gap-4 px-1">
               <div className="space-y-1">
                 <nav className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
-                  <span>Inventory Hub</span>
+                  <span>{tc.inventoryHub}</span>
                   <ChevronRight className="h-2.5 w-2.5 opacity-50" />
-                  <span className="text-brand-primary">Shipments</span>
+                  <span className="text-brand-primary">{tc.shipments}</span>
                 </nav>
                 <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">{t('items')}</h3>
               </div>
@@ -144,6 +145,7 @@ export function DispatchFormContent({
                   activeItems={activeItems}
                   itemOptions={itemOptions}
                   t={t}
+                  tc={tc}
                   language={language}
                   userRole={userRole}
                 />

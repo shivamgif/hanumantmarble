@@ -5,7 +5,7 @@ import { CheckCheck } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
 export default function StockNotificationsSheet({
-  tc,
+  t,
   accessRole,
   notificationOpen,
   setNotificationOpen,
@@ -26,16 +26,16 @@ export default function StockNotificationsSheet({
           <SheetHeader className="text-left space-y-4">
             <div className="flex items-center gap-3">
               <div className="h-6 w-1 rounded-full bg-brand-primary" />
-              <SheetTitle className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">{tc.notifications}</SheetTitle>
+              <SheetTitle className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">{t('notifications')}</SheetTitle>
             </div>
             <SheetDescription className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-relaxed">
-              {tc.notificationsSubtitle}
+              {t('notificationsSubtitle')}
             </SheetDescription>
           </SheetHeader>
 
           <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-white/40 dark:bg-slate-950/40 border border-slate-100 dark:border-white/5">
             <div className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-primary">
-              {unreadCount} {tc.unread} Records
+              {unreadCount} {t('unread')} Records
             </div>
             <div className="flex items-center gap-2">
               {accessRole === 'admin' ? (
@@ -44,7 +44,7 @@ export default function StockNotificationsSheet({
                   onClick={() => setShowNotificationDebug((current) => !current)}
                   className="h-9 px-4 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 text-[9px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 transition-all hover:border-brand-primary/30"
                 >
-                  {showNotificationDebug ? tc.hideDebug : tc.debug}
+                  {showNotificationDebug ? t('hideDebug') : t('debug')}
                 </button>
               ) : null}
               <button
@@ -54,7 +54,7 @@ export default function StockNotificationsSheet({
                 className="h-9 px-4 inline-flex items-center gap-2 rounded-xl bg-slate-900 dark:bg-brand-primary text-white text-[9px] font-black uppercase tracking-widest transition-all hover:brightness-110 disabled:opacity-50"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
-                {tc.markAllRead}
+                {t('markAllRead')}
               </button>
             </div>
           </div>
@@ -66,10 +66,10 @@ export default function StockNotificationsSheet({
           ) : null}
 
           {notificationLoading ? (
-            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-center py-20">{tc.loadingNotifications}</div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-center py-20">{t('loadingNotifications')}</div>
           ) : notifications.length === 0 ? (
             <div className="rounded-[2rem] border border-dashed border-slate-200 px-6 py-16 text-center">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">{tc.noNotifications}</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">{t('noNotifications')}</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -95,7 +95,7 @@ export default function StockNotificationsSheet({
                   ? null
                   : departments.length === 1
                     ? departments[0]
-                    : `${departments.length} ${tc.departmentsCount}`;
+                    : `${departments.length} ${t('departmentsCount')}`;
 
                 const firstWhatsappPayload = recipients.find((recipient) => recipient?.whatsappPayload)?.whatsappPayload || null;
 
@@ -124,12 +124,12 @@ export default function StockNotificationsSheet({
                         <span className="opacity-30">•</span>
                         <span>{new Date(notification.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
-                      <span className="text-[9px] font-black uppercase tracking-widest text-brand-primary underline decoration-2 underline-offset-4">{tc.open} Protocol</span>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-brand-primary underline decoration-2 underline-offset-4">{t('open')} Protocol</span>
                     </div>
 
                     {departmentLabel ? (
                       <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-white/5 text-[9px] font-black uppercase tracking-widest text-slate-500">
-                        <span className="text-brand-primary">{tc.target}:</span> {departmentLabel}
+                        <span className="text-brand-primary">{t('target')}:</span> {departmentLabel}
                       </div>
                     ) : null}
 

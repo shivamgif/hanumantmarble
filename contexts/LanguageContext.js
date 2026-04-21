@@ -14,6 +14,10 @@ export function LanguageProvider({ children }) {
     }
   }, []);
 
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
+
   const toggleLanguage = useCallback(() => {
     setLanguage((prev) => {
       const newLanguage = prev === 'en' ? 'hi' : 'en';

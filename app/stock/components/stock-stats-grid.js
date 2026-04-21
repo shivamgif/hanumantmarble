@@ -6,8 +6,8 @@ import {
   TrendingDown, 
 } from 'lucide-react';
 
-export function StockStatsGrid({ stats }) {
-  if (!stats) return null;
+ export function StockStatsGrid({ stats, language, t }) {
+   if (!stats) return null;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
@@ -41,7 +41,7 @@ export function StockStatsGrid({ stats }) {
                   <Icon className={`h-7 w-7 sm:h-8 sm:h-8 ${colorClass}`} />
                 </div>
                 <div className="flex flex-col items-end">
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Logistics KPI</span>
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">{t('logisticsKPI')}</span>
                   <span className={`flex items-center gap-1 text-[10px] font-black px-3 py-1 rounded-full mt-2 ${colorClass} ${bgClass} border ${borderClass}`}>
                     {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                     {Math.abs(m.trend)}%
