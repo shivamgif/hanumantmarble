@@ -121,7 +121,11 @@ export default function StockDashboard() {
     intelligenceCase: t('intelligenceCase'),
     linkedDocuments: t('linkedDocuments'),
     itemDetails: t('itemDetails'),
-    sku: t('sku')
+    sku: t('sku'),
+    logNewPurchase: t('logNewPurchase'),
+    logNewDispatch: t('logNewDispatch'),
+    purchaseSheetDesc: t('purchaseSheetDesc'),
+    insufficientNewPurchase: t('insufficientNewPurchase')
   }), [t]);
 
   const { user, isLoading: userLoading } = useAuthUser();
