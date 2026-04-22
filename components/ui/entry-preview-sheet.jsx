@@ -27,8 +27,8 @@ export function PreviewKeyValueGrid({ items = [] }) {
 
   return (
     <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {visibleItems.map((item) => (
-        <div key={item.label} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+      {visibleItems.map((item, i) => (
+        <div key={item.label ?? i} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
           <dt className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{item.label}</dt>
           <dd className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-900">{formatPreviewValue(item.value)}</dd>
         </div>
@@ -63,8 +63,8 @@ export default function EntryPreviewSheet({
             </div>
           ) : null}
 
-          {visibleSections.map((section) => (
-            <section key={section.title} className="space-y-3">
+          {visibleSections.map((section, i) => (
+            <section key={section.title ?? i} className="space-y-3">
               <div>
                 <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">{section.title}</h3>
                 {section.description ? <p className="mt-1 text-sm text-slate-500">{section.description}</p> : null}

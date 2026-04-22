@@ -51,11 +51,15 @@ function formatMonthLabel(value) {
 }
 
 function formatCompactNumber(value) {
-  return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(Number(value || 0));
+  return new Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(value || 0));
 }
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 }).format(Number(value || 0));
+function formatINR(value) {
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(value || 0));
+}
+
+function formatCompactINR(value) {
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', notation: 'compact', maximumFractionDigits: 1 }).format(Number(value || 0));
 }
 
 const CLASSES = {
@@ -113,13 +117,15 @@ function AnalyticsCard({ title, subtitle, topRight, contextBar, insight, showIns
   );
 }
 
-function StockHealthScorecard({ data, showInsight }) {
+function StockHealthScorecard({ data, inventoryKpis, onTimeRatio, approvalRate, outstandingExposure, showInsight }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   const healthy = data.reduce((s, d) => s + Math.max(0, Number(d.total_items || 0) - Number(d.at_risk || 0)), 0);
   const totalItems = data.reduce((s, d) => s + Number(d.total_items || 0), 0);
   const atRiskCount = data.reduce((s, d) => s + Number(d.at_risk || 0), 0);
   const healthyRatio = totalItems > 0 ? healthy / totalItems : 0;
+  const onTimePct = Math.round((onTimeRatio || 0) * 100);
+  const approvalPct = Math.round((approvalRate || 0) * 100);
 
   const metrics = [
     {
@@ -130,7 +136,7 @@ function StockHealthScorecard({ data, showInsight }) {
       bg: 'bg-emerald-500/10',
       border: 'border-emerald-500/20',
       icon: Package,
-      trend: '+2.4%'
+      trend: null,
     },
     {
       label: t('inventoryVulnerability'),
@@ -140,22 +146,32 @@ function StockHealthScorecard({ data, showInsight }) {
       bg: 'bg-amber-500/10',
       border: 'border-amber-500/20',
       icon: AlertCircle,
-      trend: '-12%'
+      trend: null,
     },
     {
-      label: t('stockLongevity'),
-      value: `42 ${t('days')}`,
-      subValue: t('estimatedRunway'),
-      color: 'text-brand-primary',
-      bg: 'bg-brand-primary/10',
-      border: 'border-brand-primary/20',
+      label: t('onTimeDelivery'),
+      value: `${onTimePct}%`,
+      subValue: t('shipmentsOnSchedule'),
+      color: onTimePct >= 80 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400',
+      bg: onTimePct >= 80 ? 'bg-emerald-500/10' : 'bg-rose-500/10',
+      border: onTimePct >= 80 ? 'border-emerald-500/20' : 'border-rose-500/20',
       icon: ShieldCheck,
-      trend: language === 'hi' ? 'इष्टतम' : 'Optimal'
+      trend: null,
+    },
+    {
+      label: t('approvalRate'),
+      value: `${approvalPct}%`,
+      subValue: t('purchasesApproved'),
+      color: approvalPct >= 70 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400',
+      bg: approvalPct >= 70 ? 'bg-emerald-500/10' : 'bg-amber-500/10',
+      border: approvalPct >= 70 ? 'border-emerald-500/20' : 'border-amber-500/20',
+      icon: CheckCircle2,
+      trend: null,
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
       {metrics.map((m) => (
         <div className="glass-panel rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-7 lg:p-8 relative overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl group" key={m.label}>
           <div className="relative z-10">
@@ -163,17 +179,11 @@ function StockHealthScorecard({ data, showInsight }) {
               <div className={`w-16 h-16 flex items-center justify-center rounded-[1.25rem] border ${m.bg} ${m.border} shadow-sm transition-transform duration-500 group-hover:scale-110`}>
                 <m.icon className={`h-8 w-8 ${m.color}`} />
               </div>
-              <div className="flex flex-col items-end">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{t('logisticsKPI')}</span>
-                <span className={`text-[10px] font-black px-3 py-1 rounded-full mt-2 ${m.color} ${m.bg} border ${m.border}`}>
-                  {m.trend}
-                </span>
-              </div>
             </div>
             <div className="space-y-2">
-              <div className="text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.15em]">{m.label}</div>
+              <div className="text-slate-500 dark:text-slate-400 text-sm font-bold">{m.label}</div>
               <div className={`text-3xl sm:text-4xl lg:text-5xl font-black font-sans tracking-tighter text-slate-900 dark:text-white leading-none`}>{m.value}</div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mt-3">{m.subValue}</div>
+              <div className="text-xs font-medium text-slate-400 mt-3">{m.subValue}</div>
             </div>
           </div>
           <div className={`absolute -right-6 -bottom-6 w-40 h-40 opacity-[0.04] transition-all duration-700 pointer-events-none group-hover:scale-110 group-hover:opacity-[0.08]`}>
@@ -371,7 +381,7 @@ function TopDivisionsChart({ data, showInsight }) {
   );
 }
 
-function MonthlyCostVolumeChart({ data, showInsight }) {
+function MonthlyCostVolumeChart({ dispatchTrend, costTrend, showInsight }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   const containerRef = useRef(null);
@@ -386,13 +396,22 @@ function MonthlyCostVolumeChart({ data, showInsight }) {
     return () => observer.disconnect();
   }, []);
 
-  const chartData = (data || [])
-    .map((d) => ({
-      ...d,
-      costIn: Number(d.total || 0) * (0.6 + Math.random() * 0.3),
-      soldOut: Number(d.total || 0),
-    }))
-    .slice(-6);
+  const chartData = useMemo(() => {
+    const byMonth = {};
+    (costTrend || []).forEach((d) => {
+      const k = d.bucket || d.month;
+      if (!k) return;
+      byMonth[k] = { ...byMonth[k], month: k, inboundSqm: Number(d.total_qty_sqm || 0) };
+    });
+    (dispatchTrend || []).forEach((d) => {
+      const k = d.bucket || d.month;
+      if (!k) return;
+      byMonth[k] = { ...byMonth[k], month: k, outboundSqm: Number(d.dispatched_volume || 0) };
+    });
+    return Object.values(byMonth)
+      .sort((a, b) => (a.month < b.month ? -1 : 1))
+      .slice(-6);
+  }, [costTrend, dispatchTrend]);
 
   if (!chartData || chartData.length === 0)
     return (
@@ -405,7 +424,7 @@ function MonthlyCostVolumeChart({ data, showInsight }) {
   const pad = { t: 20, r: 10, b: 40, l: 40 };
   const innerH = height - pad.t - pad.b;
   const innerW = width - pad.l - pad.r;
-  const maxVal = Math.max(...chartData.map((d) => Math.max(d.costIn, d.soldOut)), 1);
+  const maxVal = Math.max(...chartData.map((d) => Math.max(d.inboundSqm || 0, d.outboundSqm || 0)), 1);
   const barWidth = Math.max(12, (innerW / chartData.length) * 0.22);
 
   return (
@@ -451,8 +470,8 @@ function MonthlyCostVolumeChart({ data, showInsight }) {
 
           {chartData.map((d, i) => {
             const groupX = pad.l + (i + 0.5) * (innerW / chartData.length);
-            const costH = (d.costIn / maxVal) * innerH;
-            const soldH = (d.soldOut / maxVal) * innerH;
+            const costH = ((d.inboundSqm || 0) / maxVal) * innerH;
+            const soldH = ((d.outboundSqm || 0) / maxVal) * innerH;
             const costY = pad.t + innerH - costH;
             const soldY = pad.t + innerH - soldH;
 
@@ -478,8 +497,8 @@ function MonthlyCostVolumeChart({ data, showInsight }) {
           >
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">{formatMonthLabel(chartData[hoveredIndex].month)}</p>
             <div className="flex flex-col gap-2 text-sm font-black tracking-tight">
-              <span className="text-rose-400 flex items-center justify-between gap-4">{t('inbound')}: <span>{formatCompactNumber(chartData[hoveredIndex].costIn)}</span></span>
-              <span className="text-emerald-400 flex items-center justify-between gap-4">{t('outbound')}: <span>{formatCompactNumber(chartData[hoveredIndex].soldOut)}</span></span>
+              <span className="text-rose-400 flex items-center justify-between gap-4">{t('inbound')}: <span>{formatCompactNumber(chartData[hoveredIndex].inboundSqm)} sqm</span></span>
+              <span className="text-emerald-400 flex items-center justify-between gap-4">{t('outbound')}: <span>{formatCompactNumber(chartData[hoveredIndex].outboundSqm)} sqm</span></span>
             </div>
           </div>
         )}
@@ -488,25 +507,14 @@ function MonthlyCostVolumeChart({ data, showInsight }) {
   );
 }
 
-function LeaderboardRow({ row, i }) {
+function LeaderboardRow({ row, i, maxQty }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   const [expanded, setExpanded] = useState(false);
 
-  const monthlyData = [
-    { month: '2023-01', total: (row.totalQty || row.quantity) * 0.1 },
-    { month: '2023-02', total: (row.totalQty || row.quantity) * 0.15 },
-    { month: '2023-03', total: (row.totalQty || row.quantity) * 0.2 },
-    { month: '2023-04', total: (row.totalQty || row.quantity) * 0.25 },
-    { month: '2023-05', total: (row.totalQty || row.quantity) * 0.18 },
-    { month: '2023-06', total: (row.totalQty || row.quantity) * 0.12 },
-  ];
-  const maxVal = Math.max(...monthlyData.map((d) => d.total));
-
-  const consistencyScore = Math.round(
-    (monthlyData.reduce((sum, d) => sum + d.total, 0) / (maxVal * monthlyData.length)) * 100
-  );
-  const isHighConsistency = consistencyScore >= 90;
+  const consistencyScore = Math.round(Number(row.consistency_score || 0));
+  const growthRatio = Number(row.growth_ratio || 0);
+  const isHighConsistency = consistencyScore >= 70;
 
   return (
     <div className="group border border-slate-100/50 dark:border-slate-800/40 rounded-2xl overflow-hidden mb-4 transition-all hover:border-brand-primary/20 hover:shadow-lg">
@@ -530,7 +538,7 @@ function LeaderboardRow({ row, i }) {
           <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
             <div
               className="h-full bg-brand-secondary rounded-full transition-all duration-1000 ease-in-out"
-              style={{ width: `${Math.min(100, ((row.totalQty || row.quantity) / (maxVal * 1.5)) * 100)}%` }}
+              style={{ width: `${Math.min(100, ((row.totalQty || row.quantity) / (maxQty || 1)) * 100)}%` }}
             />
           </div>
         </div>
@@ -540,21 +548,24 @@ function LeaderboardRow({ row, i }) {
       </div>
 
       {expanded && (
-        <div className="p-6 bg-slate-50/50 dark:bg-slate-950/30 border-t border-slate-100 dark:border-slate-800 animate-slide-up">
-          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 mb-5">{t('monthlyDistribution')}</p>
-          <div className="flex items-end gap-3 h-28">
-            {monthlyData.map((d, idx) => (
-              <div className="flex-1 flex flex-col items-center gap-2 group/bar relative" key={idx}>
-                <div className="w-full bg-brand-primary rounded-t-lg transition-all duration-500 hover:brightness-125 hover:scale-x-110 shadow-sm" style={{ height: `${(d.total / maxVal) * 100}%` }}>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
-                </div>
-                <span className="text-[9px] font-black uppercase text-slate-400">{formatMonthLabel(d.month)}</span>
-                <div className="absolute -top-10 opacity-0 group-hover/bar:opacity-100 transition-all bg-slate-900/95 backdrop-blur-sm text-white text-[10px] font-black px-3 py-2 rounded-xl pointer-events-none whitespace-nowrap z-10 shadow-xl border border-white/10 scale-90 group-hover/bar:scale-100">
-                  {formatCompactNumber(d.total)} {t('units')}
-                </div>
+        <div className="p-6 bg-slate-50/50 dark:bg-slate-950/30 border-t border-slate-100 dark:border-slate-800 animate-slide-up space-y-5">
+          <div>
+            <p className="text-xs font-bold text-slate-500 mb-2">{t('consistencyScore')}</p>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full bg-brand-primary rounded-full transition-all duration-700" style={{ width: `${consistencyScore}%` }} />
               </div>
-            ))}
+              <span className="text-sm font-black text-slate-900 dark:text-white w-10 text-right">{consistencyScore}%</span>
+            </div>
           </div>
+          {row.growth_ratio != null && (
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold text-slate-500">{t('growthVsLastPeriod')}</p>
+              <span className={`text-sm font-black ${growthRatio >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                {growthRatio >= 0 ? '+' : ''}{(growthRatio * 100).toFixed(1)}%
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -574,10 +585,37 @@ function Leaderboard({ ranking, showInsight }) {
     >
       <div className="space-y-1">
         {ranking.slice(0, 5).map((row, i) => (
-          <LeaderboardRow key={row.name || row.salesperson} row={row} i={i} />
+          <LeaderboardRow key={row.name || row.salesperson} row={row} i={i} maxQty={Math.max(...ranking.map(r => Number(r.totalQty || r.quantity || 0)), 1)} />
         ))}
       </div>
     </AnalyticsCard>
+  );
+}
+
+function MoneyOwedBanner({ outstandingExposure, estimatedGross, language }) {
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+  if (!outstandingExposure && !estimatedGross) return null;
+  const ratio = estimatedGross > 0 ? (outstandingExposure / estimatedGross) : 0;
+  const isCritical = ratio > 0.5;
+  return (
+    <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 sm:p-6 rounded-3xl border-2 ${isCritical ? 'border-rose-200 bg-rose-50/50 dark:bg-rose-950/20 dark:border-rose-800/40' : 'border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800/40'}`}>
+      <div className="flex items-center gap-4">
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isCritical ? 'bg-rose-100 dark:bg-rose-900/40' : 'bg-amber-100 dark:bg-amber-900/40'}`}>
+          <AlertCircle className={`h-6 w-6 ${isCritical ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400'}`} />
+        </div>
+        <div>
+          <p className={`text-xs font-bold ${isCritical ? 'text-rose-700 dark:text-rose-300' : 'text-amber-700 dark:text-amber-300'}`}>{t('moneyOwedToSuppliers')}</p>
+          <p className={`text-2xl sm:text-3xl font-black font-sans ${isCritical ? 'text-rose-700 dark:text-rose-200' : 'text-amber-700 dark:text-amber-200'}`}>{formatINR(outstandingExposure)}</p>
+        </div>
+      </div>
+      {estimatedGross > 0 && (
+        <div className="text-right">
+          <p className="text-xs font-bold text-slate-500">{t('totalStockValue')}</p>
+          <p className="text-lg font-black text-slate-700 dark:text-slate-300">{formatINR(estimatedGross)}</p>
+          <p className={`text-xs font-bold mt-1 ${isCritical ? 'text-rose-600' : 'text-amber-600'}`}>{(ratio * 100).toFixed(0)}% {t('unpaid')}</p>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -646,7 +684,12 @@ export default function AnalyticsDashboard() {
 
   const divisionRisk = adminAnalytics?.inventoryHealth?.divisionRisk || [];
   const dispatchTrend = adminAnalytics?.dispatchPerformance?.trend || [];
+  const costTrend = adminAnalytics?.costAndPayment?.trend || [];
   const salespersonRanking = adminAnalytics?.salespersonPerformance?.ranking || [];
+  const inventoryKpis = adminAnalytics?.inventoryHealth?.kpis || {};
+  const dispatchKpis = adminAnalytics?.dispatchPerformance?.kpis || {};
+  const purchaseKpis = adminAnalytics?.purchasePerformance?.kpis || {};
+  const exposure = adminAnalytics?.costAndPayment?.exposure || {};
 
   const overallTrend =
     dispatchTrend.length >= 2
@@ -715,17 +758,30 @@ export default function AnalyticsDashboard() {
         </div>
       </header>
 
+      <MoneyOwedBanner
+        outstandingExposure={Number(exposure.outstanding_exposure || 0)}
+        estimatedGross={Number(exposure.estimated_gross || 0)}
+        language={language}
+      />
+
       <section className="space-y-12">
         <div className="flex items-center gap-6">
-          <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">I. {t('operationalDynamics')}</h2>
+          <h2 className="text-sm font-bold text-slate-500 whitespace-nowrap">I. {t('businessSnapshot')}</h2>
           <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
         </div>
-        <StockHealthScorecard data={divisionRisk} showInsight={showInsights} />
+        <StockHealthScorecard
+          data={divisionRisk}
+          inventoryKpis={inventoryKpis}
+          onTimeRatio={dispatchKpis.onTimeRatio}
+          approvalRate={purchaseKpis.approvalRate}
+          outstandingExposure={Number(exposure.outstanding_exposure || 0)}
+          showInsight={showInsights}
+        />
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 lg:gap-12">
           <div className="xl:col-span-8 space-y-8 lg:space-y-12">
             <SalesRevenueChart data={dispatchTrend} showInsight={showInsights} />
-            <MonthlyCostVolumeChart data={dispatchTrend} showInsight={showInsights} />
+            <MonthlyCostVolumeChart dispatchTrend={dispatchTrend} costTrend={costTrend} showInsight={showInsights} />
           </div>
           <div className="xl:col-span-4 space-y-8 lg:space-y-12">
             <TopDivisionsChart data={divisionRisk} showInsight={showInsights} />
@@ -736,7 +792,7 @@ export default function AnalyticsDashboard() {
 
       <section className="space-y-12">
         <div className="flex items-center gap-6">
-          <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">II. {t('riskInventory')}</h2>
+          <h2 className="text-sm font-bold text-slate-500 whitespace-nowrap">II. {t('riskInventory')}</h2>
           <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
         </div>
         <AnalyticsCard
