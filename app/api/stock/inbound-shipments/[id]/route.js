@@ -486,6 +486,48 @@ export async function PATCH(request, context) {
       return NextResponse.json({ shipment: rows[0] });
     }
 
+    if (action === 'delete') {
+      if (body.status !== 'cancelled') {
+        return NextResponse.json({ error: 'Can only delete cancelled inbound shipments' }, { status: 400 });
+      }
+
+      await sql(
+        `DELETE FROM stock_inbound_shipment_items
+         WHERE inbound_shipment_id = $1`,
+        [id]
+      );
+
+      await sql(
+        `DELETE FROM stock_documents
+         WHERE entity_type = 'inbound_shipment' AND entity_id = $1`,
+        [id]
+      );
+
+      await sql(
+        `DELETE FROM stock_notifications
+         WHERE source_table = 'stock_inbound_shipments' AND source_id = $1`,
+        [id]
+      );
+
+      await sql(
+        `DELETE FROM stock_timeline_events
+         WHERE entity_type = 'inbound_shipment' AND entity_id = $1`,
+        [id]
+      );
+
+      const deleteRows = await sql(
+        `DELETE FROM stock_inbound_shipments
+         WHERE id = $1
+         RETURNING *`,
+        [id]
+      );
+
+      return NextResponse.json({
+        message: 'Cancelled inbound shipment deleted successfully',
+        shipment: deleteRows[0]
+      });
+    }
+
     if (action === 'request_changes') {
       const changeRequestRows = await sql(
         `INSERT INTO stock_change_requests (

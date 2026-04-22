@@ -290,7 +290,7 @@ export function PurchasesPanel({
               ))}
               {arrivalPagination.total === 0 ? (
                 <tr>
-                  <td colSpan="10" className="px-3 py-10">
+                  <td colSpan="13" className="px-3 py-10">
                     <div className="flex flex-col items-center justify-center gap-3 text-center">
                       <PackageCheck className="h-6 w-6 text-slate-400" />
                       <p className="text-sm text-slate-500 dark:text-slate-400">{tc.noPurchases}</p>

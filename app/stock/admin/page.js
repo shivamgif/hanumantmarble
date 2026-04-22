@@ -187,6 +187,7 @@ export default function AdminDashboard() {
   const [actionNotice, setActionNotice] = useState(null);
   const [arrivalPage, setArrivalPage] = useState(1);
   const [dispatchPage, setDispatchPage] = useState(1);
+  const [cancelledArrivalPage, setCancelledArrivalPage] = useState(1);
   const [changeRequestPage, setChangeRequestPage] = useState(1);
   const [userPage, setUserPage] = useState(1);
   const [showInsights, setShowInsights] = useState(true);
@@ -295,10 +296,13 @@ export default function AdminDashboard() {
     return () => { mounted = false; };
   }, [user]);
 
-  async function handleShipmentAction(type, id, action, notes = null) {
-    const confirmMessage = action === 'reject'
-      ? 'Are you sure you want to reject this shipment?'
-      : null;
+  async function handleShipmentAction(type, id, action, notes = null, additionalData = {}) {
+    let confirmMessage = null;
+    if (action === 'reject') {
+      confirmMessage = 'Are you sure you want to reject this shipment?';
+    } else if (action === 'delete') {
+      confirmMessage = 'Are you sure you want to permanently delete this cancelled shipment? This action cannot be undone.';
+    }
 
     if (confirmMessage && !window.confirm(confirmMessage)) {
       return;
@@ -314,6 +318,7 @@ export default function AdminDashboard() {
           action,
           notes,
           reason: action === 'request_changes' ? notes : undefined,
+          ...additionalData,
         }),
       });
 
@@ -328,6 +333,8 @@ export default function AdminDashboard() {
         } else {
           setActionNotice({ type: 'success', message: 'Shipment approved successfully.' });
         }
+      } else if (action === 'delete') {
+        setActionNotice({ type: 'success', message: 'Cancelled shipment deleted successfully.' });
       }
 
       await refreshDashboard();
@@ -615,6 +622,7 @@ export default function AdminDashboard() {
 
   const arrivalPagination = paginateRows(data?.pendingArrivals || [], arrivalPage, DEFAULT_PAGE_SIZE);
   const dispatchPagination = paginateRows(data?.pendingDispatches || [], dispatchPage, DEFAULT_PAGE_SIZE);
+  const cancelledArrivalPagination = paginateRows(data?.cancelledArrivals || [], cancelledArrivalPage, DEFAULT_PAGE_SIZE);
   const changeRequestPagination = paginateRows(changeRequests || [], changeRequestPage, DEFAULT_PAGE_SIZE);
   const userPagination = paginateRows(data?.users || [], userPage, DEFAULT_PAGE_SIZE);
   const previewItemPagination = paginateRows(previewState.items || [], previewItemsPage, DEFAULT_PAGE_SIZE);
@@ -636,6 +644,10 @@ export default function AdminDashboard() {
   useEffect(() => {
     setArrivalPage((current) => Math.min(current, arrivalPagination.pageCount));
   }, [arrivalPagination.pageCount]);
+
+  useEffect(() => {
+    setCancelledArrivalPage((current) => Math.min(current, cancelledArrivalPagination.pageCount));
+  }, [cancelledArrivalPagination.pageCount]);
 
   useEffect(() => {
     setDispatchPage((current) => Math.min(current, dispatchPagination.pageCount));
@@ -1257,6 +1269,101 @@ export default function AdminDashboard() {
                 className="mt-6 border-t pt-4 border-slate-100 dark:border-slate-800"
               />
             </AnalyticsCard>
+
+            {/* Cancelled Arrivals Section */}
+            {cancelledArrivalPagination.total > 0 && (
+              <AnalyticsCard
+                title="Cancelled Inbound Entries"
+                subtitle="Manage and delete cancelled inbound shipments"
+              >
+                <div className="hidden md:block overflow-x-auto rounded-3xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
+                  <table className="w-full text-left text-sm whitespace-nowrap">
+                    <thead className="sticky top-0 z-20 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xl">
+                      <tr className="border-b border-slate-200/60 dark:border-white/5">
+                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('shipmentNo')}</th>
+                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('maintainer')}</th>
+                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('boxesQty')}</th>
+                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                      {cancelledArrivalPagination.rows.map((item) => (
+                        <tr
+                          key={item.id}
+                          className="group cursor-pointer transition-all duration-300 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 odd:bg-white even:bg-slate-50/70 dark:odd:bg-slate-900 dark:even:bg-slate-900/70"
+                          onClick={() => openShipmentPreview('arrival', item)}
+                        >
+                          <td className="px-4 py-3 font-black text-amber-600 dark:text-amber-400 text-xs">
+                            <span className="bg-amber-500/5 px-2 py-1 rounded-md border border-amber-500/20">{item.shipment_number}</span>
+                          </td>
+                          <td className="px-4 py-3 text-slate-900 dark:text-slate-100 font-bold text-xs">{item.maintainer_name || '-'}</td>
+                          <td className="px-4 py-3 text-slate-900 dark:text-slate-100 font-black text-xs font-sans">{item.total_whole_qty} Units</td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleShipmentAction('inbound-shipments', item.id, 'delete', null, { status: 'cancelled' });
+                              }}
+                              disabled={actionLoading === `inbound-shipments-${item.id}-delete`}
+                              className="p-1.5 rounded-lg bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white transition-all disabled:opacity-50"
+                              title="Delete"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Cards for Cancelled Arrivals */}
+                <div className="md:hidden space-y-4">
+                  {cancelledArrivalPagination.rows.map((item) => (
+                    <div
+                      key={`cancelled-mob-${item.id}`}
+                      onClick={() => openShipmentPreview('arrival', item)}
+                      className="p-5 rounded-2xl border border-amber-200 dark:border-amber-900/30 bg-amber-50/30 dark:bg-amber-900/10 space-y-4 active:scale-[0.98] transition-transform"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('shipmentNo')}</p>
+                          <p className="text-sm font-black text-amber-600 dark:text-amber-400">{item.shipment_number}</p>
+                        </div>
+                        <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400">Cancelled</Badge>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('maintainer')}</p>
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{item.maintainer_name || '-'}</p>
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleShipmentAction('inbound-shipments', item.id, 'delete', null, { status: 'cancelled' });
+                          }}
+                          disabled={actionLoading === `inbound-shipments-${item.id}-delete`}
+                          className="flex-1 h-10 flex items-center justify-center gap-2 rounded-xl bg-red-600 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-500/20"
+                        >
+                          <X className="h-4 w-4" /> Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <PaginationControls
+                  page={cancelledArrivalPagination.page}
+                  pageCount={cancelledArrivalPagination.pageCount}
+                  total={cancelledArrivalPagination.total}
+                  pageSize={DEFAULT_PAGE_SIZE}
+                  onPageChange={setCancelledArrivalPage}
+                  labels={{ showing: t('paginationShowing'), of: t('paginationOf'), previous: t('paginationPrevious'), next: t('paginationNext'), page: t('paginationPage') }}
+                  className="mt-6 border-t pt-4 border-slate-100 dark:border-slate-800"
+                />
+              </AnalyticsCard>
+            )}
 
             <AnalyticsCard
               title={t('pendingDispatches')}
