@@ -168,9 +168,10 @@ export async function GET(request) {
 
   try {
     const shipments = await sql(
-      `SELECT *
-       FROM stock_inbound_shipments
-       ORDER BY created_at DESC
+      `SELECT s.*, COALESCE(l.name, s.destination_warehouse_name) AS destination_warehouse_name
+       FROM stock_inbound_shipments s
+       LEFT JOIN stock_locations l ON l.id = s.destination_location_id
+       ORDER BY s.created_at DESC
        LIMIT 50`,
       []
     );
