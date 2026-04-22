@@ -370,7 +370,17 @@
       "itemLabel": "आइटम",
       "retWhole": "वापसी पूर्ण",
       "retBrok": "वापसी टूटा",
-      "customerPhone": "ग्राहक फोन"
+      "customerPhone": "ग्राहक फोन",
+      "freight": "माल भाड़ा (किग्रा)",
+      "searchPurchases": "खरीदारी खोजें...",
+      "searchDispatches": "डिस्पैच खोजें...",
+      "noDispatches": "कोई डिस्पैच नहीं मिला",
+      "by": "द्वारा",
+      "paginationShowing": "दिखा रहा है",
+      "paginationOf": "का",
+      "paginationPrevious": "पिछला",
+      "paginationNext": "अगला",
+      "paginationPage": "पेज"
     },
     "admin": {
       "loading": "लोड हो रहा है...",

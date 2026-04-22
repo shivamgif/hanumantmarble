@@ -93,7 +93,7 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
                   </td>
                   <td className="px-4 py-3">
                     <div className="text-xs font-black text-slate-900 dark:text-white transition-transform group-hover/row:translate-x-1 duration-300">{item.name}</div>
-                    <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest opacity-60">{t('category')}</div>
+                    <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest opacity-60">{item.division_name || item.brand_name || '—'}</div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="text-xs font-bold text-slate-400">{item.size_label}</div>

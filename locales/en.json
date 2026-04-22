@@ -371,7 +371,17 @@
       "itemLabel": "Item",
       "retWhole": "Ret. Whole",
       "retBrok": "Ret. Broken",
-      "customerPhone": "Customer Phone"
+      "customerPhone": "Customer Phone",
+      "freight": "Freight (kg)",
+      "searchPurchases": "Search purchases...",
+      "searchDispatches": "Search dispatches...",
+      "noDispatches": "No dispatches found",
+      "by": "By",
+      "paginationShowing": "Showing",
+      "paginationOf": "of",
+      "paginationPrevious": "Previous",
+      "paginationNext": "Next",
+      "paginationPage": "Page"
     },
     "admin": {
       "loading": "Loading admin dashboard...",

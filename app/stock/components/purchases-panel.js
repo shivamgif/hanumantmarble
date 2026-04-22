@@ -145,19 +145,28 @@ export function PurchasesPanel({
                   </button>
                   <Badge variant={getStatusVariant(a.status)}>{a.status}</Badge>
                 </div>
-                <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">{Number(a.total_whole_qty || 0)} whole / {Number(a.total_broken_qty || 0)} broken</p>
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-600 dark:text-slate-300">
+                  <span>{Number(a.total_whole_qty || 0)} <span className="text-[10px] uppercase text-slate-400">W</span></span>
+                  <span>{Number(a.total_broken_qty || 0)} <span className="text-[10px] uppercase text-slate-400">B</span></span>
+                  <span className="text-[10px] text-slate-400">{Number(a.total_qty_sqm || 0).toFixed(2)} SQM</span>
+                </div>
                 <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                  Invoice: {a.invoice_number || '—'} {a.invoice_date ? `(${formatDateTime(a.invoice_date)})` : ''}
+                  <span className="font-semibold text-slate-600 dark:text-slate-300">{tc.invoice}:</span> {a.invoice_number || '—'}{a.invoice_date ? ` (${formatDateTime(a.invoice_date)})` : ''}
                 </p>
                 <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                  {a.origin_city || '—'} to {a.destination_warehouse_name || '—'} • {a.payment_status || 'unpaid'}
+                  <span className="font-semibold text-slate-600 dark:text-slate-300">{tc.route}:</span> {a.origin_city || '—'} → {a.destination_warehouse_name || '—'}
+                </p>
+                <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                  <span className="font-semibold text-slate-600 dark:text-slate-300">{tc.payment}:</span> {a.payment_status || 'unpaid'}{a.paid_amount != null ? ` · INR ${Number(a.paid_amount).toFixed(2)}` : ''}
                 </p>
                 {expanded ? (
-                  <div className="mt-2 space-y-1 text-[11px] text-slate-500 dark:text-slate-400">
-                    <p className="truncate">{a.product_names || a.product_skus || '—'}</p>
-                    <p>Division: {a.divisions || 'General'}</p>
-                    <p>SQM: {Number(a.total_qty_sqm || 0).toFixed(3)} • Avg cost/sqm: {Number(a.avg_cost_per_sqm || 0).toFixed(2)}</p>
-                    <p>By: {a.generated_by || '—'}</p>
+                  <div className="mt-2 space-y-1 text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-white/5 pt-2">
+                    <p className="truncate font-medium text-slate-700 dark:text-slate-300">{a.product_names || a.product_skus || '—'}</p>
+                    {a.divisions ? <p><span className="font-semibold">{tc.division}:</span> {a.divisions}</p> : null}
+                    {a.grand_total ? <p><span className="font-semibold">{tc.grandTotal}:</span> INR {Number(a.grand_total).toFixed(2)}</p> : null}
+                    {a.freight_weight_kg ? <p><span className="font-semibold">{tc.freight}:</span> {Number(a.freight_weight_kg).toFixed(2)} kg</p> : null}
+                    <p><span className="font-semibold">{tc.generatedBy}:</span> {a.generated_by || '—'}</p>
+                    {a.approved_by ? <p><span className="font-semibold">{tc.approvedBy}:</span> {a.approved_by}</p> : null}
                   </div>
                 ) : null}
                 <div className="mt-2 flex gap-2">
@@ -290,7 +299,7 @@ export function PurchasesPanel({
               ))}
               {arrivalPagination.total === 0 ? (
                 <tr>
-                  <td colSpan="13" className="px-3 py-10">
+                  <td colSpan={canEdit ? 13 : 12} className="px-3 py-10">
                     <div className="flex flex-col items-center justify-center gap-3 text-center">
                       <PackageCheck className="h-6 w-6 text-slate-400" />
                       <p className="text-sm text-slate-500 dark:text-slate-400">{tc.noPurchases}</p>

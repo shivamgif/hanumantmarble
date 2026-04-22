@@ -6,7 +6,14 @@ import { getTranslation } from '@/lib/translations';
 import { useEffect, useState } from 'react';
 import { useAuthUser } from '@/lib/auth-client';
 import { useSearchParams } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useFieldArray, useForm, useWatch } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { arrivalFormSchema, dispatchFormSchema } from '@/lib/forms/stock-forms';
+import { useStockFormStore } from '@/lib/stores/stock-form-store';
+import { createArrivalItemRow, createDispatchItemRow, createInitialArrivalDraft, createInitialDispatchDraft, toNumber, trimText } from '@/app/stock/lib/stock-utils';
+import { ArrivalFormContent } from '@/app/stock/components/arrival-form';
+import { DispatchFormContent } from '@/app/stock/components/dispatch-form';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import EntryPreviewSheet, { PreviewKeyValueGrid } from '@/components/ui/entry-preview-sheet';
 import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
 import PaginationControls from '@/components/ui/pagination-controls';
@@ -35,7 +42,8 @@ import {
   AlertCircle,
   Package,
   X,
-  Clock
+  Clock,
+  Pencil
 } from 'lucide-react';
 
 function formatCompactNumber(value) {
@@ -172,6 +180,39 @@ export default function AdminDashboard() {
   const { language } = useLanguage();
   const searchParams = useSearchParams();
   const t = (key) => getTranslation(`stock.admin.${key}`, language);
+  const td = (key) => getTranslation(`stock.dashboard.${key}`, language);
+  const tc = {
+    inventoryHub: td('inventoryHub'), stockLedger: td('stockLedger'), dispatches: td('dispatches'),
+    purchases: td('purchases'), filter: td('filter'), sort: td('sort'), search: td('search'),
+    submitting: td('submitting'), date: td('date'), invoiceDate: td('invoiceDate'),
+    transporter: td('transporter'), amountInInr: td('amountInInr'), invoicePhoto: td('invoicePhoto'),
+    invoicePhotoHint: td('invoicePhotoHint'), transporterBillPhoto: td('transporterBillPhoto'),
+    transporterBillHint: td('transporterBillHint'), originCity: td('originCity'),
+    destinationWarehouse: td('destinationWarehouse'), purchaseBasics: td('purchaseBasics'),
+    purchaseBasicsDesc: td('purchaseBasicsDesc'), transportInvoice: td('transportInvoice'),
+    itemLabel: td('itemLabel'), autofilledCatalog: td('autofilledCatalog'), newTileEntry: td('newTileEntry'),
+    typeTileName: td('typeTileName'), wholeBox: td('wholeBox'), brokenTiles: td('brokenTiles'),
+    orderedSqm: td('orderedSqm'), wholeSqm: td('wholeSqm'), brokenSqm: td('brokenSqm'),
+    catalogIntelligence: td('catalogIntelligence'), technicalEntry: td('technicalEntry'),
+    brand: td('brand'), division: td('division'), finish: td('finish'), quality: td('quality'),
+    width: td('width'), length: td('length'), mm: td('mm'), thickness: td('thickness'),
+    description: td('description'), ordered: td('ordered'), piecesPerBox: td('piecesPerBox'),
+    hsn: td('hsn'), handlingCost: td('handlingCost'), fuelCost: td('fuelCost'), gst: td('gst'),
+    weightKg: td('weightKg'), assets: td('assets'), submitPurchase: td('submitPurchase'),
+    submitDispatch: td('submitDispatch'), replaceFile: td('replaceFile'), chooseFile: td('chooseFile'),
+    attachHint: td('attachHint'), formSection: td('formSection'), controlLabel: td('controlLabel'),
+    dispatchBasics: td('dispatchBasics'), dispatchBasicsDesc: td('dispatchBasicsDesc'),
+    transportAndVehicle: td('transportAndVehicle'), shipments: td('shipments'),
+    retWhole: td('retWhole'), retBrok: td('retBrok'), customerPhone: td('customerPhone'),
+    salesInvoicePhoto: td('salesInvoicePhoto'), salesInvoiceHint: td('salesInvoiceHint'),
+    gatepassPhoto: td('gatepassPhoto'), gatepassHint: td('gatepassHint'), status: td('status'),
+    approval: td('approval'), driver: td('driver'), paymentStatus: td('paymentStatus'),
+    totalWhole: td('totalWhole'), totalBroken: td('totalBroken'), noPreview: td('noPreview'),
+    visualVerificationHub: td('visualVerificationHub'), intelligenceCase: td('intelligenceCase'),
+    linkedDocuments: td('linkedDocuments'), itemDetails: td('itemDetails'), sku: td('sku'),
+    logNewPurchase: td('logNewPurchase'), logNewDispatch: td('logNewDispatch'),
+    purchaseSheetDesc: td('purchaseSheetDesc'), insufficientNewPurchase: td('insufficientNewPurchase'),
+  };
   const { user } = useAuthUser();
   const [data, setData] = useState(null);
   const [analyticsData, setAnalyticsData] = useState(null);
@@ -228,6 +269,36 @@ export default function AdminDashboard() {
   });
 
   const [resetPasswordModal, setResetPasswordModal] = useState({ open: false, email: '', newPassword: '', confirm: '', loading: false, error: null, success: false });
+  const [editingArrivalId, setEditingArrivalId] = useState(null);
+  const [editingDispatchId, setEditingDispatchId] = useState(null);
+  const [arrivalNotice, setArrivalNotice] = useState(null);
+  const [dispatchNotice, setDispatchNotice] = useState(null);
+  const [arrivalSubmitting, setArrivalSubmitting] = useState(false);
+  const [dispatchSubmitting, setDispatchSubmitting] = useState(false);
+  const [suggestions, setSuggestions] = useState({});
+
+  const arrivalSheetOpen = useStockFormStore((state) => state.arrivalSheetOpen);
+  const dispatchSheetOpen = useStockFormStore((state) => state.dispatchSheetOpen);
+  const setArrivalSheetOpen = useStockFormStore((state) => state.setArrivalSheetOpen);
+  const setDispatchSheetOpen = useStockFormStore((state) => state.setDispatchSheetOpen);
+  const arrivalAttachments = useStockFormStore((state) => state.arrivalAttachments);
+  const dispatchAttachments = useStockFormStore((state) => state.dispatchAttachments);
+  const setArrivalAttachment = useStockFormStore((state) => state.setArrivalAttachment);
+  const setDispatchAttachment = useStockFormStore((state) => state.setDispatchAttachment);
+  const resetArrivalAttachments = useStockFormStore((state) => state.resetArrivalAttachments);
+  const resetDispatchAttachments = useStockFormStore((state) => state.resetDispatchAttachments);
+
+  const arrivalForm = useForm({
+    resolver: zodResolver(arrivalFormSchema),
+    defaultValues: createInitialArrivalDraft(),
+  });
+  const dispatchForm = useForm({
+    resolver: zodResolver(dispatchFormSchema),
+    defaultValues: createInitialDispatchDraft(),
+  });
+  const arrivalItemsFieldArray = useFieldArray({ control: arrivalForm.control, name: 'items' });
+  const dispatchItemsFieldArray = useFieldArray({ control: dispatchForm.control, name: 'items' });
+  const arrivalItems = useWatch({ control: arrivalForm.control, name: 'items' }) || [];
 
   async function handleResetPassword() {
     const { email, newPassword, confirm } = resetPasswordModal;
@@ -294,6 +365,18 @@ export default function AdminDashboard() {
     }
     if (user) loadData();
     return () => { mounted = false; };
+  }, [user]);
+
+  useEffect(() => {
+    async function loadSuggestions() {
+      try {
+        const response = await fetch('/api/stock/form-suggestions', { cache: 'no-store' });
+        if (!response.ok) return;
+        const json = await response.json();
+        if (json?.suggestions) setSuggestions(json.suggestions);
+      } catch { }
+    }
+    if (user) loadSuggestions();
   }, [user]);
 
   async function handleShipmentAction(type, id, action, notes = null, additionalData = {}) {
@@ -375,6 +458,219 @@ export default function AdminDashboard() {
 
   function closePreview() {
     setPreviewState((current) => ({ ...current, open: false }));
+  }
+
+  async function handleEditArrival(row) {
+    setArrivalNotice({ type: 'info', message: 'Loading purchase details…' });
+    setArrivalSheetOpen(true);
+    setEditingArrivalId(row.id);
+    try {
+      const response = await fetch(`/api/stock/inbound-shipments/${row.id}`);
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || 'Failed to load purchase details');
+      const s = json.shipment;
+      const items = json.items || [];
+      arrivalForm.reset({
+        shipmentNumber: s.shipment_number || '',
+        supplierName: s.supplier_name || '',
+        truckLicensePlate: s.truck_license_plate || s.truck_license_plate_snapshot || '',
+        driverName: s.driver_name || s.driver_name_snapshot || '',
+        invoiceNumber: s.invoice_number || '',
+        invoiceDate: s.invoice_date ? s.invoice_date.split('T')[0] : '',
+        originCity: s.origin_city || '',
+        destinationWarehouseName: s.destination_warehouse_name || '',
+        paymentStatus: s.payment_status || 'unpaid',
+        paidAmount: s.paid_amount ?? '',
+        paymentDate: s.payment_date ? s.payment_date.split('T')[0] : '',
+        paymentReference: s.payment_reference || '',
+        paymentMode: s.payment_mode || '',
+        transporterName: s.transporter_name || '',
+        transportCost: s.delivery_cost ?? '',
+        laborCost: s.unloading_labour_cost ?? '',
+        handlingCostPercent: s.handling_cost_percent != null ? String(s.handling_cost_percent) : '1.0',
+        fuelCostPercent: s.fuel_cost_percent != null ? String(s.fuel_cost_percent) : '5.0',
+        gstPercent: s.gst_percent != null ? String(s.gst_percent) : '18.0',
+        freightWeightKg: s.freight_weight_kg != null ? String(s.freight_weight_kg) : '',
+        notes: s.notes || '',
+        items: items.length > 0 ? items.map((item) => ({
+          itemId: String(item.item_id),
+          itemName: item.item_name || '',
+          brandName: item.brand_name || '',
+          divisionName: item.division_name || '',
+          finish: item.finish || '',
+          grade: item.grade || '',
+          sizeLabel: item.size_label || '',
+          sizeWidthMm: '',
+          sizeLengthMm: '',
+          sizeUnit: item.size_unit || 'mm',
+          hsnCode: item.hsn_code || '',
+          thicknessMm: item.thickness_mm != null ? String(item.thickness_mm) : '',
+          piecesPerBox: item.pieces_per_box != null ? String(item.pieces_per_box) : '',
+          reorderLevel: '',
+          description: item.description || '',
+          orderedBoxes: item.ordered_qty != null ? String(item.ordered_qty) : '',
+          wholeQty: String(item.received_whole_qty ?? 0),
+          brokenQty: String(item.received_broken_qty ?? 0),
+          costPerSqm: item.cost_per_sqm != null ? String(item.cost_per_sqm) : '',
+          qtySqm: item.qty_sqm != null ? String(item.qty_sqm) : '',
+          notes: item.notes || '',
+        })) : [createArrivalItemRow()],
+      });
+      setArrivalNotice(null);
+    } catch (err) {
+      setArrivalNotice({ type: 'error', message: err.message });
+    }
+  }
+
+  async function handleArrivalSubmit(values) {
+    if (!editingArrivalId) return;
+    setArrivalSubmitting(true);
+    try {
+      const items = (values.items || [])
+        .map((item) => ({
+          itemId: item.itemId ? Number(item.itemId) : undefined,
+          itemName: trimText(item.itemName),
+          brandName: trimText(item.brandName),
+          sizeLabel: trimText(item.sizeLabel),
+          hsnCode: trimText(item.hsnCode),
+          wholeQty: toNumber(item.wholeQty),
+          brokenQty: toNumber(item.brokenQty),
+          orderedBoxes: item.orderedBoxes || undefined,
+          costPerSqm: item.costPerSqm ?? undefined,
+          notes: trimText(item.notes),
+        }))
+        .filter((item) => item.itemId || item.wholeQty > 0 || item.brokenQty > 0);
+
+      const response = await fetch(`/api/stock/inbound-shipments/${editingArrivalId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update',
+          shipmentNumber: trimText(values.shipmentNumber) || undefined,
+          supplierName: trimText(values.supplierName) || undefined,
+          truckLicensePlate: trimText(values.truckLicensePlate) || undefined,
+          driverName: trimText(values.driverName) || undefined,
+          invoiceNumber: trimText(values.invoiceNumber) || undefined,
+          invoiceDate: values.invoiceDate || undefined,
+          originCity: trimText(values.originCity) || undefined,
+          destinationWarehouseName: trimText(values.destinationWarehouseName) || undefined,
+          paymentStatus: trimText(values.paymentStatus) || 'unpaid',
+          paidAmount: values.paidAmount === '' ? undefined : toNumber(values.paidAmount),
+          paymentDate: values.paymentDate || undefined,
+          paymentReference: trimText(values.paymentReference) || undefined,
+          paymentMode: trimText(values.paymentMode) || undefined,
+          transporterName: trimText(values.transporterName) || undefined,
+          deliveryCost: toNumber(values.transportCost),
+          unloadingLabourCost: toNumber(values.laborCost),
+          handlingCostPercent: values.handlingCostPercent === '' ? undefined : toNumber(values.handlingCostPercent),
+          fuelCostPercent: values.fuelCostPercent === '' ? undefined : toNumber(values.fuelCostPercent),
+          gstPercent: values.gstPercent === '' ? undefined : toNumber(values.gstPercent),
+          freightWeightKg: values.freightWeightKg === '' ? undefined : toNumber(values.freightWeightKg),
+          notes: trimText(values.notes) || undefined,
+          items,
+        }),
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || 'Failed to update purchase');
+      arrivalForm.reset(createInitialArrivalDraft());
+      resetArrivalAttachments();
+      setArrivalSheetOpen(false);
+      setEditingArrivalId(null);
+      setActionNotice({ type: 'success', message: `Purchase ${json.shipment?.shipment_number || ''} updated.` });
+      await refreshDashboard();
+    } catch (err) {
+      setArrivalNotice({ type: 'error', message: err.message });
+    } finally {
+      setArrivalSubmitting(false);
+    }
+  }
+
+  async function handleEditDispatch(row) {
+    setDispatchNotice({ type: 'info', message: 'Loading dispatch details…' });
+    setDispatchSheetOpen(true);
+    setEditingDispatchId(row.id);
+    try {
+      const response = await fetch(`/api/stock/outbound-shipments/${row.id}`);
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || 'Failed to load dispatch details');
+      const shipment = json.shipment;
+      const items = json.items || [];
+      dispatchForm.reset({
+        shipmentNumber: shipment.shipment_number || '',
+        customerName: shipment.customer_name || '',
+        customerPhoneNumber: shipment.customer_phone_number || '',
+        truckLicensePlate: shipment.truck_license_plate_snapshot || shipment.truck_number_snapshot || '',
+        driverName: shipment.driver_name_snapshot || '',
+        invoiceNumber: shipment.invoice_number || '',
+        salespersonName: shipment.salesperson_name || '',
+        dispatchDate: (shipment.dispatch_date || shipment.created_at) ? (() => {
+          const d = new Date(shipment.dispatch_date || shipment.created_at);
+          const pad = (n) => String(n).padStart(2, '0');
+          return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        })() : '',
+        transportCost: shipment.transport_cost ?? '',
+        laborCost: shipment.loading_labour_cost ?? '',
+        notes: shipment.notes || '',
+        items: items.map((item) => ({
+          itemId: String(item.item_id),
+          loadedWholeQty: String(item.loaded_whole_qty ?? 0),
+          notes: item.notes || '',
+          returnWholeQty: item.returned_whole_qty != null ? String(item.returned_whole_qty) : '',
+          returnBrokenQty: item.returned_broken_qty != null ? String(item.returned_broken_qty) : '',
+        })),
+      });
+      setDispatchNotice(null);
+    } catch (err) {
+      setDispatchNotice({ type: 'error', message: err.message });
+    }
+  }
+
+  async function handleDispatchSubmit(values) {
+    if (!editingDispatchId) return;
+    setDispatchSubmitting(true);
+    try {
+      const items = (values.items || [])
+        .map((item) => ({
+          itemId: Number(item.itemId),
+          loadedWholeQty: toNumber(item.loadedWholeQty),
+          returnWholeQty: item.returnWholeQty === '' ? null : toNumber(item.returnWholeQty),
+          returnBrokenQty: item.returnBrokenQty === '' ? null : toNumber(item.returnBrokenQty),
+          notes: trimText(item.notes),
+        }))
+        .filter((item) => item.itemId);
+
+      const response = await fetch(`/api/stock/outbound-shipments/${editingDispatchId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update',
+          shipmentNumber: trimText(values.shipmentNumber) || undefined,
+          customerName: trimText(values.customerName) || undefined,
+          customerPhoneNumber: trimText(values.customerPhoneNumber) || undefined,
+          truckLicensePlate: trimText(values.truckLicensePlate) || undefined,
+          driverName: trimText(values.driverName) || undefined,
+          invoiceNumber: trimText(values.invoiceNumber) || undefined,
+          salespersonName: trimText(values.salespersonName) || undefined,
+          dispatchDate: values.dispatchDate || undefined,
+          transportCost: toNumber(values.transportCost),
+          loadingLabourCost: toNumber(values.laborCost),
+          notes: trimText(values.notes) || undefined,
+          items,
+        }),
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || 'Failed to update dispatch');
+      dispatchForm.reset(createInitialDispatchDraft());
+      resetDispatchAttachments();
+      setDispatchSheetOpen(false);
+      setEditingDispatchId(null);
+      setActionNotice({ type: 'success', message: `Dispatch ${json.shipment?.shipment_number || ''} updated.` });
+      await refreshDashboard();
+    } catch (err) {
+      setDispatchNotice({ type: 'error', message: err.message });
+    } finally {
+      setDispatchSubmitting(false);
+    }
   }
 
   async function openShipmentPreview(kind, row) {
@@ -1176,6 +1472,17 @@ export default function AdminDashboard() {
                               type="button"
                               onClick={(event) => {
                                 event.stopPropagation();
+                                handleEditArrival(item);
+                              }}
+                              className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 hover:bg-blue-500 hover:text-white transition-all"
+                              title="Edit"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
                                 handleShipmentAction('inbound-shipments', item.id, 'approve');
                               }}
                               disabled={actionLoading === `inbound-shipments-${item.id}-approve`}
@@ -1230,6 +1537,17 @@ export default function AdminDashboard() {
                       <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{item.maintainer_name || '-'}</p>
                     </div>
                     <div className="flex gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleEditArrival(item);
+                        }}
+                        className="h-10 px-4 rounded-xl bg-blue-500/10 text-blue-600"
+                        title="Edit"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
                       <button
                         type="button"
                         onClick={(event) => {
@@ -1399,6 +1717,17 @@ export default function AdminDashboard() {
                               type="button"
                               onClick={(event) => {
                                 event.stopPropagation();
+                                handleEditDispatch(item);
+                              }}
+                              className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 hover:bg-blue-500 hover:text-white transition-all"
+                              title="Edit"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
                                 handleShipmentAction('outbound-shipments', item.id, 'approve');
                               }}
                               disabled={actionLoading === `outbound-shipments-${item.id}-approve`}
@@ -1453,6 +1782,17 @@ export default function AdminDashboard() {
                       <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{item.driver_name || '-'}</p>
                     </div>
                     <div className="flex gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleEditDispatch(item);
+                        }}
+                        className="h-10 px-4 rounded-xl bg-blue-500/10 text-blue-600"
+                        title="Edit"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
                       <button
                         type="button"
                         onClick={(event) => {
@@ -2214,6 +2554,57 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      <Sheet open={arrivalSheetOpen} onOpenChange={(open) => { setArrivalSheetOpen(open); if (!open) { setEditingArrivalId(null); setArrivalNotice(null); arrivalForm.reset(createInitialArrivalDraft()); } }}>
+        <SheetContent side="right" className="w-full max-w-none overflow-y-auto bg-white dark:bg-slate-950 md:w-[50vw]">
+          <SheetHeader className="border-b border-border pb-4">
+            <SheetTitle className="text-base">{editingArrivalId ? 'Edit Purchase' : tc.logNewPurchase}</SheetTitle>
+            <SheetDescription className="text-xs">{tc.purchaseSheetDesc}</SheetDescription>
+          </SheetHeader>
+          <ArrivalFormContent
+            form={arrivalForm}
+            itemsFieldArray={arrivalItemsFieldArray}
+            watchedItems={arrivalItems}
+            attachments={arrivalAttachments}
+            setAttachment={setArrivalAttachment}
+            onSubmit={handleArrivalSubmit}
+            onInvalid={() => setArrivalNotice({ type: 'error', message: 'Please fix the highlighted fields.' })}
+            notice={arrivalNotice}
+            submitting={arrivalSubmitting}
+            onAddItem={() => arrivalItemsFieldArray.append(createArrivalItemRow())}
+            onItemNameChange={() => {}}
+            suggestions={suggestions}
+            activeItems={data?.activeItems}
+            t={td}
+            tc={tc}
+            language={language}
+          />
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={dispatchSheetOpen} onOpenChange={(open) => { setDispatchSheetOpen(open); if (!open) { setEditingDispatchId(null); setDispatchNotice(null); dispatchForm.reset(createInitialDispatchDraft()); } }}>
+        <SheetContent side="right" className="w-full max-w-none overflow-y-auto bg-white dark:bg-slate-950 md:w-[50vw]">
+          <SheetHeader className="border-b border-border pb-4">
+            <SheetTitle className="text-base">{editingDispatchId ? 'Edit Dispatch' : tc.logNewDispatch}</SheetTitle>
+            <SheetDescription className="text-xs">{tc.purchaseSheetDesc}</SheetDescription>
+          </SheetHeader>
+          <DispatchFormContent
+            form={dispatchForm}
+            itemsFieldArray={dispatchItemsFieldArray}
+            attachments={dispatchAttachments}
+            setAttachment={setDispatchAttachment}
+            onSubmit={handleDispatchSubmit}
+            onInvalid={() => setDispatchNotice({ type: 'error', message: 'Please fix the highlighted fields.' })}
+            notice={dispatchNotice}
+            submitting={dispatchSubmitting}
+            onAddItem={() => dispatchItemsFieldArray.append(createDispatchItemRow())}
+            activeItems={data?.activeItems}
+            t={td}
+            tc={tc}
+            language={language}
+          />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
