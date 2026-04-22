@@ -2030,7 +2030,7 @@ export default function AdminDashboard() {
                           total={previewItemPagination.total}
                           pageSize={DEFAULT_PAGE_SIZE}
                           onPageChange={setPreviewItemsPage}
-                          labels={{ showing: ta.paginationShowing, of: ta.paginationOf, previous: ta.paginationPrevious, next: ta.paginationNext, page: ta.paginationPage }}
+                          labels={{ showing: t('paginationShowing'), of: t('paginationOf'), previous: t('paginationPrevious'), next: t('paginationNext'), page: t('paginationPage') }}
                         />
                       </div>
                     ),
