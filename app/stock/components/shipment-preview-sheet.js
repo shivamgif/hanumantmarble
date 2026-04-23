@@ -7,7 +7,7 @@ import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
 import { formatDateTime, INVOICE_CLASSES } from '../lib/stock-utils';
 
-function renderDocumentPreview(document) {
+function renderDocumentPreview(document, tc) {
   if (!document?.file_url) {
     return <div className="glass-panel rounded-2xl border border-white/5 bg-white/5 p-6 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">{tc.noPreview}</div>;
   }
@@ -292,7 +292,7 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
                     <div className="mt-2 text-base font-black text-slate-900 dark:text-white tracking-tight">{document.document_number || (language === 'hi' ? 'दस्तावेज़' : 'Document')}</div>
                     <div className="mt-1 truncate text-[11px] font-bold text-slate-500 opacity-60">{document.file_name}</div>
                   </div>
-                  <div className="p-5">{renderDocumentPreview(document)}</div>
+                  <div className="p-5">{renderDocumentPreview(document, tc)}</div>
                 </section>
               ))}
             </div>
