@@ -38,10 +38,12 @@ export async function GET(request) {
       drivers,
       trucks,
       paymentModes,
+      bagTypes,
+      bagItems,
     ] = await Promise.allSettled([
       sql('SELECT DISTINCT name FROM stock_suppliers WHERE name IS NOT NULL ORDER BY name', []),
       sql('SELECT DISTINCT name FROM stock_transporters WHERE name IS NOT NULL ORDER BY name', []),
-      sql('SELECT DISTINCT name FROM stock_items WHERE name IS NOT NULL ORDER BY name', []),
+      sql(`SELECT DISTINCT i.name FROM stock_items i LEFT JOIN stock_types t ON t.id = i.type_id WHERE i.name IS NOT NULL AND (t.category IS NULL OR t.category = 'tile') ORDER BY i.name`, []),
       sql('SELECT DISTINCT name AS brand FROM stock_brands WHERE name IS NOT NULL ORDER BY name', []),
       sql('SELECT DISTINCT name AS division FROM stock_divisions WHERE name IS NOT NULL ORDER BY name', []),
       sql('SELECT DISTINCT finish FROM stock_items WHERE finish IS NOT NULL ORDER BY finish', []),
@@ -50,16 +52,16 @@ export async function GET(request) {
       sql('SELECT DISTINCT hsn_code FROM stock_inbound_shipment_items WHERE hsn_code IS NOT NULL ORDER BY hsn_code', []),
       sql('SELECT DISTINCT origin_city FROM stock_inbound_shipments WHERE origin_city IS NOT NULL ORDER BY origin_city', []),
       sql(
-        `SELECT DISTINCT name AS destination_warehouse_name FROM (
-           SELECT name FROM stock_locations WHERE name IS NOT NULL AND is_active = true
-           UNION
-           SELECT destination_warehouse_name AS name FROM stock_inbound_shipments WHERE destination_warehouse_name IS NOT NULL
-         ) s WHERE name IS NOT NULL AND trim(name) <> '' ORDER BY destination_warehouse_name`,
+        `SELECT name AS destination_warehouse_name FROM stock_locations
+         WHERE name IS NOT NULL AND trim(name) <> '' AND is_active = true AND location_type = 'warehouse'
+         ORDER BY name`,
         []
       ),
       sql('SELECT DISTINCT driver_name FROM stock_inbound_shipments WHERE driver_name IS NOT NULL ORDER BY driver_name', []),
       sql('SELECT DISTINCT truck_license_plate FROM stock_inbound_shipments WHERE truck_license_plate IS NOT NULL ORDER BY truck_license_plate', []),
       sql("SELECT DISTINCT payment_mode FROM stock_inbound_shipments WHERE payment_mode IS NOT NULL AND payment_mode <> '' ORDER BY payment_mode", []),
+      sql(`SELECT name AS bag_type FROM stock_types WHERE category = 'bag' AND is_active = true ORDER BY name`, []),
+      sql(`SELECT DISTINCT i.name AS bag_item_name FROM stock_items i JOIN stock_types t ON t.id = i.type_id WHERE t.category = 'bag' AND i.is_active = true ORDER BY i.name`, []),
     ]);
 
     return NextResponse.json({
@@ -78,6 +80,8 @@ export async function GET(request) {
         driverName: pick(drivers, 'driver_name'),
         truckLicensePlate: pick(trucks, 'truck_license_plate'),
         paymentMode: pick(paymentModes, 'payment_mode'),
+        bagType: pick(bagTypes, 'bag_type'),
+        bagItemName: pick(bagItems, 'bag_item_name'),
       },
     });
   } catch (error) {

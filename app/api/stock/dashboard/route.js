@@ -38,6 +38,8 @@ export async function GET(request) {
            i.finish,
            i.grade,
            i.unit_of_measure,
+           i.weight_per_unit_kg,
+           i.rate_per_bag,
            b.name AS brand_name,
            t.name AS type_name,
            d.name AS division_name,

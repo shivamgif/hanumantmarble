@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useMemo, useState } from 'react';
-import { Boxes, FileText, Plus, ReceiptText, Sparkles, Truck, ChevronRight, X } from 'lucide-react';
+import { Boxes, FileText, Plus, ReceiptText, Sparkles, Truck, ChevronRight, X, Package } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -54,7 +54,7 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
         </div>
       </div>
       <div className="p-4 space-y-5">
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className="grid gap-5 md:grid-cols-4">
           <div>
             <div className={FORM_LABEL_CLASS}>{t('name')}</div>
             <FormField
@@ -77,12 +77,12 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
               )}
             />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StockFormField control={control} name={`items.${index}.orderedBoxes`} label={tc.ordered} type="number" placeholder="0" min="0" />
             <StockFormField control={control} name={`items.${index}.wholeQty`} label={tc.wholeBox} type="number" placeholder="0" min="0"  />
             <StockFormField control={control} name={`items.${index}.brokenQty`} label={tc.brokenTiles} type="number"  placeholder="0"  min="0"/>
           </div>
-        </div>
         <div className="grid gap-3 sm:grid-cols-3 p-3 rounded-xl bg-slate-500/5 border border-white/5">
           {[
             { label: tc.orderedSqm, value: orderedQtySqmDisplay },
@@ -185,6 +185,230 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
   );
 });
 
+const BagArrivalItemRow = memo(function BagArrivalItemRow({ index, fieldRow, control, bagTypes, bagBrands, bagItemNames, onItemNameChange, tc, totalItems, onRemoveItem }) {
+  return (
+    <div key={fieldRow.id} className="glass-panel rounded-2xl border border-white/5 shadow-xl transition-all duration-500 overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 bg-slate-900/40 px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-100">{tc?.itemLabel ?? 'Item'} {index + 1}</span>
+          <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-amber-400">Bag</span>
+        </div>
+        {totalItems > 1 && (
+          <button type="button" onClick={() => onRemoveItem(index)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+      <div className="p-4 space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <div className={FORM_LABEL_CLASS}>Product Name</div>
+            <FormField
+              control={control}
+              name={`items.${index}.itemName`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <SuggestCombobox
+                      value={field.value ?? ''}
+                      onChange={(v) => onItemNameChange(index, v)}
+                      onBlur={field.onBlur}
+                      options={bagItemNames}
+                      placeholder="e.g. Laticrete 111"
+                      className={FORM_INPUT_CLASS}
+                    />
+                  </FormControl>
+                  <FormMessage className="text-xs" />
+                </FormItem>
+              )}
+            />
+          </div>
+          <SuggestComboboxField control={control} name={`items.${index}.brandName`} label="Brand" placeholder="e.g. Laticrete" options={bagBrands} />
+          <SuggestComboboxField control={control} name={`items.${index}.typeName`} label="Type" placeholder="e.g. Adhesive" options={bagTypes} />
+          <StockFormField control={control} name={`items.${index}.qtyBags`} label="Qty (Bags)" type="number" placeholder="0" min="0" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <StockFormField control={control} name={`items.${index}.weightPerUnitKg`} label="Weight per Bag (kg)" type="number" placeholder="25" min="0" step="0.1" />
+          <StockFormField control={control} name={`items.${index}.ratePerBag`} label="Rate per Bag (₹)" type="number" placeholder="0" min="0" step="0.01" />
+          <StockFormField control={control} name={`items.${index}.hsnCode`} label="HSN Code" placeholder="HSN..." list="sg-hsnCode" />
+        </div>
+        <StockFormField control={control} name={`items.${index}.description`} label="Description" placeholder="Notes..." />
+      </div>
+    </div>
+  );
+});
+
+export function BagArrivalFormContent({
+  form,
+  itemsFieldArray,
+  attachments,
+  setAttachment,
+  onSubmit,
+  onInvalid,
+  submitting,
+  notice,
+  suggestions,
+  activeItems,
+  onItemNameChange,
+  onAddItem,
+  t,
+  tc,
+}) {
+  const bagTypes = suggestions?.bagType || [];
+  const bagItemNames = suggestions?.bagItemName || [];
+  const bagBrands = useMemo(() => {
+    const seen = new Set();
+    return (activeItems || [])
+      .filter((i) => i.unit_of_measure === 'bag' && i.brand_name)
+      .map((i) => i.brand_name)
+      .filter((b) => { if (seen.has(b)) return false; seen.add(b); return true; });
+  }, [activeItems]);
+  const [weightUnit, setWeightUnit] = useState('kg');
+
+  return (
+    <Form {...form}>
+      <form className="mt-6 space-y-5" onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
+        {Object.entries(suggestions || {}).map(([key, values]) => (
+          <datalist key={key} id={`sg-${key}`}>
+            {(values || []).map((v) => <option key={v} value={v} />)}
+          </datalist>
+        ))}
+        <InlineNotice notice={notice} />
+        <div className={FORM_CARD_CLASS}>
+          <FormSectionTitle category="Intake Strategy" icon={FileText} title="Purchase Basics" description="Invoice and cost details for bag goods" tc={tc} />
+          <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
+            <SuggestComboboxField control={form.control} name="supplierName" label={t?.('supplier') ?? 'Supplier'} placeholder="Supplier Name..." options={suggestions?.supplierName} />
+            <StockFormField control={form.control} name="invoiceNumber" label={t?.('invoiceNo') ?? 'Invoice No.'} placeholder="INV-..." />
+            <StockDateField control={form.control} name="invoiceDate" label={tc?.invoiceDate ?? 'Invoice Date'} placeholder="Invoice Date" />
+            <StockFormField control={form.control} name="handlingCostPercent" label="Handling Cost %" type="number" placeholder="1.0" min="0" step="0.1" />
+            <StockFormField control={form.control} name="fuelCostPercent" label="Fuel Cost %" type="number" placeholder="5.0" min="0" step="0.1" />
+            <StockFormField control={form.control} name="gstPercent" label="GST %" type="number" placeholder="18.0" min="0" step="0.1" />
+            <AttachmentField label={tc?.invoicePhoto ?? 'Invoice Photo'} file={attachments?.purchaseInvoice} onChange={(file) => setAttachment('purchaseInvoice', file)} hint={tc?.invoicePhotoHint} tc={tc} />
+            <AttachmentField label={tc?.transporterBillPhoto ?? 'Transporter Bill'} file={attachments?.transporterBill} onChange={(file) => setAttachment('transporterBill', file)} accept="image/*" hint={tc?.transporterBillHint} tc={tc} />
+          </div>
+        </div>
+        <div className={FORM_CARD_CLASS}>
+          <FormSectionTitle category="Mobility Details" icon={Truck} title={tc?.transportInvoice ?? 'Transport & Vehicle'} tc={tc} />
+          <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
+            <SuggestComboboxField control={form.control} name="transporterName" label={tc?.transporter ?? 'Transporter'} placeholder="Transport company" options={suggestions?.transporterName} />
+            <StockFormField control={form.control} name="truckLicensePlate" label={t?.('truck') ?? 'Truck'} placeholder="RJ 14 XY 0000" list="sg-truckLicensePlate" />
+            <StockFormField control={form.control} name="driverName" label={t?.('driver') ?? 'Driver'} placeholder="Driver Name..." list="sg-driverName" />
+            <SuggestComboboxField control={form.control} name="originCity" label={tc?.originCity ?? 'Origin City'} placeholder="Source city" options={suggestions?.originCity} />
+            <SuggestComboboxField control={form.control} name="destinationWarehouseName" label={tc?.destinationWarehouse ?? 'Destination Warehouse'} placeholder="Warehouse name" options={suggestions?.destinationWarehouseName} />
+            <StockMoneyField control={form.control} name="transportCost" label={t?.('transportCost') ?? 'Transport Cost'} hint={tc?.amountInInr} />
+            <StockMoneyField control={form.control} name="laborCost" label={t?.('laborCost') ?? 'Labour Cost'} hint={tc?.amountInInr} />
+            <FormField
+              control={form.control}
+              name="freightWeightKg"
+              render={({ field }) => {
+                const displayValue = field.value === '' || field.value == null
+                  ? ''
+                  : weightUnit === 't'
+                    ? String(round3(toNumber(field.value) / 1000))
+                    : field.value;
+                return (
+                  <FormItem>
+                    <FormLabel className={FORM_LABEL_CLASS}>{tc?.weightKg ?? 'Freight Weight'}</FormLabel>
+                    <FormControl>
+                      <div className="flex gap-1.5">
+                        <Input
+                          type="number" min="0" step="0.001" placeholder="0"
+                          className={FORM_INPUT_CLASS}
+                          value={displayValue}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (raw === '') { field.onChange(''); return; }
+                            const num = parseFloat(raw);
+                            if (isNaN(num)) return;
+                            field.onChange(weightUnit === 't' ? String(num * 1000) : raw);
+                          }}
+                          onBlur={field.onBlur}
+                        />
+                        <div className="inline-flex mb-4 items-center gap-2 rounded-full bg-brand-primary/10 p-2 text-[15px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95">
+                          {['kg', 't'].map((u) => (
+                            <button key={u} type="button" onClick={() => setWeightUnit(u)}
+                              className={`px-3 rounded-full transition-colors uppercase tracking-wider ${weightUnit === u ? 'bg-brand-primary text-white' : 'text-slate-400 hover:bg-slate-500/10'}`}>
+                              {u}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </FormControl>
+                    <FormMessage className="text-xs" />
+                  </FormItem>
+                );
+              }}
+            />
+          </div>
+        </div>
+        <div className={FORM_CARD_CLASS}>
+          <div className="flex justify-between items-center mb-4 gap-4 px-1">
+            <div className="space-y-1">
+              <nav className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
+                <span>Inventory Hub</span>
+                <ChevronRight className="h-2.5 w-2.5 opacity-50" />
+                <span className="text-amber-400">Bag Goods</span>
+              </nav>
+              <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">Items</h3>
+            </div>
+          </div>
+          <div className="space-y-4">
+            {itemsFieldArray.fields.map((fieldRow, index) => (
+              <BagArrivalItemRow
+                key={fieldRow.id}
+                index={index}
+                fieldRow={fieldRow}
+                control={form.control}
+                bagTypes={bagTypes}
+                bagBrands={bagBrands}
+                bagItemNames={bagItemNames}
+                onItemNameChange={onItemNameChange}
+                tc={tc}
+                totalItems={itemsFieldArray.fields.length}
+                onRemoveItem={(i) => itemsFieldArray.remove(i)}
+              />
+            ))}
+            <button
+              type="button"
+              onClick={onAddItem}
+              className="inline-flex mb-4 items-center gap-2 rounded-full bg-amber-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-amber-400 transition-all hover:bg-amber-500/20 hover:scale-105 active:scale-95"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add Bag Item
+            </button>
+          </div>
+        </div>
+        <div className={FORM_CARD_CLASS}>
+          <FormField
+            control={form.control}
+            name="notes"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className={FORM_LABEL_CLASS}>{t?.('notes') ?? 'Notes'}</FormLabel>
+                <FormControl>
+                  <Textarea {...field} value={field.value ?? ''} className={FORM_INPUT_CLASS} rows={3} />
+                </FormControl>
+                <FormMessage className="text-xs" />
+              </FormItem>
+            )}
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="mt-6 w-full rounded-2xl bg-amber-500 px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-amber-500/20 transition-all hover:brightness-110 hover:scale-[1.01] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <span className="inline-flex items-center gap-3">
+            <Package className="h-5 w-5" />
+            {submitting ? (tc?.submitting ?? 'Submitting...') : 'Submit Bag Purchase'}
+          </span>
+        </button>
+      </form>
+    </Form>
+  );
+}
+
 export function ArrivalFormContent({
   form,
   itemsFieldArray,
@@ -251,18 +475,7 @@ export function ArrivalFormContent({
                 return (
                   <FormItem>
                     <FormLabel className={FORM_LABEL_CLASS}>{tc.weightKg}</FormLabel>
-                    <div className="flex rounded-lg border border-border overflow-hidden text-[15px] font-black">
-                          {['kg', 't'].map((u) => (
-                            <button
-                              key={u}
-                              type="button"
-                              onClick={() => setWeightUnit(u)}
-                              className={`px-2.5 transition-colors uppercase tracking-wider ${weightUnit === u ? 'bg-brand-primary text-white' : 'bg-background text-slate-400 hover:bg-slate-500/10'}`}
-                            >
-                              {u}
-                            </button>
-                          ))}
-                        </div>
+                    
                     <FormControl>
                       
                       <div className="flex gap-1.5">
@@ -282,7 +495,18 @@ export function ArrivalFormContent({
                           }}
                           onBlur={field.onBlur}
                         />
-                        
+                        <div className="inline-flex mb-4 items-center gap-2 rounded-full bg-brand-primary/10 p-2 text-[15px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95">
+                          {['kg', 't'].map((u) => (
+                            <button
+                              key={u}
+                              type="button"
+                              onClick={() => setWeightUnit(u)}
+                              className={`px-3 rounded-full transition-colors uppercase tracking-wider ${weightUnit === u ? 'bg-brand-primary text-white' : ' text-slate-400 hover:bg-slate-500/10'}`}
+                            >
+                              {u}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </FormControl>
                     <FormMessage className="text-xs" />

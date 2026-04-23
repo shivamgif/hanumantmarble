@@ -1,13 +1,16 @@
 'use client';
 
-import { useCallback } from 'react';
-import { ChevronRight, PackageCheck, Plus, Search, Send } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import { useFieldArray, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { ChevronRight, PackageCheck, Plus, Search, Send, Package, Boxes } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
-import { DispatchFormContent } from './dispatch-form';
-import { formatDateTime, getGeneratedByRoleLabel, getStatusVariant, CLASSES, FORM_INPUT_CLASS } from '../lib/stock-utils';
+import { bagDispatchFormSchema } from '@/lib/forms/stock-forms';
+import { DispatchFormContent, BagDispatchFormContent } from './dispatch-form';
+import { createBagDispatchItemRow, createInitialBagDispatchDraft, formatDateTime, getGeneratedByRoleLabel, getStatusVariant, CLASSES, FORM_INPUT_CLASS, toNumber, trimText } from '../lib/stock-utils';
 
 export function DispatchesPanel({
   dispatchForm,
@@ -40,6 +43,61 @@ export function DispatchesPanel({
   onEdit,
 }) {
   const canEdit = ['admin', 'manager'].includes(userRole);
+  const [dispatchType, setDispatchType] = useState('tile');
+  const [bagDispatchNotice, setBagDispatchNotice] = useState(null);
+  const [bagDispatchSubmitting, setBagDispatchSubmitting] = useState(false);
+  const [bagDispatchAttachments, setBagDispatchAttachments] = useState({});
+  const setBagDispatchAttachment = useCallback((key, file) => setBagDispatchAttachments((prev) => ({ ...prev, [key]: file })), []);
+
+  const bagDispatchForm = useForm({
+    resolver: zodResolver(bagDispatchFormSchema),
+    defaultValues: createInitialBagDispatchDraft(),
+  });
+  const bagDispatchItemsFieldArray = useFieldArray({ control: bagDispatchForm.control, name: 'items' });
+
+  const handleBagDispatchSubmit = useCallback(async (values) => {
+    setBagDispatchNotice(null);
+    setBagDispatchSubmitting(true);
+    try {
+      const items = values.items.map((item) => ({
+        ...item,
+        itemCategory: 'bag',
+        qtyBags: toNumber(item.qtyBags),
+        ratePerBag: item.ratePerBag === '' ? null : toNumber(item.ratePerBag),
+        returnQtyBags: item.returnQtyBags === '' ? 0 : toNumber(item.returnQtyBags),
+        notes: trimText(item.notes),
+      }));
+
+      const payload = {
+        ...values,
+        items,
+        transportCost: values.transportCost === '' ? 0 : toNumber(values.transportCost),
+        laborCost: values.laborCost === '' ? 0 : toNumber(values.laborCost),
+      };
+
+      const response = await fetch('/api/stock/outbound-shipments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || 'Failed to submit bag dispatch');
+
+      setBagDispatchNotice({ type: 'success', message: `Bag dispatch ${json.shipment?.shipment_number} submitted.` });
+      setBagDispatchAttachments({});
+      bagDispatchForm.reset(createInitialBagDispatchDraft());
+      setTimeout(() => setDispatchSheetOpen(false), 1200);
+    } catch (err) {
+      setBagDispatchNotice({ type: 'error', message: err.message });
+    } finally {
+      setBagDispatchSubmitting(false);
+    }
+  }, [bagDispatchForm, setDispatchSheetOpen]);
+
+  const handleBagDispatchInvalid = useCallback(() => {
+    setBagDispatchNotice({ type: 'error', message: 'Please fix the highlighted errors.' });
+  }, []);
+
   const toggleSort = useCallback((key) => {
     setDispatchSort((current) => ({
       key,
@@ -75,29 +133,66 @@ export function DispatchesPanel({
           <Sheet open={dispatchSheetOpen} onOpenChange={setDispatchSheetOpen}>
             <SheetContent side="right" className="w-full max-w-none overflow-y-auto bg-white dark:bg-slate-950 md:w-[50vw]">
               <SheetHeader className="border-b border-border pb-4">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center justify-between gap-3">
                   <div>
                     <SheetTitle className="text-base">{t('logNewDispatch')}</SheetTitle>
                     <SheetDescription className="text-xs">{t('logNewDispatchDesc')}</SheetDescription>
                   </div>
+                  <div className="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 p-1">
+                    <button
+                      type="button"
+                      onClick={() => setDispatchType('tile')}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors ${dispatchType === 'tile' ? 'bg-brand-primary text-white shadow' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    >
+                      <Boxes className="h-3 w-3" />
+                      Tiles
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDispatchType('bag')}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors ${dispatchType === 'bag' ? 'bg-amber-500 text-white shadow' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    >
+                      <Package className="h-3 w-3" />
+                      Bags
+                    </button>
+                  </div>
                 </div>
               </SheetHeader>
-              <DispatchFormContent
-                form={dispatchForm}
-                itemsFieldArray={dispatchItemsFieldArray}
-                attachments={dispatchAttachments}
-                setAttachment={setDispatchAttachment}
-                onSubmit={handleDispatchSubmit}
-                onInvalid={handleDispatchInvalid}
-                submitting={dispatchSubmitting}
-                notice={dispatchNotice}
-                activeItems={activeItems}
-                onAddItem={onAddDispatchItem}
-                t={t}
-                tc={tc}
-                language={language}
-                userRole={userRole}
-              />
+              {dispatchType === 'tile' ? (
+                <DispatchFormContent
+                  form={dispatchForm}
+                  itemsFieldArray={dispatchItemsFieldArray}
+                  attachments={dispatchAttachments}
+                  setAttachment={setDispatchAttachment}
+                  onSubmit={handleDispatchSubmit}
+                  onInvalid={handleDispatchInvalid}
+                  submitting={dispatchSubmitting}
+                  notice={dispatchNotice}
+                  activeItems={activeItems}
+                  onAddItem={onAddDispatchItem}
+                  t={t}
+                  tc={tc}
+                  language={language}
+                  userRole={userRole}
+                />
+              ) : (
+                <BagDispatchFormContent
+                  form={bagDispatchForm}
+                  itemsFieldArray={bagDispatchItemsFieldArray}
+                  attachments={bagDispatchAttachments}
+                  setAttachment={setBagDispatchAttachment}
+                  onSubmit={handleBagDispatchSubmit}
+                  onInvalid={handleBagDispatchInvalid}
+                  submitting={bagDispatchSubmitting}
+                  notice={bagDispatchNotice}
+                  bagActiveItems={(activeItems || []).filter((item) => item.unit_of_measure === 'bag')}
+                  onAddItem={() => bagDispatchItemsFieldArray.append(createBagDispatchItemRow())}
+                  t={t}
+                  tc={tc}
+                  language={language}
+                  userRole={userRole}
+                />
+              )}
             </SheetContent>
           </Sheet>
         </div>

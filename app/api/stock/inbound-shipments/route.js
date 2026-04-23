@@ -74,31 +74,46 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
     return existingItem;
   }
 
+  const isBagItem = item.itemCategory === 'bag';
+
   const brand = await upsertNamedRecord({ table: 'stock_brands', value: item.brandName });
-  await upsertNamedRecord({ table: 'stock_types', value: item.typeName || 'Tile' });
-  const size = await upsertNamedRecord({
-    table: 'stock_sizes',
-    column: 'label',
-    value: item.sizeLabel,
-    extra: {
-      width_mm: item.widthMm || null,
-      length_mm: item.lengthMm || null,
-      thickness_mm: item.thicknessMm || null,
-      unit: 'mm',
-    },
+
+  // Upsert the type and capture its id so we can link type_id on stock_items
+  const typeRow = await upsertNamedRecord({
+    table: 'stock_types',
+    value: item.typeName || (isBagItem ? 'Adhesive' : 'Tile'),
+    extra: isBagItem ? { category: 'bag' } : { category: 'tile' },
   });
 
-  // division_id replaces the legacy `department` text column (Group E normalization)
-  const division = await upsertNamedRecord({
-    table: 'stock_divisions',
-    value: item.divisionName || item.division || item.department || item.brandName,
-  });
+  let sizeRow = null;
+  let division = null;
 
-  const sku = generateSku({ brandName: brand.name, typeName: item.typeName, sizeLabel: size.label, itemName: item.itemName });
+  if (!isBagItem) {
+    sizeRow = await upsertNamedRecord({
+      table: 'stock_sizes',
+      column: 'label',
+      value: item.sizeLabel,
+      extra: {
+        width_mm: item.widthMm || null,
+        length_mm: item.lengthMm || null,
+        thickness_mm: item.thicknessMm || null,
+        unit: 'mm',
+      },
+    });
+
+    division = await upsertNamedRecord({
+      table: 'stock_divisions',
+      value: item.divisionName || item.division || item.department || item.brandName,
+    });
+  }
+
+  const sku = generateSku({ brandName: brand.name, typeName: item.typeName, sizeLabel: sizeRow?.label || null, itemName: item.itemName });
+
   const rows = await sql(
     `INSERT INTO stock_items (
       sku,
       brand_id,
+      type_id,
       division_id,
       size_id,
       name,
@@ -107,15 +122,18 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
       unit_of_measure,
       pieces_per_box,
       thickness_mm,
+      weight_per_unit_kg,
+      rate_per_bag,
       reorder_level,
       safety_stock,
       purchase_price,
       landed_cost,
       selling_price,
       description
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
     ON CONFLICT (sku) DO UPDATE SET
       brand_id = EXCLUDED.brand_id,
+      type_id = EXCLUDED.type_id,
       division_id = EXCLUDED.division_id,
       size_id = EXCLUDED.size_id,
       name = EXCLUDED.name,
@@ -124,7 +142,9 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
       unit_of_measure = EXCLUDED.unit_of_measure,
       pieces_per_box = EXCLUDED.pieces_per_box,
       thickness_mm = COALESCE(EXCLUDED.thickness_mm, stock_items.thickness_mm),
-      reorder_level = stock_items.reorder_level + $11,
+      weight_per_unit_kg = COALESCE(EXCLUDED.weight_per_unit_kg, stock_items.weight_per_unit_kg),
+      rate_per_bag = COALESCE(EXCLUDED.rate_per_bag, stock_items.rate_per_bag),
+      reorder_level = stock_items.reorder_level + $14,
       safety_stock = EXCLUDED.safety_stock,
       purchase_price = EXCLUDED.purchase_price,
       landed_cost = EXCLUDED.landed_cost,
@@ -135,14 +155,17 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
     [
       sku,
       brand.id,
-      division.id,
-      size.id,
+      typeRow?.id || null,
+      division?.id || null,
+      sizeRow?.id || null,
       normalizeText(item.itemName),
       item.finish || null,
       item.grade || null,
-      item.unitOfMeasure || 'box',
-      item.piecesPerBox || null,
+      isBagItem ? 'bag' : (item.unitOfMeasure || 'box'),
+      isBagItem ? null : (item.piecesPerBox || null),
       item.thicknessMm || null,
+      isBagItem ? (item.weightPerUnitKg || null) : null,
+      isBagItem ? (item.ratePerBag || null) : null,
       Number(orderedBoxes || 0),
       item.safetyStock || 0,
       item.purchasePrice || null,
@@ -393,8 +416,8 @@ export async function POST(request) {
         body.transporterBillAmount || 0,               // $24
         body.deliveryCost || body.transportCost || 0,  // $25
         body.unloadingLabourCost || body.laborCost || 0, // $26
-        items.reduce((total, item) => total + Number(item.wholeQty || 0), 0), // $27
-        items.reduce((total, item) => total + Number(item.brokenQty || 0), 0), // $28
+        items.reduce((total, item) => item.itemCategory === 'bag' ? total : total + Number(item.wholeQty || 0), 0), // $27
+        items.reduce((total, item) => item.itemCategory === 'bag' ? total : total + Number(item.brokenQty || 0), 0), // $28
         normalizeText(body.receivedBy) || session.user.name || session.user.email, // $29
         appUser?.id || null,                           // $30
         body.notes || null,                            // $31
@@ -412,28 +435,39 @@ export async function POST(request) {
     let subtotal = 0;
 
     for (const row of items) {
-      const orderedBoxes = Number(row.orderedBoxes || 0);
+      const isBagRow = row.itemCategory === 'bag';
+      const orderedBoxes = isBagRow ? Number(row.qtyBags || 0) : Number(row.orderedBoxes || 0);
       const item = await upsertItemMaster(row, orderedBoxes);
       if (item.division_id) itemDivisionIds.push(item.division_id);
 
-      const sizeRow = item.size_id
-        ? (await sql(`SELECT label, width_mm, length_mm FROM stock_sizes WHERE id = $1 LIMIT 1`, [item.size_id]))[0]
-        : null;
-      const { sqmPerBox, sqmPerTile } = computeSqmValues(
-        { ...item, piecesPerBox: row.piecesPerBox, sizeLabel: row.sizeLabel },
-        {
-          width_mm: sizeRow?.width_mm || item.width_mm || row.widthMm,
-          length_mm: sizeRow?.length_mm || item.length_mm || row.lengthMm,
-          label: sizeRow?.label || row.sizeLabel,
-        }
-      );
+      let whole_qty_sqm = null;
+      let broken_qty_sqm = null;
+      let ordered_qty_sqm = null;
+      let total_cost = 0;
 
-      const whole_qty_sqm = sqmPerBox != null ? Number((sqmPerBox * Number(row.wholeQty || 0)).toFixed(3)) : null;
-      const broken_qty_sqm = sqmPerBox != null ? Number((sqmPerBox * Number(row.brokenQty || 0)).toFixed(3)) : null;
-      const ordered_qty_sqm = sqmPerBox != null ? Number((sqmPerBox * orderedBoxes).toFixed(3)) : null;
-      const total_cost = ordered_qty_sqm != null && row.costPerSqm
-        ? Number((ordered_qty_sqm * Number(row.costPerSqm)).toFixed(2))
-        : 0;
+      if (!isBagRow) {
+        const sizeRow = item.size_id
+          ? (await sql(`SELECT label, width_mm, length_mm FROM stock_sizes WHERE id = $1 LIMIT 1`, [item.size_id]))[0]
+          : null;
+        const { sqmPerBox } = computeSqmValues(
+          { ...item, piecesPerBox: row.piecesPerBox, sizeLabel: row.sizeLabel },
+          {
+            width_mm: sizeRow?.width_mm || item.width_mm || row.widthMm,
+            length_mm: sizeRow?.length_mm || item.length_mm || row.lengthMm,
+            label: sizeRow?.label || row.sizeLabel,
+          }
+        );
+        whole_qty_sqm = sqmPerBox != null ? Number((sqmPerBox * Number(row.wholeQty || 0)).toFixed(3)) : null;
+        broken_qty_sqm = sqmPerBox != null ? Number((sqmPerBox * Number(row.brokenQty || 0)).toFixed(3)) : null;
+        ordered_qty_sqm = sqmPerBox != null ? Number((sqmPerBox * orderedBoxes).toFixed(3)) : null;
+        total_cost = ordered_qty_sqm != null && row.costPerSqm
+          ? Number((ordered_qty_sqm * Number(row.costPerSqm)).toFixed(2))
+          : 0;
+      } else {
+        // Bag items: total cost = qty * rate per bag
+        const ratePerBag = row.ratePerBag != null && row.ratePerBag !== '' ? Number(row.ratePerBag) : 0;
+        total_cost = Number((orderedBoxes * ratePerBag).toFixed(2));
+      }
 
       subtotal += total_cost;
 
@@ -462,15 +496,15 @@ export async function POST(request) {
           shipment.id,
           item.id,
           orderedBoxes,
-          Number(row.wholeQty || 0),
-          Number(row.brokenQty || 0),
+          isBagRow ? 0 : Number(row.wholeQty || 0),
+          isBagRow ? 0 : Number(row.brokenQty || 0),
           Number(row.rejectedQty || 0),
-          Number(row.unitPrice || 0),
-          Number(row.landedCost || row.unitPrice || 0),
+          isBagRow ? (row.ratePerBag != null ? Number(row.ratePerBag) : 0) : Number(row.unitPrice || 0),
+          isBagRow ? (row.ratePerBag != null ? Number(row.ratePerBag) : 0) : Number(row.landedCost || row.unitPrice || 0),
           normalizeText(row.hsnCode) || null,
           whole_qty_sqm,
-          row.costPerSqm != null && row.costPerSqm !== '' ? Number(row.costPerSqm) : null,
-          row.thicknessMm != null && row.thicknessMm !== '' ? Number(row.thicknessMm) : null,
+          isBagRow ? null : (row.costPerSqm != null && row.costPerSqm !== '' ? Number(row.costPerSqm) : null),
+          isBagRow ? null : (row.thicknessMm != null && row.thicknessMm !== '' ? Number(row.thicknessMm) : null),
           whole_qty_sqm,
           broken_qty_sqm,
           ordered_qty_sqm,

@@ -203,7 +203,7 @@ export function StockMoneyField({ control, name, label, hint, placeholder = '0.0
           <FormLabel className={FORM_LABEL_CLASS}>{label}</FormLabel>
           <FormControl>
             <div className="relative group/money">
-              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[13px] font-black text-brand-primary/60 transition-colors group-focus-within/money:text-brand-primary">₹</span>
+              <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-[13px] font-black text-dark transition-colors group-focus-within/money:text-brand-primary">₹</span>
               <Input
                 {...field}
                 value={field.value ?? ''}

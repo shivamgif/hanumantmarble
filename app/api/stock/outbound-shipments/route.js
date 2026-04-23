@@ -20,9 +20,11 @@ function toPositiveInteger(value) {
 async function resolveStockItem(item) {
   if (item.itemId) {
     const rows = await sql(
-      `SELECT id, sku, name, current_whole_qty, current_broken_qty
-       FROM stock_items
-       WHERE id = $1
+      `SELECT i.id, i.sku, i.name, i.current_whole_qty, i.current_broken_qty, i.unit_of_measure,
+              COALESCE(t.category, 'tile') AS item_category
+       FROM stock_items i
+       LEFT JOIN stock_types t ON t.id = i.type_id
+       WHERE i.id = $1
        LIMIT 1`,
       [item.itemId]
     );
@@ -35,9 +37,11 @@ async function resolveStockItem(item) {
   const sku = normalizeText(item.sku);
   if (sku) {
     const rows = await sql(
-      `SELECT id, sku, name, current_whole_qty, current_broken_qty
-       FROM stock_items
-       WHERE sku = $1
+      `SELECT i.id, i.sku, i.name, i.current_whole_qty, i.current_broken_qty, i.unit_of_measure,
+              COALESCE(t.category, 'tile') AS item_category
+       FROM stock_items i
+       LEFT JOIN stock_types t ON t.id = i.type_id
+       WHERE i.sku = $1
        LIMIT 1`,
       [sku]
     );
@@ -313,25 +317,33 @@ export async function POST(request) {
     const resolvedItems = [];
     for (const item of items) {
       const stockItem = await resolveStockItem(item);
-      const loadedWholeQty = toPositiveInteger(item.loadedWholeQty ?? item.wholeQty);
-      const loadedBrokenQty = toPositiveInteger(item.loadedBrokenQty ?? item.brokenQty);
+      const isBagItem = stockItem.item_category === 'bag' || item.itemCategory === 'bag';
+      const loadedWholeQty = isBagItem ? 0 : toPositiveInteger(item.loadedWholeQty ?? item.wholeQty);
+      const loadedBrokenQty = isBagItem ? 0 : toPositiveInteger(item.loadedBrokenQty ?? item.brokenQty);
+      const qtyBags = isBagItem ? toPositiveInteger(item.qtyBags ?? item.loadedWholeQty) : 0;
       const deliveredWholeQty = toPositiveInteger(item.deliveredWholeQty);
       const deliveredBrokenQty = toPositiveInteger(item.deliveredBrokenQty);
       const returnedWholeQty = toPositiveInteger(item.returnedWholeQty);
       const returnedBrokenQty = toPositiveInteger(item.returnedBrokenQty);
 
-      if (loadedWholeQty === 0 && loadedBrokenQty === 0) {
+      if (!isBagItem && loadedWholeQty === 0 && loadedBrokenQty === 0) {
         return NextResponse.json({ error: 'Each outbound item row needs whole or broken quantity' }, { status: 400 });
+      }
+
+      if (isBagItem && qtyBags === 0) {
+        return NextResponse.json({ error: 'Each bag item row needs a quantity in bags' }, { status: 400 });
       }
 
       resolvedItems.push({
         item: stockItem,
-        loadedWholeQty,
+        isBagItem,
+        loadedWholeQty: isBagItem ? qtyBags : loadedWholeQty,
         loadedBrokenQty,
         deliveredWholeQty,
         deliveredBrokenQty,
         returnedWholeQty,
         returnedBrokenQty,
+        ratePerBag: isBagItem ? (item.ratePerBag != null ? Number(item.ratePerBag) : null) : null,
         notes: normalizeText(item.notes) || null,
       });
     }

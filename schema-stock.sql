@@ -235,6 +235,26 @@ ALTER TABLE IF EXISTS stock_types DROP COLUMN IF EXISTS name_hi;
 ALTER TABLE IF EXISTS stock_items DROP COLUMN IF EXISTS name_hi;
 ALTER TABLE IF EXISTS stock_items DROP COLUMN IF EXISTS description_hi;
 
+-- ====== BAG ITEM SUPPORT (additive) ======
+-- Adds category discriminator to stock_types so tile types vs bag types can coexist.
+-- Adds bag-specific pricing/weight columns to stock_items (nullable, ignored for tile items).
+ALTER TABLE IF EXISTS stock_types
+  ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'tile'
+    CHECK (category IN ('tile', 'bag'));
+
+ALTER TABLE IF EXISTS stock_items
+  ADD COLUMN IF NOT EXISTS weight_per_unit_kg NUMERIC(12, 3),
+  ADD COLUMN IF NOT EXISTS rate_per_bag NUMERIC(12, 2);
+
+-- Seed common bag product types.
+INSERT INTO stock_types (name, category, description) VALUES
+  ('Adhesive',     'bag', 'Tile adhesive / fixing compound sold in bags'),
+  ('Grout',        'bag', 'Tile grout / joint filler sold in bags'),
+  ('White Cement', 'bag', 'White cement sold in bags'),
+  ('Spacer',       'bag', 'Tile spacers sold in bags'),
+  ('Marble Powder','bag', 'Marble powder sold in bags')
+ON CONFLICT (name) DO UPDATE SET category = EXCLUDED.category, description = EXCLUDED.description;
+
 -- ====== PURCHASE / INBOUND FLOW ======
 
 CREATE TABLE IF NOT EXISTS stock_purchase_orders (

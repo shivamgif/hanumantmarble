@@ -1,13 +1,16 @@
 'use client';
 
-import { useCallback } from 'react';
-import { ChevronRight, PackageCheck, Plus, Search } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import { useFieldArray, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { ChevronRight, PackageCheck, Plus, Search, Package, Boxes } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
-import { ArrivalFormContent } from './arrival-form';
-import { formatDateTime, getGeneratedByRoleLabel, getStatusVariant, CLASSES, FORM_INPUT_CLASS } from '../lib/stock-utils';
+import { bagArrivalFormSchema } from '@/lib/forms/stock-forms';
+import { ArrivalFormContent, BagArrivalFormContent } from './arrival-form';
+import { createBagArrivalItemRow, createInitialBagArrivalDraft, formatDateTime, getGeneratedByRoleLabel, getStatusVariant, CLASSES, FORM_INPUT_CLASS, toNumber, trimText } from '../lib/stock-utils';
 
 export function PurchasesPanel({
   arrivalForm,
@@ -44,6 +47,96 @@ export function PurchasesPanel({
   onEdit,
 }) {
   const canEdit = ['admin', 'manager'].includes(userRole);
+  const [purchaseType, setPurchaseType] = useState('tile');
+  const [bagNotice, setBagNotice] = useState(null);
+  const [bagSubmitting, setBagSubmitting] = useState(false);
+  const [bagAttachments, setBagAttachments] = useState({});
+  const setBagAttachment = useCallback((key, file) => setBagAttachments((prev) => ({ ...prev, [key]: file })), []);
+
+  const bagArrivalForm = useForm({
+    resolver: zodResolver(bagArrivalFormSchema),
+    defaultValues: createInitialBagArrivalDraft(),
+  });
+  const bagArrivalItemsFieldArray = useFieldArray({ control: bagArrivalForm.control, name: 'items' });
+
+  const handleBagArrivalItemNameChange = useCallback((index, value) => {
+    bagArrivalForm.setValue(`items.${index}.itemName`, value, { shouldDirty: true, shouldValidate: true });
+    const bagItems = (activeItems || []).filter((i) => i.unit_of_measure === 'bag');
+    const matched = bagItems.find((i) => i.name?.trim().toLowerCase() === value?.trim().toLowerCase());
+    if (matched) {
+      const current = bagArrivalForm.getValues(`items.${index}`);
+      bagArrivalForm.setValue(`items.${index}`, {
+        ...current,
+        itemId: String(matched.id),
+        itemName: matched.name,
+        brandName: matched.brand_name || current.brandName,
+        typeName: matched.type_name || current.typeName,
+        weightPerUnitKg: matched.weight_per_unit_kg != null ? String(matched.weight_per_unit_kg) : current.weightPerUnitKg,
+        ratePerBag: matched.rate_per_bag != null ? String(matched.rate_per_bag) : current.ratePerBag,
+        hsnCode: matched.hsn_code || current.hsnCode,
+        description: matched.description || current.description,
+      }, { shouldDirty: true, shouldValidate: true });
+    } else {
+      bagArrivalForm.setValue(`items.${index}.itemId`, '', { shouldDirty: true });
+    }
+  }, [bagArrivalForm, activeItems]);
+
+  const handleBagArrivalSubmit = useCallback(async (values) => {
+    setBagNotice(null);
+    setBagSubmitting(true);
+    try {
+      const formData = new FormData();
+      if (bagAttachments.purchaseInvoice) formData.append('purchaseInvoice', bagAttachments.purchaseInvoice);
+      if (bagAttachments.transporterBill) formData.append('transporterBill', bagAttachments.transporterBill);
+
+      const items = values.items.map((item) => ({
+        ...item,
+        itemCategory: 'bag',
+        qtyBags: toNumber(item.qtyBags),
+        weightPerUnitKg: item.weightPerUnitKg === '' ? null : toNumber(item.weightPerUnitKg),
+        ratePerBag: toNumber(item.ratePerBag),
+        itemName: trimText(item.itemName),
+        brandName: trimText(item.brandName),
+        typeName: trimText(item.typeName),
+        hsnCode: trimText(item.hsnCode),
+        description: trimText(item.description),
+        notes: trimText(item.notes),
+      }));
+
+      const payload = {
+        ...values,
+        items,
+        transportCost: values.transportCost === '' ? 0 : toNumber(values.transportCost),
+        laborCost: values.laborCost === '' ? 0 : toNumber(values.laborCost),
+        handlingCostPercent: values.handlingCostPercent === '' ? 1.0 : toNumber(values.handlingCostPercent),
+        fuelCostPercent: values.fuelCostPercent === '' ? 5.0 : toNumber(values.fuelCostPercent),
+        gstPercent: values.gstPercent === '' ? 18.0 : toNumber(values.gstPercent),
+        freightWeightKg: values.freightWeightKg === '' ? null : toNumber(values.freightWeightKg),
+      };
+
+      const response = await fetch('/api/stock/inbound-shipments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || 'Failed to submit bag purchase');
+
+      setBagNotice({ type: 'success', message: `Bag purchase ${json.shipment?.shipment_number} submitted.` });
+      setBagAttachments({});
+      bagArrivalForm.reset(createInitialBagArrivalDraft());
+      setTimeout(() => setArrivalSheetOpen(false), 1200);
+    } catch (err) {
+      setBagNotice({ type: 'error', message: err.message });
+    } finally {
+      setBagSubmitting(false);
+    }
+  }, [bagArrivalForm, bagAttachments, setArrivalSheetOpen]);
+
+  const handleBagArrivalInvalid = useCallback(() => {
+    setBagNotice({ type: 'error', message: 'Please fix the highlighted errors.' });
+  }, []);
+
   const toggleSort = useCallback((key) => {
     setArrivalSort((current) => ({
       key,
@@ -83,31 +176,68 @@ export function PurchasesPanel({
 
             <SheetContent side="right" className="w-full max-w-none overflow-y-auto bg-white dark:bg-slate-950 md:w-[50vw]">
               <SheetHeader className="border-b border-border pb-4">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center justify-between gap-3">
                   <div>
                     <SheetTitle className="text-base">{tc.logNewPurchase}</SheetTitle>
                     <SheetDescription className="text-xs">{tc.purchaseSheetDesc}</SheetDescription>
                   </div>
+                  <div className="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 p-1">
+                    <button
+                      type="button"
+                      onClick={() => setPurchaseType('tile')}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors ${purchaseType === 'tile' ? 'bg-brand-primary text-white shadow' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    >
+                      <Boxes className="h-3 w-3" />
+                      Tiles
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPurchaseType('bag')}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors ${purchaseType === 'bag' ? 'bg-amber-500 text-white shadow' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    >
+                      <Package className="h-3 w-3" />
+                      Bags
+                    </button>
+                  </div>
                 </div>
               </SheetHeader>
-              <ArrivalFormContent
-                form={arrivalForm}
-                itemsFieldArray={arrivalItemsFieldArray}
-                watchedItems={arrivalWatchedItems}
-                attachments={arrivalAttachments}
-                setAttachment={setArrivalAttachment}
-                onSubmit={handleArrivalSubmit}
-                onInvalid={handleArrivalInvalid}
-                submitting={arrivalSubmitting}
-                notice={arrivalNotice}
-                suggestions={suggestions}
-                activeItems={activeItems}
-                onItemNameChange={onArrivalItemNameChange}
-                onAddItem={onAddArrivalItem}
-                t={t}
-                tc={tc}
-                language={language}
-              />
+              {purchaseType === 'tile' ? (
+                <ArrivalFormContent
+                  form={arrivalForm}
+                  itemsFieldArray={arrivalItemsFieldArray}
+                  watchedItems={arrivalWatchedItems}
+                  attachments={arrivalAttachments}
+                  setAttachment={setArrivalAttachment}
+                  onSubmit={handleArrivalSubmit}
+                  onInvalid={handleArrivalInvalid}
+                  submitting={arrivalSubmitting}
+                  notice={arrivalNotice}
+                  suggestions={suggestions}
+                  activeItems={activeItems}
+                  onItemNameChange={onArrivalItemNameChange}
+                  onAddItem={onAddArrivalItem}
+                  t={t}
+                  tc={tc}
+                  language={language}
+                />
+              ) : (
+                <BagArrivalFormContent
+                  form={bagArrivalForm}
+                  itemsFieldArray={bagArrivalItemsFieldArray}
+                  attachments={bagAttachments}
+                  setAttachment={setBagAttachment}
+                  onSubmit={handleBagArrivalSubmit}
+                  onInvalid={handleBagArrivalInvalid}
+                  submitting={bagSubmitting}
+                  notice={bagNotice}
+                  suggestions={suggestions}
+                  activeItems={activeItems}
+                  onItemNameChange={handleBagArrivalItemNameChange}
+                  onAddItem={() => bagArrivalItemsFieldArray.append(createBagArrivalItemRow())}
+                  t={t}
+                  tc={tc}
+                />
+              )}
             </SheetContent>
           </Sheet>
         </div>

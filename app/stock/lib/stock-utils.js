@@ -18,20 +18,114 @@ export function createArrivalItemRow() {
     reorderLevel: '',
     description: '',
     orderedBoxes: '',
-    wholeQty: '0',
-    brokenQty: '0',
+    wholeQty: '',
+    brokenQty: '',
     notes: '',
   };
 }
 
 export function createDispatchItemRow() {
   return {
+    itemCategory: 'tile',
     itemId: '',
-    loadedWholeQty: '0',
-    // loadedBrokenQty removed
+    loadedWholeQty: '',
     notes: '',
     returnWholeQty: '',
     returnBrokenQty: '',
+    qtyBags: '',
+    ratePerBag: '',
+    returnQtyBags: '',
+  };
+}
+
+export function createDispatchBagItemRow() {
+  return {
+    itemCategory: 'bag',
+    itemId: '',
+    loadedWholeQty: '',
+    notes: '',
+    returnWholeQty: '',
+    returnBrokenQty: '',
+    qtyBags: '',
+    ratePerBag: '',
+    returnQtyBags: '',
+  };
+}
+
+export function createBagArrivalItemRow() {
+  return {
+    itemCategory: 'bag',
+    itemId: '',
+    itemName: '',
+    brandName: '',
+    typeName: '',
+    qtyBags: '',
+    weightPerUnitKg: '',
+    ratePerBag: '',
+    hsnCode: '',
+    description: '',
+    notes: '',
+  };
+}
+
+export function createBagDispatchItemRow() {
+  return {
+    itemCategory: 'bag',
+    itemId: '',
+    qtyBags: '',
+    ratePerBag: '',
+    notes: '',
+    returnQtyBags: '',
+  };
+}
+
+export function createInitialBagArrivalDraft() {
+  const now = new Date();
+  const dateStr = now.toISOString().split('T')[0];
+
+  return {
+    supplierName: '',
+    truckLicensePlate: '',
+    driverName: '',
+    invoiceNumber: '',
+    invoiceDate: dateStr,
+    originCity: '',
+    destinationWarehouseName: '',
+    paymentStatus: 'unpaid',
+    paidAmount: '',
+    paymentDate: '',
+    paymentReference: '',
+    paymentMode: '',
+    transporterName: '',
+    transportCost: '',
+    laborCost: '',
+    handlingCostPercent: '1.0',
+    fuelCostPercent: '5.0',
+    gstPercent: '18.0',
+    freightWeightKg: '',
+    notes: '',
+    items: [createBagArrivalItemRow()],
+  };
+}
+
+export function createInitialBagDispatchDraft() {
+  const now = new Date();
+  const dateStr = now.toISOString().split('T')[0];
+  const timeStr = now.toTimeString().slice(0, 5);
+
+  return {
+    shipmentNumber: '',
+    customerName: '',
+    customerPhoneNumber: '',
+    truckLicensePlate: '',
+    driverName: '',
+    invoiceNumber: '',
+    salespersonName: '',
+    dispatchDate: `${dateStr}T${timeStr}`,
+    transportCost: '',
+    laborCost: '',
+    notes: '',
+    items: [createBagDispatchItemRow()],
   };
 }
 

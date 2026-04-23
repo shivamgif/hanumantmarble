@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useMemo } from 'react';
-import { Boxes, CreditCard, Plus, Send, Truck, ChevronRight, X } from 'lucide-react';
+import { Boxes, CreditCard, Plus, Send, Truck, ChevronRight, X, Package } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -74,6 +74,60 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
   );
 });
 
+const BagDispatchItemRow = memo(function BagDispatchItemRow({ index, fieldRow, control, bagActiveItems, tc, userRole, totalItems, onRemoveItem }) {
+  const canEditReturns = ['admin', 'manager'].includes(userRole);
+
+  return (
+    <div key={fieldRow.id} className="glass-panel rounded-2xl border border-white/5 shadow-xl transition-all duration-500 overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 bg-slate-900/40 px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-100">{tc?.itemLabel ?? 'Item'} {index + 1}</span>
+          <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-amber-400">Bag</span>
+        </div>
+        {totalItems > 1 && (
+          <button type="button" onClick={() => onRemoveItem(index)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+      <div className="p-4 space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField
+            control={control}
+            name={`items.${index}.itemId`}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className={FORM_LABEL_CLASS}>Product</FormLabel>
+                <FormControl>
+                  <Select value={field.value || undefined} onValueChange={field.onChange}>
+                    <SelectTrigger className={FORM_INPUT_CLASS}>
+                      <SelectValue placeholder="Select bag product" />
+                    </SelectTrigger>
+                    <SelectContent className="glass-panel">
+                      {(bagActiveItems || []).map((stockItem) => (
+                        <SelectItem key={stockItem.id} value={String(stockItem.id)}>
+                          {stockItem.sku} - {stockItem.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <FormMessage className="text-xs" />
+              </FormItem>
+            )}
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <StockFormField control={control} name={`items.${index}.qtyBags`} label="Qty (Bags)" type="number" min="0" placeholder="0" />
+            <StockFormField control={control} name={`items.${index}.ratePerBag`} label="Rate/Bag (₹)" type="number" min="0" placeholder="0" step="0.01" />
+            <StockFormField control={control} name={`items.${index}.returnQtyBags`} label="Return Bags" type="number" min="0" placeholder="0" disabled={!canEditReturns} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 export function DispatchFormContent({
   form,
   itemsFieldArray,
@@ -85,12 +139,15 @@ export function DispatchFormContent({
   notice,
   activeItems,
   onAddItem,
+  onAddBagItem,
   t,
   tc,
   language,
   userRole,
 }) {
-  const itemOptions = useMemo(() => (activeItems || []).map((stockItem) => ({ id: stockItem.id, sku: stockItem.sku, name: stockItem.name })), [activeItems]);
+  const tileItems = useMemo(() => (activeItems || []).filter((i) => i.unit_of_measure !== 'bag'), [activeItems]);
+  const bagActiveItems = useMemo(() => (activeItems || []).filter((i) => i.unit_of_measure === 'bag'), [activeItems]);
+  const itemOptions = useMemo(() => tileItems.map((stockItem) => ({ id: stockItem.id, sku: stockItem.sku, name: stockItem.name })), [tileItems]);
 
   return (
     <Form {...form}>
@@ -135,17 +192,29 @@ export function DispatchFormContent({
                 </nav>
                 <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">{t('items')}</h3>
               </div>
-
             </div>
-            
             <div className="space-y-4">
-              {itemsFieldArray.fields.map((fieldRow, index) => (
+              {itemsFieldArray.fields.map((fieldRow, index) => {
+                const isBag = fieldRow.itemCategory === 'bag';
+                return isBag ? (
+                  <BagDispatchItemRow
+                    key={fieldRow.id}
+                    index={index}
+                    fieldRow={fieldRow}
+                    control={form.control}
+                    bagActiveItems={bagActiveItems}
+                    tc={tc}
+                    userRole={userRole}
+                    totalItems={itemsFieldArray.fields.length}
+                    onRemoveItem={(i) => itemsFieldArray.remove(i)}
+                  />
+                ) : (
                 <DispatchItemRow
                   key={fieldRow.id}
                   index={index}
                   fieldRow={fieldRow}
                   control={form.control}
-                  activeItems={activeItems}
+                  activeItems={tileItems}
                   itemOptions={itemOptions}
                   t={t}
                   tc={tc}
@@ -154,18 +223,31 @@ export function DispatchFormContent({
                   totalItems={itemsFieldArray.fields.length}
                   onRemoveItem={(i) => itemsFieldArray.remove(i)}
                 />
-              ))}
+                );
+              })}
+            </div>
+            <div className="flex gap-2 mt-2">
+              <button
+                type="button"
+                onClick={onAddItem}
+                className="inline-flex mb-4 items-center gap-2 rounded-full bg-brand-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <Boxes className="h-3.5 w-3.5" />
+                {t('addItem')}
+              </button>
+              <button
+                type="button"
+                onClick={onAddBagItem}
+                className="inline-flex mb-4 items-center gap-2 rounded-full bg-amber-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-amber-400 transition-all hover:bg-amber-500/20 hover:scale-105 active:scale-95"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <Package className="h-3.5 w-3.5" />
+                Add Bag Item
+              </button>
             </div>
           </div>
         </div>
-        <button
-              type="button"
-              onClick={onAddItem}
-              className="inline-flex mb-4 items-center gap-2 rounded-full bg-brand-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              {t('addItem')}
-            </button>
         <div className={FORM_CARD_CLASS}>
           <FormField
             control={form.control}
