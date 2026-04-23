@@ -1,7 +1,8 @@
 'use client';
 
-import { memo, useMemo } from 'react';
-import { Boxes, CreditCard, Plus, Send, Truck, ChevronRight, X, Package } from 'lucide-react';
+import { memo } from 'react';
+import { useFormContext } from 'react-hook-form';
+import { Plus, Send, Truck, ChevronRight, X, Package } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,18 +14,25 @@ import {
   StockDateField,
   StockFormField,
   StockMoneyField,
+  SuggestComboboxField,
 } from './stock-form-fields';
 import { FORM_CARD_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS } from '../lib/stock-utils';
 
-const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control, activeItems, itemOptions, t, tc, language, userRole, totalItems, onRemoveItem }) {
+const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control, allItems, t, tc, userRole, totalItems, onRemoveItem }) {
   const canEditReturns = ['admin', 'manager'].includes(userRole);
+  const { watch, setValue } = useFormContext();
+  const itemCategory = watch(`items.${index}.itemCategory`);
+  const isBag = itemCategory === 'bag';
 
   return (
     <div key={fieldRow.id} className="glass-panel rounded-2xl border border-white/5 shadow-xl transition-all duration-500 overflow-hidden group/item">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 bg-slate-900/40 px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-brand-primary animate-pulse" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-100">{tc.itemLabel} {index + 1}</span>
+          <span className={`h-1.5 w-1.5 rounded-full animate-pulse ${isBag ? 'bg-amber-400' : 'bg-brand-primary'}`} />
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-100">{tc?.itemLabel ?? 'Item'} {index + 1}</span>
+          {isBag && (
+            <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-amber-400">Bag</span>
+          )}
         </div>
         {totalItems > 1 && (
           <button
@@ -46,14 +54,22 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
               <FormItem>
                 <FormLabel className={FORM_LABEL_CLASS}>{t('sku')} / {t('name')}</FormLabel>
                 <FormControl>
-                  <Select value={field.value || undefined} onValueChange={field.onChange}>
+                  <Select
+                    value={field.value || undefined}
+                    onValueChange={(val) => {
+                      field.onChange(val);
+                      const selected = (allItems || []).find((si) => String(si.id) === String(val));
+                      setValue(`items.${index}.itemCategory`, selected?.unit_of_measure === 'bag' ? 'bag' : 'tile');
+                    }}
+                  >
                     <SelectTrigger className={FORM_INPUT_CLASS}>
                       <SelectValue placeholder={t('selectItem')} />
                     </SelectTrigger>
                     <SelectContent className="glass-panel">
-                      {(activeItems || []).map((stockItem) => (
+                      {(allItems || []).map((stockItem) => (
                         <SelectItem key={stockItem.id} value={String(stockItem.id)}>
                           {stockItem.sku} - {stockItem.name}
+                          {stockItem.unit_of_measure === 'bag' ? ' (Bag)' : ''}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -63,11 +79,19 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
               </FormItem>
             )}
           />
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <StockFormField control={control} name={`items.${index}.loadedWholeQty`} label={t('whole')} type="number" min="0" placeholder="0" />
-            <StockFormField control={control} name={`items.${index}.returnWholeQty`} label={tc.retWhole} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
-            <StockFormField control={control} name={`items.${index}.returnBrokenQty`} label={tc.retBrok} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
-          </div>
+          {isBag ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <StockFormField control={control} name={`items.${index}.qtyBags`} label="Qty (Bags)" type="number" min="0" placeholder="0" />
+              <StockFormField control={control} name={`items.${index}.ratePerBag`} label="Rate/Bag (₹)" type="number" min="0" placeholder="0" step="0.01" />
+              <StockFormField control={control} name={`items.${index}.returnQtyBags`} label="Return Bags" type="number" min="0" placeholder="0" disabled={!canEditReturns} />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <StockFormField control={control} name={`items.${index}.loadedWholeQty`} label={t('whole')} type="number" min="0" placeholder="0" />
+              <StockFormField control={control} name={`items.${index}.returnWholeQty`} label={tc?.retWhole ?? 'Ret. Whole'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
+              <StockFormField control={control} name={`items.${index}.returnBrokenQty`} label={tc?.retBrok ?? 'Ret. Broken'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -244,13 +268,15 @@ export function DispatchFormContent({
   submitting,
   notice,
   activeItems,
+  allItems,
+  suggestions,
   onAddItem,
   t,
   tc,
   language,
   userRole,
 }) {
-  const itemOptions = useMemo(() => (activeItems || []).map((stockItem) => ({ id: stockItem.id, sku: stockItem.sku, name: stockItem.name })), [activeItems]);
+  const resolvedItems = allItems || activeItems || [];
 
   return (
     <Form {...form}>
@@ -270,7 +296,7 @@ export function DispatchFormContent({
             <StockFormField control={form.control} name="customerPhoneNumber" label={tc.customerPhone} placeholder="+91 9876543210" type="tel" />
             <StockFormField control={form.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." />
             <StockDateField control={form.control} name="dispatchDate" label={tc.date} placeholder={tc.date} />
-            <StockFormField control={form.control} name="salespersonName" label={t('salesperson')} placeholder="Salesperson..." />
+            <SuggestComboboxField control={form.control} name="salespersonName" label={t('salesperson')} placeholder="Salesperson..." options={suggestions?.salespersonName} />
             <AttachmentField label={tc.salesInvoicePhoto} file={attachments.salesInvoice} onChange={(file) => setAttachment('salesInvoice', file)} hint={tc.salesInvoiceHint} tc={tc} />
             <AttachmentField label={tc.gatepassPhoto} file={attachments.gatepass} onChange={(file) => setAttachment('gatepass', file)} accept="image/*" hint={tc.gatepassHint} tc={tc} />
           </div>
@@ -305,8 +331,7 @@ export function DispatchFormContent({
                   index={index}
                   fieldRow={fieldRow}
                   control={form.control}
-                  activeItems={activeItems}
-                  itemOptions={itemOptions}
+                  allItems={resolvedItems}
                   t={t}
                   tc={tc}
                   language={language}

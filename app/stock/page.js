@@ -174,6 +174,9 @@ export default function StockDashboard() {
     brokenQty: t('brokenQty'),
     reorderLevel: t('reorderLevel'),
     loadingPreview: t('loadingPreview'),
+    qtyBags: t('qtyBags'),
+    returnQtyBags: t('returnQtyBags'),
+    weightPerBag: t('weightPerBag'),
   }), [t]);
 
   const { user, isLoading: userLoading } = useAuthUser();
@@ -707,13 +710,20 @@ export default function StockDashboard() {
         transportCost: shipment.transport_cost ?? '',
         laborCost: shipment.loading_labour_cost ?? '',
         notes: shipment.notes || '',
-        items: items.map(item => ({
-          itemId: String(item.item_id),
-          loadedWholeQty: String(item.loaded_whole_qty ?? 0),
-          notes: item.notes || '',
-          returnWholeQty: item.returned_whole_qty != null ? String(item.returned_whole_qty) : '',
-          returnBrokenQty: item.returned_broken_qty != null ? String(item.returned_broken_qty) : '',
-        })),
+        items: items.map((item) => {
+          const isBag = item.unit_of_measure === 'bag';
+          return {
+            itemId: String(item.item_id),
+            itemCategory: isBag ? 'bag' : 'tile',
+            loadedWholeQty: isBag ? '' : String(item.loaded_whole_qty ?? 0),
+            qtyBags: isBag ? String(item.loaded_whole_qty ?? 0) : '',
+            ratePerBag: '',
+            returnWholeQty: isBag ? '' : (item.returned_whole_qty != null ? String(item.returned_whole_qty) : ''),
+            returnBrokenQty: isBag ? '' : (item.returned_broken_qty != null ? String(item.returned_broken_qty) : ''),
+            returnQtyBags: isBag ? (item.returned_whole_qty != null ? String(item.returned_whole_qty) : '') : '',
+            notes: item.notes || '',
+          };
+        }),
       });
       setDispatchNotice(null);
     } catch (err) {
@@ -730,14 +740,22 @@ export default function StockDashboard() {
       if (!customerName) throw new Error('Customer name is required.');
 
       const items = values.items
-        .map((item) => ({
-          itemId: trimText(item.itemId),
-          loadedWholeQty: toNumber(item.loadedWholeQty),
-          returnWholeQty: item.returnWholeQty === '' ? null : toNumber(item.returnWholeQty),
-          returnBrokenQty: item.returnBrokenQty === '' ? null : toNumber(item.returnBrokenQty),
-          notes: trimText(item.notes),
-        }))
-        .filter((item) => item.itemId || item.loadedWholeQty > 0 || (item.returnWholeQty != null && item.returnWholeQty > 0) || (item.returnBrokenQty != null && item.returnBrokenQty > 0) || item.notes);
+        .map((item) => {
+          const isBag = item.itemCategory === 'bag';
+          return {
+            itemId: trimText(item.itemId),
+            itemCategory: item.itemCategory || 'tile',
+            isBag,
+            loadedWholeQty: isBag ? 0 : toNumber(item.loadedWholeQty),
+            qtyBags: isBag ? toNumber(item.qtyBags) : 0,
+            ratePerBag: isBag ? (item.ratePerBag === '' ? null : toNumber(item.ratePerBag)) : null,
+            returnWholeQty: isBag ? null : (item.returnWholeQty === '' ? null : toNumber(item.returnWholeQty)),
+            returnBrokenQty: isBag ? null : (item.returnBrokenQty === '' ? null : toNumber(item.returnBrokenQty)),
+            returnQtyBags: isBag ? (item.returnQtyBags === '' ? 0 : toNumber(item.returnQtyBags)) : 0,
+            notes: trimText(item.notes),
+          };
+        })
+        .filter((item) => item.itemId);
 
       if (items.length === 0) throw new Error(t('addOneItem'));
       if (items.some((item) => !item.itemId)) throw new Error(t('selectItem'));
@@ -757,9 +775,13 @@ export default function StockDashboard() {
         notes: trimText(values.notes) || undefined,
         items: items.map((item) => ({
           itemId: Number(item.itemId),
+          itemCategory: item.itemCategory,
           loadedWholeQty: item.loadedWholeQty,
+          qtyBags: item.qtyBags,
+          ratePerBag: item.ratePerBag,
           returnWholeQty: item.returnWholeQty,
           returnBrokenQty: item.returnBrokenQty,
+          returnQtyBags: item.returnQtyBags,
           notes: item.notes || undefined,
         })),
       };
@@ -1100,6 +1122,7 @@ export default function StockDashboard() {
           openShipmentPreview={openShipmentPreview}
           onAddDispatchItem={addDispatchItemRow}
           activeItems={data?.activeItems}
+          suggestions={suggestions}
           t={t}
           tc={tc}
           language={language}

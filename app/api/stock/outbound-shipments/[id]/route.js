@@ -38,7 +38,8 @@ async function loadShipmentWithItems(id) {
   }
 
   const items = await sql(
-    `SELECT soi.*, i.sku, i.name AS item_name, i.current_whole_qty, i.current_broken_qty
+    `SELECT soi.*, i.sku, i.name AS item_name, i.unit_of_measure,
+            i.current_whole_qty, i.current_broken_qty
      FROM stock_outbound_shipment_items soi
      JOIN stock_items i ON i.id = soi.item_id
      WHERE soi.outbound_shipment_id = $1
@@ -78,7 +79,8 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
     }
 
     const items = await tx(
-      `SELECT soi.*, i.sku, i.name AS item_name, i.current_whole_qty, i.current_broken_qty
+      `SELECT soi.*, i.sku, i.name AS item_name, i.unit_of_measure,
+              i.current_whole_qty, i.current_broken_qty
        FROM stock_outbound_shipment_items soi
        JOIN stock_items i ON i.id = soi.item_id
        WHERE soi.outbound_shipment_id = $1

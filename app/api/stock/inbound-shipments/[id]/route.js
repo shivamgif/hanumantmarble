@@ -313,6 +313,7 @@ export async function GET(request, context) {
               i.grade,
               i.thickness_mm,
               i.pieces_per_box,
+              i.unit_of_measure,
               b.name AS brand_name,
               sz.label AS size_label,
               sz.unit AS size_unit,

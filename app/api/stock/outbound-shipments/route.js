@@ -127,7 +127,7 @@ async function resolveSalespersonId(body, resolvedCustomer) {
      VALUES ($1, $2, TRUE)
      ON CONFLICT DO NOTHING
      RETURNING id`,
-    [spName, spPhone || null]
+    [spName, spPhone || '']
   );
 
   if (rows[0]) {

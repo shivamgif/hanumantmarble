@@ -278,7 +278,9 @@ export function PurchasesPanel({
                 <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-600 dark:text-slate-300">
                   <span>{Number(a.total_whole_qty || 0)} <span className="text-[10px] uppercase text-slate-400">W</span></span>
                   <span>{Number(a.total_broken_qty || 0)} <span className="text-[10px] uppercase text-slate-400">B</span></span>
-                  <span className="text-[10px] text-slate-400">{Number(a.total_qty_sqm || 0).toFixed(2)} SQM</span>
+                  {Number(a.total_qty_sqm || 0) > 0 && (
+                    <span className="text-[10px] text-slate-400">{Number(a.total_qty_sqm).toFixed(2)} SQM</span>
+                  )}
                 </div>
                 <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                   <span className="font-semibold text-slate-600 dark:text-slate-300">{tc.invoice}:</span> {a.invoice_number || '—'}{a.invoice_date ? ` (${formatDateTime(a.invoice_date)})` : ''}
@@ -400,7 +402,9 @@ export function PurchasesPanel({
                       {Number(a.total_whole_qty || 0)} <span className="text-[9px] font-bold text-slate-400 mr-1 uppercase">W</span>
                       / {Number(a.total_broken_qty || 0)} <span className="text-[9px] font-bold text-slate-400 uppercase">B</span>
                     </div>
-                    <div className="text-[9px] font-bold text-muted-foreground tabular-nums">{Number(a.total_qty_sqm || 0).toFixed(3)} SQM</div>
+                    {Number(a.total_qty_sqm || 0) > 0 && (
+                      <div className="text-[9px] font-bold text-muted-foreground tabular-nums">{Number(a.total_qty_sqm).toFixed(3)} SQM</div>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="text-xs font-black text-slate-900 dark:text-white tabular-nums">INR {Number(a.grand_total || 0).toFixed(2)}</div>

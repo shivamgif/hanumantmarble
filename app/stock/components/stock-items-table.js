@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import { Boxes, ChevronRight, Search } from 'lucide-react';
+import { Boxes, ChevronRight, Package, Search } from 'lucide-react';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
 import { FORM_INPUT_CLASS, FORM_LABEL_CLASS } from '../lib/stock-utils';
@@ -92,19 +92,44 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="text-xs font-black text-slate-900 dark:text-white transition-transform group-hover/row:translate-x-1 duration-300">{item.name}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-xs font-black text-slate-900 dark:text-white transition-transform group-hover/row:translate-x-1 duration-300">{item.name}</div>
+                      {item.unit_of_measure === 'bag' && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-amber-400">
+                          <Package className="h-2.5 w-2.5" />
+                          Bag
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest opacity-60">{item.division_name || item.brand_name || '—'}</div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="text-xs font-bold text-slate-400">{item.size_label}</div>
+                    {item.unit_of_measure === 'bag' ? (
+                      <div className="text-xs font-bold text-slate-400">
+                        {item.weight_per_unit_kg ? `${item.weight_per_unit_kg} kg/bag` : item.type_name || '—'}
+                      </div>
+                    ) : (
+                      <div className="text-xs font-bold text-slate-400">{item.size_label}</div>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="tabular-nums text-xs font-black text-slate-900 dark:text-white">{item.current_whole_qty}</div>
+                    {item.unit_of_measure === 'bag' ? (
+                      <div className="tabular-nums text-xs font-black text-amber-500">
+                        {item.current_whole_qty}
+                        <span className="ml-1 text-[9px] font-bold text-amber-400/70 uppercase">bags</span>
+                      </div>
+                    ) : (
+                      <div className="tabular-nums text-xs font-black text-slate-900 dark:text-white">{item.current_whole_qty}</div>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className={`tabular-nums text-xs font-black ${item.current_broken_qty > 0 ? 'text-amber-500' : 'text-slate-500 opacity-30'}`}>
-                      {item.current_broken_qty}
-                    </div>
+                    {item.unit_of_measure === 'bag' ? (
+                      <div className="tabular-nums text-xs text-slate-400 opacity-30">—</div>
+                    ) : (
+                      <div className={`tabular-nums text-xs font-black ${item.current_broken_qty > 0 ? 'text-amber-500' : 'text-slate-500 opacity-30'}`}>
+                        {item.current_broken_qty}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="tabular-nums text-[10px] font-bold text-slate-500 opacity-40 group-hover/row:opacity-80 transition-opacity">

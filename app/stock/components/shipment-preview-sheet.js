@@ -53,7 +53,9 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
 
   const hasTechnicalSubBar = Boolean(previewState.record?.eway_bill_number || previewState.record?.irn_number);
 
-  const stockSections = useMemo(() => previewState.kind === 'stock'
+  const stockSections = useMemo(() => {
+    const isBagItem = previewState.record?.unit_of_measure === 'bag';
+    return previewState.kind === 'stock'
     ? [
       {
         title: tc.itemDetails,
@@ -63,9 +65,14 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
               { label: tc.name, value: previewState.record?.name },
               { label: tc.finish, value: previewState.record?.finish },
               { label: tc.quality, value: previewState.record?.grade },
-              { label: tc.size, value: previewState.record?.size_label },
-              { label: tc.wholeQty, value: previewState.record?.current_whole_qty },
-              { label: tc.brokenQty, value: previewState.record?.current_broken_qty },
+              {
+                label: isBagItem ? tc.weightPerBag : tc.size,
+                value: isBagItem
+                  ? (previewState.record?.weight_per_unit_kg ? `${previewState.record.weight_per_unit_kg} kg/bag` : previewState.record?.type_name || '—')
+                  : previewState.record?.size_label,
+              },
+              { label: isBagItem ? tc.qtyBags : tc.wholeQty, value: previewState.record?.current_whole_qty },
+              ...(!isBagItem ? [{ label: tc.brokenQty, value: previewState.record?.current_broken_qty }] : []),
               { label: tc.reorderLevel, value: previewState.record?.reorder_level },
             ]}
           />
@@ -206,32 +213,56 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
                         <div className={INVOICE_CLASSES.mobileValue}>{item.size_label || '—'}</div>
                       </div>
                       {isInboundPreview ? (
+                        item.unit_of_measure === 'bag' ? (
+                          <>
+                            <div>
+                              <div className={INVOICE_CLASSES.mobileKey}>{tc.hsn}</div>
+                              <div className={INVOICE_CLASSES.mobileValue}>{item.hsn_code || '—'}</div>
+                            </div>
+                            <div>
+                              <div className={INVOICE_CLASSES.mobileKey}>{tc.qtyBags}</div>
+                              <div className={INVOICE_CLASSES.mobileValue}>{item.received_whole_qty ?? 0}</div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div>
+                              <div className={INVOICE_CLASSES.mobileKey}>{tc.hsn}</div>
+                              <div className={INVOICE_CLASSES.mobileValue}>{item.hsn_code || '—'}</div>
+                            </div>
+                            <div>
+                              <div className={INVOICE_CLASSES.mobileKey}>{tc.wholeBox}</div>
+                              <div className={INVOICE_CLASSES.mobileValue}>{item.received_whole_qty ?? item.loaded_whole_qty ?? 0}</div>
+                            </div>
+                            <div>
+                              <div className={INVOICE_CLASSES.mobileKey}>{tc.orderedSqm}</div>
+                              <div className={INVOICE_CLASSES.mobileValue}>{item.ordered_qty_sqm != null ? Number(item.ordered_qty_sqm).toFixed(3) : '—'}</div>
+                            </div>
+                            <div>
+                              <div className={INVOICE_CLASSES.mobileKey}>{tc.wholeSqm}</div>
+                              <div className={INVOICE_CLASSES.mobileValue}>{item.whole_qty_sqm != null ? Number(item.whole_qty_sqm).toFixed(3) : '—'}</div>
+                            </div>
+                            <div>
+                              <div className={INVOICE_CLASSES.mobileKey}>{tc.brokenSqm}</div>
+                              <div className={INVOICE_CLASSES.mobileValue}>{item.broken_qty_sqm != null ? Number(item.broken_qty_sqm).toFixed(3) : '—'}</div>
+                            </div>
+                            <div className="col-span-2">
+                              <div className={INVOICE_CLASSES.mobileKey}>{tc.totalSqmQty}</div>
+                              <div className={INVOICE_CLASSES.mobileValue}>
+                                {item.qty_sqm != null ? Number(item.qty_sqm).toFixed(3) : Number((item.received_whole_qty ?? 0) + (item.received_broken_qty ?? 0)).toFixed(0)}
+                              </div>
+                            </div>
+                          </>
+                        )
+                      ) : item.unit_of_measure === 'bag' ? (
                         <>
                           <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>{tc.hsn}</div>
-                            <div className={INVOICE_CLASSES.mobileValue}>{item.hsn_code || '—'}</div>
+                            <div className={INVOICE_CLASSES.mobileKey}>{tc.qtyBags}</div>
+                            <div className={INVOICE_CLASSES.mobileValue}>{item.loaded_whole_qty ?? 0}</div>
                           </div>
                           <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>{tc.wholeBox}</div>
-                            <div className={INVOICE_CLASSES.mobileValue}>{item.received_whole_qty ?? item.loaded_whole_qty ?? 0}</div>
-                          </div>
-                          <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>{tc.orderedSqm}</div>
-                            <div className={INVOICE_CLASSES.mobileValue}>{item.ordered_qty_sqm != null ? Number(item.ordered_qty_sqm).toFixed(3) : '—'}</div>
-                          </div>
-                          <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>{tc.wholeSqm}</div>
-                            <div className={INVOICE_CLASSES.mobileValue}>{item.whole_qty_sqm != null ? Number(item.whole_qty_sqm).toFixed(3) : '—'}</div>
-                          </div>
-                          <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>{tc.brokenSqm}</div>
-                            <div className={INVOICE_CLASSES.mobileValue}>{item.broken_qty_sqm != null ? Number(item.broken_qty_sqm).toFixed(3) : '—'}</div>
-                          </div>
-                          <div className="col-span-2">
-                            <div className={INVOICE_CLASSES.mobileKey}>{tc.totalSqmQty}</div>
-                            <div className={INVOICE_CLASSES.mobileValue}>
-                              {item.qty_sqm != null ? Number(item.qty_sqm).toFixed(3) : Number((item.received_whole_qty ?? 0) + (item.received_broken_qty ?? 0)).toFixed(0)}
-                            </div>
+                            <div className={INVOICE_CLASSES.mobileKey}>{tc.returnQtyBags}</div>
+                            <div className={INVOICE_CLASSES.mobileValue}>{item.returned_whole_qty ?? 0}</div>
                           </div>
                         </>
                       ) : (
@@ -299,8 +330,8 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
           ),
         }
         : null,
-    ]
-  , [previewState, tc, isInboundPreview, previewItemPagination, setPreviewItemsPage, inboundMetaItems]);
+    ];
+  }, [previewState, tc, isInboundPreview, previewItemPagination, setPreviewItemsPage, inboundMetaItems]);
 
   const handleOpenChange = useCallback((open) => { if (!open) closePreview(); }, [closePreview]);
 

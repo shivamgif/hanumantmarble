@@ -42,6 +42,7 @@ export async function GET(request) {
       paymentModes,
       bagTypes,
       bagItems,
+      salespersons,
     ] = await Promise.allSettled([
       sql('SELECT DISTINCT name FROM stock_suppliers WHERE name IS NOT NULL ORDER BY name', []),
       sql('SELECT DISTINCT name FROM stock_transporters WHERE name IS NOT NULL ORDER BY name', []),
@@ -70,6 +71,7 @@ export async function GET(request) {
       schemaCaps.hasStockTypesCategory
         ? sql(`SELECT DISTINCT i.name AS bag_item_name FROM stock_items i JOIN stock_types t ON t.id = i.type_id WHERE t.category = 'bag' AND i.is_active = true ORDER BY i.name`, [])
         : Promise.resolve([]),
+      sql('SELECT name AS salesperson_name FROM stock_sales_people WHERE is_active = true ORDER BY name', []),
     ]);
 
     return NextResponse.json({
@@ -90,6 +92,7 @@ export async function GET(request) {
         paymentMode: pick(paymentModes, 'payment_mode'),
         bagType: pick(bagTypes, 'bag_type'),
         bagItemName: pick(bagItems, 'bag_item_name'),
+        salespersonName: pick(salespersons, 'salesperson_name'),
       },
     });
   } catch (error) {

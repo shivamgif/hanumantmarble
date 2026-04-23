@@ -529,7 +529,7 @@ export async function POST(request) {
           shipment.id,
           item.id,
           orderedBoxes,
-          isBagRow ? 0 : Number(row.wholeQty || 0),
+          isBagRow ? orderedBoxes : Number(row.wholeQty || 0),
           isBagRow ? 0 : Number(row.brokenQty || 0),
           Number(row.rejectedQty || 0),
           isBagRow ? (row.ratePerBag != null ? Number(row.ratePerBag) : 0) : Number(row.unitPrice || 0),

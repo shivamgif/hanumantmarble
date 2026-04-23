@@ -212,6 +212,7 @@ export default function AdminDashboard() {
     linkedDocuments: td('linkedDocuments'), itemDetails: td('itemDetails'), sku: td('sku'),
     logNewPurchase: td('logNewPurchase'), logNewDispatch: td('logNewDispatch'),
     purchaseSheetDesc: td('purchaseSheetDesc'), insufficientNewPurchase: td('insufficientNewPurchase'),
+    qtyBags: td('qtyBags'), returnQtyBags: td('returnQtyBags'), weightPerBag: td('weightPerBag'),
   };
   const { user } = useAuthUser();
   const [data, setData] = useState(null);
@@ -611,13 +612,20 @@ export default function AdminDashboard() {
         transportCost: shipment.transport_cost ?? '',
         laborCost: shipment.loading_labour_cost ?? '',
         notes: shipment.notes || '',
-        items: items.map((item) => ({
-          itemId: String(item.item_id),
-          loadedWholeQty: String(item.loaded_whole_qty ?? 0),
-          notes: item.notes || '',
-          returnWholeQty: item.returned_whole_qty != null ? String(item.returned_whole_qty) : '',
-          returnBrokenQty: item.returned_broken_qty != null ? String(item.returned_broken_qty) : '',
-        })),
+        items: items.map((item) => {
+          const isBag = item.unit_of_measure === 'bag';
+          return {
+            itemId: String(item.item_id),
+            itemCategory: isBag ? 'bag' : 'tile',
+            loadedWholeQty: isBag ? '' : String(item.loaded_whole_qty ?? 0),
+            qtyBags: isBag ? String(item.loaded_whole_qty ?? 0) : '',
+            ratePerBag: '',
+            returnWholeQty: isBag ? '' : (item.returned_whole_qty != null ? String(item.returned_whole_qty) : ''),
+            returnBrokenQty: isBag ? '' : (item.returned_broken_qty != null ? String(item.returned_broken_qty) : ''),
+            returnQtyBags: isBag ? (item.returned_whole_qty != null ? String(item.returned_whole_qty) : '') : '',
+            notes: item.notes || '',
+          };
+        }),
       });
       setDispatchNotice(null);
     } catch (err) {
@@ -630,13 +638,19 @@ export default function AdminDashboard() {
     setDispatchSubmitting(true);
     try {
       const items = (values.items || [])
-        .map((item) => ({
-          itemId: Number(item.itemId),
-          loadedWholeQty: toNumber(item.loadedWholeQty),
-          returnWholeQty: item.returnWholeQty === '' ? null : toNumber(item.returnWholeQty),
-          returnBrokenQty: item.returnBrokenQty === '' ? null : toNumber(item.returnBrokenQty),
-          notes: trimText(item.notes),
-        }))
+        .map((item) => {
+          const isBag = item.itemCategory === 'bag';
+          return {
+            itemId: Number(item.itemId),
+            loadedWholeQty: isBag ? toNumber(item.qtyBags) : toNumber(item.loadedWholeQty),
+            loadedBrokenQty: 0,
+            returnWholeQty: isBag
+              ? (item.returnQtyBags === '' ? null : toNumber(item.returnQtyBags))
+              : (item.returnWholeQty === '' ? null : toNumber(item.returnWholeQty)),
+            returnBrokenQty: isBag ? 0 : (item.returnBrokenQty === '' ? null : toNumber(item.returnBrokenQty)),
+            notes: trimText(item.notes),
+          };
+        })
         .filter((item) => item.itemId);
 
       const response = await fetch(`/api/stock/outbound-shipments/${editingDispatchId}`, {
@@ -2608,6 +2622,7 @@ export default function AdminDashboard() {
             submitting={dispatchSubmitting}
             onAddItem={() => dispatchItemsFieldArray.append(createDispatchItemRow())}
             activeItems={data?.activeItems}
+            suggestions={suggestions}
             t={td}
             tc={tc}
             language={language}
