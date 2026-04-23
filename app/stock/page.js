@@ -207,6 +207,7 @@ export default function StockDashboard() {
   const [arrivalPage, setArrivalPage] = useState(1);
   const [dispatchPage, setDispatchPage] = useState(1);
   const [editingArrivalId, setEditingArrivalId] = useState(null);
+  const [editingBagArrivalId, setEditingBagArrivalId] = useState(null);
   const [editingDispatchId, setEditingDispatchId] = useState(null);
   const [previewItemsPage, setPreviewItemsPage] = useState(1);
   const [previewState, setPreviewState] = useState({
@@ -621,6 +622,14 @@ export default function StockDashboard() {
 
       const s = json.shipment;
       const items = json.items || [];
+
+      if (items.some((i) => i.unit_of_measure === 'bag')) {
+        setArrivalSheetOpen(false);
+        setEditingArrivalId(null);
+        setArrivalNotice(null);
+        setEditingBagArrivalId(row.id);
+        return;
+      }
 
       arrivalForm.reset({
         shipmentNumber: s.shipment_number || '',
@@ -1095,6 +1104,8 @@ export default function StockDashboard() {
           userRole={accessRole}
           onNewArrival={handleNewArrival}
           onEdit={handleEditArrival}
+          editingBagArrivalId={editingBagArrivalId}
+          setEditingBagArrivalId={setEditingBagArrivalId}
         />
       )}
 

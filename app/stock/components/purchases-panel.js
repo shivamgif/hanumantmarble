@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronRight, PackageCheck, Plus, Search, Package, Boxes } from 'lucide-react';
@@ -45,6 +45,8 @@ export function PurchasesPanel({
   userRole,
   onNewArrival,
   onEdit,
+  editingBagArrivalId,
+  setEditingBagArrivalId,
 }) {
   const canEdit = ['admin', 'manager'].includes(userRole);
   const [purchaseType, setPurchaseType] = useState('tile');
@@ -58,6 +60,56 @@ export function PurchasesPanel({
     defaultValues: createInitialBagArrivalDraft(),
   });
   const bagArrivalItemsFieldArray = useFieldArray({ control: bagArrivalForm.control, name: 'items' });
+
+  useEffect(() => {
+    if (!editingBagArrivalId) return;
+    setPurchaseType('bag');
+    setArrivalSheetOpen(true);
+    setBagNotice({ type: 'info', message: 'Loading purchase details…' });
+    fetch(`/api/stock/inbound-shipments/${editingBagArrivalId}`)
+      .then((r) => r.json())
+      .then((json) => {
+        const s = json.shipment;
+        const items = json.items || [];
+        bagArrivalForm.reset({
+          supplierName: s.supplier_name || '',
+          truckLicensePlate: s.truck_license_plate || s.truck_license_plate_snapshot || '',
+          driverName: s.driver_name || s.driver_name_snapshot || '',
+          invoiceNumber: s.invoice_number || '',
+          invoiceDate: s.invoice_date ? s.invoice_date.split('T')[0] : '',
+          originCity: s.origin_city || '',
+          destinationWarehouseName: s.destination_warehouse_name || '',
+          paymentStatus: s.payment_status || 'unpaid',
+          paidAmount: s.paid_amount ?? '',
+          paymentDate: s.payment_date ? s.payment_date.split('T')[0] : '',
+          paymentReference: s.payment_reference || '',
+          paymentMode: s.payment_mode || '',
+          transporterName: s.transporter_name || '',
+          transportCost: s.delivery_cost ?? '',
+          laborCost: s.unloading_labour_cost ?? '',
+          handlingCostPercent: s.handling_cost_percent != null ? String(s.handling_cost_percent) : '1.0',
+          fuelCostPercent: s.fuel_cost_percent != null ? String(s.fuel_cost_percent) : '5.0',
+          gstPercent: s.gst_percent != null ? String(s.gst_percent) : '18.0',
+          freightWeightKg: s.freight_weight_kg != null ? String(s.freight_weight_kg) : '',
+          notes: s.notes || '',
+          items: items.length > 0 ? items.map((item) => ({
+            itemCategory: 'bag',
+            itemId: String(item.item_id),
+            itemName: item.item_name || '',
+            brandName: item.brand_name || '',
+            typeName: item.type_name || '',
+            qtyBags: item.ordered_qty != null ? String(item.ordered_qty) : '',
+            weightPerUnitKg: item.weight_per_unit_kg != null ? String(item.weight_per_unit_kg) : '',
+            ratePerBag: item.cost_per_bag != null ? String(item.cost_per_bag) : '',
+            hsnCode: item.hsn_code || '',
+            description: item.description || '',
+            notes: item.notes || '',
+          })) : [createBagArrivalItemRow()],
+        });
+        setBagNotice(null);
+      })
+      .catch((err) => setBagNotice({ type: 'error', message: err.message }));
+  }, [editingBagArrivalId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleBagArrivalItemNameChange = useCallback((index, value) => {
     bagArrivalForm.setValue(`items.${index}.itemName`, value, { shouldDirty: true, shouldValidate: true });
@@ -85,10 +137,6 @@ export function PurchasesPanel({
     setBagNotice(null);
     setBagSubmitting(true);
     try {
-      const formData = new FormData();
-      if (bagAttachments.purchaseInvoice) formData.append('purchaseInvoice', bagAttachments.purchaseInvoice);
-      if (bagAttachments.transporterBill) formData.append('transporterBill', bagAttachments.transporterBill);
-
       const items = values.items.map((item) => ({
         ...item,
         itemCategory: 'bag',
@@ -114,24 +162,40 @@ export function PurchasesPanel({
         freightWeightKg: values.freightWeightKg === '' ? null : toNumber(values.freightWeightKg),
       };
 
-      const response = await fetch('/api/stock/inbound-shipments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const json = await response.json();
-      if (!response.ok) throw new Error(json.error || 'Failed to submit bag purchase');
+      let response, json;
+      if (editingBagArrivalId) {
+        response = await fetch(`/api/stock/inbound-shipments/${editingBagArrivalId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, action: 'update' }),
+        });
+        json = await response.json();
+        if (!response.ok) throw new Error(json.error || 'Failed to update bag purchase');
+        setBagNotice({ type: 'success', message: `Bag purchase updated.` });
+      } else {
+        const formData = new FormData();
+        if (bagAttachments.purchaseInvoice) formData.append('purchaseInvoice', bagAttachments.purchaseInvoice);
+        if (bagAttachments.transporterBill) formData.append('transporterBill', bagAttachments.transporterBill);
+        response = await fetch('/api/stock/inbound-shipments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        json = await response.json();
+        if (!response.ok) throw new Error(json.error || 'Failed to submit bag purchase');
+        setBagNotice({ type: 'success', message: `Bag purchase ${json.shipment?.shipment_number} submitted.` });
+      }
 
-      setBagNotice({ type: 'success', message: `Bag purchase ${json.shipment?.shipment_number} submitted.` });
       setBagAttachments({});
       bagArrivalForm.reset(createInitialBagArrivalDraft());
+      if (setEditingBagArrivalId) setEditingBagArrivalId(null);
       setTimeout(() => setArrivalSheetOpen(false), 1200);
     } catch (err) {
       setBagNotice({ type: 'error', message: err.message });
     } finally {
       setBagSubmitting(false);
     }
-  }, [bagArrivalForm, bagAttachments, setArrivalSheetOpen]);
+  }, [bagArrivalForm, bagAttachments, editingBagArrivalId, setArrivalSheetOpen, setEditingBagArrivalId]);
 
   const handleBagArrivalInvalid = useCallback(() => {
     setBagNotice({ type: 'error', message: 'Please fix the highlighted errors.' });
@@ -172,7 +236,7 @@ export function PurchasesPanel({
               </span>
             </div>
           </div>
-          <Sheet open={arrivalSheetOpen} onOpenChange={setArrivalSheetOpen}>
+          <Sheet open={arrivalSheetOpen} onOpenChange={(open) => { setArrivalSheetOpen(open); if (!open) { if (setEditingBagArrivalId) setEditingBagArrivalId(null); bagArrivalForm.reset(createInitialBagArrivalDraft()); setPurchaseType('tile'); setBagNotice(null); } }}>
 
             <SheetContent side="right" className="w-full max-w-none overflow-y-auto bg-white dark:bg-slate-950 md:w-[50vw]">
               <SheetHeader className="border-b border-border pb-4">
@@ -276,8 +340,14 @@ export function PurchasesPanel({
                   <Badge variant={getStatusVariant(a.status)}>{a.status}</Badge>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-600 dark:text-slate-300">
-                  <span>{Number(a.total_whole_qty || 0)} <span className="text-[10px] uppercase text-slate-400">W</span></span>
-                  <span>{Number(a.total_broken_qty || 0)} <span className="text-[10px] uppercase text-slate-400">B</span></span>
+                  {Number(a.total_bag_qty || 0) > 0 ? (
+                    <span className="text-amber-500 font-black">{Number(a.total_bag_qty)} <span className="text-[10px] uppercase text-amber-400/70">Bags</span></span>
+                  ) : (
+                    <>
+                      <span>{Number(a.total_whole_qty || 0)} <span className="text-[10px] uppercase text-slate-400">W</span></span>
+                      <span>{Number(a.total_broken_qty || 0)} <span className="text-[10px] uppercase text-slate-400">B</span></span>
+                    </>
+                  )}
                   {Number(a.total_qty_sqm || 0) > 0 && (
                     <span className="text-[10px] text-slate-400">{Number(a.total_qty_sqm).toFixed(2)} SQM</span>
                   )}
@@ -398,10 +468,16 @@ export function PurchasesPanel({
                     <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground opacity-60">{a.divisions || 'General'}</div>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="text-xs font-black text-slate-900 dark:text-white tabular-nums">
-                      {Number(a.total_whole_qty || 0)} <span className="text-[9px] font-bold text-slate-400 mr-1 uppercase">W</span>
-                      / {Number(a.total_broken_qty || 0)} <span className="text-[9px] font-bold text-slate-400 uppercase">B</span>
-                    </div>
+                    {Number(a.total_bag_qty || 0) > 0 ? (
+                      <div className="text-xs font-black text-amber-500 tabular-nums">
+                        {Number(a.total_bag_qty)} <span className="text-[9px] font-bold text-amber-400/70 uppercase">Bags</span>
+                      </div>
+                    ) : (
+                      <div className="text-xs font-black text-slate-900 dark:text-white tabular-nums">
+                        {Number(a.total_whole_qty || 0)} <span className="text-[9px] font-bold text-slate-400 mr-1 uppercase">W</span>
+                        / {Number(a.total_broken_qty || 0)} <span className="text-[9px] font-bold text-slate-400 uppercase">B</span>
+                      </div>
+                    )}
                     {Number(a.total_qty_sqm || 0) > 0 && (
                       <div className="text-[9px] font-bold text-muted-foreground tabular-nums">{Number(a.total_qty_sqm).toFixed(3)} SQM</div>
                     )}

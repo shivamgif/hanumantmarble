@@ -8,10 +8,10 @@ import { useAuthUser } from '@/lib/auth-client';
 import { useSearchParams } from 'next/navigation';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { arrivalFormSchema, dispatchFormSchema } from '@/lib/forms/stock-forms';
+import { arrivalFormSchema, bagArrivalFormSchema, dispatchFormSchema } from '@/lib/forms/stock-forms';
 import { useStockFormStore } from '@/lib/stores/stock-form-store';
-import { createArrivalItemRow, createDispatchItemRow, createInitialArrivalDraft, createInitialDispatchDraft, toNumber, trimText } from '@/app/stock/lib/stock-utils';
-import { ArrivalFormContent } from '@/app/stock/components/arrival-form';
+import { createArrivalItemRow, createBagArrivalItemRow, createDispatchItemRow, createInitialArrivalDraft, createInitialBagArrivalDraft, createInitialDispatchDraft, toNumber, trimText } from '@/app/stock/lib/stock-utils';
+import { ArrivalFormContent, BagArrivalFormContent } from '@/app/stock/components/arrival-form';
 import { DispatchFormContent } from '@/app/stock/components/dispatch-form';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import EntryPreviewSheet, { PreviewKeyValueGrid } from '@/components/ui/entry-preview-sheet';
@@ -271,6 +271,7 @@ export default function AdminDashboard() {
 
   const [resetPasswordModal, setResetPasswordModal] = useState({ open: false, email: '', newPassword: '', confirm: '', loading: false, error: null, success: false });
   const [editingArrivalId, setEditingArrivalId] = useState(null);
+  const [editingBagArrivalId, setEditingBagArrivalId] = useState(null);
   const [editingDispatchId, setEditingDispatchId] = useState(null);
   const [arrivalNotice, setArrivalNotice] = useState(null);
   const [dispatchNotice, setDispatchNotice] = useState(null);
@@ -293,6 +294,13 @@ export default function AdminDashboard() {
     resolver: zodResolver(arrivalFormSchema),
     defaultValues: createInitialArrivalDraft(),
   });
+  const bagArrivalForm = useForm({
+    resolver: zodResolver(bagArrivalFormSchema),
+    defaultValues: createInitialBagArrivalDraft(),
+  });
+  const bagArrivalItemsFieldArray = useFieldArray({ control: bagArrivalForm.control, name: 'items' });
+  const [bagArrivalNotice, setBagArrivalNotice] = useState(null);
+  const [bagArrivalSubmitting, setBagArrivalSubmitting] = useState(false);
   const dispatchForm = useForm({
     resolver: zodResolver(dispatchFormSchema),
     defaultValues: createInitialDispatchDraft(),
@@ -471,6 +479,14 @@ export default function AdminDashboard() {
       if (!response.ok) throw new Error(json.error || 'Failed to load purchase details');
       const s = json.shipment;
       const items = json.items || [];
+      const isBagPurchase = items.some((i) => i.unit_of_measure === 'bag');
+      if (isBagPurchase) {
+        setArrivalSheetOpen(false);
+        setEditingArrivalId(null);
+        setArrivalNotice(null);
+        setEditingBagArrivalId(row.id);
+        return;
+      }
       arrivalForm.reset({
         shipmentNumber: s.shipment_number || '',
         supplierName: s.supplier_name || '',
@@ -520,6 +536,100 @@ export default function AdminDashboard() {
       setArrivalNotice(null);
     } catch (err) {
       setArrivalNotice({ type: 'error', message: err.message });
+    }
+  }
+
+  useEffect(() => {
+    if (!editingBagArrivalId) return;
+    setArrivalSheetOpen(false);
+    setBagArrivalNotice({ type: 'info', message: 'Loading purchase details…' });
+    fetch(`/api/stock/inbound-shipments/${editingBagArrivalId}`)
+      .then((r) => r.json())
+      .then((json) => {
+        const s = json.shipment;
+        const items = json.items || [];
+        bagArrivalForm.reset({
+          supplierName: s.supplier_name || '',
+          truckLicensePlate: s.truck_license_plate || s.truck_license_plate_snapshot || '',
+          driverName: s.driver_name || s.driver_name_snapshot || '',
+          invoiceNumber: s.invoice_number || '',
+          invoiceDate: s.invoice_date ? s.invoice_date.split('T')[0] : '',
+          originCity: s.origin_city || '',
+          destinationWarehouseName: s.destination_warehouse_name || '',
+          paymentStatus: s.payment_status || 'unpaid',
+          paidAmount: s.paid_amount ?? '',
+          paymentDate: s.payment_date ? s.payment_date.split('T')[0] : '',
+          paymentReference: s.payment_reference || '',
+          paymentMode: s.payment_mode || '',
+          transporterName: s.transporter_name || '',
+          transportCost: s.delivery_cost ?? '',
+          laborCost: s.unloading_labour_cost ?? '',
+          handlingCostPercent: s.handling_cost_percent != null ? String(s.handling_cost_percent) : '1.0',
+          fuelCostPercent: s.fuel_cost_percent != null ? String(s.fuel_cost_percent) : '5.0',
+          gstPercent: s.gst_percent != null ? String(s.gst_percent) : '18.0',
+          freightWeightKg: s.freight_weight_kg != null ? String(s.freight_weight_kg) : '',
+          notes: s.notes || '',
+          items: items.length > 0 ? items.map((item) => ({
+            itemCategory: 'bag',
+            itemId: String(item.item_id),
+            itemName: item.item_name || '',
+            brandName: item.brand_name || '',
+            typeName: item.type_name || '',
+            qtyBags: item.ordered_qty != null ? String(item.ordered_qty) : '',
+            weightPerUnitKg: item.weight_per_unit_kg != null ? String(item.weight_per_unit_kg) : '',
+            ratePerBag: item.cost_per_bag != null ? String(item.cost_per_bag) : '',
+            hsnCode: item.hsn_code || '',
+            description: item.description || '',
+            notes: item.notes || '',
+          })) : [createBagArrivalItemRow()],
+        });
+        setBagArrivalNotice(null);
+      })
+      .catch((err) => setBagArrivalNotice({ type: 'error', message: err.message }));
+  }, [editingBagArrivalId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleBagArrivalSubmit(values) {
+    if (!editingBagArrivalId) return;
+    setBagArrivalSubmitting(true);
+    try {
+      const items = (values.items || []).map((item) => ({
+        itemId: item.itemId ? Number(item.itemId) : undefined,
+        itemCategory: 'bag',
+        qtyBags: toNumber(item.qtyBags),
+        weightPerUnitKg: item.weightPerUnitKg === '' ? null : toNumber(item.weightPerUnitKg),
+        ratePerBag: toNumber(item.ratePerBag),
+        itemName: trimText(item.itemName),
+        brandName: trimText(item.brandName),
+        typeName: trimText(item.typeName),
+        hsnCode: trimText(item.hsnCode),
+        description: trimText(item.description),
+        notes: trimText(item.notes),
+      })).filter((item) => item.itemId || item.qtyBags > 0);
+      const payload = {
+        ...values,
+        items,
+        action: 'update',
+        transportCost: values.transportCost === '' ? 0 : toNumber(values.transportCost),
+        laborCost: values.laborCost === '' ? 0 : toNumber(values.laborCost),
+        handlingCostPercent: values.handlingCostPercent === '' ? 1.0 : toNumber(values.handlingCostPercent),
+        fuelCostPercent: values.fuelCostPercent === '' ? 5.0 : toNumber(values.fuelCostPercent),
+        gstPercent: values.gstPercent === '' ? 18.0 : toNumber(values.gstPercent),
+        freightWeightKg: values.freightWeightKg === '' ? null : toNumber(values.freightWeightKg),
+      };
+      const response = await fetch(`/api/stock/inbound-shipments/${editingBagArrivalId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || 'Failed to update bag purchase');
+      setBagArrivalNotice({ type: 'success', message: 'Bag purchase updated.' });
+      bagArrivalForm.reset(createInitialBagArrivalDraft());
+      setTimeout(() => setEditingBagArrivalId(null), 1200);
+    } catch (err) {
+      setBagArrivalNotice({ type: 'error', message: err.message });
+    } finally {
+      setBagArrivalSubmitting(false);
     }
   }
 
@@ -2623,6 +2733,30 @@ export default function AdminDashboard() {
             onAddItem={() => dispatchItemsFieldArray.append(createDispatchItemRow())}
             activeItems={data?.activeItems}
             suggestions={suggestions}
+            t={td}
+            tc={tc}
+            language={language}
+          />
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={!!editingBagArrivalId} onOpenChange={(open) => { if (!open) { setEditingBagArrivalId(null); setBagArrivalNotice(null); bagArrivalForm.reset(createInitialBagArrivalDraft()); } }}>
+        <SheetContent side="right" className="w-full max-w-none overflow-y-auto bg-white dark:bg-slate-950 md:w-[50vw]">
+          <SheetHeader className="border-b border-border pb-4">
+            <SheetTitle className="text-base">Edit Bag Purchase</SheetTitle>
+            <SheetDescription className="text-xs">{tc.purchaseSheetDesc}</SheetDescription>
+          </SheetHeader>
+          <BagArrivalFormContent
+            form={bagArrivalForm}
+            itemsFieldArray={bagArrivalItemsFieldArray}
+            onSubmit={handleBagArrivalSubmit}
+            onInvalid={() => setBagArrivalNotice({ type: 'error', message: 'Please fix the highlighted fields.' })}
+            notice={bagArrivalNotice}
+            submitting={bagArrivalSubmitting}
+            onAddItem={() => bagArrivalItemsFieldArray.append(createBagArrivalItemRow())}
+            onItemNameChange={() => {}}
+            suggestions={suggestions}
+            activeItems={data?.activeItems}
             t={td}
             tc={tc}
             language={language}

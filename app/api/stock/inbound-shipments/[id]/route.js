@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, generateReference, getStockContext, hasAnyStockRole, queueNotification, recordTimelineEvent } from '@/lib/stock-workflow';
 import { sql, withTransaction } from '@/lib/db';
+import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 
 function computeSqmValues(item, size) {
   const widthMm = size?.width_mm;
@@ -294,6 +295,7 @@ export async function GET(request, context) {
       [id]
     );
 
+    const schemaCaps = await getStockSchemaCapabilities();
     const items = await sql(
       `WITH size_parsed AS (
          SELECT id,
@@ -314,6 +316,9 @@ export async function GET(request, context) {
               i.thickness_mm,
               i.pieces_per_box,
               i.unit_of_measure,
+              ${schemaCaps.hasStockItemsWeightPerUnitKg ? 'i.weight_per_unit_kg,' : 'NULL AS weight_per_unit_kg,'}
+              ${schemaCaps.hasStockItemsRatePerBag ? 'i.rate_per_bag AS cost_per_bag,' : 'NULL AS cost_per_bag,'}
+              t.name AS type_name,
               b.name AS brand_name,
               sz.label AS size_label,
               sz.unit AS size_unit,
@@ -342,6 +347,7 @@ export async function GET(request, context) {
        FROM stock_inbound_shipment_items isi
        JOIN stock_items i ON i.id = isi.item_id
        LEFT JOIN stock_brands b ON b.id = i.brand_id
+       LEFT JOIN stock_types t ON t.id = i.type_id
        LEFT JOIN size_parsed sz ON sz.id = i.size_id
        LEFT JOIN stock_divisions d ON d.id = i.division_id
        WHERE isi.inbound_shipment_id = $1
@@ -659,6 +665,8 @@ export async function PATCH(request, context) {
           await sql('DELETE FROM stock_inbound_shipment_items WHERE inbound_shipment_id = $1', [id]);
           for (const item of body.items) {
             if (!item.itemId) continue;
+            const isBag = item.itemCategory === 'bag';
+            const qtyBags = isBag ? Number(item.qtyBags || 0) : null;
             await sql(
               `INSERT INTO stock_inbound_shipment_items
                  (inbound_shipment_id, item_id, received_whole_qty, received_broken_qty, ordered_qty, cost_per_sqm, hsn_code, notes)
@@ -666,10 +674,10 @@ export async function PATCH(request, context) {
               [
                 id,
                 Number(item.itemId),
-                item.wholeQty || 0,
-                item.brokenQty || 0,
-                item.orderedBoxes || null,
-                item.costPerSqm || null,
+                isBag ? qtyBags : (item.wholeQty || 0),
+                isBag ? 0 : (item.brokenQty || 0),
+                isBag ? qtyBags : (item.orderedBoxes || null),
+                isBag ? null : (item.costPerSqm || null),
                 item.hsnCode || null,
                 item.notes || null,
               ]
