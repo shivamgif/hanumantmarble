@@ -2015,6 +2015,15 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
+                  {createUserForm.watch('role') === 'salesperson' && (
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{language === 'hi' ? 'डिवीज़न' : 'Division'}</Label>
+                        <Input {...createUserForm.register('division')} className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold" placeholder="e.g. Marble, Granite, Tiles" />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid gap-6 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{t('password')}</Label>
@@ -2049,7 +2058,7 @@ export default function AdminDashboard() {
                       onClick={() => {
                         setShowUserForm(false);
                         setUserFormNotice(null);
-                        createUserForm.reset({ name: '', phone: '', email: '', password: '', role: 'stock_maintainer', department: 'General', status: 'active' });
+                        createUserForm.reset({ name: '', phone: '', email: '', password: '', role: 'stock_maintainer', department: 'General', status: 'active', division: '' });
                         setConfirmPassword('');
                         setShowPrimaryPassword(false);
                         setShowConfirmPassword(false);

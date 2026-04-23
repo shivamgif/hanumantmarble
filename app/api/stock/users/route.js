@@ -26,7 +26,7 @@ function isExistingUserError(error) {
   );
 }
 
-async function ensureCredentialIdentity({ email, password, name, request }) {
+async function ensureCredentialIdentity({ email, password, name }) {
   try {
     await betterAuth.api.signUpEmail({
       body: {
@@ -34,8 +34,14 @@ async function ensureCredentialIdentity({ email, password, name, request }) {
         password,
         name: name || email,
       },
-      headers: request.headers,
+      // No request headers — prevents better-auth from overwriting the admin's session cookie
+      headers: new Headers(),
     });
+    // Mark email as verified so the new user can log in without an email confirmation step
+    await sql(
+      `UPDATE "user" SET email_verified = true WHERE email = $1`,
+      [email]
+    );
   } catch (error) {
     if (isExistingUserError(error)) {
       return;

@@ -79,8 +79,8 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StockFormField control={control} name={`items.${index}.orderedBoxes`} label={tc.ordered} type="number" placeholder="0" min="0" />
-            <StockFormField control={control} name={`items.${index}.wholeQty`} label={tc.wholeBox} type="number" min="0" placeholder="0" />
-            <StockFormField control={control} name={`items.${index}.brokenQty`} label={tc.brokenTiles} type="number" min="0" placeholder="0" />
+            <StockFormField control={control} name={`items.${index}.wholeQty`} label={tc.wholeBox} type="number" placeholder="0" min="0"  />
+            <StockFormField control={control} name={`items.${index}.brokenQty`} label={tc.brokenTiles} type="number"  placeholder="0"  min="0"/>
           </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-3 p-3 rounded-xl bg-slate-500/5 border border-white/5">
@@ -254,14 +254,7 @@ export function ArrivalFormContent({
 
           </div>
           <div className="space-y-4">
-            <button
-              type="button"
-              onClick={onAddItem}
-              className="inline-flex mb-4 items-center gap-2 rounded-full bg-brand-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              {t('addItem')}
-            </button>
+            
             {itemsFieldArray.fields.map((fieldRow, index) => (
               <ArrivalItemRow
                 key={fieldRow.id}
@@ -279,6 +272,14 @@ export function ArrivalFormContent({
                 onRemoveItem={(i) => itemsFieldArray.remove(i)}
               />
             ))}
+            <button
+              type="button"
+              onClick={onAddItem}
+              className="inline-flex mb-4 items-center gap-2 rounded-full bg-brand-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {t('addItem')}
+            </button>
           </div>
         </div>
         <div className={FORM_CARD_CLASS}>

@@ -3,7 +3,7 @@ import { ensureDatabaseAvailable, getStockContext } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 
 export async function GET(request) {
-  const { session } = await getStockContext(request);
+  const { session, appUser } = await getStockContext(request);
 
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -15,6 +15,10 @@ export async function GET(request) {
       { status: 503 }
     );
   }
+
+  const salespersonDivisionId = appUser?.role === 'salesperson' && appUser?.division_id
+    ? appUser.division_id
+    : null;
 
   try {
     const [summaryRows, activeItems, recentArrivalsRaw, recentArrivalProducts, recentDispatchProducts, recentDispatchesRaw] = await Promise.all([
@@ -53,9 +57,10 @@ export async function GET(request) {
          LEFT JOIN stock_divisions d ON d.id = i.division_id
          LEFT JOIN stock_sizes s ON s.id = i.size_id
          WHERE i.is_active = true
+         ${salespersonDivisionId ? 'AND i.division_id = $1' : ''}
          ORDER BY COALESCE(i.current_whole_qty, 0) + COALESCE(i.current_broken_qty, 0) ASC, i.name ASC
          LIMIT 50`,
-        []
+        salespersonDivisionId ? [salespersonDivisionId] : []
       ),
       sql(
         `SELECT
@@ -89,9 +94,13 @@ export async function GET(request) {
          LEFT JOIN stock_app_users submitter ON submitter.id = s.submitted_by_user_id
          LEFT JOIN stock_app_users approver ON approver.id = s.approved_by_user_id
          LEFT JOIN stock_locations loc ON loc.id = s.destination_location_id
+         ${salespersonDivisionId ? `WHERE s.id IN (
+           SELECT DISTINCT isi.inbound_shipment_id FROM stock_inbound_shipment_items isi
+           JOIN stock_items i ON i.id = isi.item_id WHERE i.division_id = $1
+         )` : ''}
          ORDER BY s.created_at DESC
          LIMIT 20`,
-        []
+        salespersonDivisionId ? [salespersonDivisionId] : []
       ),
       sql(
         `SELECT
@@ -107,8 +116,9 @@ export async function GET(request) {
          WHERE isi.inbound_shipment_id IN (
            SELECT id FROM stock_inbound_shipments ORDER BY created_at DESC LIMIT 20
          )
+         ${salespersonDivisionId ? 'AND i.division_id = $1' : ''}
          GROUP BY isi.inbound_shipment_id`,
-        []
+        salespersonDivisionId ? [salespersonDivisionId] : []
       ),
       sql(
         `SELECT
@@ -122,23 +132,28 @@ export async function GET(request) {
          WHERE soi.outbound_shipment_id IN (
            SELECT id FROM stock_outbound_shipments ORDER BY created_at DESC LIMIT 20
          )
+         ${salespersonDivisionId ? 'AND i.division_id = $1' : ''}
          GROUP BY soi.outbound_shipment_id`,
-        []
+        salespersonDivisionId ? [salespersonDivisionId] : []
       ),
       sql(
         `WITH recent_sos AS (
            SELECT *
            FROM stock_outbound_shipments
+           ${salespersonDivisionId ? `WHERE id IN (
+             SELECT DISTINCT soi.outbound_shipment_id FROM stock_outbound_shipment_items soi
+             JOIN stock_items i ON i.id = soi.item_id WHERE i.division_id = $1
+           )` : ''}
            ORDER BY created_at DESC
            LIMIT 20
          )
-          SELECT 
-             sos.id, 
-             sos.shipment_number, 
-             sos.truck_license_plate_snapshot AS truck_license_plate, 
-             sos.driver_name_snapshot AS driver_name, 
-             sos.created_at AS dispatch_date, 
-             sos.status, 
+          SELECT
+             sos.id,
+             sos.shipment_number,
+             sos.truck_license_plate_snapshot AS truck_license_plate,
+             sos.driver_name_snapshot AS driver_name,
+             sos.created_at AS dispatch_date,
+             sos.status,
              sos.approval_status,
              c.name AS customer_name,
              c.phone AS customer_phone_number,
@@ -159,7 +174,7 @@ export async function GET(request) {
           LEFT JOIN stock_customers c ON c.id = sos.customer_id
           GROUP BY sos.id, sos.shipment_number, sos.truck_license_plate_snapshot, sos.driver_name_snapshot, sos.created_at, sos.status, sos.approval_status, c.name, c.phone
           ORDER BY sos.created_at DESC`,
-        []
+        salespersonDivisionId ? [salespersonDivisionId] : []
       ),
     ]);
 

@@ -408,11 +408,13 @@ export async function POST(request) {
 
     const shipment = shipmentRows[0];
     const insertedItems = [];
+    const itemDivisionIds = [];
     let subtotal = 0;
 
     for (const row of items) {
       const orderedBoxes = Number(row.orderedBoxes || 0);
       const item = await upsertItemMaster(row, orderedBoxes);
+      if (item.division_id) itemDivisionIds.push(item.division_id);
 
       const sizeRow = item.size_id
         ? (await sql(`SELECT label, width_mm, length_mm FROM stock_sizes WHERE id = $1 LIMIT 1`, [item.size_id]))[0]
@@ -491,7 +493,8 @@ export async function POST(request) {
       [handlingPct, fuelPct, gstPct, grand_total, body.freightWeightKg || null, shipment.id]
     );
 
-    const recipients = await collectNotificationRecipients();
+    const uniqueDivisionIds = [...new Set(itemDivisionIds)];
+    const recipients = await collectNotificationRecipients(uniqueDivisionIds.length ? uniqueDivisionIds : null);
     await queueNotification({
       channel: 'whatsapp',
       eventType: 'inbound_arrival',

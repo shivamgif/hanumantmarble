@@ -137,14 +137,7 @@ export function DispatchFormContent({
               </div>
 
             </div>
-            <button
-              type="button"
-              onClick={onAddItem}
-              className="inline-flex mb-4 items-center gap-2 rounded-full bg-brand-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              {t('addItem')}
-            </button>
+            
             <div className="space-y-4">
               {itemsFieldArray.fields.map((fieldRow, index) => (
                 <DispatchItemRow
@@ -165,6 +158,14 @@ export function DispatchFormContent({
             </div>
           </div>
         </div>
+        <button
+              type="button"
+              onClick={onAddItem}
+              className="inline-flex mb-4 items-center gap-2 rounded-full bg-brand-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {t('addItem')}
+            </button>
         <div className={FORM_CARD_CLASS}>
           <FormField
             control={form.control}
