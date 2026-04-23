@@ -8,10 +8,9 @@
 
 import pg from 'pg';
 import * as dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
 import path from 'path';
 
-dotenv.config({ path: path.join(path.dirname(fileURLToPath(import.meta.url)), '.env.local') });
+dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
 const { Pool } = pg;
 

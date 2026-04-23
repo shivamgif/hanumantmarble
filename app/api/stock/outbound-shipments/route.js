@@ -11,6 +11,7 @@ import {
   recordTimelineEvent,
 } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
+import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 
 function toPositiveInteger(value) {
   const parsed = Number.parseInt(value, 10);
@@ -18,10 +19,15 @@ function toPositiveInteger(value) {
 }
 
 async function resolveStockItem(item) {
+  const schemaCaps = await getStockSchemaCapabilities();
+  const categorySelect = schemaCaps.hasStockTypesCategory
+    ? "COALESCE(t.category, 'tile') AS item_category"
+    : "'tile' AS item_category";
+
   if (item.itemId) {
     const rows = await sql(
       `SELECT i.id, i.sku, i.name, i.current_whole_qty, i.current_broken_qty, i.unit_of_measure,
-              COALESCE(t.category, 'tile') AS item_category
+              ${categorySelect}
        FROM stock_items i
        LEFT JOIN stock_types t ON t.id = i.type_id
        WHERE i.id = $1
@@ -38,7 +44,7 @@ async function resolveStockItem(item) {
   if (sku) {
     const rows = await sql(
       `SELECT i.id, i.sku, i.name, i.current_whole_qty, i.current_broken_qty, i.unit_of_measure,
-              COALESCE(t.category, 'tile') AS item_category
+              ${categorySelect}
        FROM stock_items i
        LEFT JOIN stock_types t ON t.id = i.type_id
        WHERE i.sku = $1

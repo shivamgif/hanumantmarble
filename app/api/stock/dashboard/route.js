@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getStockContext } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
+import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 
 export async function GET(request) {
   const { session, appUser } = await getStockContext(request);
@@ -21,6 +22,14 @@ export async function GET(request) {
     : null;
 
   try {
+    const schemaCaps = await getStockSchemaCapabilities();
+    const weightPerUnitSelect = schemaCaps.hasStockItemsWeightPerUnitKg
+      ? 'i.weight_per_unit_kg'
+      : 'NULL::numeric AS weight_per_unit_kg';
+    const ratePerBagSelect = schemaCaps.hasStockItemsRatePerBag
+      ? 'i.rate_per_bag'
+      : 'NULL::numeric AS rate_per_bag';
+
     const [summaryRows, activeItems, recentArrivalsRaw, recentArrivalProducts, recentDispatchProducts, recentDispatchesRaw] = await Promise.all([
       sql('SELECT * FROM stock_dashboard_summary_view LIMIT 1', []),
       sql(
@@ -38,8 +47,8 @@ export async function GET(request) {
            i.finish,
            i.grade,
            i.unit_of_measure,
-           i.weight_per_unit_kg,
-           i.rate_per_bag,
+           ${weightPerUnitSelect},
+           ${ratePerBagSelect},
            b.name AS brand_name,
            t.name AS type_name,
            d.name AS division_name,

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
+import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 
 export async function GET(request) {
   const { session, appUser } = await getStockContext(request);
@@ -18,6 +19,7 @@ export async function GET(request) {
   }
 
   try {
+    const schemaCaps = await getStockSchemaCapabilities();
     const pick = (result, col) => {
       const rows = result?.status === 'fulfilled' ? result.value : [];
       return rows.map((r) => r[col]).filter((v) => v != null && String(v).trim() !== '');
@@ -43,7 +45,9 @@ export async function GET(request) {
     ] = await Promise.allSettled([
       sql('SELECT DISTINCT name FROM stock_suppliers WHERE name IS NOT NULL ORDER BY name', []),
       sql('SELECT DISTINCT name FROM stock_transporters WHERE name IS NOT NULL ORDER BY name', []),
-      sql(`SELECT DISTINCT i.name FROM stock_items i LEFT JOIN stock_types t ON t.id = i.type_id WHERE i.name IS NOT NULL AND (t.category IS NULL OR t.category = 'tile') ORDER BY i.name`, []),
+      schemaCaps.hasStockTypesCategory
+        ? sql(`SELECT DISTINCT i.name FROM stock_items i LEFT JOIN stock_types t ON t.id = i.type_id WHERE i.name IS NOT NULL AND (t.category IS NULL OR t.category = 'tile') ORDER BY i.name`, [])
+        : sql(`SELECT DISTINCT i.name FROM stock_items i WHERE i.name IS NOT NULL ORDER BY i.name`, []),
       sql('SELECT DISTINCT name AS brand FROM stock_brands WHERE name IS NOT NULL ORDER BY name', []),
       sql('SELECT DISTINCT name AS division FROM stock_divisions WHERE name IS NOT NULL ORDER BY name', []),
       sql('SELECT DISTINCT finish FROM stock_items WHERE finish IS NOT NULL ORDER BY finish', []),
@@ -60,8 +64,12 @@ export async function GET(request) {
       sql('SELECT DISTINCT driver_name FROM stock_inbound_shipments WHERE driver_name IS NOT NULL ORDER BY driver_name', []),
       sql('SELECT DISTINCT truck_license_plate FROM stock_inbound_shipments WHERE truck_license_plate IS NOT NULL ORDER BY truck_license_plate', []),
       sql("SELECT DISTINCT payment_mode FROM stock_inbound_shipments WHERE payment_mode IS NOT NULL AND payment_mode <> '' ORDER BY payment_mode", []),
-      sql(`SELECT name AS bag_type FROM stock_types WHERE category = 'bag' AND is_active = true ORDER BY name`, []),
-      sql(`SELECT DISTINCT i.name AS bag_item_name FROM stock_items i JOIN stock_types t ON t.id = i.type_id WHERE t.category = 'bag' AND i.is_active = true ORDER BY i.name`, []),
+      schemaCaps.hasStockTypesCategory
+        ? sql(`SELECT name AS bag_type FROM stock_types WHERE category = 'bag' AND is_active = true ORDER BY name`, [])
+        : Promise.resolve([]),
+      schemaCaps.hasStockTypesCategory
+        ? sql(`SELECT DISTINCT i.name AS bag_item_name FROM stock_items i JOIN stock_types t ON t.id = i.type_id WHERE t.category = 'bag' AND i.is_active = true ORDER BY i.name`, [])
+        : Promise.resolve([]),
     ]);
 
     return NextResponse.json({

@@ -11,6 +11,7 @@ import {
   upsertNamedRecord,
 } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
+import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 
 function generateSku({ brandName, typeName, sizeLabel, itemName }) {
   const parts = [brandName, typeName, sizeLabel, itemName]
@@ -75,6 +76,7 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
   }
 
   const isBagItem = item.itemCategory === 'bag';
+  const schemaCaps = await getStockSchemaCapabilities();
 
   const brand = await upsertNamedRecord({ table: 'stock_brands', value: item.brandName });
 
@@ -82,7 +84,7 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
   const typeRow = await upsertNamedRecord({
     table: 'stock_types',
     value: item.typeName || (isBagItem ? 'Adhesive' : 'Tile'),
-    extra: isBagItem ? { category: 'bag' } : { category: 'tile' },
+    extra: schemaCaps.hasStockTypesCategory ? (isBagItem ? { category: 'bag' } : { category: 'tile' }) : {},
   });
 
   let sizeRow = null;
@@ -109,70 +111,101 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
 
   const sku = generateSku({ brandName: brand.name, typeName: item.typeName, sizeLabel: sizeRow?.label || null, itemName: item.itemName });
 
+  const columns = [
+    'sku',
+    'brand_id',
+    'type_id',
+    'division_id',
+    'size_id',
+    'name',
+    'finish',
+    'grade',
+    'unit_of_measure',
+    'pieces_per_box',
+    'thickness_mm',
+  ];
+
+  const values = [
+    sku,
+    brand.id,
+    typeRow?.id || null,
+    division?.id || null,
+    sizeRow?.id || null,
+    normalizeText(item.itemName),
+    item.finish || null,
+    item.grade || null,
+    isBagItem ? 'bag' : (item.unitOfMeasure || 'box'),
+    isBagItem ? null : (item.piecesPerBox || null),
+    item.thicknessMm || null,
+  ];
+
+  if (schemaCaps.hasStockItemsWeightPerUnitKg) {
+    columns.push('weight_per_unit_kg');
+    values.push(isBagItem ? (item.weightPerUnitKg || null) : null);
+  }
+
+  if (schemaCaps.hasStockItemsRatePerBag) {
+    columns.push('rate_per_bag');
+    values.push(isBagItem ? (item.ratePerBag || null) : null);
+  }
+
+  columns.push(
+    'reorder_level',
+    'safety_stock',
+    'purchase_price',
+    'landed_cost',
+    'selling_price',
+    'description'
+  );
+  values.push(
+    Number(orderedBoxes || 0),
+    item.safetyStock || 0,
+    item.purchasePrice || null,
+    item.landedCost || null,
+    item.sellingPrice || null,
+    item.description || null
+  );
+
+  const placeholders = values.map((_, index) => `$${index + 1}`).join(', ');
+
+  const updates = [
+    'brand_id = EXCLUDED.brand_id',
+    'type_id = EXCLUDED.type_id',
+    'division_id = EXCLUDED.division_id',
+    'size_id = EXCLUDED.size_id',
+    'name = EXCLUDED.name',
+    'finish = EXCLUDED.finish',
+    'grade = EXCLUDED.grade',
+    'unit_of_measure = EXCLUDED.unit_of_measure',
+    'pieces_per_box = EXCLUDED.pieces_per_box',
+    'thickness_mm = COALESCE(EXCLUDED.thickness_mm, stock_items.thickness_mm)',
+  ];
+
+  if (schemaCaps.hasStockItemsWeightPerUnitKg) {
+    updates.push('weight_per_unit_kg = COALESCE(EXCLUDED.weight_per_unit_kg, stock_items.weight_per_unit_kg)');
+  }
+
+  if (schemaCaps.hasStockItemsRatePerBag) {
+    updates.push('rate_per_bag = COALESCE(EXCLUDED.rate_per_bag, stock_items.rate_per_bag)');
+  }
+
+  updates.push(
+    'reorder_level = stock_items.reorder_level + EXCLUDED.reorder_level',
+    'safety_stock = EXCLUDED.safety_stock',
+    'purchase_price = EXCLUDED.purchase_price',
+    'landed_cost = EXCLUDED.landed_cost',
+    'selling_price = EXCLUDED.selling_price',
+    'description = EXCLUDED.description',
+    'updated_at = NOW()'
+  );
+
   const rows = await sql(
-    `INSERT INTO stock_items (
-      sku,
-      brand_id,
-      type_id,
-      division_id,
-      size_id,
-      name,
-      finish,
-      grade,
-      unit_of_measure,
-      pieces_per_box,
-      thickness_mm,
-      weight_per_unit_kg,
-      rate_per_bag,
-      reorder_level,
-      safety_stock,
-      purchase_price,
-      landed_cost,
-      selling_price,
-      description
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
-    ON CONFLICT (sku) DO UPDATE SET
-      brand_id = EXCLUDED.brand_id,
-      type_id = EXCLUDED.type_id,
-      division_id = EXCLUDED.division_id,
-      size_id = EXCLUDED.size_id,
-      name = EXCLUDED.name,
-      finish = EXCLUDED.finish,
-      grade = EXCLUDED.grade,
-      unit_of_measure = EXCLUDED.unit_of_measure,
-      pieces_per_box = EXCLUDED.pieces_per_box,
-      thickness_mm = COALESCE(EXCLUDED.thickness_mm, stock_items.thickness_mm),
-      weight_per_unit_kg = COALESCE(EXCLUDED.weight_per_unit_kg, stock_items.weight_per_unit_kg),
-      rate_per_bag = COALESCE(EXCLUDED.rate_per_bag, stock_items.rate_per_bag),
-      reorder_level = stock_items.reorder_level + $14,
-      safety_stock = EXCLUDED.safety_stock,
-      purchase_price = EXCLUDED.purchase_price,
-      landed_cost = EXCLUDED.landed_cost,
-      selling_price = EXCLUDED.selling_price,
-      description = EXCLUDED.description,
-      updated_at = NOW()
-    RETURNING *`,
-    [
-      sku,
-      brand.id,
-      typeRow?.id || null,
-      division?.id || null,
-      sizeRow?.id || null,
-      normalizeText(item.itemName),
-      item.finish || null,
-      item.grade || null,
-      isBagItem ? 'bag' : (item.unitOfMeasure || 'box'),
-      isBagItem ? null : (item.piecesPerBox || null),
-      item.thicknessMm || null,
-      isBagItem ? (item.weightPerUnitKg || null) : null,
-      isBagItem ? (item.ratePerBag || null) : null,
-      Number(orderedBoxes || 0),
-      item.safetyStock || 0,
-      item.purchasePrice || null,
-      item.landedCost || null,
-      item.sellingPrice || null,
-      item.description || null,
-    ]
+    `INSERT INTO stock_items (${columns.join(', ')})
+     VALUES (${placeholders})
+     ON CONFLICT (sku) DO UPDATE SET
+       ${updates.join(',\n       ')}
+     RETURNING *`,
+    values
   );
 
   return rows[0];
