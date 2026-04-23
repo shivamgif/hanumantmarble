@@ -128,6 +128,112 @@ const BagDispatchItemRow = memo(function BagDispatchItemRow({ index, fieldRow, c
   );
 });
 
+export function BagDispatchFormContent({
+  form,
+  itemsFieldArray,
+  attachments,
+  setAttachment,
+  onSubmit,
+  onInvalid,
+  submitting,
+  notice,
+  bagActiveItems,
+  onAddItem,
+  t,
+  tc,
+  userRole,
+}) {
+  return (
+    <Form {...form}>
+      <form className="mt-6 space-y-6" onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
+        <InlineNotice notice={notice} />
+        <div className={FORM_CARD_CLASS}>
+          <FormSectionTitle category="Outbound Strategy" icon={Send} title="Bag Dispatch Basics" description="Invoice and customer details for bag goods dispatch" tc={tc} />
+          <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
+            <StockFormField control={form.control} name="shipmentNumber" label={t?.('dispatchNo') ?? 'Dispatch No.'} placeholder="DSP-202X..." autoFocus />
+            <StockFormField control={form.control} name="customerName" label={t?.('customer') ?? 'Customer'} placeholder="Customer Name..." />
+            <StockFormField control={form.control} name="customerPhoneNumber" label={tc?.customerPhone ?? 'Customer Phone'} placeholder="+91 9876543210" type="tel" />
+            <StockFormField control={form.control} name="invoiceNumber" label={t?.('invoiceNo') ?? 'Invoice No.'} placeholder="INV-..." />
+            <StockDateField control={form.control} name="dispatchDate" label={tc?.date ?? 'Date'} placeholder="Date" />
+            <StockFormField control={form.control} name="salespersonName" label={t?.('salesperson') ?? 'Salesperson'} placeholder="Salesperson..." />
+            <AttachmentField label={tc?.salesInvoicePhoto ?? 'Sales Invoice'} file={attachments?.salesInvoice} onChange={(file) => setAttachment('salesInvoice', file)} hint={tc?.salesInvoiceHint} tc={tc} />
+            <AttachmentField label={tc?.gatepassPhoto ?? 'Gate Pass'} file={attachments?.gatepass} onChange={(file) => setAttachment('gatepass', file)} accept="image/*" hint={tc?.gatepassHint} tc={tc} />
+          </div>
+        </div>
+        <div className={FORM_CARD_CLASS}>
+          <FormSectionTitle category="Mobility Details" icon={Truck} title={tc?.transportAndVehicle ?? 'Transport & Vehicle'} tc={tc} />
+          <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
+            <StockFormField control={form.control} name="truckLicensePlate" label={t?.('truck') ?? 'Truck'} placeholder="RJ 14 XY 0000" />
+            <StockFormField control={form.control} name="driverName" label={t?.('driver') ?? 'Driver'} placeholder="Driver Name..." />
+            <StockMoneyField control={form.control} name="transportCost" label={t?.('transportCost') ?? 'Transport Cost'} hint={tc?.amountInInr} />
+            <StockMoneyField control={form.control} name="laborCost" label={t?.('laborCost') ?? 'Labour Cost'} hint={tc?.amountInInr} />
+          </div>
+        </div>
+        <div className={FORM_CARD_CLASS}>
+          <div className="flex justify-between items-center mb-4 gap-4 px-1">
+            <div className="space-y-1">
+              <nav className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
+                <span>Inventory Hub</span>
+                <ChevronRight className="h-2.5 w-2.5 opacity-50" />
+                <span className="text-amber-400">Bag Goods</span>
+              </nav>
+              <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">{t?.('items') ?? 'Items'}</h3>
+            </div>
+          </div>
+          <div className="space-y-4">
+            {itemsFieldArray.fields.map((fieldRow, index) => (
+              <BagDispatchItemRow
+                key={fieldRow.id}
+                index={index}
+                fieldRow={fieldRow}
+                control={form.control}
+                bagActiveItems={bagActiveItems}
+                tc={tc}
+                userRole={userRole}
+                totalItems={itemsFieldArray.fields.length}
+                onRemoveItem={(i) => itemsFieldArray.remove(i)}
+              />
+            ))}
+            <button
+              type="button"
+              onClick={onAddItem}
+              className="inline-flex mb-4 items-center gap-2 rounded-full bg-amber-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-amber-400 transition-all hover:bg-amber-500/20 hover:scale-105 active:scale-95"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add Bag Item
+            </button>
+          </div>
+        </div>
+        <div className={FORM_CARD_CLASS}>
+          <FormField
+            control={form.control}
+            name="notes"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className={FORM_LABEL_CLASS}>{t?.('notes') ?? 'Notes'}</FormLabel>
+                <FormControl>
+                  <Textarea {...field} value={field.value ?? ''} className={FORM_INPUT_CLASS} rows={3} />
+                </FormControl>
+                <FormMessage className="text-xs" />
+              </FormItem>
+            )}
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="mt-6 w-full rounded-2xl bg-amber-500 px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-amber-500/20 transition-all hover:brightness-110 hover:scale-[1.01] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <span className="inline-flex items-center justify-center gap-3">
+            <Package className="h-5 w-5" />
+            {submitting ? (tc?.submitting ?? 'Submitting...') : 'Submit Bag Dispatch'}
+          </span>
+        </button>
+      </form>
+    </Form>
+  );
+}
+
 export function DispatchFormContent({
   form,
   itemsFieldArray,
@@ -139,15 +245,12 @@ export function DispatchFormContent({
   notice,
   activeItems,
   onAddItem,
-  onAddBagItem,
   t,
   tc,
   language,
   userRole,
 }) {
-  const tileItems = useMemo(() => (activeItems || []).filter((i) => i.unit_of_measure !== 'bag'), [activeItems]);
-  const bagActiveItems = useMemo(() => (activeItems || []).filter((i) => i.unit_of_measure === 'bag'), [activeItems]);
-  const itemOptions = useMemo(() => tileItems.map((stockItem) => ({ id: stockItem.id, sku: stockItem.sku, name: stockItem.name })), [tileItems]);
+  const itemOptions = useMemo(() => (activeItems || []).map((stockItem) => ({ id: stockItem.id, sku: stockItem.sku, name: stockItem.name })), [activeItems]);
 
   return (
     <Form {...form}>
@@ -192,29 +295,17 @@ export function DispatchFormContent({
                 </nav>
                 <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">{t('items')}</h3>
               </div>
+
             </div>
+            
             <div className="space-y-4">
-              {itemsFieldArray.fields.map((fieldRow, index) => {
-                const isBag = fieldRow.itemCategory === 'bag';
-                return isBag ? (
-                  <BagDispatchItemRow
-                    key={fieldRow.id}
-                    index={index}
-                    fieldRow={fieldRow}
-                    control={form.control}
-                    bagActiveItems={bagActiveItems}
-                    tc={tc}
-                    userRole={userRole}
-                    totalItems={itemsFieldArray.fields.length}
-                    onRemoveItem={(i) => itemsFieldArray.remove(i)}
-                  />
-                ) : (
+              {itemsFieldArray.fields.map((fieldRow, index) => (
                 <DispatchItemRow
                   key={fieldRow.id}
                   index={index}
                   fieldRow={fieldRow}
                   control={form.control}
-                  activeItems={tileItems}
+                  activeItems={activeItems}
                   itemOptions={itemOptions}
                   t={t}
                   tc={tc}
@@ -223,31 +314,18 @@ export function DispatchFormContent({
                   totalItems={itemsFieldArray.fields.length}
                   onRemoveItem={(i) => itemsFieldArray.remove(i)}
                 />
-                );
-              })}
-            </div>
-            <div className="flex gap-2 mt-2">
-              <button
-                type="button"
-                onClick={onAddItem}
-                className="inline-flex mb-4 items-center gap-2 rounded-full bg-brand-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <Boxes className="h-3.5 w-3.5" />
-                {t('addItem')}
-              </button>
-              <button
-                type="button"
-                onClick={onAddBagItem}
-                className="inline-flex mb-4 items-center gap-2 rounded-full bg-amber-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-amber-400 transition-all hover:bg-amber-500/20 hover:scale-105 active:scale-95"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <Package className="h-3.5 w-3.5" />
-                Add Bag Item
-              </button>
+              ))}
             </div>
           </div>
         </div>
+        <button
+              type="button"
+              onClick={onAddItem}
+              className="inline-flex mb-4 items-center gap-2 rounded-full bg-brand-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {t('addItem')}
+            </button>
         <div className={FORM_CARD_CLASS}>
           <FormField
             control={form.control}
