@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Boxes, FileText, Plus, ReceiptText, Sparkles, Truck, ChevronRight, X } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -205,6 +205,7 @@ export function ArrivalFormContent({
 }) {
   const percentFieldClass = 'w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20';
   const itemNames = useMemo(() => (activeItems || []).map((it) => it.name).filter(Boolean), [activeItems]);
+  const [weightUnit, setWeightUnit] = useState('kg');
 
   return (
     <Form {...form}>
@@ -238,7 +239,57 @@ export function ArrivalFormContent({
             <SuggestComboboxField control={form.control} name="destinationWarehouseName" label={tc.destinationWarehouse} placeholder="Warehouse name" options={suggestions.destinationWarehouseName} />
             <StockMoneyField control={form.control} name="transportCost" label={t('transportCost')} hint={tc.amountInInr} />
             <StockMoneyField control={form.control} name="laborCost" label={t('laborCost')} hint={tc.amountInInr} />
-            <StockFormField control={form.control} name="freightWeightKg" label={tc.weightKg} type="number" placeholder="0" min="0" step="0.01" />
+            <FormField
+              control={form.control}
+              name="freightWeightKg"
+              render={({ field }) => {
+                const displayValue = field.value === '' || field.value == null
+                  ? ''
+                  : weightUnit === 't'
+                    ? String(round3(toNumber(field.value) / 1000))
+                    : field.value;
+                return (
+                  <FormItem>
+                    <FormLabel className={FORM_LABEL_CLASS}>{tc.weightKg}</FormLabel>
+                    <div className="flex rounded-lg border border-border overflow-hidden text-[15px] font-black">
+                          {['kg', 't'].map((u) => (
+                            <button
+                              key={u}
+                              type="button"
+                              onClick={() => setWeightUnit(u)}
+                              className={`px-2.5 transition-colors uppercase tracking-wider ${weightUnit === u ? 'bg-brand-primary text-white' : 'bg-background text-slate-400 hover:bg-slate-500/10'}`}
+                            >
+                              {u}
+                            </button>
+                          ))}
+                        </div>
+                    <FormControl>
+                      
+                      <div className="flex gap-1.5">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.001"
+                          placeholder="0"
+                          className={FORM_INPUT_CLASS}
+                          value={displayValue}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (raw === '') { field.onChange(''); return; }
+                            const num = parseFloat(raw);
+                            if (isNaN(num)) return;
+                            field.onChange(weightUnit === 't' ? String(num * 1000) : raw);
+                          }}
+                          onBlur={field.onBlur}
+                        />
+                        
+                      </div>
+                    </FormControl>
+                    <FormMessage className="text-xs" />
+                  </FormItem>
+                );
+              }}
+            />
           </div>
         </div>
         <div className={FORM_CARD_CLASS}>
