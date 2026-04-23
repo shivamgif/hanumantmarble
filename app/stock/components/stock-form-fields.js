@@ -168,7 +168,7 @@ export function SuggestComboboxField({ control, name, label, placeholder, option
   );
 }
 
-export function StockFormField({ control, name, label, placeholder, type = 'text', className, ...props }) {
+export function StockFormField({ control, name, label, placeholder, type = 'text', className, digitsOnly, ...props }) {
   return (
     <FormField
       control={control}
@@ -183,6 +183,14 @@ export function StockFormField({ control, name, label, placeholder, type = 'text
               type={type}
               placeholder={placeholder}
               className={className || FORM_INPUT_CLASS}
+              onChange={(e) => {
+                if (digitsOnly) {
+                  const val = e.target.value.replace(/\D/g, '');
+                  field.onChange(val);
+                } else {
+                  field.onChange(e);
+                }
+              }}
               {...props}
             />
           </FormControl>

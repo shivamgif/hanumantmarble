@@ -174,7 +174,7 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
             <StockFormField control={control} name={`items.${index}.sizeWidthMm`} label={`${tc.width} (${tc.mm})`} type="number" placeholder="800" min="0" step="0.01" disabled={isCatalogItem} />
             <StockFormField control={control} name={`items.${index}.sizeLengthMm`} label={`${tc.length} (${tc.mm})`} type="number" placeholder="800" min="0" step="0.01" disabled={isCatalogItem} />
             <StockFormField control={control} name={`items.${index}.piecesPerBox`} label={tc.piecesPerBox} type="number" placeholder="2" min="0" disabled={isCatalogItem} />
-            <StockFormField control={control} name={`items.${index}.hsnCode`} label={tc.hsn} placeholder={tc.hsn} list="sg-hsnCode" disabled={isCatalogItem} />
+            <StockFormField control={control} name={`items.${index}.hsnCode`} label={tc.hsn} placeholder={tc.hsn} list="sg-hsnCode" disabled={isCatalogItem} digitsOnly />
             <StockFormField control={control} name={`items.${index}.thicknessMm`} label={`${tc.thickness} (${tc.mm})`} type="number" min="0" step="0.01" disabled={isCatalogItem} />
             <StockFormField control={control} name={`items.${index}.costPerSqm`} label={t('costPerSqm')} type="number" min="0" step="0.01" disabled={isCatalogItem} />
             <StockFormField control={control} name={`items.${index}.description`} label={tc.description} placeholder="Notes..." className="lg:col-span-2" disabled={isCatalogItem} />
@@ -231,7 +231,7 @@ const BagArrivalItemRow = memo(function BagArrivalItemRow({ index, fieldRow, con
         <div className="grid gap-4 sm:grid-cols-3">
           <StockFormField control={control} name={`items.${index}.weightPerUnitKg`} label="Weight per Bag (kg)" type="number" placeholder="25" min="0" step="0.1" />
           <StockFormField control={control} name={`items.${index}.ratePerBag`} label="Rate per Bag (₹)" type="number" placeholder="0" min="0" step="0.01" />
-          <StockFormField control={control} name={`items.${index}.hsnCode`} label="HSN Code" placeholder="HSN..." list="sg-hsnCode" />
+          <StockFormField control={control} name={`items.${index}.hsnCode`} label="HSN Code" placeholder="HSN..." list="sg-hsnCode" digitsOnly />
         </div>
         <StockFormField control={control} name={`items.${index}.description`} label="Description" placeholder="Notes..." />
       </div>
@@ -279,7 +279,7 @@ export function BagArrivalFormContent({
           <FormSectionTitle category="Intake Strategy" icon={FileText} title="Purchase Basics" description="Invoice and cost details for bag goods" tc={tc} />
           <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
             <SuggestComboboxField control={form.control} name="supplierName" label={t?.('supplier') ?? 'Supplier'} placeholder="Supplier Name..." options={suggestions?.supplierName} />
-            <StockFormField control={form.control} name="invoiceNumber" label={t?.('invoiceNo') ?? 'Invoice No.'} placeholder="INV-..." />
+            <StockFormField control={form.control} name="invoiceNumber" label={t?.('invoiceNo') ?? 'Invoice No.'} placeholder="INV-..." digitsOnly />
             <StockDateField control={form.control} name="invoiceDate" label={tc?.invoiceDate ?? 'Invoice Date'} placeholder="Invoice Date" />
             <StockFormField control={form.control} name="handlingCostPercent" label="Handling Cost %" type="number" placeholder="1.0" min="0" step="0.1" />
             <StockFormField control={form.control} name="fuelCostPercent" label="Fuel Cost %" type="number" placeholder="5.0" min="0" step="0.1" />
@@ -444,7 +444,7 @@ export function ArrivalFormContent({
           <FormSectionTitle category="Intake Strategy" icon={FileText} title={tc.purchaseBasics} description={tc.purchaseBasicsDesc} tc={tc} />
           <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
             <SuggestComboboxField control={form.control} name="supplierName" label={t('supplier')} placeholder="Supplier Name..." options={suggestions.supplierName} />
-            <StockFormField control={form.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." />
+            <StockFormField control={form.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." digitsOnly />
             <StockDateField control={form.control} name="invoiceDate" label={tc.invoiceDate} placeholder={tc.invoiceDate} />
             <StockFormField control={form.control} name="handlingCostPercent" label={`${tc.handlingCost} %`} type="number" placeholder="1.0" min="0" step="0.1" />
             <StockFormField control={form.control} name="fuelCostPercent" label={`${tc.fuelCost} %`} type="number" placeholder="5.0" min="0" step="0.1" />
