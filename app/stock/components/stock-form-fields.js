@@ -75,7 +75,7 @@ export function InlineNotice({ notice }) {
   );
 }
 
-export function SuggestCombobox({ value, onChange, options = [], placeholder, className, onBlur, disabled, inputRef }) {
+export function SuggestCombobox({ value, onChange, options = [], placeholder, className, onBlur, disabled, inputRef, ...props }) {
   const [open, setOpen] = useState(false);
   const current = String(value ?? '');
   const needle = current.trim().toLowerCase();
@@ -110,6 +110,7 @@ export function SuggestCombobox({ value, onChange, options = [], placeholder, cl
           className={className || FORM_INPUT_CLASS}
           disabled={disabled}
           autoComplete="off"
+          {...props}
         />
       </PopoverAnchor>
       <PopoverContent
@@ -140,7 +141,7 @@ export function SuggestCombobox({ value, onChange, options = [], placeholder, cl
   );
 }
 
-export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [], placeholder, className, onBlur, disabled }) {
+export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [], placeholder, className, onBlur, disabled, ...props }) {
   const [open, setOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -196,6 +197,7 @@ export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [],
           className={className || FORM_INPUT_CLASS}
           disabled={disabled}
           autoComplete="off"
+          {...props}
         />
       </PopoverAnchor>
       <PopoverContent
@@ -295,9 +297,9 @@ export function StockMoneyField({ control, name, label, hint, placeholder = '0.0
       render={({ field }) => (
         <FormItem>
           <FormLabel className={FORM_LABEL_CLASS}>{label}</FormLabel>
-          <FormControl>
-            <div className="relative group/money">
-              <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-[13px] font-black text-dark transition-colors group-focus-within/money:text-brand-primary">₹</span>
+          <div className="relative group/money">
+            <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-[13px] font-black text-dark transition-colors group-focus-within/money:text-brand-primary">₹</span>
+            <FormControl>
               <Input
                 {...field}
                 value={field.value ?? ''}
@@ -307,8 +309,8 @@ export function StockMoneyField({ control, name, label, hint, placeholder = '0.0
                 placeholder={placeholder}
                 className={`${FORM_INPUT_CLASS} pl-10`}
               />
-            </div>
-          </FormControl>
+            </FormControl>
+          </div>
           {hint ? <p className="text-[11px] text-muted-foreground">{hint}</p> : null}
           <FormMessage className="text-xs" />
         </FormItem>

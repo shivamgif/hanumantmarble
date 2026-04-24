@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
-export function DatePicker({ value, onChange, placeholder = "Pick a date", className, disabled }) {
+export function DatePicker({ value, onChange, placeholder = "Pick a date", className, disabled, ...props }) {
   const selectedDate = value ? new Date(value) : undefined
 
   return (
@@ -22,6 +22,7 @@ export function DatePicker({ value, onChange, placeholder = "Pick a date", class
             className
           )}
           disabled={disabled}
+          {...props}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
           {selectedDate ? format(selectedDate, "PPP") : placeholder}

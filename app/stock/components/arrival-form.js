@@ -108,18 +108,18 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className={FORM_LABEL_CLASS}>{tc.division}</FormLabel>
-                  <FormControl>
-                    <Select value={field.value || ''} onValueChange={field.onChange} disabled={isCatalogItem}>
+                  <Select value={field.value || ''} onValueChange={field.onChange} disabled={isCatalogItem}>
+                    <FormControl>
                       <SelectTrigger className={FORM_INPUT_CLASS}>
                         <SelectValue placeholder={tc.division} />
                       </SelectTrigger>
-                      <SelectContent className="glass-panel">
-                        <SelectItem value="Ceramic">Ceramic</SelectItem>
-                        <SelectItem value="Eternity (GVT)">Eternity (GVT)</SelectItem>
-                        <SelectItem value="Vitronite (PVT)">Vitronite (PVT)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
+                    </FormControl>
+                    <SelectContent className="glass-panel">
+                      <SelectItem value="Ceramic">Ceramic</SelectItem>
+                      <SelectItem value="Eternity (GVT)">Eternity (GVT)</SelectItem>
+                      <SelectItem value="Vitronite (PVT)">Vitronite (PVT)</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage className="text-xs" />
                 </FormItem>
               )}
@@ -130,21 +130,21 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className={FORM_LABEL_CLASS}>{tc.finish}</FormLabel>
-                  <FormControl>
-                    <Select value={field.value || ''} onValueChange={field.onChange} disabled={isCatalogItem}>
+                  <Select value={field.value || ''} onValueChange={field.onChange} disabled={isCatalogItem}>
+                    <FormControl>
                       <SelectTrigger className={FORM_INPUT_CLASS}>
                         <SelectValue placeholder={tc.finish} />
                       </SelectTrigger>
-                      <SelectContent className="glass-panel">
-                        <SelectItem value="Polished">Polished</SelectItem>
-                        <SelectItem value="Vitrified">Vitrified</SelectItem>
-                        <SelectItem value="Matte">Matte</SelectItem>
-                        <SelectItem value="Satin">Satin</SelectItem>
-                        <SelectItem value="Carving">Carving</SelectItem>
-                        <SelectItem value="High-gloss">High-gloss</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
+                    </FormControl>
+                    <SelectContent className="glass-panel">
+                      <SelectItem value="Polished">Polished</SelectItem>
+                      <SelectItem value="Vitrified">Vitrified</SelectItem>
+                      <SelectItem value="Matte">Matte</SelectItem>
+                      <SelectItem value="Satin">Satin</SelectItem>
+                      <SelectItem value="Carving">Carving</SelectItem>
+                      <SelectItem value="High-gloss">High-gloss</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage className="text-xs" />
                 </FormItem>
               )}
@@ -155,18 +155,18 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className={FORM_LABEL_CLASS}>{tc.quality}</FormLabel>
-                  <FormControl>
-                    <Select value={field.value || ''} onValueChange={field.onChange} disabled={isCatalogItem}>
+                  <Select value={field.value || ''} onValueChange={field.onChange} disabled={isCatalogItem}>
+                    <FormControl>
                       <SelectTrigger className={FORM_INPUT_CLASS}>
                         <SelectValue placeholder={tc.quality} />
                       </SelectTrigger>
-                      <SelectContent className="glass-panel">
-                        <SelectItem value="Premium">Premium</SelectItem>
-                        <SelectItem value="Standard">Standard</SelectItem>
-                        <SelectItem value="Commercial">Commercial</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
+                    </FormControl>
+                    <SelectContent className="glass-panel">
+                      <SelectItem value="Premium">Premium</SelectItem>
+                      <SelectItem value="Standard">Standard</SelectItem>
+                      <SelectItem value="Commercial">Commercial</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage className="text-xs" />
                 </FormItem>
               )}
@@ -310,21 +310,22 @@ export function BagArrivalFormContent({
                 return (
                   <FormItem>
                     <FormLabel className={FORM_LABEL_CLASS}>{tc?.weightKg ?? 'Freight Weight'}</FormLabel>
-                    <FormControl>
                       <div className="flex gap-1.5">
-                        <Input
-                          type="number" min="0" step="0.001" placeholder="0"
-                          className={FORM_INPUT_CLASS}
-                          value={displayValue}
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            if (raw === '') { field.onChange(''); return; }
-                            const num = parseFloat(raw);
-                            if (isNaN(num)) return;
-                            field.onChange(weightUnit === 't' ? String(num * 1000) : raw);
-                          }}
-                          onBlur={field.onBlur}
-                        />
+                        <FormControl>
+                          <Input
+                            type="number" min="0" step="0.001" placeholder="0"
+                            className={FORM_INPUT_CLASS}
+                            value={displayValue}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              if (raw === '') { field.onChange(''); return; }
+                              const num = parseFloat(raw);
+                              if (isNaN(num)) return;
+                              field.onChange(weightUnit === 't' ? String(num * 1000) : raw);
+                            }}
+                            onBlur={field.onBlur}
+                          />
+                        </FormControl>
                         <div className="inline-flex mb-4 items-center gap-2 rounded-full bg-brand-primary/10 p-2 text-[15px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95">
                           {['kg', 't'].map((u) => (
                             <button key={u} type="button" onClick={() => setWeightUnit(u)}
@@ -334,7 +335,6 @@ export function BagArrivalFormContent({
                           ))}
                         </div>
                       </div>
-                    </FormControl>
                     <FormMessage className="text-xs" />
                   </FormItem>
                 );
@@ -476,25 +476,25 @@ export function ArrivalFormContent({
                   <FormItem>
                     <FormLabel className={FORM_LABEL_CLASS}>{tc.weightKg}</FormLabel>
                     
-                    <FormControl>
-                      
                       <div className="flex gap-1.5">
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.001"
-                          placeholder="0"
-                          className={FORM_INPUT_CLASS}
-                          value={displayValue}
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            if (raw === '') { field.onChange(''); return; }
-                            const num = parseFloat(raw);
-                            if (isNaN(num)) return;
-                            field.onChange(weightUnit === 't' ? String(num * 1000) : raw);
-                          }}
-                          onBlur={field.onBlur}
-                        />
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.001"
+                            placeholder="0"
+                            className={FORM_INPUT_CLASS}
+                            value={displayValue}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              if (raw === '') { field.onChange(''); return; }
+                              const num = parseFloat(raw);
+                              if (isNaN(num)) return;
+                              field.onChange(weightUnit === 't' ? String(num * 1000) : raw);
+                            }}
+                            onBlur={field.onBlur}
+                          />
+                        </FormControl>
                         <div className="inline-flex mb-4 items-center gap-2 rounded-full bg-brand-primary/10 p-2 text-[15px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95">
                           {['kg', 't'].map((u) => (
                             <button
@@ -508,7 +508,6 @@ export function ArrivalFormContent({
                           ))}
                         </div>
                       </div>
-                    </FormControl>
                     <FormMessage className="text-xs" />
                   </FormItem>
                 );

@@ -6,7 +6,7 @@ import { Clock3 } from "lucide-react"
 import { DatePicker } from "@/components/ui/date-picker"
 import { cn } from "@/lib/utils"
 
-export function DateTimePicker({ value, onChange, datePlaceholder = "Pick a date", disabled, className }) {
+export function DateTimePicker({ value, onChange, datePlaceholder = "Pick a date", disabled, className, ...props }) {
   const dateValue = useMemo(() => {
     if (!value) return ""
     return String(value).slice(0, 10)
@@ -42,6 +42,7 @@ export function DateTimePicker({ value, onChange, datePlaceholder = "Pick a date
         placeholder={datePlaceholder}
         disabled={disabled}
         className={className}
+        {...props}
       />
       <div
         className={cn(
