@@ -158,7 +158,7 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
     'description'
   );
   values.push(
-    Number(orderedBoxes || 0),
+    Number(orderedBoxes*0.5|| 0),
     item.safetyStock || 0,
     item.purchasePrice || null,
     item.landedCost || null,
@@ -190,7 +190,7 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
   }
 
   updates.push(
-    'reorder_level = stock_items.reorder_level + EXCLUDED.reorder_level',
+    'reorder_level = EXCLUDED.reorder_level',
     'safety_stock = EXCLUDED.safety_stock',
     'purchase_price = EXCLUDED.purchase_price',
     'landed_cost = EXCLUDED.landed_cost',
