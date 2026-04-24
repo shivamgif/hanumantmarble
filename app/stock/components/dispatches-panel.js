@@ -133,7 +133,11 @@ export function DispatchesPanel({
                   {d.customer_name || '—'}
                   {d.customer_phone_number ? ` • ${d.customer_phone_number}` : ''}
                 </p>
-                <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{Number(d.total_whole_qty || 0)} whole / {Number(d.total_broken_qty || 0)} broken</p>
+                <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                  {Number(d.total_bag_qty || 0) > 0
+                    ? <span className="text-amber-500 font-black">{Number(d.total_bag_qty)} <span className="text-[10px] uppercase text-amber-400/70">Bags</span></span>
+                    : <>{Number(d.total_whole_qty || 0)} whole / {Number(d.total_broken_qty || 0)} broken</>}
+                </p>
                 {(Number(d.total_return_whole_qty || 0) > 0 || Number(d.total_return_broken_qty || 0) > 0) ? (
                   <p className="text-xs text-rose-700 dark:text-rose-300">Return: {Number(d.total_return_whole_qty || 0)} whole / {Number(d.total_return_broken_qty || 0)} broken</p>
                 ) : null}
@@ -227,10 +231,16 @@ export function DispatchesPanel({
                     <div className="max-w-[260px] truncate text-xs font-black text-slate-900 dark:text-white" title={d.product_names || d.product_skus || ''}>{d.product_names || d.product_skus || '—'}</div>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="text-xs font-black text-slate-900 dark:text-white tabular-nums">
-                      {Number(d.total_whole_qty || 0)} <span className="text-[9px] font-bold text-slate-400 mr-1 uppercase">W</span>
-                      / {Number(d.total_broken_qty || 0)} <span className="text-[9px] font-bold text-slate-400 uppercase">B</span>
-                    </div>
+                    {Number(d.total_bag_qty || 0) > 0 ? (
+                      <div className="text-xs font-black text-amber-500 tabular-nums">
+                        {Number(d.total_bag_qty)} <span className="text-[9px] font-bold text-amber-400/70 uppercase">Bags</span>
+                      </div>
+                    ) : (
+                      <div className="text-xs font-black text-slate-900 dark:text-white tabular-nums">
+                        {Number(d.total_whole_qty || 0)} <span className="text-[9px] font-bold text-slate-400 mr-1 uppercase">W</span>
+                        / {Number(d.total_broken_qty || 0)} <span className="text-[9px] font-bold text-slate-400 uppercase">B</span>
+                      </div>
+                    )}
                   </td>
                   {canEdit && (
                     <td className="px-4 py-3 text-right">

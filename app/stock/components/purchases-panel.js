@@ -156,9 +156,9 @@ export function PurchasesPanel({
         items,
         transportCost: values.transportCost === '' ? 0 : toNumber(values.transportCost),
         laborCost: values.laborCost === '' ? 0 : toNumber(values.laborCost),
-        handlingCostPercent: values.handlingCostPercent === '' ? 1.0 : toNumber(values.handlingCostPercent),
-        fuelCostPercent: values.fuelCostPercent === '' ? 5.0 : toNumber(values.fuelCostPercent),
-        gstPercent: values.gstPercent === '' ? 18.0 : toNumber(values.gstPercent),
+        handlingCostPercent: values.handlingCostPercent === '' ? 0 : toNumber(values.handlingCostPercent),
+        fuelCostPercent: values.fuelCostPercent === '' ? 0 : toNumber(values.fuelCostPercent),
+        gstPercent: values.gstPercent === '' ? 18 : toNumber(values.gstPercent),
         freightWeightKg: values.freightWeightKg === '' ? null : toNumber(values.freightWeightKg),
       };
 
@@ -245,25 +245,25 @@ export function PurchasesPanel({
                     <SheetTitle className="text-base">{tc.logNewPurchase}</SheetTitle>
                     <SheetDescription className="text-xs">{tc.purchaseSheetDesc}</SheetDescription>
                   </div>
-                  <div className="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 p-1">
+                </div>
+                <div className="flex items-center justify-evenly gap-1 rounded-full bg-slate-100 dark:bg-slate-800 p-1">
                     <button
                       type="button"
                       onClick={() => setPurchaseType('tile')}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors ${purchaseType === 'tile' ? 'bg-brand-primary text-white shadow' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                      className={`inline-flex items-center gap-1.5 px-10 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors ${purchaseType === 'tile' ? 'bg-brand-primary text-white shadow' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                     >
                       <Boxes className="h-3 w-3" />
                       Tiles
                     </button>
                     <button
                       type="button"
-                      onClick={() => setPurchaseType('bag')}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors ${purchaseType === 'bag' ? 'bg-amber-500 text-white shadow' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                      onClick={() => { setPurchaseType('bag'); bagArrivalForm.reset(createInitialBagArrivalDraft()); }}
+                      className={`inline-flex items-center gap-1.5 px-10 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors ${purchaseType === 'bag' ? 'bg-amber-500 text-white shadow' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                     >
                       <Package className="h-3 w-3" />
                       Bags
                     </button>
                   </div>
-                </div>
               </SheetHeader>
               {purchaseType === 'tile' ? (
                 <ArrivalFormContent

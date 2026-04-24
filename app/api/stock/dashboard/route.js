@@ -121,6 +121,7 @@ export async function GET(request) {
            ,COALESCE(SUM(isi.qty_sqm), 0) AS total_qty_sqm
            ,COALESCE(AVG(NULLIF(isi.cost_per_sqm, 0)), 0) AS avg_cost_per_sqm
            ,STRING_AGG(DISTINCT COALESCE(d.name, 'General'), ', ' ORDER BY COALESCE(d.name, 'General')) AS divisions
+           ,COALESCE(SUM(CASE WHEN i.unit_of_measure = 'bag' THEN isi.ordered_qty ELSE 0 END), 0) AS total_bag_qty
          FROM stock_inbound_shipment_items isi
          JOIN stock_items i ON i.id = isi.item_id
          LEFT JOIN stock_divisions d ON d.id = i.division_id
@@ -168,8 +169,9 @@ export async function GET(request) {
              sos.approval_status,
              c.name AS customer_name,
              c.phone AS customer_phone_number,
-             COALESCE(SUM(soi.loaded_whole_qty), 0) as total_whole_qty,
-             COALESCE(SUM(soi.loaded_broken_qty), 0) as total_broken_qty,
+             COALESCE(SUM(CASE WHEN i.unit_of_measure != 'bag' THEN soi.loaded_whole_qty ELSE 0 END), 0) as total_whole_qty,
+             COALESCE(SUM(CASE WHEN i.unit_of_measure != 'bag' THEN soi.loaded_broken_qty ELSE 0 END), 0) as total_broken_qty,
+             COALESCE(SUM(CASE WHEN i.unit_of_measure = 'bag' THEN soi.loaded_whole_qty ELSE 0 END), 0) as total_bag_qty,
              COALESCE(SUM(soi.returned_whole_qty), 0) as total_return_whole_qty,
              COALESCE(SUM(soi.returned_broken_qty), 0) as total_return_broken_qty,
              COALESCE(MAX(submitter.name), MAX(submitter.email), MAX(sos.created_by), '—') AS generated_by,
@@ -180,6 +182,7 @@ export async function GET(request) {
              END AS approved_by
           FROM recent_sos sos
           LEFT JOIN stock_outbound_shipment_items soi ON sos.id = soi.outbound_shipment_id
+          LEFT JOIN stock_items i ON i.id = soi.item_id
           LEFT JOIN stock_app_users submitter ON submitter.id = sos.submitted_by_user_id
           LEFT JOIN stock_app_users approver ON approver.id = sos.approved_by_user_id
           LEFT JOIN stock_customers c ON c.id = sos.customer_id
@@ -203,6 +206,7 @@ export async function GET(request) {
         total_qty_sqm: details.total_qty_sqm || 0,
         avg_cost_per_sqm: details.avg_cost_per_sqm || 0,
         divisions: details.divisions || '',
+        total_bag_qty: details.total_bag_qty || 0,
       };
     });
 

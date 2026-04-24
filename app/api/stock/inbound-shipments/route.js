@@ -229,7 +229,7 @@ export async function GET(request) {
               (SELECT COALESCE(SUM(isi.ordered_qty), 0)
                FROM stock_inbound_shipment_items isi
                JOIN stock_items si ON si.id = isi.item_id
-               WHERE isi.shipment_id = s.id AND si.unit_of_measure = 'bag') AS total_bag_qty
+               WHERE isi.inbound_shipment_id = s.id AND si.unit_of_measure = 'bag') AS total_bag_qty
        FROM stock_inbound_shipments s
        LEFT JOIN stock_locations l ON l.id = s.destination_location_id
        ORDER BY s.created_at DESC

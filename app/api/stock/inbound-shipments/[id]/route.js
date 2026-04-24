@@ -792,8 +792,8 @@ export async function PATCH(request, context) {
         body.driverPhone || null,
         body.notes || null,
         id,
-        body.handlingCostPercent != null ? Number(body.handlingCostPercent) : null,
-        body.fuelCostPercent != null ? Number(body.fuelCostPercent) : null,
+        Number(body.handlingCostPercent ?? 1.0),
+        Number(body.fuelCostPercent ?? 5.0),
         body.gstPercent != null ? Number(body.gstPercent) : null,
         body.freightWeightKg != null ? Number(body.freightWeightKg) : null,
         body.customerId ? Number(body.customerId) : null,           // $11
