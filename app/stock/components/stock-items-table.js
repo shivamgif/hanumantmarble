@@ -1,10 +1,10 @@
 'use client';
 
 import { useCallback } from 'react';
-import { Boxes, ChevronRight, Package, Search } from 'lucide-react';
+import { Download, Boxes, ChevronRight, Package, Search } from 'lucide-react';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
-import { FORM_INPUT_CLASS, FORM_LABEL_CLASS } from '../lib/stock-utils';
+import { FORM_INPUT_CLASS, FORM_LABEL_CLASS, exportToCSV } from '../lib/stock-utils';
 
 export function StockItemsTable({ pagination, sort, setSort, search, setSearch, openPreview, t, tc, pageSize, setPageSize }) {
   const toggleSort = useCallback((key) => {
@@ -31,6 +31,29 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
               </span>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              const dateStr = new Date().toISOString().split('T')[0];
+              const columns = [
+                { id: 'sku', label: 'SKU', value: (row) => row.sku || '' },
+                { id: 'name', label: 'Name', value: (row) => row.name || '' },
+                { id: 'brand', label: 'Brand', value: (row) => row.brand_name || '' },
+                { id: 'division', label: 'Category/Division', value: (row) => row.division_name || '' },
+                { id: 'size', label: 'Size', value: (row) => row.size_label || row.type_name || '' },
+                { id: 'whole', label: 'Whole Qty', value: (row) => row.current_whole_qty || '0' },
+                { id: 'broken', label: 'Broken Qty', value: (row) => row.current_broken_qty || '0' },
+                { id: 'bags', label: 'Bags Qty', value: (row) => row.unit_of_measure === 'bag' ? row.current_whole_qty : '0' },
+                { id: 'reorder', label: 'Reorder Level', value: (row) => row.reorder_level || '0' },
+              ];
+              exportToCSV(`Inventory_Export_${dateStr}.csv`, pagination.allRows, columns);
+            }}
+            className="flex items-center gap-2 rounded-full border border-slate-200/60 bg-white px-4 py-2 text-[11px] font-black uppercase tracking-widest text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:scale-105 active:scale-95 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            title="Export Inventory to CSV"
+          >
+            <Download className="h-4 w-4" />
+            Export
+          </button>
         </div>
 
         <div className="sticky top-0 z-10 border-b border-slate-200/60 bg-white/50 px-3 py-2.5 backdrop-blur-md dark:bg-slate-900/50">

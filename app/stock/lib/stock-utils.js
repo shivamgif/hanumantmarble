@@ -390,3 +390,33 @@ export function invalidateShipmentCache(kind, id) {
     documentCache.clear();
   }
 }
+
+export function exportToCSV(filename, rows, columns) {
+  if (!rows || rows.length === 0) return;
+
+  const escapeCsv = (str) => {
+    if (str === null || str === undefined) return '""';
+    const s = String(str).replace(/"/g, '""');
+    return `"${s}"`;
+  };
+
+  const headers = columns.map((col) => escapeCsv(col.label)).join(',');
+  const csvRows = rows.map((row) => {
+    return columns.map((col) => {
+      const val = typeof col.value === 'function' ? col.value(row) : row[col.id];
+      return escapeCsv(val);
+    }).join(',');
+  });
+
+  const csvContent = [headers, ...csvRows].join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
