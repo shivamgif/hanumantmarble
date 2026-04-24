@@ -484,7 +484,7 @@
       "outflowAboveInflow": "आज जावक आवक से अधिक है"
     },
     "analytics": {
-      "executiveDashboard": "कार्यकारी डैशबोर्ड",
+      "executiveDashboard": "कार्यकारी डैशबोर्ड", 
       "operationalCore": "परिचालन मूल",
       "businessIntelligence": "बिजनेस इंटेलिजेंस",
       "liveContext": "लाइव संदर्भ",

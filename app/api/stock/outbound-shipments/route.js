@@ -376,6 +376,23 @@ export async function POST(request) {
         return NextResponse.json({ error: 'Each bag item row needs a quantity in bags' }, { status: 400 });
       }
 
+      // Reject dispatch quantities that exceed current available stock.
+      const availWhole = Number(stockItem.current_whole_qty || 0);
+      const availBroken = Number(stockItem.current_broken_qty || 0);
+      const effectiveWhole = isBagItem ? qtyBags : loadedWholeQty;
+      if (effectiveWhole > availWhole) {
+        return NextResponse.json(
+          { error: `Requested qty ${effectiveWhole} exceeds available ${availWhole} for ${stockItem.sku}` },
+          { status: 400 }
+        );
+      }
+      if (loadedBrokenQty > availBroken) {
+        return NextResponse.json(
+          { error: `Requested broken qty ${loadedBrokenQty} exceeds available ${availBroken} for ${stockItem.sku}` },
+          { status: 400 }
+        );
+      }
+
       resolvedItems.push({
         item: stockItem,
         isBagItem,

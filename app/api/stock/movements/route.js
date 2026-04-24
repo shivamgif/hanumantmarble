@@ -8,18 +8,27 @@ import { auth } from '@/lib/auth-server';
 
 // Graceful degradation for missing database
 let sql = null;
+let withTransaction = null;
 let logAudit = async () => {};
 
 try {
   const dbModule = await import('@/lib/db');
   sql = dbModule.sql;
+  withTransaction = dbModule.withTransaction;
   const auditModule = await import('@/lib/audit-logger');
   logAudit = auditModule.logAudit;
 } catch (e) {
   console.warn('Database not configured yet:', e.message);
 }
 
-const VALID_MOVEMENT_TYPES = ['purchase', 'sale', 'adjustment', 'transfer', 'damage', 'return'];
+// Split `return` into direction-specific types so the sign is unambiguous:
+//   return_in  — goods returned back into stock (adds)
+//   return_out — goods sent out as a return (subtracts)
+const INBOUND_TYPES = new Set(['purchase', 'return_in']);
+const OUTBOUND_TYPES = new Set(['sale', 'damage', 'return_out']);
+const VALID_MOVEMENT_TYPES = [
+  'purchase', 'sale', 'adjustment', 'transfer', 'damage', 'return_in', 'return_out',
+];
 
 export async function POST(request) {
   try {
@@ -50,21 +59,29 @@ export async function POST(request) {
       );
     }
 
-    // Record movement
-    const movement = await sql(
-      `INSERT INTO stock_movements (itemId, locationId, type, quantity, reference, notes, createdBy)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING *`,
-      [itemId, locationId || null, type, quantity, reference || null, notes || null, session.user.email]
-    );
+    // Resolve the sign of the balance delta. `adjustment`/`transfer` rely on the
+    // caller to pass a signed quantity; in/out types force the sign here.
+    let quantityChange;
+    if (INBOUND_TYPES.has(type)) quantityChange = Math.abs(quantity);
+    else if (OUTBOUND_TYPES.has(type)) quantityChange = -Math.abs(quantity);
+    else quantityChange = quantity; // adjustment / transfer: caller-signed
 
-    // Update item quantity
-    const quantityChange = ['purchase', 'return'].includes(type) ? quantity : -quantity;
-    
-    await sql(
-      'UPDATE stock_items SET quantity = quantity + $1, updatedAt = CURRENT_TIMESTAMP WHERE id = $2',
-      [quantityChange, itemId]
-    );
+    // Record movement + update balance atomically.
+    const movement = await withTransaction(async (tx) => {
+      const rows = await tx(
+        `INSERT INTO stock_movements (itemId, locationId, type, quantity, reference, notes, createdBy)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING *`,
+        [itemId, locationId || null, type, quantity, reference || null, notes || null, session.user.email]
+      );
+
+      await tx(
+        'UPDATE stock_items SET quantity = quantity + $1, updatedAt = CURRENT_TIMESTAMP WHERE id = $2',
+        [quantityChange, itemId]
+      );
+
+      return rows;
+    });
 
     // Log audit
     await logAudit({

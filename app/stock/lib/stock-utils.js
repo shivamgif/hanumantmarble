@@ -391,6 +391,31 @@ export function invalidateShipmentCache(kind, id) {
   }
 }
 
+export const EXPORT_PERIOD_PRESETS = [
+  { id: 'all', label: 'All time', months: null },
+  { id: '1m', label: 'Last 1 month', months: 1 },
+  { id: '3m', label: 'Last 3 months', months: 3 },
+  { id: '6m', label: 'Last 6 months', months: 6 },
+  { id: '1y', label: 'Last 1 year', months: 12 },
+];
+
+export function filterRowsByPeriod(rows, dateFields, preset) {
+  const config = EXPORT_PERIOD_PRESETS.find((p) => p.id === preset);
+  if (!config || config.months == null || !Array.isArray(rows)) return rows || [];
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - config.months);
+  const fields = Array.isArray(dateFields) ? dateFields : [dateFields];
+  return rows.filter((row) => {
+    for (const f of fields) {
+      const v = row?.[f];
+      if (!v) continue;
+      const d = new Date(v);
+      if (!Number.isNaN(d.getTime())) return d >= cutoff;
+    }
+    return false;
+  });
+}
+
 export function exportToCSV(filename, rows, columns) {
   if (!rows || rows.length === 0) return;
 

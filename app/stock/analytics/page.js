@@ -708,8 +708,8 @@ export default function AnalyticsDashboard() {
             <span className="text-slate-900 dark:text-white">{t('businessIntelligence')}</span>
           </nav>
           <div className="flex flex-col sm:flex-row sm:items-center gap-6">
-            <h1 className="text-3xl sm:text-4xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter leading-[0.9]">
-              {t('executiveDashboard').split(' ')[0]}<br className="sm:hidden" /> {t('executiveDashboard').split(' ')[1]}
+            <h1 className="text-5xl sm:text-7xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter leading-[0.9]">
+              <><span className="text-brand-primary"> {t('executiveDashboard').split(' ')[0]}</span><br className="sm:hidden" /> {t('executiveDashboard').split(' ')[1] || 'Dashboard'}</>
             </h1>
             <div className="flex items-center self-start sm:self-center gap-3 px-5 py-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest border border-emerald-500/20 shadow-sm whitespace-nowrap">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />

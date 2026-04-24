@@ -485,7 +485,7 @@
       "outflowAboveInflow": "Outflow is above inflow today"
     },
     "analytics": {
-      "executiveDashboard": "Executive Dashboard",
+      "executiveDashboard": "Executive Analysis",
       "operationalCore": "Operational Core",
       "businessIntelligence": "Business Intelligence",
       "liveContext": "Live Context",

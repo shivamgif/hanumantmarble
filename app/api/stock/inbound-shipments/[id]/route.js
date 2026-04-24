@@ -18,6 +18,59 @@ function computeSqmValues(item, size) {
   return { sqmPerBox, sqmPerTile };
 }
 
+async function reverseInboundShipmentStock(tx, shipmentId) {
+  // Serialize with approval flow to prevent interleaved updates.
+  await tx(
+    `SELECT pg_advisory_xact_lock(hashtext($1)::bigint)`,
+    [`stock_inbound_approval:${shipmentId}`]
+  );
+
+  const movements = await tx(
+    `SELECT id, item_id, quantity, tile_condition
+       FROM stock_movements
+      WHERE source_type = 'inbound_shipment'
+        AND source_id = $1`,
+    [shipmentId]
+  );
+
+  for (const mv of movements) {
+    const qty = Number(mv.quantity || 0);
+    if (qty <= 0) continue;
+    const column = mv.tile_condition === 'broken' ? 'current_broken_qty' : 'current_whole_qty';
+    // Guard against driving balance negative: if we cannot fully reverse,
+    // fail loudly so the caller can intervene rather than silently truncating.
+    const updated = await tx(
+      `UPDATE stock_items
+          SET ${column} = ${column} - $1,
+              updated_at = NOW()
+        WHERE id = $2
+          AND ${column} >= $1
+        RETURNING id`,
+      [qty, mv.item_id]
+    );
+    if (!updated[0]) {
+      throw new Error(
+        `Cannot reverse shipment: item ${mv.item_id} has less ${mv.tile_condition} stock than was added by this shipment (likely already dispatched).`
+      );
+    }
+  }
+
+  await tx(
+    `DELETE FROM stock_inventory_lots
+      WHERE source_type = 'purchase'
+        AND source_table = 'stock_inbound_shipments'
+        AND source_id = $1`,
+    [shipmentId]
+  );
+
+  await tx(
+    `DELETE FROM stock_movements
+      WHERE source_type = 'inbound_shipment'
+        AND source_id = $1`,
+    [shipmentId]
+  );
+}
+
 async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKey) {
   return withTransaction(async (tx) => {
     // Serialize approval for the same shipment to avoid concurrent double increments.
@@ -482,18 +535,35 @@ export async function PATCH(request, context) {
     }
 
     if (action === 'reject') {
-      const rows = await sql(
-        `UPDATE stock_inbound_shipments
-         SET approval_status = 'rejected',
-             status = 'cancelled',
-             approval_notes = $1,
-             reviewed_at = NOW(),
-             reviewed_by_user_id = $2,
-             updated_at = NOW()
-         WHERE id = $3
-         RETURNING *`,
-        [body.notes || null, appUser?.id || null, id]
-      );
+      const rows = await withTransaction(async (tx) => {
+        const curRows = await tx(
+          `SELECT approval_status FROM stock_inbound_shipments WHERE id = $1 FOR UPDATE`,
+          [id]
+        );
+        if (!curRows[0]) {
+          throw new Error('Shipment not found');
+        }
+        // If the shipment was previously approved, its stock side-effects must
+        // be reversed before we mark it rejected — otherwise re-approving later
+        // would double-count the quantities.
+        if (curRows[0].approval_status === 'approved') {
+          await reverseInboundShipmentStock(tx, id);
+        }
+        return tx(
+          `UPDATE stock_inbound_shipments
+           SET approval_status = 'rejected',
+               status = 'cancelled',
+               approval_notes = $1,
+               reviewed_at = NOW(),
+               reviewed_by_user_id = $2,
+               locked_at = NULL,
+               locked_by_user_id = NULL,
+               updated_at = NOW()
+           WHERE id = $3
+           RETURNING *`,
+          [body.notes || null, appUser?.id || null, id]
+        );
+      });
 
       await recordTimelineEvent({
         eventType: 'change_rejected',
@@ -508,43 +578,50 @@ export async function PATCH(request, context) {
     }
 
     if (action === 'delete') {
-      if (body.status !== 'cancelled') {
-        return NextResponse.json({ error: 'Can only delete cancelled inbound shipments' }, { status: 400 });
-      }
+      // Verify the shipment's real DB state rather than trusting the client-supplied status.
+      const deleteRows = await withTransaction(async (tx) => {
+        const curRows = await tx(
+          `SELECT id, approval_status, status FROM stock_inbound_shipments WHERE id = $1 FOR UPDATE`,
+          [id]
+        );
+        const current = curRows[0];
+        if (!current) {
+          throw new Error('Shipment not found');
+        }
+        // Reverse stock side-effects if the shipment was ever approved.
+        if (current.approval_status === 'approved') {
+          await reverseInboundShipmentStock(tx, id);
+        } else if (current.status !== 'cancelled' && body.status !== 'cancelled') {
+          const err = new Error('Can only delete cancelled inbound shipments');
+          err.statusCode = 400;
+          throw err;
+        }
 
-      await sql(
-        `DELETE FROM stock_inbound_shipment_items
-         WHERE inbound_shipment_id = $1`,
-        [id]
-      );
+        await tx(
+          `DELETE FROM stock_inbound_shipment_items WHERE inbound_shipment_id = $1`,
+          [id]
+        );
+        await tx(
+          `DELETE FROM stock_documents WHERE entity_type = 'inbound_shipment' AND entity_id = $1`,
+          [id]
+        );
+        await tx(
+          `DELETE FROM stock_notifications WHERE source_table = 'stock_inbound_shipments' AND source_id = $1`,
+          [id]
+        );
+        await tx(
+          `DELETE FROM stock_timeline_events WHERE entity_type = 'inbound_shipment' AND entity_id = $1`,
+          [id]
+        );
 
-      await sql(
-        `DELETE FROM stock_documents
-         WHERE entity_type = 'inbound_shipment' AND entity_id = $1`,
-        [id]
-      );
-
-      await sql(
-        `DELETE FROM stock_notifications
-         WHERE source_table = 'stock_inbound_shipments' AND source_id = $1`,
-        [id]
-      );
-
-      await sql(
-        `DELETE FROM stock_timeline_events
-         WHERE entity_type = 'inbound_shipment' AND entity_id = $1`,
-        [id]
-      );
-
-      const deleteRows = await sql(
-        `DELETE FROM stock_inbound_shipments
-         WHERE id = $1
-         RETURNING *`,
-        [id]
-      );
+        return tx(
+          `DELETE FROM stock_inbound_shipments WHERE id = $1 RETURNING *`,
+          [id]
+        );
+      });
 
       return NextResponse.json({
-        message: 'Cancelled inbound shipment deleted successfully',
+        message: 'Inbound shipment deleted successfully',
         shipment: deleteRows[0]
       });
     }
@@ -674,7 +751,10 @@ export async function PATCH(request, context) {
       );
 
       if (body.items && Array.isArray(body.items)) {
-        const approvalCheck = await sql('SELECT approval_status FROM stock_inbound_shipments WHERE id = $1', [id]);
+        const approvalCheck = await sql('SELECT approval_status, locked_at FROM stock_inbound_shipments WHERE id = $1', [id]);
+        if (approvalCheck[0]?.locked_at) {
+          return NextResponse.json({ error: 'Locked inbound shipment cannot be modified' }, { status: 409 });
+        }
         if (approvalCheck[0]?.approval_status !== 'approved') {
           await sql('DELETE FROM stock_inbound_shipment_items WHERE inbound_shipment_id = $1', [id]);
           for (const item of body.items) {
@@ -819,6 +899,7 @@ export async function PATCH(request, context) {
     return NextResponse.json({ shipment: rows[0] });
   } catch (error) {
     console.error('Failed to update inbound shipment:', error);
-    return NextResponse.json({ error: 'Failed to update shipment', detail: error.message }, { status: 500 });
+    const status = Number.isInteger(error?.statusCode) ? error.statusCode : 500;
+    return NextResponse.json({ error: 'Failed to update shipment', detail: error.message }, { status });
   }
 }

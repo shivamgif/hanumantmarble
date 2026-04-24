@@ -363,6 +363,51 @@ export async function PATCH(request, context) {
     }
 
     const result = await withTransaction(async (tx) => {
+      // Mutability guard: approved outbound shipments have already deducted stock.
+      // Editing them without a full reversal pass would silently miscount inventory.
+      const existingRows = await tx(
+        `SELECT approval_status, locked_at FROM stock_outbound_shipments WHERE id = $1 FOR UPDATE`,
+        [id]
+      );
+      const existing = existingRows[0];
+      if (!existing) {
+        throw new Error('Shipment not found');
+      }
+      if (existing.approval_status === 'approved' || existing.locked_at) {
+        const err = new Error('Cannot modify an approved or locked outbound shipment');
+        err.statusCode = 409;
+        throw err;
+      }
+
+      // If item lines are being (re)set, verify each line's qty does not exceed
+      // the current available stock for that item. Server-side authoritative check.
+      if (body.items && Array.isArray(body.items)) {
+        for (const item of body.items) {
+          if (!item.itemId) continue;
+          const wholeReq = toPositiveInteger(item.loadedWholeQty);
+          const brokenReq = toPositiveInteger(item.loadedBrokenQty);
+          if (wholeReq === 0 && brokenReq === 0) continue;
+          const stockRows = await tx(
+            `SELECT sku, current_whole_qty, current_broken_qty FROM stock_items WHERE id = $1`,
+            [item.itemId]
+          );
+          const stock = stockRows[0];
+          if (!stock) {
+            throw new Error(`Item ${item.itemId} not found`);
+          }
+          if (wholeReq > Number(stock.current_whole_qty || 0)) {
+            const err = new Error(`Requested whole qty ${wholeReq} exceeds available ${stock.current_whole_qty} for ${stock.sku}`);
+            err.statusCode = 400;
+            throw err;
+          }
+          if (brokenReq > Number(stock.current_broken_qty || 0)) {
+            const err = new Error(`Requested broken qty ${brokenReq} exceeds available ${stock.current_broken_qty} for ${stock.sku}`);
+            err.statusCode = 400;
+            throw err;
+          }
+        }
+      }
+
       // Resolve IDs from names if provided
       let resolvedCustomerId = null;
       let resolvedSalespersonId = null;
@@ -463,6 +508,7 @@ export async function PATCH(request, context) {
     return NextResponse.json(result);
   } catch (error) {
     console.error('Failed to update outbound shipment:', error);
-    return NextResponse.json({ error: 'Failed to update shipment', detail: error.message }, { status: 500 });
+    const status = Number.isInteger(error?.statusCode) ? error.statusCode : 500;
+    return NextResponse.json({ error: 'Failed to update shipment', detail: error.message }, { status });
   }
 }
