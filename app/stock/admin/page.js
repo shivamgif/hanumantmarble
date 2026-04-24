@@ -17,6 +17,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import EntryPreviewSheet, { PreviewKeyValueGrid } from '@/components/ui/entry-preview-sheet';
 import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
 import PaginationControls from '@/components/ui/pagination-controls';
+import { usePageSize } from '@/hooks/usePageSize';
 import { validateStockPassword } from '@/lib/password-policy';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -237,6 +238,7 @@ export default function AdminDashboard() {
   const [highlightedChangeRequestId, setHighlightedChangeRequestId] = useState(null);
   const [processedDeepLink, setProcessedDeepLink] = useState('');
   const [previewItemsPage, setPreviewItemsPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize();
   const [previewState, setPreviewState] = useState({
     open: false,
     loading: false,
@@ -1041,12 +1043,12 @@ export default function AdminDashboard() {
     }
   }
 
-  const arrivalPagination = paginateRows(data?.pendingArrivals || [], arrivalPage, DEFAULT_PAGE_SIZE);
-  const dispatchPagination = paginateRows(data?.pendingDispatches || [], dispatchPage, DEFAULT_PAGE_SIZE);
-  const cancelledArrivalPagination = paginateRows(data?.cancelledArrivals || [], cancelledArrivalPage, DEFAULT_PAGE_SIZE);
-  const changeRequestPagination = paginateRows(changeRequests || [], changeRequestPage, DEFAULT_PAGE_SIZE);
-  const userPagination = paginateRows(data?.users || [], userPage, DEFAULT_PAGE_SIZE);
-  const previewItemPagination = paginateRows(previewState.items || [], previewItemsPage, DEFAULT_PAGE_SIZE);
+  const arrivalPagination = paginateRows(data?.pendingArrivals || [], arrivalPage, pageSize);
+  const dispatchPagination = paginateRows(data?.pendingDispatches || [], dispatchPage, pageSize);
+  const cancelledArrivalPagination = paginateRows(data?.cancelledArrivals || [], cancelledArrivalPage, pageSize);
+  const changeRequestPagination = paginateRows(changeRequests || [], changeRequestPage, pageSize);
+  const userPagination = paginateRows(data?.users || [], userPage, pageSize);
+  const previewItemPagination = paginateRows(previewState.items || [], previewItemsPage, pageSize);
 
   useEffect(() => {
     if (previewState.kind !== 'user' || !previewState.record) {
@@ -1706,8 +1708,9 @@ export default function AdminDashboard() {
                 page={arrivalPagination.page}
                 pageCount={arrivalPagination.pageCount}
                 total={arrivalPagination.total}
-                pageSize={DEFAULT_PAGE_SIZE}
+                pageSize={pageSize}
                 onPageChange={setArrivalPage}
+                onPageSizeChange={setPageSize}
                 labels={{ showing: t('paginationShowing'), of: t('paginationOf'), previous: t('paginationPrevious'), next: t('paginationNext'), page: t('paginationPage') }}
                 className="mt-6 border-t pt-4 border-slate-100 dark:border-slate-800"
               />
@@ -1800,8 +1803,9 @@ export default function AdminDashboard() {
                   page={cancelledArrivalPagination.page}
                   pageCount={cancelledArrivalPagination.pageCount}
                   total={cancelledArrivalPagination.total}
-                  pageSize={DEFAULT_PAGE_SIZE}
+                  pageSize={pageSize}
                   onPageChange={setCancelledArrivalPage}
+                  onPageSizeChange={setPageSize}
                   labels={{ showing: t('paginationShowing'), of: t('paginationOf'), previous: t('paginationPrevious'), next: t('paginationNext'), page: t('paginationPage') }}
                   className="mt-6 border-t pt-4 border-slate-100 dark:border-slate-800"
                 />
@@ -1951,8 +1955,9 @@ export default function AdminDashboard() {
                 page={dispatchPagination.page}
                 pageCount={dispatchPagination.pageCount}
                 total={dispatchPagination.total}
-                pageSize={DEFAULT_PAGE_SIZE}
+                pageSize={pageSize}
                 onPageChange={setDispatchPage}
+                onPageSizeChange={setPageSize}
                 labels={{ showing: t('paginationShowing'), of: t('paginationOf'), previous: t('paginationPrevious'), next: t('paginationNext'), page: t('paginationPage') }}
                 className="mt-6 border-t pt-4 border-slate-100 dark:border-slate-800"
               />
@@ -2062,8 +2067,9 @@ export default function AdminDashboard() {
               page={changeRequestPagination.page}
               pageCount={changeRequestPagination.pageCount}
               total={changeRequestPagination.total}
-              pageSize={DEFAULT_PAGE_SIZE}
+              pageSize={pageSize}
               onPageChange={setChangeRequestPage}
+              onPageSizeChange={setPageSize}
               labels={{ showing: t('paginationShowing'), of: t('paginationOf'), previous: t('paginationPrevious'), next: t('paginationNext'), page: t('paginationPage') }}
               className="mt-6 border-t pt-4 border-slate-100 dark:border-slate-800"
             />
@@ -2346,8 +2352,9 @@ export default function AdminDashboard() {
               page={userPagination.page}
               pageCount={userPagination.pageCount}
               total={userPagination.total}
-              pageSize={DEFAULT_PAGE_SIZE}
+              pageSize={pageSize}
               onPageChange={setUserPage}
+              onPageSizeChange={setPageSize}
               labels={{ showing: t('paginationShowing'), of: t('paginationOf'), previous: t('paginationPrevious'), next: t('paginationNext'), page: t('paginationPage') }}
               className="mt-6 border-t pt-4 border-slate-100 dark:border-slate-800"
             />
@@ -2609,8 +2616,9 @@ export default function AdminDashboard() {
                           page={previewItemPagination.page}
                           pageCount={previewItemPagination.pageCount}
                           total={previewItemPagination.total}
-                          pageSize={DEFAULT_PAGE_SIZE}
+                          pageSize={pageSize}
                           onPageChange={setPreviewItemsPage}
+                          onPageSizeChange={setPageSize}
                           labels={{ showing: t('paginationShowing'), of: t('paginationOf'), previous: t('paginationPrevious'), next: t('paginationNext'), page: t('paginationPage') }}
                         />
                       </div>

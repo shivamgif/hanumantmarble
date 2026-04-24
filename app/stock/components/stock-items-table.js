@@ -6,7 +6,7 @@ import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
 import { FORM_INPUT_CLASS, FORM_LABEL_CLASS } from '../lib/stock-utils';
 
-export function StockItemsTable({ pagination, sort, setSort, search, setSearch, openPreview, t, tc }) {
+export function StockItemsTable({ pagination, sort, setSort, search, setSearch, openPreview, t, tc, pageSize, setPageSize }) {
   const toggleSort = useCallback((key) => {
     setSort((current) => ({
       key,
@@ -167,8 +167,9 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
             page={pagination.page}
             pageCount={pagination.pageCount}
             total={pagination.total}
-            pageSize={DEFAULT_PAGE_SIZE}
+            pageSize={pageSize}
             onPageChange={pagination.setPage}
+            onPageSizeChange={setPageSize}
             labels={{
               showing: tc.paginationShowing,
               of: tc.paginationOf,

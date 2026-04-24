@@ -9,6 +9,7 @@ import { BarChart3, Boxes, CircleAlert, PackageCheck, ChevronRight } from 'lucid
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
+import { usePageSize } from '@/hooks/usePageSize';
 import { arrivalFormSchema, dispatchFormSchema } from '@/lib/forms/stock-forms';
 import { useStockFormStore } from '@/lib/stores/stock-form-store';
 import {
@@ -213,6 +214,7 @@ export default function StockDashboard() {
   const [editingBagArrivalId, setEditingBagArrivalId] = useState(null);
   const [editingDispatchId, setEditingDispatchId] = useState(null);
   const [previewItemsPage, setPreviewItemsPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize();
   const [previewState, setPreviewState] = useState({
     open: false,
     loading: false,
@@ -879,10 +881,10 @@ export default function StockDashboard() {
     }
   ), [data?.activeItems, stockSearch, stockSort]);
 
-  const stockPagination = useMemo(() => paginateRows(stockRows, stockPage, DEFAULT_PAGE_SIZE), [stockRows, stockPage]);
-  const arrivalPagination = useMemo(() => paginateRows(arrivalRows, arrivalPage, DEFAULT_PAGE_SIZE), [arrivalRows, arrivalPage]);
-  const dispatchPagination = useMemo(() => paginateRows(dispatchRows, dispatchPage, DEFAULT_PAGE_SIZE), [dispatchRows, dispatchPage]);
-  const previewItemPagination = useMemo(() => paginateRows(previewState.items || [], previewItemsPage, DEFAULT_PAGE_SIZE), [previewState.items, previewItemsPage]);
+  const stockPagination = useMemo(() => paginateRows(stockRows, stockPage, pageSize), [stockRows, stockPage, pageSize]);
+  const arrivalPagination = useMemo(() => paginateRows(arrivalRows, arrivalPage, pageSize), [arrivalRows, arrivalPage, pageSize]);
+  const dispatchPagination = useMemo(() => paginateRows(dispatchRows, dispatchPage, pageSize), [dispatchRows, dispatchPage, pageSize]);
+  const previewItemPagination = useMemo(() => paginateRows(previewState.items || [], previewItemsPage, pageSize), [previewState.items, previewItemsPage, pageSize]);
 
   useEffect(() => { setStockPage((p) => Math.min(p, stockPagination.pageCount)); }, [stockPagination.pageCount]);
   useEffect(() => { setArrivalPage((p) => Math.min(p, arrivalPagination.pageCount)); }, [arrivalPagination.pageCount]);
@@ -1046,6 +1048,8 @@ export default function StockDashboard() {
             openPreview={openStockItemPreview}
             t={t}
             tc={tc}
+            pageSize={pageSize}
+            setPageSize={setPageSize}
           />
         </div>
       )}
@@ -1086,6 +1090,8 @@ export default function StockDashboard() {
           onEdit={handleEditArrival}
           editingBagArrivalId={editingBagArrivalId}
           setEditingBagArrivalId={setEditingBagArrivalId}
+          pageSize={pageSize}
+          setPageSize={setPageSize}
         />
       )}
 
@@ -1120,6 +1126,8 @@ export default function StockDashboard() {
           userRole={accessRole}
           onNewDispatch={handleNewDispatch}
           onEdit={handleEditDispatch}
+          pageSize={pageSize}
+          setPageSize={setPageSize}
         />
       )}
 
@@ -1131,6 +1139,8 @@ export default function StockDashboard() {
         t={t}
         tc={tc}
         userRole={accessRole}
+        pageSize={pageSize}
+        setPageSize={setPageSize}
       />
     </div>
   );

@@ -47,6 +47,8 @@ export function PurchasesPanel({
   onEdit,
   editingBagArrivalId,
   setEditingBagArrivalId,
+  pageSize,
+  setPageSize,
 }) {
   const canEdit = ['admin', 'manager'].includes(userRole);
   const [purchaseType, setPurchaseType] = useState('tile');
@@ -543,8 +545,9 @@ export function PurchasesPanel({
             page={arrivalPagination.page}
             pageCount={arrivalPagination.pageCount}
             total={arrivalPagination.total}
-            pageSize={DEFAULT_PAGE_SIZE}
+            pageSize={pageSize}
             onPageChange={setArrivalPage}
+            onPageSizeChange={setPageSize}
             labels={{
               showing: tc.paginationShowing,
               of: tc.paginationOf,

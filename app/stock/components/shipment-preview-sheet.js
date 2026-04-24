@@ -36,7 +36,7 @@ function renderDocumentPreview(document, tc) {
   );
 }
 
-export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPagination, setPreviewItemsPage, tc, userRole }) {
+export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPagination, setPreviewItemsPage, tc, userRole, pageSize, setPageSize }) {
   const isInboundPreview = previewState.kind === 'arrival';
   const canViewPricing = ['admin', 'manager'].includes(userRole);
 
@@ -316,8 +316,9 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
                 page={previewItemPagination.page}
                 pageCount={previewItemPagination.pageCount}
                 total={previewItemPagination.total}
-                pageSize={DEFAULT_PAGE_SIZE}
+                pageSize={pageSize}
                 onPageChange={setPreviewItemsPage}
+                onPageSizeChange={setPageSize}
                 labels={{
                   showing: tc.paginationShowing,
                   of: tc.paginationOf,
@@ -354,7 +355,7 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
         }
         : null,
     ];
-  }, [previewState, tc, isInboundPreview, previewItemPagination, setPreviewItemsPage, inboundMetaItems]);
+  }, [previewState, tc, isInboundPreview, previewItemPagination, setPreviewItemsPage, inboundMetaItems, pageSize, setPageSize]);
 
   const handleOpenChange = useCallback((open) => { if (!open) closePreview(); }, [closePreview]);
 

@@ -6,6 +6,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import EntryPreviewSheet, { PreviewKeyValueGrid } from '@/components/ui/entry-preview-sheet';
 import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
 import PaginationControls from '@/components/ui/pagination-controls';
+import { usePageSize } from '@/hooks/usePageSize';
 
 const copy = {
   en: {
@@ -171,6 +172,7 @@ export default function StockDocumentsPage() {
   const [error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [documentPage, setDocumentPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize();
   const [previewState, setPreviewState] = useState({
     open: false,
     title: '',
@@ -283,7 +285,7 @@ export default function StockDocumentsPage() {
     setPreviewState((current) => ({ ...current, open: false }));
   }
 
-  const documentPagination = paginateRows(documents, documentPage, DEFAULT_PAGE_SIZE);
+  const documentPagination = paginateRows(documents, documentPage, pageSize);
 
   useEffect(() => {
     setDocumentPage((current) => Math.min(current, documentPagination.pageCount));
@@ -421,8 +423,9 @@ export default function StockDocumentsPage() {
                 page={documentPagination.page}
                 pageCount={documentPagination.pageCount}
                 total={documentPagination.total}
-                pageSize={DEFAULT_PAGE_SIZE}
+                pageSize={pageSize}
                 onPageChange={setDocumentPage}
+                onPageSizeChange={setPageSize}
                 labels={{
                   showing: t.paginationShowing,
                   of: t.paginationOf,

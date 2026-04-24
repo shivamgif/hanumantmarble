@@ -39,6 +39,8 @@ export function DispatchesPanel({
   userRole,
   onNewDispatch,
   onEdit,
+  pageSize,
+  setPageSize,
 }) {
   const canEdit = ['admin', 'manager'].includes(userRole);
 
@@ -329,8 +331,9 @@ export function DispatchesPanel({
             page={dispatchPagination.page}
             pageCount={dispatchPagination.pageCount}
             total={dispatchPagination.total}
-            pageSize={DEFAULT_PAGE_SIZE}
+            pageSize={pageSize}
             onPageChange={setDispatchPage}
+            onPageSizeChange={setPageSize}
             labels={{
               showing: tc.paginationShowing,
               of: tc.paginationOf,
