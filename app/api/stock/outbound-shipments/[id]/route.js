@@ -353,8 +353,30 @@ export async function PATCH(request, context) {
       let resolvedSalespersonId = null;
 
       if (body.customerName) {
-        const cRows = await tx('SELECT id FROM stock_customers WHERE lower(name) = lower($1) LIMIT 1', [body.customerName.trim()]);
-        resolvedCustomerId = cRows[0]?.id || null;
+        const trimmedName = body.customerName.trim();
+        const trimmedPhone = body.customerPhoneNumber?.trim() || null;
+        let found = null;
+        if (trimmedPhone) {
+          const rows = await tx(
+            'SELECT id FROM stock_customers WHERE lower(name) = lower($1) AND phone = $2 LIMIT 1',
+            [trimmedName, trimmedPhone]
+          );
+          found = rows[0] || null;
+        } else {
+          const rows = await tx(
+            'SELECT id FROM stock_customers WHERE lower(name) = lower($1) LIMIT 1',
+            [trimmedName]
+          );
+          found = rows[0] || null;
+        }
+        if (!found) {
+          const rows = await tx(
+            'INSERT INTO stock_customers (name, phone) VALUES ($1, $2) RETURNING id',
+            [trimmedName, trimmedPhone]
+          );
+          found = rows[0];
+        }
+        resolvedCustomerId = found?.id || null;
       }
 
       if (body.salespersonName) {

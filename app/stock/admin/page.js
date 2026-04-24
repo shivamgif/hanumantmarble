@@ -707,7 +707,6 @@ export default function AdminDashboard() {
       const shipment = json.shipment;
       const items = json.items || [];
       dispatchForm.reset({
-        shipmentNumber: shipment.shipment_number || '',
         customerName: shipment.customer_name || '',
         customerPhoneNumber: shipment.customer_phone_number || '',
         truckLicensePlate: shipment.truck_license_plate_snapshot || shipment.truck_number_snapshot || '',
@@ -771,7 +770,6 @@ export default function AdminDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'update',
-          shipmentNumber: trimText(values.shipmentNumber) || undefined,
           customerName: trimText(values.customerName) || undefined,
           customerPhoneNumber: trimText(values.customerPhoneNumber) || undefined,
           truckLicensePlate: trimText(values.truckLicensePlate) || undefined,

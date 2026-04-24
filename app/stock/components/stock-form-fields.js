@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { UploadCloud, ChevronRight } from 'lucide-react';
 import {
   Form,
@@ -131,6 +131,91 @@ export function SuggestCombobox({ value, onChange, options = [], placeholder, cl
                 }}
               >
                 {String(opt)}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [], placeholder, className, onBlur, disabled }) {
+  const [open, setOpen] = useState(false);
+  const [inputText, setInputText] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+
+  // Sync display text when value changes externally (e.g. form reset)
+  useEffect(() => {
+    if (!isTyping) {
+      const found = (items || []).find((i) => String(i.id) === String(value));
+      setInputText(found ? `${found.sku} - ${found.name}` : '');
+    }
+  }, [value, items, isTyping]);
+
+  const needle = isTyping ? inputText.trim().toLowerCase() : '';
+  const filtered = useMemo(() => {
+    return (items || [])
+      .filter((i) => !needle || i.sku.toLowerCase().includes(needle) || i.name.toLowerCase().includes(needle))
+      .slice(0, 50);
+  }, [items, needle]);
+
+  const handleChange = useCallback((e) => {
+    setInputText(e.target.value);
+    setIsTyping(true);
+    if (!open) setOpen(true);
+  }, [open]);
+
+  const handleFocus = useCallback(() => setOpen(true), []);
+
+  const handleBlur = useCallback((e) => {
+    setTimeout(() => {
+      setOpen(false);
+      setIsTyping(false);
+    }, 120);
+    onBlur?.(e);
+  }, [onBlur]);
+
+  const handleSelect = useCallback((item) => {
+    setIsTyping(false);
+    setInputText(`${item.sku} - ${item.name}`);
+    setOpen(false);
+    onChange(String(item.id));
+    onItemSelect?.(item);
+  }, [onChange, onItemSelect]);
+
+  return (
+    <Popover open={open && filtered.length > 0} onOpenChange={setOpen}>
+      <PopoverAnchor asChild>
+        <Input
+          value={inputText}
+          onChange={handleChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          placeholder={placeholder}
+          className={className || FORM_INPUT_CLASS}
+          disabled={disabled}
+          autoComplete="off"
+        />
+      </PopoverAnchor>
+      <PopoverContent
+        align="start"
+        sideOffset={4}
+        className="w-[var(--radix-popover-trigger-width)] max-h-64 overflow-auto p-1"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <ul className="space-y-0.5">
+          {filtered.map((item) => (
+            <li key={item.id}>
+              <button
+                type="button"
+                className="w-full truncate rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleSelect(item);
+                }}
+              >
+                {item.sku} - {item.name}{item.unit_of_measure === 'bag' ? ' (Bag)' : ''}
               </button>
             </li>
           ))}

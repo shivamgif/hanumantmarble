@@ -704,7 +704,6 @@ export default function StockDashboard() {
       const items = json.items || [];
 
       dispatchForm.reset({
-        shipmentNumber: shipment.shipment_number || '',
         customerName: shipment.customer_name || '',
         customerPhoneNumber: shipment.customer_phone_number || '',
         truckLicensePlate: shipment.truck_license_plate_snapshot || shipment.truck_number_snapshot || '',
@@ -772,7 +771,6 @@ export default function StockDashboard() {
       if (items.some((item) => !item.itemId)) throw new Error(t('selectItem'));
 
       const payload = {
-        shipmentNumber: trimText(values.shipmentNumber) || undefined,
         customerName,
         customerPhoneNumber: trimText(values.customerPhoneNumber) || undefined,
         truckLicensePlate: trimText(values.truckLicensePlate) || undefined,
@@ -820,7 +818,7 @@ export default function StockDashboard() {
 
       try {
         await uploadShipmentDocument({ entityType: 'outbound_shipment', entityId: json.shipment?.id, documentType: 'sales_invoice', file: dispatchAttachments.salesInvoice, documentNumber: trimText(values.invoiceNumber) || undefined, notes: trimText(values.notes) || undefined });
-        await uploadShipmentDocument({ entityType: 'outbound_shipment', entityId: json.shipment?.id, documentType: 'gatepass', file: dispatchAttachments.gatepass, documentNumber: trimText(values.shipmentNumber) || undefined, notes: trimText(values.notes) || undefined });
+        await uploadShipmentDocument({ entityType: 'outbound_shipment', entityId: json.shipment?.id, documentType: 'gatepass', file: dispatchAttachments.gatepass, documentNumber: trimText(values.invoiceNumber) || undefined, notes: trimText(values.notes) || undefined });
       } catch (uploadError) {
         setDispatchNotice({ type: 'warning', message: `${t('docUploadFailed')} ${uploadError.message}` });
       }

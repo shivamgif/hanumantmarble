@@ -115,7 +115,6 @@ export function createInitialBagDispatchDraft() {
   const timeStr = now.toTimeString().slice(0, 5);
 
   return {
-    shipmentNumber: '',
     customerName: '',
     customerPhoneNumber: '',
     truckLicensePlate: '',
@@ -167,7 +166,6 @@ export function createInitialDispatchDraft() {
   const fullDateTime = `${dateStr}T${timeStr}`;
 
   return {
-    shipmentNumber: '',
     customerName: '',
     customerPhoneNumber: '',
     truckLicensePlate: '',

@@ -6,11 +6,11 @@ import { Plus, Send, Truck, ChevronRight, X, Package } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AttachmentField,
   FormSectionTitle,
   InlineNotice,
+  ItemSuggestCombobox,
   StockDateField,
   StockFormField,
   StockMoneyField,
@@ -55,26 +55,14 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
               <FormItem>
                 <FormLabel className={FORM_LABEL_CLASS}>{t('sku')} / {t('name')}</FormLabel>
                 <FormControl>
-                  <Select
-                    value={field.value || undefined}
-                    onValueChange={(val) => {
-                      field.onChange(val);
-                      const selected = (allItems || []).find((si) => String(si.id) === String(val));
-                      setValue(`items.${index}.itemCategory`, selected?.unit_of_measure === 'bag' ? 'bag' : 'tile');
-                    }}
-                  >
-                    <SelectTrigger className={FORM_INPUT_CLASS}>
-                      <SelectValue placeholder={t('selectItem')} />
-                    </SelectTrigger>
-                    <SelectContent className="glass-panel">
-                      {(allItems || []).map((stockItem) => (
-                        <SelectItem key={stockItem.id} value={String(stockItem.id)}>
-                          {stockItem.sku} - {stockItem.name}
-                          {stockItem.unit_of_measure === 'bag' ? ' (Bag)' : ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <ItemSuggestCombobox
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    onItemSelect={(item) => setValue(`items.${index}.itemCategory`, item.unit_of_measure === 'bag' ? 'bag' : 'tile')}
+                    items={allItems}
+                    placeholder={t('selectItem')}
+                  />
                 </FormControl>
                 <FormMessage className="text-xs" />
               </FormItem>
@@ -147,18 +135,13 @@ const BagDispatchItemRow = memo(function BagDispatchItemRow({ index, fieldRow, c
               <FormItem>
                 <FormLabel className={FORM_LABEL_CLASS}>Product</FormLabel>
                 <FormControl>
-                  <Select value={field.value || undefined} onValueChange={field.onChange}>
-                    <SelectTrigger className={FORM_INPUT_CLASS}>
-                      <SelectValue placeholder="Select bag product" />
-                    </SelectTrigger>
-                    <SelectContent className="glass-panel">
-                      {(bagActiveItems || []).map((stockItem) => (
-                        <SelectItem key={stockItem.id} value={String(stockItem.id)}>
-                          {stockItem.sku} - {stockItem.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <ItemSuggestCombobox
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    items={bagActiveItems}
+                    placeholder="Select bag product"
+                  />
                 </FormControl>
                 <FormMessage className="text-xs" />
               </FormItem>
@@ -197,8 +180,7 @@ export function BagDispatchFormContent({
         <div className={FORM_CARD_CLASS}>
           <FormSectionTitle category="Outbound Strategy" icon={Send} title="Bag Dispatch Basics" description="Invoice and customer details for bag goods dispatch" tc={tc} />
           <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
-            <StockFormField control={form.control} name="shipmentNumber" label={t?.('dispatchNo') ?? 'Dispatch No.'} placeholder="DSP-202X..." autoFocus />
-            <StockFormField control={form.control} name="customerName" label={t?.('customer') ?? 'Customer'} placeholder="Customer Name..." />
+            <StockFormField control={form.control} name="customerName" label={t?.('customer') ?? 'Customer'} placeholder="Customer Name..." autoFocus />
             <StockFormField control={form.control} name="customerPhoneNumber" label={tc?.customerPhone ?? 'Customer Phone'} placeholder="+91 9876543210" type="tel" />
             <StockFormField control={form.control} name="invoiceNumber" label={t?.('invoiceNo') ?? 'Invoice No.'} placeholder="INV-..." digitsOnly />
             <StockDateField control={form.control} name="dispatchDate" label={tc?.date ?? 'Date'} placeholder="Date" />
@@ -312,8 +294,7 @@ export function DispatchFormContent({
             tc={tc}
           />
           <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
-            <StockFormField control={form.control} name="shipmentNumber" label={t('dispatchNo')} placeholder="DSP-202X..." autoFocus />
-            <StockFormField control={form.control} name="customerName" label={t('customer')} placeholder="Customer Name..." />
+            <StockFormField control={form.control} name="customerName" label={t('customer')} placeholder="Customer Name..." autoFocus />
             <StockFormField control={form.control} name="customerPhoneNumber" label={tc.customerPhone} placeholder="+91 9876543210" type="tel" />
             <StockFormField control={form.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." digitsOnly />
             <StockDateField control={form.control} name="dispatchDate" label={tc.date} placeholder={tc.date} />

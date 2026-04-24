@@ -96,6 +96,42 @@ async function resolveCustomerContext(body) {
     }
   }
 
+  if (body.customerName) {
+    const trimmedName = body.customerName.trim();
+    const trimmedPhone = body.customerPhoneNumber?.trim() || null;
+
+    if (trimmedPhone) {
+      const byBoth = await sql(
+        `SELECT id AS customer_id, name AS customer_name, phone AS customer_phone,
+                whatsapp_phone AS customer_whatsapp_phone, email AS customer_email
+         FROM stock_customers
+         WHERE lower(name) = lower($1) AND phone = $2
+         LIMIT 1`,
+        [trimmedName, trimmedPhone]
+      );
+      if (byBoth[0]) return byBoth[0];
+    } else {
+      const byName = await sql(
+        `SELECT id AS customer_id, name AS customer_name, phone AS customer_phone,
+                whatsapp_phone AS customer_whatsapp_phone, email AS customer_email
+         FROM stock_customers
+         WHERE lower(name) = lower($1)
+         LIMIT 1`,
+        [trimmedName]
+      );
+      if (byName[0]) return byName[0];
+    }
+
+    const created = await sql(
+      `INSERT INTO stock_customers (name, phone)
+       VALUES ($1, $2)
+       RETURNING id AS customer_id, name AS customer_name, phone AS customer_phone,
+                 NULL AS customer_whatsapp_phone, NULL AS customer_email`,
+      [trimmedName, trimmedPhone]
+    );
+    return created[0];
+  }
+
   return null;
 }
 
