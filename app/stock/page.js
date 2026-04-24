@@ -27,6 +27,9 @@ import {
   round3,
   formatDateTime,
   CLASSES,
+  fetchShipmentDetails,
+  fetchShipmentDocuments,
+  invalidateShipmentCache,
 } from './lib/stock-utils';
 import { StockStatsGrid } from './components/stock-stats-grid';
 import { StockItemsTable } from './components/stock-items-table';
@@ -250,6 +253,8 @@ export default function StockDashboard() {
   const refreshDashboard = useCallback(async () => {
     const json = await fetchDashboardData();
     setData(json);
+    if (json.role) setAccessRole(json.role);
+    if (json.suggestions) setSuggestions(json.suggestions);
     return json;
   }, []);
 
@@ -260,7 +265,11 @@ export default function StockDashboard() {
       setError(null);
       try {
         const json = await fetchDashboardData();
-        if (mounted) setData(json);
+        if (mounted) {
+          setData(json);
+          if (json.role) setAccessRole(json.role);
+          if (json.suggestions) setSuggestions(json.suggestions);
+        }
       } catch (err) {
         if (mounted) setError(err.message);
       } finally {
@@ -277,35 +286,8 @@ export default function StockDashboard() {
 
     loadData();
 
-    async function loadSuggestions() {
-      try {
-        const response = await fetch('/api/stock/form-suggestions', { cache: 'no-store' });
-        if (!response.ok) return;
-        const json = await response.json();
-        if (mounted && json?.suggestions) setSuggestions(json.suggestions);
-      } catch { }
-    }
-    loadSuggestions();
-
     return () => { mounted = false; };
-  }, [user?.id, userLoading]);
-
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadAccessRole() {
-      if (!user) return;
-      try {
-        const response = await fetch('/api/stock/access', { cache: 'no-store' });
-        const json = await response.json();
-        if (!mounted) return;
-        if (response.ok) setAccessRole(String(json.role || 'stock_maintainer'));
-      } catch { }
-    }
-
-    loadAccessRole();
-    return () => { mounted = false; };
-  }, [user]);
+  }, [user?.id, userLoading, t]);
 
   async function uploadShipmentDocument({ entityType, entityId, documentType, file, documentNumber, notes }) {
     if (!file) return null;
@@ -348,16 +330,7 @@ export default function StockDashboard() {
     });
 
     try {
-      const [shipmentResponse, documentsResponse] = await Promise.all([
-        fetch(endpoint),
-        fetch(`/api/stock/documents?entityType=${shipmentType}&entityId=${row.id}&limit=20`, { cache: 'no-store' }),
-      ]);
-
-      const shipmentJson = await shipmentResponse.json();
-      const documentsJson = await documentsResponse.json();
-
-      if (!shipmentResponse.ok) throw new Error(shipmentJson.error || shipmentJson.detail || 'Failed to load shipment details');
-      if (!documentsResponse.ok) throw new Error(documentsJson.error || documentsJson.detail || 'Failed to load shipment documents');
+      const shipmentJson = await fetchShipmentDetails(kind, row.id);
 
       setPreviewState({
         open: true,
@@ -367,7 +340,7 @@ export default function StockDashboard() {
         description: kind === 'arrival' ? t('inboundPreviewDesc') : t('outboundPreviewDesc'),
         record: shipmentJson.shipment || row,
         items: shipmentJson.items || [],
-        documents: documentsJson.documents || [],
+        documents: shipmentJson.documents || [],
         error: null,
       });
     } catch (fetchError) {
@@ -558,6 +531,11 @@ export default function StockDashboard() {
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || json.detail || 'Failed to submit purchase');
 
+      invalidateShipmentCache('arrival', editingArrivalId);
+      if (json.shipment?.id) {
+        invalidateShipmentCache('arrival', json.shipment.id);
+      }
+
       arrivalForm.reset(createInitialArrivalDraft());
       resetArrivalAttachments();
       setArrivalSheetOpen(false);
@@ -616,9 +594,7 @@ export default function StockDashboard() {
     setEditingArrivalId(row.id);
 
     try {
-      const response = await fetch(`/api/stock/inbound-shipments/${row.id}`);
-      const json = await response.json();
-      if (!response.ok) throw new Error(json.error || 'Failed to load purchase details');
+      const json = await fetchShipmentDetails('arrival', row.id);
 
       const s = json.shipment;
       const items = json.items || [];
@@ -696,9 +672,7 @@ export default function StockDashboard() {
     setEditingDispatchId(row.id);
 
     try {
-      const response = await fetch(`/api/stock/outbound-shipments/${row.id}`);
-      const json = await response.json();
-      if (!response.ok) throw new Error(json.error || 'Failed to load dispatch details');
+      const json = await fetchShipmentDetails('dispatch', row.id);
 
       const shipment = json.shipment;
       const items = json.items || [];
@@ -808,6 +782,11 @@ export default function StockDashboard() {
 
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || json.detail || 'Failed to submit dispatch');
+
+      invalidateShipmentCache('dispatch', editingDispatchId);
+      if (json.shipment?.id) {
+        invalidateShipmentCache('dispatch', json.shipment.id);
+      }
 
       dispatchForm.reset(createInitialDispatchDraft());
       resetDispatchAttachments();

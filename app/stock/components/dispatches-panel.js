@@ -133,13 +133,22 @@ export function DispatchesPanel({
                   {d.customer_name || '—'}
                   {d.customer_phone_number ? ` • ${d.customer_phone_number}` : ''}
                 </p>
-                <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                  {Number(d.total_bag_qty || 0) > 0
-                    ? <span className="text-amber-500 font-black">{Number(d.total_bag_qty)} <span className="text-[10px] uppercase text-amber-400/70">Bags</span></span>
-                    : <>{Number(d.total_whole_qty || 0)} whole / {Number(d.total_broken_qty || 0)} broken</>}
-                </p>
+                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-600 dark:text-slate-300">
+                  {Number(d.total_bag_qty || 0) > 0 && (
+                    <span className="text-amber-500 font-black" title={`${Number(d.total_bag_qty)} Bags`}>
+                      {Number(d.total_bag_qty)} <span className="text-[10px] uppercase text-amber-400/70">Bags</span>
+                    </span>
+                  )}
+                  {((Number(d.total_whole_qty || 0) > 0 || Number(d.total_broken_qty || 0) > 0) || Number(d.total_bag_qty || 0) === 0) && (
+                    <span title={`${Number(d.total_whole_qty || 0)} Whole and ${Number(d.total_broken_qty || 0)} Broken Tiles`}>
+                      {Number(d.total_whole_qty || 0)} <span className="text-[10px] uppercase text-slate-400">Whole</span> / {Number(d.total_broken_qty || 0)} <span className="text-[10px] uppercase text-slate-400">Broken</span>
+                    </span>
+                  )}
+                </div>
                 {(Number(d.total_return_whole_qty || 0) > 0 || Number(d.total_return_broken_qty || 0) > 0) ? (
-                  <p className="text-xs text-rose-700 dark:text-rose-300">Return: {Number(d.total_return_whole_qty || 0)} whole / {Number(d.total_return_broken_qty || 0)} broken</p>
+                  <p className="text-xs text-rose-700 dark:text-rose-300 font-medium" title={`${Number(d.total_return_whole_qty || 0)} Whole and ${Number(d.total_return_broken_qty || 0)} Broken Tiles Returned`}>
+                    Returned: {Number(d.total_return_whole_qty || 0)} Whole / {Number(d.total_return_broken_qty || 0)} Broken
+                  </p>
                 ) : null}
                 {canEdit && Number(d.total_selling_price_excl || 0) > 0 ? (
                   <p className="mt-1 text-xs font-black text-emerald-600 dark:text-emerald-400">
@@ -154,14 +163,14 @@ export function DispatchesPanel({
                   </div>
                 ) : null}
                 <div className="mt-2 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setDispatchExpandedId((current) => (current === d.id ? null : d.id))}
-                      className="rounded-lg border border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground transition hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700"
-                      aria-label={expanded ? tc.collapse : tc.expand}
-                    >
-                      {expanded ? tc.collapse : tc.expand}
-                    </button>
+                  <button
+                    type="button"
+                    onClick={() => setDispatchExpandedId((current) => (current === d.id ? null : d.id))}
+                    className="rounded-lg border border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground transition hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700"
+                    aria-label={expanded ? tc.collapse : tc.expand}
+                  >
+                    {expanded ? tc.collapse : tc.expand}
+                  </button>
                   {canEdit && (
                     <button
                       type="button"
@@ -238,16 +247,19 @@ export function DispatchesPanel({
                     <div className="max-w-[260px] truncate text-xs font-black text-slate-900 dark:text-white" title={d.product_names || d.product_skus || ''}>{d.product_names || d.product_skus || '—'}</div>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {Number(d.total_bag_qty || 0) > 0 ? (
-                      <div className="text-xs font-black text-amber-500 tabular-nums">
-                        {Number(d.total_bag_qty)} <span className="text-[9px] font-bold text-amber-400/70 uppercase">Bags</span>
-                      </div>
-                    ) : (
-                      <div className="text-xs font-black text-slate-900 dark:text-white tabular-nums">
-                        {Number(d.total_whole_qty || 0)} <span className="text-[9px] font-bold text-slate-400 mr-1 uppercase">W</span>
-                        / {Number(d.total_broken_qty || 0)} <span className="text-[9px] font-bold text-slate-400 uppercase">B</span>
-                      </div>
-                    )}
+                    <div className="flex flex-col items-end gap-0.5">
+                      {Number(d.total_bag_qty || 0) > 0 && (
+                        <div className="text-xs font-black text-amber-500 tabular-nums" title={`${Number(d.total_bag_qty)} Bags`}>
+                          {Number(d.total_bag_qty)} <span className="text-[9px] font-bold text-amber-400/70 uppercase">Bags</span>
+                        </div>
+                      )}
+                      {((Number(d.total_whole_qty || 0) > 0 || Number(d.total_broken_qty || 0) > 0) || Number(d.total_bag_qty || 0) === 0) && (
+                        <div className="text-xs font-black text-slate-900 dark:text-white tabular-nums" title={`${Number(d.total_whole_qty || 0)} Whole and ${Number(d.total_broken_qty || 0)} Broken Tiles`}>
+                          {Number(d.total_whole_qty || 0)} <span className="text-[9px] font-bold text-slate-400 mr-1 uppercase">Whole</span>
+                          <span className="opacity-50 mx-0.5">/</span> {Number(d.total_broken_qty || 0)} <span className="text-[9px] font-bold text-slate-400 uppercase">Broken</span>
+                        </div>
+                      )}
+                    </div>
                   </td>
                   {canEdit && (
                     <td className="px-4 py-3 text-right">
@@ -277,10 +289,10 @@ export function DispatchesPanel({
                       </button>
                     </td>
                   )}
-                  <td className="px-4 py-3 text-right text-rose-700 dark:text-rose-300 tabular-nums font-bold">
+                  <td className="px-4 py-3 text-right text-xs text-rose-700 dark:text-rose-300 tabular-nums font-bold" title={(Number(d.total_return_whole_qty || 0) > 0 || Number(d.total_return_broken_qty || 0) > 0) ? `${Number(d.total_return_whole_qty || 0)} Whole and ${Number(d.total_return_broken_qty || 0)} Broken Tiles Returned` : 'No Returns'}>
                     {(Number(d.total_return_whole_qty || 0) > 0 || Number(d.total_return_broken_qty || 0) > 0)
-                      ? `${Number(d.total_return_whole_qty || 0)}W / ${Number(d.total_return_broken_qty || 0)}B`
-                      : '—'}
+                      ? `${Number(d.total_return_whole_qty || 0)} Whole / ${Number(d.total_return_broken_qty || 0)} Broken`
+                      : <span className="text-slate-400 font-semibold">—</span>}
                   </td>
                   <td className="px-4 py-3"><Badge variant={getStatusVariant(d.status)}>{d.status}</Badge></td>
                   <td className="px-4 py-3 text-[11px] text-muted-foreground">

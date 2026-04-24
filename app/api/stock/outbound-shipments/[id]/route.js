@@ -204,8 +204,23 @@ export async function GET(request, context) {
 
   try {
     const { id } = await context.params;
+    const { searchParams } = new URL(request.url);
+    const includeDocs = searchParams.get('includeDocs') === 'true';
+
     const { shipment, items } = await loadShipmentWithItems(id);
-    return NextResponse.json({ shipment, items });
+
+    let documents = [];
+    if (includeDocs) {
+      documents = await sql(
+        `SELECT id, document_type, file_name, file_url, document_number, created_at, notes, mime_type
+         FROM stock_documents
+         WHERE entity_type = 'outbound_shipment' AND entity_id = $1
+         ORDER BY created_at DESC LIMIT 20`,
+        [id]
+      );
+    }
+
+    return NextResponse.json({ shipment, items, documents });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load shipment', detail: error.message }, { status: 500 });
   }

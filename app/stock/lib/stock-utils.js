@@ -345,3 +345,48 @@ export const INVOICE_CLASSES = {
   mobileKey: 'text-[9px] font-black uppercase tracking-[0.15em] text-slate-500/60',
   mobileValue: 'mt-1 text-[11px] font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight',
 };
+
+export const shipmentCache = new Map();
+export const documentCache = new Map();
+
+export async function fetchShipmentDetails(kind, id) {
+  const cacheKey = `${kind}-${id}`;
+  if (shipmentCache.has(cacheKey)) {
+    return shipmentCache.get(cacheKey);
+  }
+  const endpoint = kind === 'arrival'
+    ? `/api/stock/inbound-shipments/${id}?includeDocs=true`
+    : `/api/stock/outbound-shipments/${id}?includeDocs=true`;
+  const response = await fetch(endpoint);
+  const json = await response.json();
+  if (!response.ok) throw new Error(json.error || json.detail || 'Failed to load details');
+  
+  shipmentCache.set(cacheKey, { shipment: json.shipment, items: json.items, documents: json.documents });
+  if (json.documents) documentCache.set(cacheKey, { documents: json.documents });
+
+  return json;
+}
+
+export async function fetchShipmentDocuments(kind, id) {
+  const cacheKey = `${kind}-${id}`;
+  if (documentCache.has(cacheKey)) {
+    return documentCache.get(cacheKey);
+  }
+  const shipmentType = kind === 'arrival' ? 'inbound_shipment' : 'outbound_shipment';
+  const response = await fetch(`/api/stock/documents?entityType=${shipmentType}&entityId=${id}&limit=20`, { cache: 'no-store' });
+  const json = await response.json();
+  if (!response.ok) throw new Error(json.error || json.detail || 'Failed to load documents');
+  documentCache.set(cacheKey, json);
+  return json;
+}
+
+export function invalidateShipmentCache(kind, id) {
+  if (id) {
+    const cacheKey = `${kind}-${id}`;
+    shipmentCache.delete(cacheKey);
+    documentCache.delete(cacheKey);
+  } else {
+    shipmentCache.clear();
+    documentCache.clear();
+  }
+}

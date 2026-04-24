@@ -10,7 +10,7 @@ import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
 import { bagArrivalFormSchema } from '@/lib/forms/stock-forms';
 import { ArrivalFormContent, BagArrivalFormContent } from './arrival-form';
-import { createBagArrivalItemRow, createInitialBagArrivalDraft, formatDateTime, getGeneratedByRoleLabel, getStatusVariant, CLASSES, FORM_INPUT_CLASS, toNumber, trimText } from '../lib/stock-utils';
+import { createBagArrivalItemRow, createInitialBagArrivalDraft, formatDateTime, getGeneratedByRoleLabel, getStatusVariant, CLASSES, FORM_INPUT_CLASS, toNumber, trimText, fetchShipmentDetails, invalidateShipmentCache } from '../lib/stock-utils';
 
 export function PurchasesPanel({
   arrivalForm,
@@ -66,8 +66,7 @@ export function PurchasesPanel({
     setPurchaseType('bag');
     setArrivalSheetOpen(true);
     setBagNotice({ type: 'info', message: 'Loading purchase details…' });
-    fetch(`/api/stock/inbound-shipments/${editingBagArrivalId}`)
-      .then((r) => r.json())
+    fetchShipmentDetails('arrival', editingBagArrivalId)
       .then((json) => {
         const s = json.shipment;
         const items = json.items || [];
@@ -183,6 +182,8 @@ export function PurchasesPanel({
         });
         json = await response.json();
         if (!response.ok) throw new Error(json.error || 'Failed to submit bag purchase');
+        invalidateShipmentCache('arrival', editingBagArrivalId);
+        if (json.shipment?.id) invalidateShipmentCache('arrival', json.shipment.id);
         setBagNotice({ type: 'success', message: `Bag purchase ${json.shipment?.shipment_number} submitted.` });
       }
 
@@ -339,17 +340,22 @@ export function PurchasesPanel({
                   </button>
                   <Badge variant={getStatusVariant(a.status)}>{a.status}</Badge>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-600 dark:text-slate-300">
-                  {Number(a.total_bag_qty || 0) > 0 ? (
-                    <span className="text-amber-500 font-black">{Number(a.total_bag_qty)} <span className="text-[10px] uppercase text-amber-400/70">Bags</span></span>
-                  ) : (
-                    <>
-                      <span>{Number(a.total_whole_qty || 0)} <span className="text-[10px] uppercase text-slate-400">W</span></span>
-                      <span>{Number(a.total_broken_qty || 0)} <span className="text-[10px] uppercase text-slate-400">B</span></span>
-                    </>
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-600 dark:text-slate-300">
+                  {Number(a.total_bag_qty || 0) > 0 && (
+                    <span className="text-amber-500 font-black" title={`${Number(a.total_bag_qty)} Bags`}>
+                      {Number(a.total_bag_qty)} <span className="text-[10px] uppercase text-amber-400/70">Bags</span>
+                    </span>
+                  )}
+                  {((Number(a.total_whole_qty || 0) > 0 || Number(a.total_broken_qty || 0) > 0) || Number(a.total_bag_qty || 0) === 0) && (
+                    <span title={`${Number(a.total_whole_qty || 0)} Whole and ${Number(a.total_broken_qty || 0)} Broken Tiles`}>
+                      {Number(a.total_whole_qty || 0)} <span className="text-[10px] uppercase text-slate-400 mr-1">Whole</span>
+                      {Number(a.total_broken_qty || 0)} <span className="text-[10px] uppercase text-slate-400">Broken</span>
+                    </span>
                   )}
                   {Number(a.total_qty_sqm || 0) > 0 && (
-                    <span className="text-[10px] text-slate-400">{Number(a.total_qty_sqm).toFixed(2)} SQM</span>
+                    <span className="text-[10px] font-bold text-slate-400" title={`${Number(a.total_qty_sqm).toFixed(2)} Square Meters`}>
+                      {Number(a.total_qty_sqm).toFixed(2)} SQM
+                    </span>
                   )}
                 </div>
                 <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
@@ -359,13 +365,13 @@ export function PurchasesPanel({
                   <span className="font-semibold text-slate-600 dark:text-slate-300">{tc.route}:</span> {a.origin_city || '—'} → {a.destination_warehouse_name || '—'}
                 </p>
                 <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-                  <span className="font-semibold text-slate-600 dark:text-slate-300">{tc.payment}:</span> {a.payment_status || 'unpaid'}{a.paid_amount != null ? ` · INR ${Number(a.paid_amount).toFixed(2)}` : ''}
+                  <span className="font-semibold text-slate-600 dark:text-slate-300">{tc.payment}:</span> <span className={`capitalize ${a.payment_status === 'paid' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''}`}>{a.payment_status || 'Unpaid'}</span>{a.paid_amount != null ? ` · ₹${Number(a.paid_amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}` : ''}
                 </p>
                 {expanded ? (
                   <div className="mt-2 space-y-1 text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-white/5 pt-2">
                     <p className="truncate font-medium text-slate-700 dark:text-slate-300">{a.product_names || a.product_skus || '—'}</p>
-                    {a.divisions ? <p><span className="font-semibold">{tc.division}:</span> {a.divisions}</p> : null}
-                    {a.grand_total ? <p><span className="font-semibold">{tc.grandTotal}:</span> INR {Number(a.grand_total).toFixed(2)}</p> : null}
+                    <p><span className="font-semibold">{tc.division}:</span> {a.divisions || tc.general || 'General'}</p>
+                    {a.grand_total ? <p><span className="font-semibold">{tc.grandTotal}:</span> ₹{Number(a.grand_total).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p> : null}
                     {a.freight_weight_kg ? <p><span className="font-semibold">{tc.freight}:</span> {Number(a.freight_weight_kg).toFixed(2)} kg</p> : null}
                     <p><span className="font-semibold">{tc.generatedBy}:</span> {a.generated_by || '—'}</p>
                     {a.approved_by ? <p><span className="font-semibold">{tc.approvedBy}:</span> {a.approved_by}</p> : null}
@@ -460,30 +466,35 @@ export function PurchasesPanel({
                     </div>
                   </td>
                   <td className="px-4 py-3 text-[11px] text-muted-foreground">
-                    <div className="uppercase text-[9px] font-black tracking-widest text-slate-500">{a.payment_status || 'unpaid'}</div>
-                    {a.paid_amount != null ? <div className="text-[10px] font-black tabular-nums text-slate-900 dark:text-white">INR {Number(a.paid_amount).toFixed(2)}</div> : null}
+                    <div className={`uppercase text-[9px] font-black tracking-widest ${a.payment_status === 'paid' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`}>{a.payment_status || 'Unpaid'}</div>
+                    {a.paid_amount != null ? <div className="text-[10px] font-black tabular-nums text-slate-900 dark:text-white">₹{Number(a.paid_amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</div> : null}
                   </td>
                   <td className="px-4 py-3">
                     <div className="max-w-[260px] truncate text-xs font-black text-slate-900 dark:text-white" title={a.product_names || a.product_skus || ''}>{a.product_names || a.product_skus || '—'}</div>
-                    <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground opacity-60">{a.divisions || 'General'}</div>
+                    <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground opacity-60">{a.divisions || tc.general || 'General'}</div>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {Number(a.total_bag_qty || 0) > 0 ? (
-                      <div className="text-xs font-black text-amber-500 tabular-nums">
-                        {Number(a.total_bag_qty)} <span className="text-[9px] font-bold text-amber-400/70 uppercase">Bags</span>
-                      </div>
-                    ) : (
-                      <div className="text-xs font-black text-slate-900 dark:text-white tabular-nums">
-                        {Number(a.total_whole_qty || 0)} <span className="text-[9px] font-bold text-slate-400 mr-1 uppercase">W</span>
-                        / {Number(a.total_broken_qty || 0)} <span className="text-[9px] font-bold text-slate-400 uppercase">B</span>
-                      </div>
-                    )}
-                    {Number(a.total_qty_sqm || 0) > 0 && (
-                      <div className="text-[9px] font-bold text-muted-foreground tabular-nums">{Number(a.total_qty_sqm).toFixed(3)} SQM</div>
-                    )}
+                    <div className="flex flex-col items-end gap-0.5">
+                      {Number(a.total_bag_qty || 0) > 0 && (
+                        <div className="text-xs font-black text-amber-500 tabular-nums" title={`${Number(a.total_bag_qty)} Bags`}>
+                          {Number(a.total_bag_qty)} <span className="text-[9px] font-bold text-amber-400/70 uppercase">Bags</span>
+                        </div>
+                      )}
+                      {((Number(a.total_whole_qty || 0) > 0 || Number(a.total_broken_qty || 0) > 0) || Number(a.total_bag_qty || 0) === 0) && (
+                        <div className="text-xs font-black text-slate-900 dark:text-white tabular-nums" title={`${Number(a.total_whole_qty || 0)} Whole and ${Number(a.total_broken_qty || 0)} Broken Tiles`}>
+                          {Number(a.total_whole_qty || 0)} <span className="text-[9px] font-bold text-slate-400 mr-1 uppercase">Whole</span>
+                          <span className="opacity-50 mx-0.5">/</span> {Number(a.total_broken_qty || 0)} <span className="text-[9px] font-bold text-slate-400 uppercase">Broken</span>
+                        </div>
+                      )}
+                      {Number(a.total_qty_sqm || 0) > 0 && (
+                        <div className="text-[9px] font-bold text-muted-foreground tabular-nums mt-0.5" title={`${Number(a.total_qty_sqm).toFixed(3)} Square Meters`}>
+                          {Number(a.total_qty_sqm).toFixed(3)} SQM
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="text-xs font-black text-slate-900 dark:text-white tabular-nums">INR {Number(a.grand_total || 0).toFixed(2)}</div>
+                    <div className="text-xs font-black text-slate-900 dark:text-white tabular-nums">₹{Number(a.grand_total || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</div>
                   </td>
                   <td className="px-4 py-3 text-right text-[11px] font-bold text-muted-foreground tabular-nums">{Number(a.freight_weight_kg || 0).toFixed(2)}</td>
                   {canEdit && (
