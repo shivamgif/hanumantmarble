@@ -215,7 +215,7 @@ const BagArrivalItemRow = memo(function BagArrivalItemRow({ index, fieldRow, con
                       onChange={(v) => onItemNameChange(index, v)}
                       onBlur={field.onBlur}
                       options={bagItemNames}
-                      placeholder="e.g. Laticrete 111"
+                      placeholder="e.g. Adhesive, Grout..."
                       className={FORM_INPUT_CLASS}
                     />
                   </FormControl>

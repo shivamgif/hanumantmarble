@@ -36,8 +36,9 @@ function renderDocumentPreview(document, tc) {
   );
 }
 
-export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPagination, setPreviewItemsPage, tc }) {
+export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPagination, setPreviewItemsPage, tc, userRole }) {
   const isInboundPreview = previewState.kind === 'arrival';
+  const canViewPricing = ['admin', 'manager'].includes(userRole);
 
   const inboundMetaItems = useMemo(() => [
     { label: tc.status, value: previewState.record?.status },
@@ -187,6 +188,16 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
                   { label: tc.totalBroken, value: previewState.record?.total_broken_qty },
                   { label: tc.returnWhole, value: previewState.record?.total_return_whole_qty },
                   { label: tc.returnBroken, value: previewState.record?.total_return_broken_qty },
+                  ...(canViewPricing && Number(previewState.record?.total_selling_price_excl || 0) > 0 ? [
+                    {
+                      label: tc.totalSellingExcl ?? 'Total (excl. GST)',
+                      value: `₹${Number(previewState.record.total_selling_price_excl).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`,
+                    },
+                    {
+                      label: tc.totalSellingIncl ?? 'Total (incl. 18% GST)',
+                      value: `₹${(Number(previewState.record.total_selling_price_excl) * 1.18).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`,
+                    },
+                  ] : []),
                   { label: tc.notes, value: previewState.record?.notes },
                 ]}
               />
@@ -268,13 +279,25 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
                       ) : (
                         <>
                           <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>{tc.loadedWhole}</div>
+                            <div className={INVOICE_CLASSES.mobileKey}>{item.sell_unit === 'piece' ? (tc.pieces ?? 'Pieces') : (tc.boxes ?? 'Boxes')}</div>
                             <div className={INVOICE_CLASSES.mobileValue}>{item.loaded_whole_qty ?? 0}</div>
                           </div>
                           <div>
                             <div className={INVOICE_CLASSES.mobileKey}>{tc.loadedBroken}</div>
                             <div className={INVOICE_CLASSES.mobileValue}>{item.loaded_broken_qty ?? 0}</div>
                           </div>
+                          {canViewPricing && item.rate_per_unit != null ? (
+                            <>
+                              <div>
+                                <div className={INVOICE_CLASSES.mobileKey}>{item.sell_unit === 'piece' ? (tc.ratePerPiece ?? 'Rate/Piece') : (tc.ratePerBox ?? 'Rate/Box')}</div>
+                                <div className={INVOICE_CLASSES.mobileValue}>₹{Number(item.rate_per_unit).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
+                              </div>
+                              <div>
+                                <div className={INVOICE_CLASSES.mobileKey}>{tc.lineTotal ?? 'Line Total'}</div>
+                                <div className={INVOICE_CLASSES.mobileValue}>₹{(Number(item.loaded_whole_qty ?? 0) * Number(item.rate_per_unit)).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
+                              </div>
+                            </>
+                          ) : null}
                           <div>
                             <div className={INVOICE_CLASSES.mobileKey}>{tc.returnWhole}</div>
                             <div className={INVOICE_CLASSES.mobileValue}>{item.returned_whole_qty ?? 0}</div>

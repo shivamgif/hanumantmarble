@@ -79,9 +79,10 @@ export function SuggestCombobox({ value, onChange, options = [], placeholder, cl
   const [open, setOpen] = useState(false);
   const current = String(value ?? '');
   const needle = current.trim().toLowerCase();
-  const filtered = useMemo(() => (options || [])
+  const filtered = useMemo(() => [...new Set((options || [])
     .filter((opt) => opt != null && String(opt).trim() !== '')
-    .filter((opt) => (needle ? String(opt).toLowerCase().includes(needle) : true))
+    .map((opt) => String(opt))
+    .filter((opt) => (needle ? opt.toLowerCase().includes(needle) : true)))]
     .slice(0, 50), [options, needle]);
 
   const handleChange = useCallback((e) => {
@@ -118,8 +119,8 @@ export function SuggestCombobox({ value, onChange, options = [], placeholder, cl
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <ul className="space-y-0.5">
-          {filtered.map((opt) => (
-            <li key={opt}>
+          {filtered.map((opt, i) => (
+            <li key={`${opt}-${i}`}>
               <button
                 type="button"
                 className="w-full truncate rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"

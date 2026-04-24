@@ -174,6 +174,7 @@ export async function GET(request) {
              COALESCE(SUM(CASE WHEN i.unit_of_measure = 'bag' THEN soi.loaded_whole_qty ELSE 0 END), 0) as total_bag_qty,
              COALESCE(SUM(soi.returned_whole_qty), 0) as total_return_whole_qty,
              COALESCE(SUM(soi.returned_broken_qty), 0) as total_return_broken_qty,
+             COALESCE(SUM(soi.loaded_whole_qty * soi.rate_per_unit), 0) as total_selling_price_excl,
              COALESCE(MAX(submitter.name), MAX(submitter.email), MAX(sos.created_by), '—') AS generated_by,
              COALESCE(MAX(submitter.role), 'stock_maintainer') AS generated_by_role,
              CASE

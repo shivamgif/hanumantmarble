@@ -93,7 +93,8 @@ export async function GET(request) {
       ),
       sql(
         `SELECT sos.id, sos.shipment_number, sos.truck_license_plate_snapshot AS truck_license_plate, sos.driver_name_snapshot AS driver_name, sos.created_at AS dispatch_date, sos.status,
-                COALESCE(SUM(soi.loaded_whole_qty), 0) as total_whole_qty, COALESCE(SUM(soi.loaded_broken_qty), 0) as total_broken_qty
+                COALESCE(SUM(soi.loaded_whole_qty), 0) as total_whole_qty, COALESCE(SUM(soi.loaded_broken_qty), 0) as total_broken_qty,
+                COALESCE(SUM(soi.loaded_whole_qty * soi.rate_per_unit), 0) as total_selling_price_excl
          FROM stock_outbound_shipments sos
          LEFT JOIN stock_outbound_shipment_items soi ON sos.id = soi.outbound_shipment_id
          WHERE sos.approval_status = 'pending'

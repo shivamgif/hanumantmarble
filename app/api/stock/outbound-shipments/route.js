@@ -349,7 +349,8 @@ export async function POST(request) {
         deliveredBrokenQty,
         returnedWholeQty,
         returnedBrokenQty,
-        ratePerBag: isBagItem ? (item.ratePerBag != null ? Number(item.ratePerBag) : null) : null,
+        sellUnit: isBagItem ? 'bag' : (item.sellUnit || 'box'),
+        ratePerUnit: item.ratePerUnit != null && item.ratePerUnit !== '' ? Number(item.ratePerUnit) : null,
         notes: normalizeText(item.notes) || null,
       });
     }
@@ -434,8 +435,10 @@ export async function POST(request) {
           delivered_broken_qty,
           returned_whole_qty,
           returned_broken_qty,
+          sell_unit,
+          rate_per_unit,
           notes
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
         [
           shipment.id,
           row.item.id,
@@ -445,6 +448,8 @@ export async function POST(request) {
           row.deliveredBrokenQty,
           row.returnedWholeQty,
           row.returnedBrokenQty,
+          row.sellUnit,
+          row.ratePerUnit,
           row.notes,
         ]
       );

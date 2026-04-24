@@ -729,7 +729,8 @@ export default function AdminDashboard() {
             itemCategory: isBag ? 'bag' : 'tile',
             loadedWholeQty: isBag ? '' : String(item.loaded_whole_qty ?? 0),
             qtyBags: isBag ? String(item.loaded_whole_qty ?? 0) : '',
-            ratePerBag: '',
+            sellUnit: isBag ? 'bag' : (item.sell_unit || 'box'),
+            ratePerUnit: item.rate_per_unit != null ? String(item.rate_per_unit) : '',
             returnWholeQty: isBag ? '' : (item.returned_whole_qty != null ? String(item.returned_whole_qty) : ''),
             returnBrokenQty: isBag ? '' : (item.returned_broken_qty != null ? String(item.returned_broken_qty) : ''),
             returnQtyBags: isBag ? (item.returned_whole_qty != null ? String(item.returned_whole_qty) : '') : '',
@@ -754,6 +755,8 @@ export default function AdminDashboard() {
             itemId: Number(item.itemId),
             loadedWholeQty: isBag ? toNumber(item.qtyBags) : toNumber(item.loadedWholeQty),
             loadedBrokenQty: 0,
+            sellUnit: isBag ? 'bag' : (item.sellUnit || 'box'),
+            ratePerUnit: item.ratePerUnit === '' ? null : toNumber(item.ratePerUnit),
             returnWholeQty: isBag
               ? (item.returnQtyBags === '' ? null : toNumber(item.returnQtyBags))
               : (item.returnWholeQty === '' ? null : toNumber(item.returnWholeQty)),

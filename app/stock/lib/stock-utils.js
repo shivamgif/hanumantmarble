@@ -29,11 +29,12 @@ export function createDispatchItemRow() {
     itemCategory: 'tile',
     itemId: '',
     loadedWholeQty: '',
+    sellUnit: 'box',
+    ratePerUnit: '',
     notes: '',
     returnWholeQty: '',
     returnBrokenQty: '',
     qtyBags: '',
-    ratePerBag: '',
     returnQtyBags: '',
   };
 }
@@ -47,7 +48,7 @@ export function createDispatchBagItemRow() {
     returnWholeQty: '',
     returnBrokenQty: '',
     qtyBags: '',
-    ratePerBag: '',
+    ratePerUnit: '',
     returnQtyBags: '',
   };
 }
@@ -73,7 +74,7 @@ export function createBagDispatchItemRow() {
     itemCategory: 'bag',
     itemId: '',
     qtyBags: '',
-    ratePerBag: '',
+    ratePerUnit: '',
     notes: '',
     returnQtyBags: '',
   };

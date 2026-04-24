@@ -22,6 +22,7 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
   const canEditReturns = ['admin', 'manager'].includes(userRole);
   const { watch, setValue } = useFormContext();
   const itemCategory = watch(`items.${index}.itemCategory`);
+  const sellUnit = watch(`items.${index}.sellUnit`);
   const isBag = itemCategory === 'bag';
 
   return (
@@ -81,15 +82,37 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
           />
           {isBag ? (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <StockFormField control={control} name={`items.${index}.qtyBags`} label="Qty (Bags)" type="number" min="0" placeholder="0" />
-              <StockFormField control={control} name={`items.${index}.ratePerBag`} label="Rate/Bag (₹)" type="number" min="0" placeholder="0" step="0.01" />
-              <StockFormField control={control} name={`items.${index}.returnQtyBags`} label="Return Bags" type="number" min="0" placeholder="0" disabled={!canEditReturns} />
+              <StockFormField control={control} name={`items.${index}.qtyBags`} label={tc?.qtyBags ?? 'Qty (Bags)'} type="number" min="0" placeholder="0" />
+              <StockMoneyField control={control} name={`items.${index}.ratePerUnit`} label={tc?.ratePerBag ?? 'Rate / Bag'} />
+              <StockFormField control={control} name={`items.${index}.returnQtyBags`} label={tc?.retBags ?? 'Return Bags'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <StockFormField control={control} name={`items.${index}.loadedWholeQty`} label={t('whole')} type="number" min="0" placeholder="0" />
-              <StockFormField control={control} name={`items.${index}.returnWholeQty`} label={tc?.retWhole ?? 'Ret. Whole'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
-              <StockFormField control={control} name={`items.${index}.returnBrokenQty`} label={tc?.retBrok ?? 'Ret. Broken'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <StockFormField control={control} name={`items.${index}.loadedWholeQty`} label={sellUnit === 'piece' ? (tc?.pieces ?? 'Pieces') : (tc?.boxes ?? 'Boxes')} type="number" min="0" placeholder="0" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{tc?.sellUnit ?? 'Sell As'}</label>
+                  <div className="flex gap-1">
+                    {['box', 'piece'].map((u) => (
+                      <button
+                        key={u}
+                        type="button"
+                        onClick={() => setValue(`items.${index}.sellUnit`, u)}
+                        className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${sellUnit === u ? 'border-brand-primary bg-brand-primary/20 text-brand-primary' : 'border-white/10 text-slate-400 hover:border-white/20'}`}
+                      >
+                        {u === 'box' ? (tc?.box ?? 'Box') : (tc?.piece ?? 'Piece')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <StockMoneyField control={control} name={`items.${index}.ratePerUnit`} label={sellUnit === 'piece' ? (tc?.ratePerPiece ?? 'Rate / Piece') : (tc?.ratePerBox ?? 'Rate / Box')} />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <StockFormField control={control} name={`items.${index}.returnWholeQty`} label={tc?.retWhole ?? 'Ret. Whole'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
+                <StockFormField control={control} name={`items.${index}.returnBrokenQty`} label={tc?.retBrok ?? 'Ret. Broken'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
+              </div>
             </div>
           )}
         </div>
@@ -142,9 +165,9 @@ const BagDispatchItemRow = memo(function BagDispatchItemRow({ index, fieldRow, c
             )}
           />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <StockFormField control={control} name={`items.${index}.qtyBags`} label="Qty (Bags)" type="number" min="0" placeholder="0" />
-            <StockFormField control={control} name={`items.${index}.ratePerBag`} label="Rate/Bag (₹)" type="number" min="0" placeholder="0" step="0.01" />
-            <StockFormField control={control} name={`items.${index}.returnQtyBags`} label="Return Bags" type="number" min="0" placeholder="0" disabled={!canEditReturns} />
+            <StockFormField control={control} name={`items.${index}.qtyBags`} label={tc?.qtyBags ?? 'Qty (Bags)'} type="number" min="0" placeholder="0" />
+            <StockMoneyField control={control} name={`items.${index}.ratePerUnit`} label={tc?.ratePerBag ?? 'Rate / Bag'} />
+            <StockFormField control={control} name={`items.${index}.returnQtyBags`} label={tc?.retBags ?? 'Return Bags'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
           </div>
         </div>
       </div>
@@ -189,8 +212,6 @@ export function BagDispatchFormContent({
           <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
             <StockFormField control={form.control} name="truckLicensePlate" label={t?.('truck') ?? 'Truck'} placeholder="RJ 14 XY 0000" />
             <StockFormField control={form.control} name="driverName" label={t?.('driver') ?? 'Driver'} placeholder="Driver Name..." />
-            <StockMoneyField control={form.control} name="transportCost" label={t?.('transportCost') ?? 'Transport Cost'} hint={tc?.amountInInr} />
-            <StockMoneyField control={form.control} name="laborCost" label={t?.('laborCost') ?? 'Labour Cost'} hint={tc?.amountInInr} />
           </div>
         </div>
         <div className={FORM_CARD_CLASS}>
@@ -306,8 +327,6 @@ export function DispatchFormContent({
           <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
             <StockFormField control={form.control} name="truckLicensePlate" label={t('truck')} placeholder="RJ 14 XY 0000" />
             <StockFormField control={form.control} name="driverName" label={t('driver')} placeholder="Driver Name..." />
-            <StockMoneyField control={form.control} name="transportCost" label={t('transportCost')} hint={tc.amountInInr} />
-            <StockMoneyField control={form.control} name="laborCost" label={t('laborCost')} hint={tc.amountInInr} />
           </div>
         </div>
         <div className={FORM_CARD_CLASS}>

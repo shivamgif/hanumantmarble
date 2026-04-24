@@ -141,6 +141,12 @@ export function DispatchesPanel({
                 {(Number(d.total_return_whole_qty || 0) > 0 || Number(d.total_return_broken_qty || 0) > 0) ? (
                   <p className="text-xs text-rose-700 dark:text-rose-300">Return: {Number(d.total_return_whole_qty || 0)} whole / {Number(d.total_return_broken_qty || 0)} broken</p>
                 ) : null}
+                {canEdit && Number(d.total_selling_price_excl || 0) > 0 ? (
+                  <p className="mt-1 text-xs font-black text-emerald-600 dark:text-emerald-400">
+                    ₹{Number(d.total_selling_price_excl).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                    <span className="ml-1 text-[10px] font-bold opacity-70">/ ₹{(Number(d.total_selling_price_excl) * 1.18).toLocaleString('en-IN', { maximumFractionDigits: 0 })} GST</span>
+                  </p>
+                ) : null}
                 {expanded ? (
                   <div className="mt-2 space-y-1 text-[11px] text-slate-500 dark:text-slate-400">
                     <p className="truncate">{d.product_names || d.product_skus || '—'}</p>
@@ -180,6 +186,7 @@ export function DispatchesPanel({
                   { id: 'customer', label: tc.customer },
                   { id: 'products', label: tc.products },
                   { id: 'quantities', label: tc.quantities, align: 'right' },
+                  ...(canEdit ? [{ id: 'price', label: tc.sellingPrice ?? 'Selling Price', align: 'right' }] : []),
                   ...(canEdit ? [{ id: 'edit', label: tc.edit, align: 'right' }] : []),
                   { id: 'return', label: tc.return, align: 'right' },
                   { id: 'status', label: t('status') },
@@ -244,6 +251,20 @@ export function DispatchesPanel({
                   </td>
                   {canEdit && (
                     <td className="px-4 py-3 text-right">
+                      {Number(d.total_selling_price_excl || 0) > 0 ? (
+                        <div>
+                          <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+                            ₹{Number(d.total_selling_price_excl).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                          </div>
+                          <div className="text-[9px] font-bold text-emerald-500/70 tabular-nums">
+                            ₹{(Number(d.total_selling_price_excl) * 1.18).toLocaleString('en-IN', { maximumFractionDigits: 0 })} incl. GST
+                          </div>
+                        </div>
+                      ) : <span className="text-slate-400">—</span>}
+                    </td>
+                  )}
+                  {canEdit && (
+                    <td className="px-4 py-3 text-right">
                       <button
                         type="button"
                         className="rounded-md border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
@@ -273,7 +294,7 @@ export function DispatchesPanel({
               ))}
               {dispatchPagination.total === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 10 : 9} className="px-3 py-10">
+                  <td colSpan={canEdit ? 11 : 9} className="px-3 py-10">
                     <div className="flex flex-col items-center justify-center gap-3 text-center">
                       <PackageCheck className="h-6 w-6 text-slate-400" />
                       <p className="text-sm text-slate-500 dark:text-slate-400">{tc.noDispatches}</p>

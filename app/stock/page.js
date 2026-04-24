@@ -726,7 +726,8 @@ export default function StockDashboard() {
             itemCategory: isBag ? 'bag' : 'tile',
             loadedWholeQty: isBag ? '' : String(item.loaded_whole_qty ?? 0),
             qtyBags: isBag ? String(item.loaded_whole_qty ?? 0) : '',
-            ratePerBag: '',
+            sellUnit: isBag ? 'bag' : (item.sell_unit || 'box'),
+            ratePerUnit: item.rate_per_unit != null ? String(item.rate_per_unit) : '',
             returnWholeQty: isBag ? '' : (item.returned_whole_qty != null ? String(item.returned_whole_qty) : ''),
             returnBrokenQty: isBag ? '' : (item.returned_broken_qty != null ? String(item.returned_broken_qty) : ''),
             returnQtyBags: isBag ? (item.returned_whole_qty != null ? String(item.returned_whole_qty) : '') : '',
@@ -757,7 +758,8 @@ export default function StockDashboard() {
             isBag,
             loadedWholeQty: isBag ? 0 : toNumber(item.loadedWholeQty),
             qtyBags: isBag ? toNumber(item.qtyBags) : 0,
-            ratePerBag: isBag ? (item.ratePerBag === '' ? null : toNumber(item.ratePerBag)) : null,
+            sellUnit: isBag ? 'bag' : (item.sellUnit || 'box'),
+            ratePerUnit: item.ratePerUnit === '' ? null : toNumber(item.ratePerUnit),
             returnWholeQty: isBag ? null : (item.returnWholeQty === '' ? null : toNumber(item.returnWholeQty)),
             returnBrokenQty: isBag ? null : (item.returnBrokenQty === '' ? null : toNumber(item.returnBrokenQty)),
             returnQtyBags: isBag ? (item.returnQtyBags === '' ? 0 : toNumber(item.returnQtyBags)) : 0,
@@ -779,15 +781,16 @@ export default function StockDashboard() {
         invoiceNumber: trimText(values.invoiceNumber) || undefined,
         salespersonName: trimText(values.salespersonName) || undefined,
         dispatchDate: values.dispatchDate || undefined,
-        transportCost: toNumber(values.transportCost),
-        loadingLabourCost: toNumber(values.laborCost),
+        transportCost: 0,
+        loadingLabourCost: 0,
         notes: trimText(values.notes) || undefined,
         items: items.map((item) => ({
           itemId: Number(item.itemId),
           itemCategory: item.itemCategory,
           loadedWholeQty: item.loadedWholeQty,
           qtyBags: item.qtyBags,
-          ratePerBag: item.ratePerBag,
+          sellUnit: item.sellUnit,
+          ratePerUnit: item.ratePerUnit,
           returnWholeQty: item.returnWholeQty,
           returnBrokenQty: item.returnBrokenQty,
           returnQtyBags: item.returnQtyBags,
@@ -1150,6 +1153,7 @@ export default function StockDashboard() {
         setPreviewItemsPage={setPreviewItemsPage}
         t={t}
         tc={tc}
+        userRole={accessRole}
       />
     </div>
   );

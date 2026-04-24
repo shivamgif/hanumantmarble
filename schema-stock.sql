@@ -463,10 +463,16 @@ CREATE TABLE IF NOT EXISTS stock_outbound_shipment_items (
   delivered_broken_qty INTEGER NOT NULL DEFAULT 0,
   returned_whole_qty INTEGER NOT NULL DEFAULT 0,
   returned_broken_qty INTEGER NOT NULL DEFAULT 0,
+  sell_unit TEXT NOT NULL DEFAULT 'box',
+  rate_per_unit NUMERIC(12, 2),
   notes TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+-- Migration: add sell_unit and rate_per_unit to existing tables
+ALTER TABLE stock_outbound_shipment_items ADD COLUMN IF NOT EXISTS sell_unit TEXT NOT NULL DEFAULT 'box';
+ALTER TABLE stock_outbound_shipment_items ADD COLUMN IF NOT EXISTS rate_per_unit NUMERIC(12, 2);
 
 CREATE TABLE IF NOT EXISTS stock_customer_acknowledgements (
   id BIGSERIAL PRIMARY KEY,

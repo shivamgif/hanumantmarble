@@ -13,7 +13,8 @@ async function loadShipmentWithItems(id) {
             COALESCE(agg.total_whole_qty, 0) AS total_whole_qty,
             COALESCE(agg.total_broken_qty, 0) AS total_broken_qty,
             COALESCE(agg.total_return_whole_qty, 0) AS total_return_whole_qty,
-            COALESCE(agg.total_return_broken_qty, 0) AS total_return_broken_qty
+            COALESCE(agg.total_return_broken_qty, 0) AS total_return_broken_qty,
+            COALESCE(agg.total_selling_price_excl, 0) AS total_selling_price_excl
      FROM stock_outbound_shipments sos
      LEFT JOIN stock_customers c ON c.id = sos.customer_id
      LEFT JOIN stock_sales_people sp ON sp.id = sos.salesperson_id
@@ -22,7 +23,8 @@ async function loadShipmentWithItems(id) {
               SUM(loaded_whole_qty) AS total_whole_qty,
               SUM(loaded_broken_qty) AS total_broken_qty,
               SUM(returned_whole_qty) AS total_return_whole_qty,
-              SUM(returned_broken_qty) AS total_return_broken_qty
+              SUM(returned_broken_qty) AS total_return_broken_qty,
+              COALESCE(SUM(loaded_whole_qty * rate_per_unit), 0) AS total_selling_price_excl
        FROM stock_outbound_shipment_items
        WHERE outbound_shipment_id = $1
        GROUP BY outbound_shipment_id
@@ -401,8 +403,8 @@ export async function PATCH(request, context) {
           await tx(
             `INSERT INTO stock_outbound_shipment_items (
               outbound_shipment_id, item_id, loaded_whole_qty, loaded_broken_qty,
-              returned_whole_qty, returned_broken_qty, notes
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+              returned_whole_qty, returned_broken_qty, sell_unit, rate_per_unit, notes
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
             [
               id,
               item.itemId,
@@ -410,6 +412,8 @@ export async function PATCH(request, context) {
               item.loadedBrokenQty || 0,
               item.returnWholeQty || 0,
               item.returnBrokenQty || 0,
+              item.sellUnit || 'box',
+              item.ratePerUnit != null && item.ratePerUnit !== '' ? Number(item.ratePerUnit) : null,
               item.notes || null,
             ]
           );
