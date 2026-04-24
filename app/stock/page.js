@@ -1092,6 +1092,7 @@ export default function StockDashboard() {
           setEditingBagArrivalId={setEditingBagArrivalId}
           pageSize={pageSize}
           setPageSize={setPageSize}
+          onRefreshData={refreshDashboard}
         />
       )}
 

@@ -631,7 +631,7 @@ export default function AnalyticsDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const isAuthorized = accessRole === 'admin' || accessRole === 'manager';
+  const isAuthorized = accessRole === 'manager';
 
   useEffect(() => {
     if (!accessLoading && hasResolvedAccessOnce && !isAuthorized) {

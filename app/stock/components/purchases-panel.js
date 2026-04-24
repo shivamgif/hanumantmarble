@@ -55,9 +55,27 @@ export function PurchasesPanel({
   setEditingBagArrivalId,
   pageSize,
   setPageSize,
+  onRefreshData,
 }) {
   const canEdit = ['admin', 'manager'].includes(userRole);
   const [purchaseType, setPurchaseType] = useState('tile');
+  const [markingPaidId, setMarkingPaidId] = useState(null);
+
+  async function handleMarkAsPaid(id) {
+    setMarkingPaidId(id);
+    try {
+      const res = await fetch(`/api/stock/inbound-shipments/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update', paymentStatus: 'paid' }),
+      });
+      if (!res.ok) throw new Error('Failed to mark as paid');
+      invalidateShipmentCache('arrival', id);
+      if (onRefreshData) await onRefreshData();
+    } finally {
+      setMarkingPaidId(null);
+    }
+  }
   const [bagNotice, setBagNotice] = useState(null);
   const [bagSubmitting, setBagSubmitting] = useState(false);
   const [bagAttachments, setBagAttachments] = useState({});
@@ -422,6 +440,16 @@ export function PurchasesPanel({
                 <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
                   <span className="font-semibold text-slate-600 dark:text-slate-300">{tc.payment}:</span> <span className={`capitalize ${a.payment_status === 'paid' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''}`}>{a.payment_status || 'Unpaid'}</span>{a.paid_amount != null ? ` · ₹${Number(a.paid_amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}` : ''}
                 </p>
+                {canEdit && a.approval_status === 'approved' && a.payment_status !== 'paid' && (
+                  <button
+                    type="button"
+                    onClick={e => { e.stopPropagation(); handleMarkAsPaid(a.id); }}
+                    disabled={markingPaidId === a.id}
+                    className="mt-1 px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[9px] font-black uppercase tracking-widest disabled:opacity-50"
+                  >
+                    {markingPaidId === a.id ? '…' : 'Mark as Paid'}
+                  </button>
+                )}
                 {expanded ? (
                   <div className="mt-2 space-y-1 text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-white/5 pt-2">
                     <p className="truncate font-medium text-slate-700 dark:text-slate-300">{a.product_names || a.product_skus || '—'}</p>
@@ -523,6 +551,17 @@ export function PurchasesPanel({
                   <td className="px-4 py-3 text-[11px] text-muted-foreground">
                     <div className={`uppercase text-[9px] font-black tracking-widest ${a.payment_status === 'paid' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`}>{a.payment_status || 'Unpaid'}</div>
                     {a.paid_amount != null ? <div className="text-[10px] font-black tabular-nums text-slate-900 dark:text-white">₹{Number(a.paid_amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</div> : null}
+                    {canEdit && a.approval_status === 'approved' && a.payment_status !== 'paid' && (
+                      <button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); handleMarkAsPaid(a.id); }}
+                        disabled={markingPaidId === a.id}
+                        title="Mark this purchase as fully paid"
+                        className="mt-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 text-[9px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all disabled:opacity-50 whitespace-nowrap"
+                      >
+                        {markingPaidId === a.id ? '…' : 'Mark as Paid'}
+                      </button>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="max-w-[260px] truncate text-xs font-black text-slate-900 dark:text-white" title={a.product_names || a.product_skus || ''}>{a.product_names || a.product_skus || '—'}</div>

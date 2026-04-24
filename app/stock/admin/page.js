@@ -216,6 +216,7 @@ export default function AdminDashboard() {
     qtyBags: td('qtyBags'), returnQtyBags: td('returnQtyBags'), weightPerBag: td('weightPerBag'),
   };
   const { user } = useAuthUser();
+  const canViewAnalytics = user?.role === 'manager';
   const [data, setData] = useState(null);
   const [analyticsData, setAnalyticsData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -341,22 +342,23 @@ export default function AdminDashboard() {
     let mounted = true;
     async function loadData() {
       try {
-        const [dashboardResponse, analyticsResponse, changeRequestResponse] = await Promise.all([
+        const fetchPromises = [
           fetch('/api/stock/admin/dashboard'),
-          fetch('/api/stock/dashboard'),
+          canViewAnalytics ? fetch('/api/stock/dashboard') : Promise.resolve(null),
           fetch('/api/stock/change-requests', { cache: 'no-store' }),
-        ]);
+        ];
+        const [dashboardResponse, analyticsResponse, changeRequestResponse] = await Promise.all(fetchPromises);
 
         const dashboardJson = await dashboardResponse.json();
-        const analyticsJson = await analyticsResponse.json();
+        const analyticsJson = analyticsResponse ? await analyticsResponse.json() : null;
         const changeRequestJson = await changeRequestResponse.json();
 
         if (!dashboardResponse.ok) {
           throw new Error(dashboardJson.error || 'Fetch failed');
         }
 
-        if (!analyticsResponse.ok) {
-          throw new Error(analyticsJson.error || 'Failed to load analytics');
+        if (analyticsResponse && !analyticsResponse.ok) {
+          throw new Error(analyticsJson?.error || 'Failed to load analytics');
         }
 
         if (!changeRequestResponse.ok) {
@@ -365,7 +367,7 @@ export default function AdminDashboard() {
 
         if (mounted) {
           setData(dashboardJson);
-          setAnalyticsData(analyticsJson);
+          if (analyticsJson) setAnalyticsData(analyticsJson);
           setChangeRequests(changeRequestJson.requests || []);
         }
       } catch (err) {
@@ -442,20 +444,20 @@ export default function AdminDashboard() {
   async function refreshDashboard() {
     const [refreshResponse, analyticsResponse, changeRequestResponse] = await Promise.all([
       fetch('/api/stock/admin/dashboard'),
-      fetch('/api/stock/dashboard'),
+      canViewAnalytics ? fetch('/api/stock/dashboard') : Promise.resolve(null),
       fetch('/api/stock/change-requests', { cache: 'no-store' }),
     ]);
 
     const refreshJson = await refreshResponse.json();
-    const analyticsJson = await analyticsResponse.json();
+    const analyticsJson = analyticsResponse ? await analyticsResponse.json() : null;
     const changeRequestJson = await changeRequestResponse.json();
 
     if (!refreshResponse.ok) {
       throw new Error(refreshJson.error || 'Failed to refresh dashboard');
     }
 
-    if (!analyticsResponse.ok) {
-      throw new Error(analyticsJson.error || 'Failed to refresh analytics');
+    if (analyticsResponse && !analyticsResponse.ok) {
+      throw new Error(analyticsJson?.error || 'Failed to refresh analytics');
     }
 
     if (!changeRequestResponse.ok) {
@@ -463,7 +465,7 @@ export default function AdminDashboard() {
     }
 
     setData(refreshJson);
-    setAnalyticsData(analyticsJson);
+    if (analyticsJson) setAnalyticsData(analyticsJson);
     setChangeRequests(changeRequestJson.requests || []);
   }
 
@@ -1382,6 +1384,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {canViewAnalytics && <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
         {summaryTiles.map((m, i) => {
           const Icon = m.icon;
@@ -1432,22 +1435,6 @@ export default function AdminDashboard() {
           );
         })}
       </div>
-
-      <Link
-        href="/stock/analytics"
-        className="flex items-center justify-between rounded-2xl border border-slate-200/60 bg-gradient-to-r from-[#1A1A54]/5 to-[#E07A00]/5 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:from-[#1A1A54]/10 dark:to-[#E07A00]/10"
-      >
-        <div className="flex items-center gap-3">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#E07A00]/10 text-[#E07A00]">
-            <BarChart2 className="h-4 w-4" />
-          </span>
-          <div>
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">{t('analyticsDashboard')}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{t('analyticsDashboardDesc')}</p>
-          </div>
-        </div>
-        <span className="text-xs font-semibold text-[#E07A00]">{t('viewArrow')}</span>
-      </Link>
 
       <section className="space-y-12">
         <div className="flex items-center gap-6">
@@ -1535,6 +1522,7 @@ export default function AdminDashboard() {
           </AnalyticsCard>
         </div>
       </section>
+      </>}
 
       <div className="rounded-[1.75rem] border border-slate-200/60 bg-slate-100/30 p-1.5 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/30">
         <div className="flex items-center gap-1">
@@ -1693,9 +1681,9 @@ export default function AdminDashboard() {
                           handleShipmentAction('inbound-shipments', item.id, 'reject', 'Rejected from hub');
                         }}
                         disabled={actionLoading === `inbound-shipments-${item.id}-reject`}
-                        className="h-10 px-4 rounded-xl bg-rose-500/10 text-rose-600"
+                        className="h-10 px-4 flex items-center gap-2 rounded-xl bg-rose-500/10 text-rose-600 text-[10px] font-black uppercase tracking-widest"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-4 w-4" /> Reject
                       </button>
                     </div>
                   </div>
@@ -1940,9 +1928,9 @@ export default function AdminDashboard() {
                           handleShipmentAction('outbound-shipments', item.id, 'reject', 'Rejected from hub');
                         }}
                         disabled={actionLoading === `outbound-shipments-${item.id}-reject`}
-                        className="h-10 px-4 rounded-xl bg-rose-500/10 text-rose-600"
+                        className="h-10 px-4 flex items-center gap-2 rounded-xl bg-rose-500/10 text-rose-600 text-[10px] font-black uppercase tracking-widest"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-4 w-4" /> Reject
                       </button>
                     </div>
                   </div>
@@ -2088,16 +2076,18 @@ export default function AdminDashboard() {
             insight={t('userManagementInsight')}
             showInsight={showInsights}
             topRight={
-              <button
-                type="button"
-                onClick={() => setShowUserForm((current) => !current)}
-                className="px-6 py-2 rounded-xl bg-brand-primary text-white text-[10px] font-black uppercase tracking-widest shadow-lg hover:brightness-110 active:scale-95 transition-all outline-none border-none"
-              >
-                {showUserForm ? (language === 'hi' ? 'फॉर्म बंद करें' : 'Close Form') : t('addUserContact')}
-              </button>
+              canViewAnalytics && (
+                <button
+                  type="button"
+                  onClick={() => setShowUserForm((current) => !current)}
+                  className="px-6 py-2 rounded-xl bg-brand-primary text-white text-[10px] font-black uppercase tracking-widest shadow-lg hover:brightness-110 active:scale-95 transition-all outline-none border-none"
+                >
+                  {showUserForm ? (language === 'hi' ? 'फॉर्म बंद करें' : 'Close Form') : t('addUserContact')}
+                </button>
+              )
             }
           >
-            {showUserForm && (
+            {canViewAnalytics && showUserForm && (
               <div className="mb-8 p-5 sm:p-8 rounded-3xl sm:rounded-[2rem] bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800/50 animate-scale-in">
                 <form onSubmit={handleSaveUser} className="space-y-8">
                   <div className="flex items-center gap-4 mb-6">
@@ -2160,7 +2150,7 @@ export default function AdminDashboard() {
                       <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{t('password')}</Label>
                       <div className="relative">
                         <Input {...createUserForm.register('password')} type={showPrimaryPassword ? 'text' : 'password'} className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold pr-12" placeholder="Secure token" />
-                        <button type="button" onClick={() => setShowPrimaryPassword(!showPrimaryPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                        <button type="button" onClick={() => setShowPrimaryPassword(!showPrimaryPassword)} title={showPrimaryPassword ? 'Hide password' : 'Show password'} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
                           {showPrimaryPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
@@ -2169,7 +2159,7 @@ export default function AdminDashboard() {
                       <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{t('confirmPassword')}</Label>
                       <div className="relative">
                         <Input value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} type={showConfirmPassword ? 'text' : 'password'} className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold pr-12" placeholder="Verify token" />
-                        <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                        <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} title={showConfirmPassword ? 'Hide password' : 'Show password'} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
                           {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
@@ -2256,6 +2246,7 @@ export default function AdminDashboard() {
                               else handleApproveUser(u);
                             }}
                             disabled={actionLoading === `user-${u.id}-update`}
+                            title={u.is_active ? 'Suspend Access' : 'Restore Access'}
                             className={`p-1.5 rounded-lg transition-all disabled:opacity-50 ${u.is_active
                               ? 'bg-amber-500/10 text-amber-600 hover:bg-amber-500 hover:text-white'
                               : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white'
@@ -2263,17 +2254,20 @@ export default function AdminDashboard() {
                           >
                             {u.is_active ? <ShieldAlert className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
                           </button>
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleDeleteUser(u.id);
-                            }}
-                            disabled={actionLoading === `user-${u.id}-delete`}
-                            className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500 hover:text-white transition-all disabled:opacity-50"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
+                          {canViewAnalytics && (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleDeleteUser(u.id);
+                              }}
+                              disabled={actionLoading === `user-${u.id}-delete`}
+                              title="Remove User"
+                              className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500 hover:text-white transition-all disabled:opacity-50"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -2322,24 +2316,28 @@ export default function AdminDashboard() {
                           else handleApproveUser(u);
                         }}
                         disabled={actionLoading === `user-${u.id}-update`}
-                        className={`p-2 rounded-xl border transition-all ${u.is_active
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border transition-all text-[9px] font-black uppercase tracking-widest ${u.is_active
                             ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
                             : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
                           }`}
                       >
                         {u.is_active ? <ShieldAlert className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+                        <span>{u.is_active ? 'Suspend' : 'Restore'}</span>
                       </button>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleDeleteUser(u.id);
-                        }}
-                        disabled={actionLoading === `user-${u.id}-delete`}
-                        className="p-2 rounded-xl bg-rose-500/10 text-rose-600 border border-rose-500/20"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
+                      {canViewAnalytics && (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleDeleteUser(u.id);
+                          }}
+                          disabled={actionLoading === `user-${u.id}-delete`}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500/10 text-rose-600 border border-rose-500/20 text-[9px] font-black uppercase tracking-widest"
+                        >
+                          <X className="h-4 w-4" />
+                          <span>Remove</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

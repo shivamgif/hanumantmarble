@@ -37,7 +37,7 @@ export async function GET(request) {
   const { session, appUser } = await getStockContext(request);
   const userRole = normalizeStockRole(appUser?.role);
 
-  if (!session || (userRole !== 'admin' && userRole !== 'manager')) {
+  if (!session || userRole !== 'manager') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
