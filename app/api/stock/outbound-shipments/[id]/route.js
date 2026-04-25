@@ -502,6 +502,30 @@ export async function PATCH(request, context) {
       return NextResponse.json({ shipment: rows[0], changeRequest: changeRequestRows[0] });
     }
 
+    if (action === 'update_payment') {
+      const { paymentStatus } = body;
+      if (!paymentStatus) {
+        return NextResponse.json({ error: 'paymentStatus is required' }, { status: 400 });
+      }
+      const rows = await sql(
+        `UPDATE stock_outbound_shipments
+         SET payment_status = $1, updated_at = NOW()
+         WHERE id = $2
+         RETURNING *`,
+        [paymentStatus, id]
+      );
+      if (!rows[0]) return NextResponse.json({ error: 'Shipment not found' }, { status: 404 });
+      await recordTimelineEvent({
+        eventType: 'other',
+        entityType: 'outbound_shipment',
+        entityId: id,
+        summary: `Payment status updated to ${paymentStatus}`,
+        details: { paymentStatus },
+        userId: appUser?.id || null,
+      });
+      return NextResponse.json({ shipment: rows[0] });
+    }
+
     const result = await withTransaction(async (tx) => {
       const schemaCaps = await getStockSchemaCapabilities();
       // Mutability guard: approved outbound shipments have already deducted stock.

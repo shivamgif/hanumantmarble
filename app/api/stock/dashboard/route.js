@@ -172,6 +172,7 @@ export async function GET(request) {
              sos.created_at AS dispatch_date,
              sos.status,
              sos.approval_status,
+             sos.payment_status,
              c.name AS customer_name,
              c.phone AS customer_phone_number,
              COALESCE(SUM(CASE WHEN i.unit_of_measure != 'bag' THEN soi.loaded_whole_qty ELSE 0 END), 0) as total_whole_qty,
@@ -192,7 +193,7 @@ export async function GET(request) {
           LEFT JOIN stock_app_users submitter ON submitter.id = sos.submitted_by_user_id
           LEFT JOIN stock_app_users approver ON approver.id = sos.approved_by_user_id
           LEFT JOIN stock_customers c ON c.id = sos.customer_id
-          GROUP BY sos.id, sos.shipment_number, sos.truck_license_plate_snapshot, sos.driver_name_snapshot, sos.created_at, sos.status, sos.approval_status, c.name, c.phone
+          GROUP BY sos.id, sos.shipment_number, sos.truck_license_plate_snapshot, sos.driver_name_snapshot, sos.created_at, sos.status, sos.approval_status, sos.payment_status, c.name, c.phone
           ORDER BY sos.created_at DESC`,
         salespersonDivisionId ? [salespersonDivisionId] : []
       ),

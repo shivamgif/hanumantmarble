@@ -1079,7 +1079,7 @@ export default function AdminDashboard() {
       salary: previewState.record.salary != null ? String(previewState.record.salary) : '',
       monthlySalesGoal: previewState.record.monthly_sales_goal != null ? String(previewState.record.monthly_sales_goal) : '',
     });
-  }, [previewState.kind, previewState.record, previewUserForm]);
+  }, [previewState.kind, previewState.record, previewState.open, previewUserForm]);
 
   useEffect(() => {
     setArrivalPage((current) => Math.min(current, arrivalPagination.pageCount));

@@ -283,7 +283,7 @@ export function BagArrivalFormContent({
       <form className="mt-6 space-y-5" onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
         {Object.entries(suggestions || {}).map(([key, values]) => (
           <datalist key={key} id={`sg-${key}`}>
-            {[...new Set(values || [])].map((v) => <option key={v} value={v} />)}
+            {[...new Set(values || [])].map((v, idx) => <option key={`${key}-${idx}`} value={v} />)}
           </datalist>
         ))}
         <InlineNotice notice={notice} />
@@ -448,7 +448,7 @@ export function ArrivalFormContent({
       <form className="mt-6 space-y-5" onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
         {Object.entries(suggestions).map(([key, values]) => (
           <datalist key={key} id={`sg-${key}`}>
-            {[...new Set(values || [])].map((v) => <option key={v} value={v} />)}
+            {[...new Set(values || [])].map((v, idx) => <option key={`${key}-${idx}`} value={v} />)}
           </datalist>
         ))}
         <InlineNotice notice={notice} />

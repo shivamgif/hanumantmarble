@@ -760,26 +760,62 @@ export async function PATCH(request, context) {
         }
         if (approvalCheck[0]?.approval_status !== 'approved') {
           await sql('DELETE FROM stock_inbound_shipment_items WHERE inbound_shipment_id = $1', [id]);
+          let subtotal = 0;
           for (const item of body.items) {
             if (!item.itemId) continue;
             const isBag = item.itemCategory === 'bag';
             const qtyBags = isBag ? Number(item.qtyBags || 0) : null;
+            const orderedBoxes = isBag ? qtyBags : Number(item.orderedBoxes || 0);
+
+            let total_cost = 0;
+            let ordered_qty_sqm = null;
+            let costPerSqm = isBag ? null : (item.costPerSqm != null && item.costPerSqm !== '' ? Number(item.costPerSqm) : null);
+
+            if (!isBag) {
+              const itemRow = await sql(`SELECT i.*, s.width_mm, s.length_mm, s.label AS size_label FROM stock_items i LEFT JOIN stock_sizes s ON s.id = i.size_id WHERE i.id = $1 LIMIT 1`, [Number(item.itemId)]);
+              if (itemRow[0]) {
+                const { sqmPerBox } = computeSqmValues(
+                  { piecesPerBox: item.piecesPerBox || itemRow[0].pieces_per_box },
+                  { width_mm: itemRow[0].width_mm, length_mm: itemRow[0].length_mm, label: itemRow[0].size_label }
+                );
+                ordered_qty_sqm = sqmPerBox != null ? Number((sqmPerBox * orderedBoxes).toFixed(3)) : null;
+              }
+              total_cost = ordered_qty_sqm != null && costPerSqm ? Number((ordered_qty_sqm * costPerSqm).toFixed(2)) : 0;
+            } else {
+              const ratePerBag = item.ratePerBag != null && item.ratePerBag !== '' ? Number(item.ratePerBag) : 0;
+              total_cost = Number((qtyBags * ratePerBag).toFixed(2));
+            }
+
+            subtotal += total_cost;
+
             await sql(
               `INSERT INTO stock_inbound_shipment_items
-                 (inbound_shipment_id, item_id, received_whole_qty, received_broken_qty, ordered_qty, cost_per_sqm, hsn_code, notes)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+                 (inbound_shipment_id, item_id, received_whole_qty, received_broken_qty, ordered_qty, unit_cost, landed_cost, cost_per_sqm, ordered_qty_sqm, total_cost, hsn_code, notes)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
               [
                 id,
                 Number(item.itemId),
-                isBag ? qtyBags : (item.wholeQty || 0),
-                isBag ? 0 : (item.brokenQty || 0),
-                isBag ? qtyBags : (item.orderedBoxes || null),
-                isBag ? null : (item.costPerSqm || null),
+                isBag ? qtyBags : Number(item.wholeQty || 0),
+                isBag ? 0 : Number(item.brokenQty || 0),
+                orderedBoxes,
+                isBag ? (item.ratePerBag != null ? Number(item.ratePerBag) : 0) : Number(item.unitPrice || 0),
+                isBag ? (item.ratePerBag != null ? Number(item.ratePerBag) : 0) : Number(item.landedCost || item.unitPrice || 0),
+                costPerSqm,
+                ordered_qty_sqm,
+                total_cost,
                 item.hsnCode || null,
                 item.notes || null,
               ]
             );
           }
+
+          // Recompute grand_total after re-inserting items
+          const shipmentForPct = updatedRows[0];
+          const handlingPct = Number(shipmentForPct.handling_cost_percent ?? 1.0);
+          const fuelPct = Number(shipmentForPct.fuel_cost_percent ?? 5.0);
+          const gstPct = Number(shipmentForPct.gst_percent ?? 18.0);
+          const grand_total = Number((subtotal + (subtotal * handlingPct / 100) + (subtotal * fuelPct / 100) + (subtotal * gstPct / 100)).toFixed(2));
+          await sql(`UPDATE stock_inbound_shipments SET grand_total = $1, updated_at = NOW() WHERE id = $2`, [grand_total, id]);
         }
       }
 

@@ -7,7 +7,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
 import { DispatchFormContent } from './dispatch-form';
-import { formatDateTime, getGeneratedByRoleLabel, getStatusVariant, CLASSES, FORM_INPUT_CLASS, exportToCSV, EXPORT_PERIOD_PRESETS, filterRowsByPeriod } from '../lib/stock-utils';
+import { formatDateTime, getGeneratedByRoleLabel, getStatusVariant, CLASSES, FORM_INPUT_CLASS, exportToCSV, EXPORT_PERIOD_PRESETS, filterRowsByPeriod, invalidateShipmentCache } from '../lib/stock-utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,9 +59,10 @@ export function DispatchesPanel({
       const res = await fetch(`/api/stock/outbound-shipments/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'update', paymentStatus: 'paid' }),
+        body: JSON.stringify({ action: 'update_payment', paymentStatus: 'paid' }),
       });
       if (!res.ok) throw new Error('Failed to mark as paid');
+      invalidateShipmentCache('dispatch', id);
       if (onRefreshData) await onRefreshData();
     } finally {
       setMarkingPaidId(null);
