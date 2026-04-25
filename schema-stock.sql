@@ -822,6 +822,18 @@ LEFT JOIN stock_sizes s ON s.id = i.size_id
 LEFT JOIN stock_inventory_lots l ON l.item_id = i.id
 GROUP BY i.id, i.sku, i.name, b.name, t.name, s.label;
 
+ALTER TABLE IF EXISTS stock_outbound_shipments ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'unpaid';
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'stock_outbound_shipments_payment_status_check'
+  ) THEN
+    ALTER TABLE stock_outbound_shipments
+      ADD CONSTRAINT stock_outbound_shipments_payment_status_check
+      CHECK (payment_status IN ('unpaid', 'partial', 'paid'));
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_stock_outbound_shipments_payment_status ON stock_outbound_shipments(payment_status);
+
 CREATE OR REPLACE VIEW stock_dashboard_summary_view AS
 SELECT
   (SELECT COUNT(*) FROM stock_items WHERE is_active = TRUE) AS total_items,

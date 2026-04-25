@@ -457,8 +457,9 @@ export async function PATCH(request, context) {
              loading_labour_cost = COALESCE($9, loading_labour_cost),
              notes = COALESCE($10, notes),
              salesperson_id = COALESCE($11, salesperson_id),
+             payment_status = COALESCE($12, payment_status),
              updated_at = NOW()
-         WHERE id = $12
+         WHERE id = $13
          RETURNING *`,
         [
           body.shipmentNumber || null,
@@ -472,6 +473,7 @@ export async function PATCH(request, context) {
           body.loadingLabourCost ?? null,
           body.notes || null,
           resolvedSalespersonId,
+          body.paymentStatus || null,
           id,
         ]
       );

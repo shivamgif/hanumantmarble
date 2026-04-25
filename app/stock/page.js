@@ -1166,6 +1166,7 @@ export default function StockDashboard() {
           onEdit={handleEditDispatch}
           pageSize={pageSize}
           setPageSize={setPageSize}
+          onRefreshData={refreshDashboard}
         />
       )}
 

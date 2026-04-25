@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { Download, ChevronRight, PackageCheck, Plus, Search, Send } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -47,8 +47,25 @@ export function DispatchesPanel({
   onEdit,
   pageSize,
   setPageSize,
+  onRefreshData,
 }) {
   const canEdit = ['admin', 'manager'].includes(userRole);
+  const [markingPaidId, setMarkingPaidId] = useState(null);
+
+  async function handleMarkAsPaid(id) {
+    setMarkingPaidId(id);
+    try {
+      const res = await fetch(`/api/stock/outbound-shipments/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update', paymentStatus: 'paid' }),
+      });
+      if (!res.ok) throw new Error('Failed to mark as paid');
+      if (onRefreshData) await onRefreshData();
+    } finally {
+      setMarkingPaidId(null);
+    }
+  }
 
   const toggleSort = useCallback((key) => {
     setDispatchSort((current) => ({
@@ -208,6 +225,20 @@ export function DispatchesPanel({
                     <span className="ml-1 text-[10px] font-bold opacity-70">/ ₹{(Number(d.total_selling_price_excl) * 1.18).toLocaleString('en-IN', { maximumFractionDigits: 0 })} GST</span>
                   </p>
                 ) : null}
+                <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                  <span className="font-semibold text-slate-600 dark:text-slate-300">{tc.payment}:</span>{' '}
+                  <span className={`capitalize ${d.payment_status === 'paid' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''}`}>{d.payment_status || 'Unpaid'}</span>
+                </p>
+                {canEdit && d.approval_status === 'approved' && d.payment_status !== 'paid' && (
+                  <button
+                    type="button"
+                    onClick={e => { e.stopPropagation(); handleMarkAsPaid(d.id); }}
+                    disabled={markingPaidId === d.id}
+                    className="mt-1 px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[9px] font-black uppercase tracking-widest disabled:opacity-50"
+                  >
+                    {markingPaidId === d.id ? '…' : 'Mark as Paid'}
+                  </button>
+                )}
                 {expanded ? (
                   <div className="mt-2 space-y-1 text-[11px] text-slate-500 dark:text-slate-400">
                     <p className="truncate">{d.product_names || d.product_skus || '—'}</p>
@@ -248,6 +279,7 @@ export function DispatchesPanel({
                   { id: 'products', label: tc.products },
                   { id: 'quantities', label: tc.quantities, align: 'right' },
                   ...(canEdit ? [{ id: 'price', label: tc.sellingPrice ?? 'Selling Price', align: 'right' }] : []),
+                  ...(canEdit ? [{ id: 'payment', label: tc.payment ?? 'Payment' }] : []),
                   ...(canEdit ? [{ id: 'edit', label: tc.edit, align: 'right' }] : []),
                   { id: 'return', label: tc.return, align: 'right' },
                   { id: 'status', label: t('status') },
@@ -257,11 +289,11 @@ export function DispatchesPanel({
                   <th key={col.id} className={`px-4 py-3 ${col.align === 'right' ? 'text-right' : ''}`}>
                     <button
                       type="button"
-                      onClick={() => col.id !== 'customer' && col.id !== 'return' && col.id !== 'edit' && col.id !== 'generatedBy' && col.id !== 'approvedBy' ? toggleSort(col.id) : undefined}
-                      className={`text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 flex items-center gap-2 group/th ${col.id !== 'customer' && col.id !== 'return' && col.id !== 'edit' && col.id !== 'generatedBy' && col.id !== 'approvedBy' ? 'hover:text-brand-primary' : 'cursor-default transition-all duration-300'}`}
+                      onClick={() => col.id !== 'customer' && col.id !== 'return' && col.id !== 'edit' && col.id !== 'payment' && col.id !== 'generatedBy' && col.id !== 'approvedBy' ? toggleSort(col.id) : undefined}
+                      className={`text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 flex items-center gap-2 group/th ${col.id !== 'customer' && col.id !== 'return' && col.id !== 'edit' && col.id !== 'payment' && col.id !== 'generatedBy' && col.id !== 'approvedBy' ? 'hover:text-brand-primary' : 'cursor-default transition-all duration-300'}`}
                     >
                       {col.label}
-                      {col.id !== 'customer' && col.id !== 'return' && col.id !== 'edit' && col.id !== 'generatedBy' && col.id !== 'approvedBy' && (
+                      {col.id !== 'customer' && col.id !== 'return' && col.id !== 'edit' && col.id !== 'payment' && col.id !== 'generatedBy' && col.id !== 'approvedBy' && (
                         <span className={`h-1 w-1 rounded-full bg-brand-primary opacity-0 transition-opacity ${dispatchSort.key === col.id ? 'opacity-100' : 'group-hover/th:opacity-40'}`} />
                       )}
                     </button>
@@ -328,6 +360,24 @@ export function DispatchesPanel({
                     </td>
                   )}
                   {canEdit && (
+                    <td className="px-4 py-3 text-[11px] text-muted-foreground">
+                      <div className={`uppercase text-[9px] font-black tracking-widest ${d.payment_status === 'paid' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`}>
+                        {d.payment_status || 'Unpaid'}
+                      </div>
+                      {d.approval_status === 'approved' && d.payment_status !== 'paid' && (
+                        <button
+                          type="button"
+                          onClick={e => { e.stopPropagation(); handleMarkAsPaid(d.id); }}
+                          disabled={markingPaidId === d.id}
+                          title="Mark this dispatch as fully paid"
+                          className="mt-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 text-[9px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all disabled:opacity-50 whitespace-nowrap"
+                        >
+                          {markingPaidId === d.id ? '…' : 'Mark as Paid'}
+                        </button>
+                      )}
+                    </td>
+                  )}
+                  {canEdit && (
                     <td className="px-4 py-3 text-right">
                       <button
                         type="button"
@@ -358,7 +408,7 @@ export function DispatchesPanel({
               ))}
               {dispatchPagination.total === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 11 : 9} className="px-3 py-10">
+                  <td colSpan={canEdit ? 12 : 9} className="px-3 py-10">
                     <div className="flex flex-col items-center justify-center gap-3 text-center">
                       <PackageCheck className="h-6 w-6 text-slate-400" />
                       <p className="text-sm text-slate-500 dark:text-slate-400">{tc.noDispatches}</p>
