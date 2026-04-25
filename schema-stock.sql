@@ -133,6 +133,8 @@ CREATE TABLE IF NOT EXISTS stock_app_users (
   can_manage_users BOOLEAN NOT NULL DEFAULT FALSE,
   can_approve_changes BOOLEAN NOT NULL DEFAULT FALSE,
   can_view_dashboard BOOLEAN NOT NULL DEFAULT TRUE,
+  salary NUMERIC(12,2) DEFAULT NULL,
+  monthly_sales_goal NUMERIC(12,2) DEFAULT NULL,
   last_login_at TIMESTAMP,
   created_by TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),

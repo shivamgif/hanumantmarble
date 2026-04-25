@@ -90,7 +90,7 @@ export default function StockLayout({ children }) {
   if (accessRole === 'admin' || accessRole === 'manager') {
     navigationItems.push({ href: '/stock/admin', label: t('adminDashboard'), icon: Users });
   }
-  if (accessRole === 'manager') {
+  if (accessRole === 'manager' || accessRole === 'salesperson') {
     navigationItems.push({ href: '/stock/analytics', label: t('analytics'), icon: BarChart2 });
   }
 

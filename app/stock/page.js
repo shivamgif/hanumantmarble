@@ -10,6 +10,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
 import { usePageSize } from '@/hooks/usePageSize';
+import { useStockAccess } from '@/hooks/useStockAccess';
 import { arrivalFormSchema, dispatchFormSchema } from '@/lib/forms/stock-forms';
 import { useStockFormStore } from '@/lib/stores/stock-form-store';
 import {
@@ -184,6 +185,7 @@ export default function StockDashboard() {
   }), [t]);
 
   const { user, isLoading: userLoading } = useAuthUser();
+  const { accessUser } = useStockAccess(user);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -1014,6 +1016,41 @@ export default function StockDashboard() {
         </div>
       </header>
 
+
+      {accessRole === 'salesperson' && accessUser?.monthly_sales_goal != null && (() => {
+        const goal = Number(accessUser.monthly_sales_goal);
+        const value = Number(data?.currentMonthDispatchValue ?? 0);
+        const pct = goal > 0 ? Math.round((value / goal) * 100) : 0;
+        const achieved = value >= goal && goal > 0;
+        const now = new Date();
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const daysLeft = daysInMonth - now.getDate();
+        const atRisk = !achieved && pct < 50 && daysLeft < 10;
+        const barColor = achieved ? 'bg-yellow-400' : atRisk ? 'bg-amber-500' : 'bg-brand-primary';
+        const fmt = (v) => `₹${Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+        return (
+          <div className="p-6 rounded-3xl border border-slate-200/60 dark:border-slate-800/60 bg-white dark:bg-slate-900/50 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Monthly Sales Goal</p>
+                <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mt-0.5">{fmt(value)} / {fmt(goal)} — {pct}%</p>
+              </div>
+              {achieved && (
+                <span className="text-xs font-black text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30 px-3 py-1 rounded-full">Goal Achieved!</span>
+              )}
+              {atRisk && (
+                <span className="text-xs font-black text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-3 py-1 rounded-full">{daysLeft}d left</span>
+              )}
+            </div>
+            <div className="h-3 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-700 ${barColor}`}
+                style={{ width: `${Math.min(pct, 100)}%` }}
+              />
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="rounded-[1.75rem] border border-slate-200/60 bg-slate-100/30 p-1.5 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/30">
         <div className="flex items-center gap-1">

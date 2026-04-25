@@ -224,7 +224,19 @@ export async function GET(request) {
       sql('SELECT name AS salesperson_name FROM stock_sales_people WHERE is_active = true ORDER BY name', []),
     ]);
 
-    const [dashboardResults, suggestionsResults] = await Promise.all([dashboardPromise, suggestionsPromise]);
+    const currentMonthValuePromise = appUser?.role === 'salesperson' && appUser?.id
+      ? sql(
+          `SELECT COALESCE(SUM(soi.loaded_whole_qty * soi.rate_per_unit), 0) AS current_month_dispatch_value
+           FROM stock_outbound_shipments s
+           JOIN stock_outbound_items soi ON soi.shipment_id = s.id
+           WHERE s.submitted_by_user_id = $1
+             AND DATE_TRUNC('month', s.dispatch_date) = DATE_TRUNC('month', CURRENT_DATE)
+             AND s.status != 'cancelled'`,
+          [appUser.id]
+        )
+      : Promise.resolve([{ current_month_dispatch_value: 0 }]);
+
+    const [dashboardResults, suggestionsResults, currentMonthValueRows] = await Promise.all([dashboardPromise, suggestionsPromise, currentMonthValuePromise]);
     const [summaryRows, activeItems, recentArrivalsRaw, recentArrivalProducts, recentDispatchProducts, recentDispatchesRaw] = dashboardResults;
     const [suppliers, transporters, items, brands, divisions, finishes, grades, sizes, hsnCodes, originCities, warehouses, drivers, trucks, paymentModes, bagTypes, bagItems, salespersons] = suggestionsResults;
 
@@ -286,6 +298,7 @@ export async function GET(request) {
       recentPurchases: recentArrivals,
       recentArrivals,
       recentDispatches,
+      currentMonthDispatchValue: Number(currentMonthValueRows[0]?.current_month_dispatch_value ?? 0),
     });
   } catch (error) {
     console.error('Failed to load stock dashboard:', error);

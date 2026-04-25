@@ -8,6 +8,7 @@ export function useStockAccess(user) {
   const [accessApproved, setAccessApproved] = useState(false);
   const [accessMessage, setAccessMessage] = useState('');
   const [accessRole, setAccessRole] = useState('stock_maintainer');
+  const [accessUser, setAccessUser] = useState(null);
 
   // Use the user's stable ID string as the dependency, not the full object.
   // This prevents re-running the check when useAuthUser produces a new user
@@ -47,6 +48,7 @@ export function useStockAccess(user) {
         setAccessApproved(Boolean(result.approved));
         setAccessMessage(result.message || '');
         setAccessRole(result.role || 'stock_maintainer');
+        setAccessUser(result.user || null);
         setHasResolvedAccessOnce(true);
       } catch (accessError) {
         if (!mounted) {
@@ -70,5 +72,5 @@ export function useStockAccess(user) {
     };
   }, [userId]); // Only re-run when the actual user identity changes.
 
-  return { accessLoading, hasResolvedAccessOnce, accessApproved, accessMessage, accessRole };
+  return { accessLoading, hasResolvedAccessOnce, accessApproved, accessMessage, accessRole, accessUser };
 }

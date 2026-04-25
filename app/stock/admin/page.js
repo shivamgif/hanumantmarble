@@ -269,6 +269,8 @@ export default function AdminDashboard() {
       canManageUsers: false,
       canApproveChanges: false,
       canViewDashboard: false,
+      salary: '',
+      monthlySalesGoal: '',
     },
   });
 
@@ -921,6 +923,8 @@ export default function AdminDashboard() {
         canManageUsers: Boolean(updatedUser.can_manage_users),
         canApproveChanges: Boolean(updatedUser.can_approve_changes),
         canViewDashboard: Boolean(updatedUser.can_view_dashboard),
+        salary: updatedUser.salary != null ? String(updatedUser.salary) : '',
+        monthlySalesGoal: updatedUser.monthly_sales_goal != null ? String(updatedUser.monthly_sales_goal) : '',
       });
       if (successMessage) {
         setActionNotice({ type: 'success', message: successMessage });
@@ -1063,6 +1067,8 @@ export default function AdminDashboard() {
       canManageUsers: Boolean(previewState.record.can_manage_users),
       canApproveChanges: Boolean(previewState.record.can_approve_changes),
       canViewDashboard: Boolean(previewState.record.can_view_dashboard),
+      salary: previewState.record.salary != null ? String(previewState.record.salary) : '',
+      monthlySalesGoal: previewState.record.monthly_sales_goal != null ? String(previewState.record.monthly_sales_goal) : '',
     });
   }, [previewState.kind, previewState.record, previewUserForm]);
 
@@ -2428,6 +2434,9 @@ export default function AdminDashboard() {
                         </div>
                         <form onSubmit={(e) => {
                           e.preventDefault();
+                          const isSalesperson = previewUserForm.watch('role') === 'salesperson';
+                          const salaryVal = previewUserForm.watch('salary');
+                          const goalVal = previewUserForm.watch('monthlySalesGoal');
                           handleUpdateUser(
                             previewState.record?.id,
                             {
@@ -2435,6 +2444,8 @@ export default function AdminDashboard() {
                               canManageUsers: previewUserForm.watch('canManageUsers'),
                               canApproveChanges: previewUserForm.watch('canApproveChanges'),
                               canViewDashboard: previewUserForm.watch('canViewDashboard'),
+                              ...(isSalesperson && { salary: salaryVal !== '' ? Number(salaryVal) : null }),
+                              ...(isSalesperson && { monthlySalesGoal: goalVal !== '' ? Number(goalVal) : null }),
                             },
                             'User permissions updated successfully.'
                           );
@@ -2458,6 +2469,38 @@ export default function AdminDashboard() {
                               </Select>
                             </div>
                           </div>
+
+                          {previewUserForm.watch('role') === 'salesperson' && (
+                            <div className="space-y-4">
+                              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Salesperson Targets</p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label className={FORM_LABEL_CLASS}>Monthly Salary (₹)</Label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="e.g. 25000"
+                                    value={previewUserForm.watch('salary')}
+                                    onChange={(e) => previewUserForm.setValue('salary', e.target.value, { shouldDirty: true })}
+                                    className="w-full h-11 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className={FORM_LABEL_CLASS}>Monthly Sales Goal (₹)</Label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="e.g. 200000"
+                                    value={previewUserForm.watch('monthlySalesGoal')}
+                                    onChange={(e) => previewUserForm.setValue('monthlySalesGoal', e.target.value, { shouldDirty: true })}
+                                    className="w-full h-11 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
 
                           <div className="space-y-4">
                             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Permission Flags</p>
@@ -2514,6 +2557,8 @@ export default function AdminDashboard() {
                                 canManageUsers: Boolean(previewState.record?.can_manage_users),
                                 canApproveChanges: Boolean(previewState.record?.can_approve_changes),
                                 canViewDashboard: Boolean(previewState.record?.can_view_dashboard),
+                                salary: previewState.record?.salary != null ? String(previewState.record.salary) : '',
+                                monthlySalesGoal: previewState.record?.monthly_sales_goal != null ? String(previewState.record.monthly_sales_goal) : '',
                               })}
                               className="px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-300 text-[10px] font-black uppercase tracking-widest transition-all"
                             >

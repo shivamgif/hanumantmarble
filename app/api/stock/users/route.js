@@ -309,6 +309,8 @@ export async function PATCH(request) {
   const hasCanViewDashboardInPayload = Object.prototype.hasOwnProperty.call(body, 'canViewDashboard');
   const hasDepartmentInPayload = Object.prototype.hasOwnProperty.call(body, 'department');
   const hasDivisionInPayload = Object.prototype.hasOwnProperty.call(body, 'division');
+  const hasSalaryInPayload = Object.prototype.hasOwnProperty.call(body, 'salary');
+  const hasSalesGoalInPayload = Object.prototype.hasOwnProperty.call(body, 'monthlySalesGoal');
   const department = hasDepartmentInPayload
     ? normalizeDepartment(body.department, normalizedRole === 'salesperson' ? 'General' : null)
     : null;
@@ -332,9 +334,11 @@ export async function PATCH(request) {
            can_approve_changes = COALESCE($7, can_approve_changes),
            can_view_dashboard = COALESCE($8, can_view_dashboard),
            department = COALESCE($9, department),
-             division_id = COALESCE($10, division_id),
-             updated_at = NOW()
-           WHERE id = $11
+           division_id = COALESCE($10, division_id),
+           salary = COALESCE($12, salary),
+           monthly_sales_goal = COALESCE($13, monthly_sales_goal),
+           updated_at = NOW()
+       WHERE id = $11
        RETURNING *`,
       [
         body.name || null,
@@ -348,6 +352,8 @@ export async function PATCH(request) {
         department,
         divisionId,
         body.id,
+        hasSalaryInPayload ? (body.salary != null ? Number(body.salary) : null) : null,
+        hasSalesGoalInPayload ? (body.monthlySalesGoal != null ? Number(body.monthlySalesGoal) : null) : null,
       ]
     );
 
