@@ -4,6 +4,7 @@ import { sql } from '@/lib/db';
 import { validateStockPassword } from '@/lib/password-policy';
 import { normalizeIdentity } from '@/lib/auth-server';
 import { auth as betterAuth } from '@/lib/auth';
+import { getAuthDatabase } from '@/lib/auth-db';
 
 function normalizeDepartment(value, fallback = null) {
   const normalized = String(value || '').trim();
@@ -26,27 +27,76 @@ function isExistingUserError(error) {
   );
 }
 
-async function ensureCredentialIdentity({ email, password, name }) {
+async function ensureCredentialIdentity({ email, password, name, role }) {
+  async function markEmailVerified() {
+    try {
+      const authDb = getAuthDatabase();
+      if (authDb?.db) {
+        await authDb.db
+          .updateTable('user')
+          .set({
+            emailVerified: true,
+            updatedAt: new Date(),
+          })
+          .where('email', '=', email)
+          .execute();
+        return;
+      }
+    } catch {
+      // Fallback to raw SQL variants below.
+    }
+
+    try {
+      await sql(
+        `UPDATE "user" SET "emailVerified" = true, "updatedAt" = NOW() WHERE email = $1`,
+        [email]
+      );
+      return;
+    } catch {
+      // Last fallback for snake_case legacy schemas.
+    }
+
+    try {
+      await sql(
+        `UPDATE "user" SET email_verified = true, updated_at = NOW() WHERE email = $1`,
+        [email]
+      );
+    } catch {
+      // Do not block user creation if verify flag cannot be persisted.
+    }
+  }
+
   try {
-    await betterAuth.api.signUpEmail({
+    await betterAuth.api.createUser({
       body: {
         email,
         password,
         name: name || email,
+        role,
       },
-      // No request headers — prevents better-auth from overwriting the admin's session cookie
-      headers: new Headers(),
     });
-    // Mark email as verified so the new user can log in without an email confirmation step
-    await sql(
-      `UPDATE "user" SET email_verified = true WHERE email = $1`,
-      [email]
-    );
+    // Mark email as verified so the new user can log in without an email confirmation step.
+    await markEmailVerified();
   } catch (error) {
     if (isExistingUserError(error)) {
+      // Existing credential identity should also be verified for manager-created users.
+      await markEmailVerified();
       return;
     }
     throw error;
+  }
+}
+
+function extractErrorDetail(error) {
+  if (!error) return '';
+  const message = String(error?.message || '').trim();
+  if (message) return message;
+  const nestedMessage = String(error?.cause?.message || error?.body?.message || '').trim();
+  if (nestedMessage) return nestedMessage;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error || '');
   }
 }
 
@@ -67,6 +117,28 @@ async function resolveDivisionId(value) {
   return rows[0]?.id || null;
 }
 
+async function resolveDivisionIdFromPayload(body) {
+  const rawDivisionId = body?.divisionId ?? body?.division_id ?? null;
+  const divisionIdNumber = Number(rawDivisionId);
+  if (Number.isFinite(divisionIdNumber) && divisionIdNumber > 0) {
+    const rows = await sql(
+      `SELECT id FROM stock_divisions WHERE id = $1 LIMIT 1`,
+      [divisionIdNumber]
+    );
+    if (!rows[0]) {
+      throw new Error('Invalid division id');
+    }
+    return rows[0].id;
+  }
+
+  const divisionName = normalizeDepartment(body?.division, null);
+  if (!divisionName) {
+    return null;
+  }
+
+  return resolveDivisionId(divisionName);
+}
+
 export async function GET(request) {
   const { session, appUser } = await getStockContext(request);
 
@@ -84,9 +156,10 @@ export async function GET(request) {
 
   try {
     const users = await sql(
-      `SELECT *
-       FROM stock_app_users
-       ORDER BY created_at DESC`,
+      `SELECT u.*, d.name AS division_name
+       FROM stock_app_users u
+       LEFT JOIN stock_divisions d ON d.id = u.division_id
+       ORDER BY u.created_at DESC`,
       []
     );
 
@@ -113,8 +186,7 @@ export async function POST(request) {
 
   const body = await request.json();
   const normalizedRole = normalizeStockRole(body.role || 'stock_maintainer');
-  const department = normalizeDepartment(body.department, normalizedRole === 'salesperson' ? 'General' : null);
-  const divisionName = normalizeDepartment(body.division || body.department, normalizedRole === 'salesperson' ? 'General' : null);
+  const department = normalizeDepartment(body.department, normalizedRole === 'salesperson' ? 'Adhesive' : null);
 
   if (!STOCK_ROLES.includes(normalizedRole)) {
     return NextResponse.json({ error: 'Invalid role supplied' }, { status: 400 });
@@ -128,7 +200,12 @@ export async function POST(request) {
   }
 
   try {
-    const divisionId = await resolveDivisionId(divisionName);
+    const divisionId = await resolveDivisionIdFromPayload(body);
+    if (normalizedRole === 'salesperson' && !divisionId) {
+      return NextResponse.json({ error: 'Division is required for salesperson' }, { status: 400 });
+    }
+    const autoApprovedStatus = 'active';
+    const autoApprovedCanViewDashboard = true;
 
     const normalizedEmail = String(body.email || '').trim().toLowerCase();
     if (!normalizedEmail) {
@@ -145,7 +222,7 @@ export async function POST(request) {
       email: normalizedEmail,
       password: String(body.password || ''),
       name: String(body.name || '').trim(),
-      request,
+      role: roleFlags.role,
     });
 
     const identity = normalizeIdentity({
@@ -201,10 +278,10 @@ export async function POST(request) {
           roleFlags.role,
           department,
           divisionId,
-          body.status || 'active',
+          autoApprovedStatus,
           roleFlags.canManageUsers,
           roleFlags.canApproveChanges,
-          body.canViewDashboard !== false,
+          autoApprovedCanViewDashboard,
           session.user.email,
         ]
       );
@@ -249,10 +326,10 @@ export async function POST(request) {
           roleFlags.role,
           department,
           divisionId,
-          body.status || 'active',
+          autoApprovedStatus,
           roleFlags.canManageUsers,
           roleFlags.canApproveChanges,
-          body.canViewDashboard !== false,
+          autoApprovedCanViewDashboard,
           session.user.email,
         ]
       );
@@ -269,19 +346,24 @@ export async function POST(request) {
 
     return NextResponse.json({ user: rows[0] }, { status: 201 });
   } catch (error) {
-    console.error('Failed to save user:', error);
+    const errorDetail = extractErrorDetail(error);
+    console.error('Failed to save user:', errorDetail || error);
 
-    if (String(error.message || '').includes('stock_app_users_role_check')) {
+    if (String(errorDetail || '').toLowerCase().includes('invalid division id')) {
+      return NextResponse.json({ error: 'Invalid division selected' }, { status: 400 });
+    }
+
+    if (String(errorDetail || '').includes('stock_app_users_role_check')) {
       return NextResponse.json(
         {
           error: 'Role constraint is not updated for salesperson yet. Run: npm run db:migrate-salesperson-role',
-          detail: error.message,
+          detail: errorDetail,
         },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ error: 'Failed to save user', detail: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to save user', detail: errorDetail }, { status: 500 });
   }
 }
 
@@ -312,7 +394,7 @@ export async function PATCH(request) {
   const hasSalaryInPayload = Object.prototype.hasOwnProperty.call(body, 'salary');
   const hasSalesGoalInPayload = Object.prototype.hasOwnProperty.call(body, 'monthlySalesGoal');
   const department = hasDepartmentInPayload
-    ? normalizeDepartment(body.department, normalizedRole === 'salesperson' ? 'General' : null)
+    ? normalizeDepartment(body.department, normalizedRole === 'salesperson' ? 'Adhesive' : null)
     : null;
 
   try {
@@ -339,7 +421,7 @@ export async function PATCH(request) {
            monthly_sales_goal = COALESCE($13, monthly_sales_goal),
            updated_at = NOW()
        WHERE id = $11
-       RETURNING *`,
+       RETURNING *, (SELECT d.name FROM stock_divisions d WHERE d.id = stock_app_users.division_id) AS division_name`,
       [
         body.name || null,
         body.phone || null,

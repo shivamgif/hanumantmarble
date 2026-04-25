@@ -1,15 +1,36 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, generateReference, getStockContext, hasAnyStockRole, queueNotification, recordTimelineEvent } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, generateReference, getStockContext, hasAnyStockRole, normalizeStockRole, queueNotification, recordTimelineEvent } from '@/lib/stock-workflow';
 import { sql, withTransaction } from '@/lib/db';
+import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 
 async function loadShipmentWithItems(id) {
+  const schemaCaps = await getStockSchemaCapabilities();
+  const salespersonUserSelect = schemaCaps.hasOutboundSalespersonUserId
+    ? `sos.salesperson_user_id,
+            spu.name AS salesperson_user_name,
+            spu.division_id AS salesperson_user_division_id,
+            sd.name AS salesperson_user_division_name,`
+    : `NULL::bigint AS salesperson_user_id,
+            NULL::text AS salesperson_user_name,
+            NULL::bigint AS salesperson_user_division_id,
+            NULL::text AS salesperson_user_division_name,`;
+  const salespersonUserJoins = schemaCaps.hasOutboundSalespersonUserId
+    ? `LEFT JOIN stock_app_users spu ON spu.id = sos.salesperson_user_id
+     LEFT JOIN stock_divisions sd ON sd.id = spu.division_id`
+    : '';
+
+  const salespersonNameExpr = schemaCaps.hasOutboundSalespersonUserId
+    ? 'COALESCE(spu.name, sp.name)'
+    : 'sp.name';
+
   const shipmentRows = await sql(
     `SELECT sos.*,
             sos.truck_license_plate_snapshot AS truck_license_plate,
             sos.driver_name_snapshot AS driver_name,
             c.name AS customer_name,
             c.phone AS customer_phone_number,
-            sp.name AS salesperson_name,
+            ${salespersonNameExpr} AS salesperson_name,
+            ${salespersonUserSelect}
             COALESCE(agg.total_whole_qty, 0) AS total_whole_qty,
             COALESCE(agg.total_broken_qty, 0) AS total_broken_qty,
             COALESCE(agg.total_return_whole_qty, 0) AS total_return_whole_qty,
@@ -18,6 +39,7 @@ async function loadShipmentWithItems(id) {
      FROM stock_outbound_shipments sos
      LEFT JOIN stock_customers c ON c.id = sos.customer_id
      LEFT JOIN stock_sales_people sp ON sp.id = sos.salesperson_id
+     ${salespersonUserJoins}
      LEFT JOIN (
        SELECT outbound_shipment_id,
               SUM(loaded_whole_qty) AS total_whole_qty,
@@ -55,6 +77,122 @@ async function loadShipmentWithItems(id) {
 function toPositiveInteger(value) {
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function createValidationError(message, reasonCode) {
+  const error = new Error(message);
+  error.statusCode = 400;
+  error.reasonCode = reasonCode;
+  return error;
+}
+
+async function resolveDispatchSalespersonUserTx(tx, body) {
+  const salespersonUserId = Number(body.salespersonUserId || 0);
+  if (!salespersonUserId || !Number.isFinite(salespersonUserId)) {
+    throw createValidationError('Select a salesperson from the list.', 'salesperson_missing');
+  }
+
+  const rows = await tx(
+    `SELECT u.id, u.name, u.division_id, d.name AS division_name
+     FROM stock_app_users u
+     LEFT JOIN stock_divisions d ON d.id = u.division_id
+     WHERE u.id = $1
+       AND u.role = 'salesperson'
+       AND u.status = 'active'
+     LIMIT 1`,
+    [salespersonUserId]
+  );
+
+  const salespersonUser = rows[0] || null;
+  if (!salespersonUser) {
+    throw createValidationError('Selected salesperson is invalid or inactive.', 'salesperson_invalid');
+  }
+  if (!salespersonUser.division_id) {
+    throw createValidationError('Selected salesperson has no division assigned.', 'salesperson_division_missing');
+  }
+
+  return salespersonUser;
+}
+
+async function validateDispatchDivisionIntegrityTx(tx, items, salespersonUser) {
+  const itemIds = items.map((item) => Number(item.itemId)).filter(Boolean);
+  const itemRows = itemIds.length
+    ? await tx(
+        `SELECT i.id, i.division_id, d.name AS division_name
+         FROM stock_items i
+         LEFT JOIN stock_divisions d ON d.id = i.division_id
+         WHERE i.id = ANY($1::bigint[])`,
+        [itemIds]
+      )
+    : [];
+
+  if (itemRows.length !== itemIds.length) {
+    throw createValidationError('One or more dispatch items could not be resolved.', 'item_not_found');
+  }
+
+  const rowById = new Map(itemRows.map((row) => [Number(row.id), row]));
+  const orderedRows = itemIds.map((id) => rowById.get(id));
+  if (orderedRows.some((row) => !row?.division_id)) {
+    throw createValidationError('Each dispatch item must belong to a division.', 'item_division_missing');
+  }
+
+  const itemDivisionIds = [...new Set(orderedRows.map((row) => Number(row.division_id)))];
+  if (itemDivisionIds.length !== 1) {
+    throw createValidationError('All dispatch items must be from the same division.', 'mixed_item_divisions');
+  }
+
+  if (Number(salespersonUser.division_id) !== itemDivisionIds[0]) {
+    throw createValidationError('Salesperson division does not match dispatch item division.', 'division_mismatch');
+  }
+
+  return {
+    itemIds,
+    itemDivisionIds,
+    itemDivisionNames: [...new Set(orderedRows.map((row) => row.division_name || `Division ${row.division_id}`))],
+    salespersonDivisionId: Number(salespersonUser.division_id),
+    salespersonDivisionName: salespersonUser.division_name || null,
+  };
+}
+
+async function recordDivisionValidationTimeline({
+  appUser,
+  entityId = null,
+  shipmentNumber = null,
+  outcome,
+  reasonCode = null,
+  salespersonUser = null,
+  validation = null,
+}) {
+  try {
+    await recordTimelineEvent({
+      eventType: 'other',
+      entityType: 'outbound_shipment',
+      entityId,
+      summary: `Dispatch division validation ${outcome}`,
+      details: {
+        division_validation: outcome,
+        reason_code: reasonCode,
+        shipmentNumber,
+        actor: {
+          userId: appUser?.id || null,
+          role: normalizeStockRole(appUser?.role),
+          email: appUser?.email || null,
+        },
+        salesperson: salespersonUser ? {
+          id: Number(salespersonUser.id),
+          name: salespersonUser.name,
+          divisionId: salespersonUser.division_id != null ? Number(salespersonUser.division_id) : null,
+          divisionName: salespersonUser.division_name || null,
+        } : null,
+        itemIds: validation?.itemIds || [],
+        itemDivisionIds: validation?.itemDivisionIds || [],
+        itemDivisionNames: validation?.itemDivisionNames || [],
+      },
+      userId: appUser?.id || null,
+    });
+  } catch (error) {
+    console.error('Failed to record dispatch division validation timeline:', error);
+  }
 }
 
 async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKey) {
@@ -228,6 +366,7 @@ export async function GET(request, context) {
 
 export async function PATCH(request, context) {
   const { session, appUser } = await getStockContext(request);
+  let shipmentIdForLogging = null;
 
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!(await ensureDatabaseAvailable())) return NextResponse.json({ error: 'Database not configured yet.' }, { status: 503 });
@@ -235,6 +374,7 @@ export async function PATCH(request, context) {
 
   try {
     const { id } = await context.params;
+    shipmentIdForLogging = id;
     const body = await request.json();
     const action = body.action || 'update';
 
@@ -363,6 +503,7 @@ export async function PATCH(request, context) {
     }
 
     const result = await withTransaction(async (tx) => {
+      const schemaCaps = await getStockSchemaCapabilities();
       // Mutability guard: approved outbound shipments have already deducted stock.
       // Editing them without a full reversal pass would silently miscount inventory.
       const existingRows = await tx(
@@ -411,6 +552,8 @@ export async function PATCH(request, context) {
       // Resolve IDs from names if provided
       let resolvedCustomerId = null;
       let resolvedSalespersonId = null;
+      let resolvedSalespersonUser = null;
+      let divisionValidation = null;
 
       if (body.customerName) {
         const trimmedName = body.customerName.trim();
@@ -439,43 +582,88 @@ export async function PATCH(request, context) {
         resolvedCustomerId = found?.id || null;
       }
 
-      if (body.salespersonName) {
-        const sRows = await tx('SELECT id FROM stock_sales_people WHERE lower(name) = lower($1) LIMIT 1', [body.salespersonName.trim()]);
-        resolvedSalespersonId = sRows[0]?.id || null;
+      const requiresDivisionValidation = (body.items && Array.isArray(body.items) && body.items.length > 0)
+        || Object.prototype.hasOwnProperty.call(body, 'salespersonUserId')
+        || Object.prototype.hasOwnProperty.call(body, 'salespersonName');
+
+      if (requiresDivisionValidation) {
+        resolvedSalespersonUser = await resolveDispatchSalespersonUserTx(tx, body);
+        if (resolvedSalespersonUser?.name) {
+          const sRows = await tx(
+            'SELECT id FROM stock_sales_people WHERE lower(name) = lower($1) LIMIT 1',
+            [resolvedSalespersonUser.name.trim()]
+          );
+          resolvedSalespersonId = sRows[0]?.id || null;
+        } else if (body.salespersonName) {
+          const sRows = await tx(
+            'SELECT id FROM stock_sales_people WHERE lower(name) = lower($1) LIMIT 1',
+            [body.salespersonName.trim()]
+          );
+          resolvedSalespersonId = sRows[0]?.id || null;
+        }
       }
+
+      if (resolvedSalespersonUser) {
+        if (body.items && Array.isArray(body.items) && body.items.length > 0) {
+          divisionValidation = await validateDispatchDivisionIntegrityTx(tx, body.items, resolvedSalespersonUser);
+        } else if (requiresDivisionValidation) {
+          const existingItemRows = await tx(
+            `SELECT item_id
+             FROM stock_outbound_shipment_items
+             WHERE outbound_shipment_id = $1
+             ORDER BY id ASC`,
+            [id]
+          );
+          const existingItemsPayload = existingItemRows.map((row) => ({ itemId: Number(row.item_id) }));
+          if (existingItemsPayload.length > 0) {
+            divisionValidation = await validateDispatchDivisionIntegrityTx(tx, existingItemsPayload, resolvedSalespersonUser);
+          }
+        }
+      }
+
+      const updateAssignments = [
+        'shipment_number = COALESCE($1, shipment_number)',
+        'customer_id = COALESCE($2, customer_id)',
+        'truck_license_plate_snapshot = COALESCE($3, truck_license_plate_snapshot)',
+        'truck_number_snapshot = COALESCE($4, truck_number_snapshot)',
+        'driver_name_snapshot = COALESCE($5, driver_name_snapshot)',
+        'invoice_number = COALESCE($6, invoice_number)',
+        'dispatch_date = COALESCE($7, dispatch_date)',
+        'transport_cost = COALESCE($8, transport_cost)',
+        'loading_labour_cost = COALESCE($9, loading_labour_cost)',
+        'notes = COALESCE($10, notes)',
+        'salesperson_id = COALESCE($11, salesperson_id)',
+      ];
+      const updateValues = [
+        body.shipmentNumber || null,
+        resolvedCustomerId,
+        body.truckLicensePlate || null,
+        body.truckNumber || null,
+        body.driverName || null,
+        body.invoiceNumber || null,
+        body.dispatchDate || null,
+        body.transportCost ?? null,
+        body.loadingLabourCost ?? null,
+        body.notes || null,
+        resolvedSalespersonId,
+      ];
+
+      if (schemaCaps.hasOutboundSalespersonUserId) {
+        updateAssignments.push(`salesperson_user_id = COALESCE($${updateValues.length + 1}, salesperson_user_id)`);
+        updateValues.push(resolvedSalespersonUser?.id ? Number(resolvedSalespersonUser.id) : null);
+      }
+
+      updateAssignments.push(`payment_status = COALESCE($${updateValues.length + 1}, payment_status)`);
+      updateValues.push(body.paymentStatus || null);
+      updateValues.push(id);
 
       const shipmentRows = await tx(
         `UPDATE stock_outbound_shipments
-         SET shipment_number = COALESCE($1, shipment_number),
-             customer_id = COALESCE($2, customer_id),
-             truck_license_plate_snapshot = COALESCE($3, truck_license_plate_snapshot),
-             truck_number_snapshot = COALESCE($4, truck_number_snapshot),
-             driver_name_snapshot = COALESCE($5, driver_name_snapshot),
-             invoice_number = COALESCE($6, invoice_number),
-             dispatch_date = COALESCE($7, dispatch_date),
-             transport_cost = COALESCE($8, transport_cost),
-             loading_labour_cost = COALESCE($9, loading_labour_cost),
-             notes = COALESCE($10, notes),
-             salesperson_id = COALESCE($11, salesperson_id),
-             payment_status = COALESCE($12, payment_status),
+         SET ${updateAssignments.join(',\n             ')},
              updated_at = NOW()
-         WHERE id = $13
+         WHERE id = $${updateValues.length}
          RETURNING *`,
-        [
-          body.shipmentNumber || null,
-          resolvedCustomerId,
-          body.truckLicensePlate || null,
-          body.truckNumber || null,
-          body.driverName || null,
-          body.invoiceNumber || null,
-          body.dispatchDate || null,
-          body.transportCost ?? null,
-          body.loadingLabourCost ?? null,
-          body.notes || null,
-          resolvedSalespersonId,
-          body.paymentStatus || null,
-          id,
-        ]
+        updateValues
       );
 
       if (body.items && Array.isArray(body.items)) {
@@ -484,6 +672,7 @@ export async function PATCH(request, context) {
 
         // Insert new items
         for (const item of body.items) {
+          const isBagItem = item.itemCategory === 'bag';
           await tx(
             `INSERT INTO stock_outbound_shipment_items (
               outbound_shipment_id, item_id, loaded_whole_qty, loaded_broken_qty,
@@ -492,8 +681,8 @@ export async function PATCH(request, context) {
             [
               id,
               item.itemId,
-              item.loadedWholeQty || 0,
-              item.loadedBrokenQty || 0,
+              isBagItem ? (item.qtyBags || 0) : (item.loadedWholeQty || 0),
+              isBagItem ? 0 : (item.loadedBrokenQty || 0),
               item.returnWholeQty || 0,
               item.returnBrokenQty || 0,
               item.sellUnit || 'box',
@@ -504,13 +693,60 @@ export async function PATCH(request, context) {
         }
       }
 
-      return { shipment: shipmentRows[0] };
+      return {
+        shipment: shipmentRows[0],
+        divisionValidation,
+        salespersonUser: resolvedSalespersonUser,
+      };
+    });
+
+    await recordTimelineEvent({
+      eventType: 'other',
+      entityType: 'outbound_shipment',
+      entityId: id,
+      summary: 'Outbound shipment updated',
+      details: {
+        division_validation: 'passed',
+        actor: {
+          userId: appUser?.id || null,
+          role: normalizeStockRole(appUser?.role),
+          email: appUser?.email || null,
+        },
+        salesperson: result.salespersonUser ? {
+          id: Number(result.salespersonUser.id),
+          name: result.salespersonUser.name,
+          divisionId: result.divisionValidation?.salespersonDivisionId ?? null,
+          divisionName: result.divisionValidation?.salespersonDivisionName ?? null,
+        } : null,
+        itemIds: result.divisionValidation?.itemIds || [],
+        itemDivisionIds: result.divisionValidation?.itemDivisionIds || [],
+        itemDivisionNames: result.divisionValidation?.itemDivisionNames || [],
+      },
+      userId: appUser?.id || null,
+    });
+
+    await recordDivisionValidationTimeline({
+      appUser,
+      entityId: id,
+      shipmentNumber: result.shipment?.shipment_number || null,
+      outcome: 'passed',
+      salespersonUser: result.salespersonUser,
+      validation: result.divisionValidation,
     });
 
     return NextResponse.json(result);
   } catch (error) {
+    await recordDivisionValidationTimeline({
+      appUser,
+      entityId: shipmentIdForLogging,
+      outcome: 'failed',
+      reasonCode: error?.reasonCode || null,
+    });
     console.error('Failed to update outbound shipment:', error);
     const status = Number.isInteger(error?.statusCode) ? error.statusCode : 500;
-    return NextResponse.json({ error: 'Failed to update shipment', detail: error.message }, { status });
+    return NextResponse.json(
+      { error: status === 500 ? 'Failed to update shipment' : error.message, code: error?.reasonCode || undefined, detail: error.message },
+      { status }
+    );
   }
 }

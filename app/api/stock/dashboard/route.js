@@ -125,7 +125,7 @@ export async function GET(request) {
            STRING_AGG(DISTINCT i.sku, ', ' ORDER BY i.sku) AS product_skus
            ,COALESCE(SUM(isi.qty_sqm), 0) AS total_qty_sqm
            ,COALESCE(AVG(NULLIF(isi.cost_per_sqm, 0)), 0) AS avg_cost_per_sqm
-           ,STRING_AGG(DISTINCT COALESCE(d.name, 'General'), ', ' ORDER BY COALESCE(d.name, 'General')) AS divisions
+           ,STRING_AGG(DISTINCT COALESCE(d.name, 'Adhesive'), ', ' ORDER BY COALESCE(d.name, 'Adhesive')) AS divisions
            ,COALESCE(SUM(CASE WHEN i.unit_of_measure = 'bag' THEN isi.ordered_qty ELSE 0 END), 0) AS total_bag_qty
          FROM stock_inbound_shipment_items isi
          JOIN stock_items i ON i.id = isi.item_id
@@ -221,15 +221,29 @@ export async function GET(request) {
       schemaCaps.hasStockTypesCategory
         ? sql(`SELECT DISTINCT i.name AS bag_item_name FROM stock_items i JOIN stock_types t ON t.id = i.type_id WHERE t.category = 'bag' AND i.is_active = true ORDER BY i.name`, [])
         : Promise.resolve([]),
-      sql('SELECT name AS salesperson_name FROM stock_sales_people WHERE is_active = true ORDER BY name', []),
+      sql(
+        `SELECT
+           u.id AS salesperson_user_id,
+           u.name AS salesperson_name,
+           u.division_id,
+           d.name AS division_name
+         FROM stock_app_users u
+         LEFT JOIN stock_divisions d ON d.id = u.division_id
+         WHERE u.role = 'salesperson'
+           AND u.status = 'active'
+         ORDER BY u.name`,
+        []
+      ),
     ]);
 
     const currentMonthValuePromise = appUser?.role === 'salesperson' && appUser?.id
       ? sql(
           `SELECT COALESCE(SUM(soi.loaded_whole_qty * soi.rate_per_unit), 0) AS current_month_dispatch_value
            FROM stock_outbound_shipments s
-           JOIN stock_outbound_items soi ON soi.shipment_id = s.id
-           WHERE s.submitted_by_user_id = $1
+           JOIN stock_outbound_shipment_items soi ON soi.outbound_shipment_id = s.id
+           WHERE ${schemaCaps.hasOutboundSalespersonUserId
+             ? `(s.salesperson_user_id = $1 OR (s.salesperson_user_id IS NULL AND s.submitted_by_user_id = $1))`
+             : `s.submitted_by_user_id = $1`}
              AND DATE_TRUNC('month', s.dispatch_date) = DATE_TRUNC('month', CURRENT_DATE)
              AND s.status != 'cancelled'`,
           [appUser.id]
@@ -292,6 +306,14 @@ export async function GET(request) {
         bagType: pick(bagTypes, 'bag_type'),
         bagItemName: pick(bagItems, 'bag_item_name'),
         salespersonName: pick(salespersons, 'salesperson_name'),
+        salespersons: salespersons?.status === 'fulfilled'
+          ? salespersons.value.map((row) => ({
+              id: Number(row.salesperson_user_id),
+              name: row.salesperson_name,
+              divisionId: row.division_id != null ? Number(row.division_id) : null,
+              divisionName: row.division_name || null,
+            }))
+          : [],
       },
       summary: summaryRows[0] || {},
       activeItems,

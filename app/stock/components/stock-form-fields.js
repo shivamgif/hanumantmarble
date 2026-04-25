@@ -141,7 +141,7 @@ export function SuggestCombobox({ value, onChange, options = [], placeholder, cl
   );
 }
 
-export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [], placeholder, className, onBlur, disabled, ...props }) {
+export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [], placeholder, className, onBlur, disabled, fallbackLabel, ...props }) {
   const [open, setOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -150,9 +150,9 @@ export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [],
   useEffect(() => {
     if (!isTyping) {
       const found = (items || []).find((i) => String(i.id) === String(value));
-      setInputText(found ? `${found.sku} - ${found.name}` : '');
+      setInputText(found ? `${found.sku} - ${found.name}` : (fallbackLabel || ''));
     }
-  }, [value, items, isTyping]);
+  }, [value, items, isTyping, fallbackLabel]);
 
   const needle = isTyping ? inputText.trim().toLowerCase() : '';
   const filtered = useMemo(() => {

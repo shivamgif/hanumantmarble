@@ -111,7 +111,7 @@ async function migratePurchaseCapabilities() {
 		// Backfill divisions from existing item department values, then attach division_id.
 		await sql`
 			INSERT INTO stock_divisions (name)
-			SELECT DISTINCT COALESCE(NULLIF(TRIM(department), ''), 'General') AS division_name
+			SELECT DISTINCT COALESCE(NULLIF(TRIM(department), ''), 'Adhesive') AS division_name
 			FROM stock_items
 			ON CONFLICT (name) DO NOTHING
 		`;
@@ -122,12 +122,12 @@ async function migratePurchaseCapabilities() {
 					updated_at = NOW()
 			FROM stock_divisions d
 			WHERE i.division_id IS NULL
-				AND d.name = COALESCE(NULLIF(TRIM(i.department), ''), 'General')
+				AND d.name = COALESCE(NULLIF(TRIM(i.department), ''), 'Adhesive')
 		`;
 
 		await sql`
 			INSERT INTO stock_divisions (name)
-			SELECT DISTINCT COALESCE(NULLIF(TRIM(department), ''), 'General') AS division_name
+			SELECT DISTINCT COALESCE(NULLIF(TRIM(department), ''), 'Adhesive') AS division_name
 			FROM stock_app_users
 			WHERE role = 'salesperson'
 			ON CONFLICT (name) DO NOTHING
@@ -140,7 +140,7 @@ async function migratePurchaseCapabilities() {
 			FROM stock_divisions d
 			WHERE u.division_id IS NULL
 				AND u.role = 'salesperson'
-				AND d.name = COALESCE(NULLIF(TRIM(u.department), ''), 'General')
+				AND d.name = COALESCE(NULLIF(TRIM(u.department), ''), 'Adhesive')
 		`;
 
 		await sql`

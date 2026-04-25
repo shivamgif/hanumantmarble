@@ -25,14 +25,14 @@ async function migrateDepartmentColumns() {
 
     await sql`
       UPDATE stock_app_users
-      SET department = 'General'
+      SET department = 'Adhesive'
       WHERE role = 'salesperson'
         AND COALESCE(NULLIF(TRIM(department), ''), '') = ''
     `;
 
     await sql`
       UPDATE stock_items
-      SET department = 'General'
+      SET department = 'Adhesive'
       WHERE COALESCE(NULLIF(TRIM(department), ''), '') = ''
     `;
 

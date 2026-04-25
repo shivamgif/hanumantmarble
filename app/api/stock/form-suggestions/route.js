@@ -71,7 +71,19 @@ export async function GET(request) {
       schemaCaps.hasStockTypesCategory
         ? sql(`SELECT DISTINCT i.name AS bag_item_name FROM stock_items i JOIN stock_types t ON t.id = i.type_id WHERE t.category = 'bag' AND i.is_active = true ORDER BY i.name`, [])
         : Promise.resolve([]),
-      sql('SELECT name AS salesperson_name FROM stock_sales_people WHERE is_active = true ORDER BY name', []),
+      sql(
+        `SELECT
+           u.id AS salesperson_user_id,
+           u.name AS salesperson_name,
+           u.division_id,
+           d.name AS division_name
+         FROM stock_app_users u
+         LEFT JOIN stock_divisions d ON d.id = u.division_id
+         WHERE u.role = 'salesperson'
+           AND u.status = 'active'
+         ORDER BY u.name`,
+        []
+      ),
     ]);
 
     return NextResponse.json({
@@ -93,6 +105,14 @@ export async function GET(request) {
         bagType: pick(bagTypes, 'bag_type'),
         bagItemName: pick(bagItems, 'bag_item_name'),
         salespersonName: pick(salespersons, 'salesperson_name'),
+        salespersons: salespersons?.status === 'fulfilled'
+          ? salespersons.value.map((row) => ({
+              id: Number(row.salesperson_user_id),
+              name: row.salesperson_name,
+              divisionId: row.division_id != null ? Number(row.division_id) : null,
+              divisionName: row.division_name || null,
+            }))
+          : [],
       },
     });
   } catch (error) {

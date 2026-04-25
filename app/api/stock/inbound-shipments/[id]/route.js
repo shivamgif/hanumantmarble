@@ -95,7 +95,7 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
 
     const itemRows = await tx(
       `SELECT isi.*, i.sku, i.name AS item_name, b.name AS brand_name, i.current_whole_qty, i.current_broken_qty,
-              COALESCE(d.name, 'General') AS department
+              COALESCE(d.name, 'Adhesive') AS department
        FROM stock_inbound_shipment_items isi
        JOIN stock_items i ON i.id = isi.item_id
        LEFT JOIN stock_brands b ON b.id = i.brand_id
@@ -285,18 +285,18 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
     const departments = [...new Set(
       itemRows
         .filter((item) => Number(item.received_whole_qty || 0) > 0 || Number(item.received_broken_qty || 0) > 0)
-        .map((item) => String(item.department || 'General').trim() || 'General')
+        .map((item) => String(item.department || 'Adhesive').trim() || 'Adhesive')
     )];
 
     const salespersonRecipients = departments.length > 0
       ? await tx(
           `SELECT u.id, u.name, u.email, u.phone,
-                  COALESCE(d.name, NULLIF(TRIM(u.department), ''), 'General') AS department
+                  COALESCE(d.name, NULLIF(TRIM(u.department), ''), 'Adhesive') AS department
            FROM stock_app_users
            u LEFT JOIN stock_divisions d ON d.id = u.division_id
            WHERE u.status = 'active'
              AND u.role = 'salesperson'
-             AND COALESCE(d.name, NULLIF(TRIM(u.department), ''), 'General') = ANY($1::text[])
+             AND COALESCE(d.name, NULLIF(TRIM(u.department), ''), 'Adhesive') = ANY($1::text[])
            ORDER BY u.id ASC`,
           [departments]
         )
@@ -378,8 +378,11 @@ export async function GET(request, context) {
               b.name AS brand_name,
               sz.label AS size_label,
               sz.unit AS size_unit,
-              COALESCE(d.name, 'General') AS division_name,
-              COALESCE(d.name, 'General') AS department,
+              sz.w_mm AS size_width_mm,
+              sz.l_mm AS size_length_mm,
+              i.description,
+              COALESCE(d.name, 'Adhesive') AS division_name,
+              COALESCE(d.name, 'Adhesive') AS department,
               isi.total_cost,
               COALESCE(
                 isi.ordered_qty_sqm,
@@ -486,7 +489,7 @@ export async function PATCH(request, context) {
           );
 
           for (const recipient of recipientsByDepartment) {
-            const department = String(recipient.department || 'General').trim() || 'General';
+            const department = String(recipient.department || 'Adhesive').trim() || 'Adhesive';
             const messageText = `Stock purchase approved: ${result.shipment.shipment_number}. New ${department} inventory is available.`;
 
             await queueNotification({

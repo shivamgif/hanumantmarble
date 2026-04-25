@@ -38,6 +38,7 @@ import { StockItemsTable } from './components/stock-items-table';
 import { PurchasesPanel } from './components/purchases-panel';
 import { DispatchesPanel } from './components/dispatches-panel';
 import { ShipmentPreviewSheet } from './components/shipment-preview-sheet';
+import { StockToast } from './components/stock-toast';
 
 export default function StockDashboard() {
   const { language } = useLanguage();
@@ -217,6 +218,7 @@ export default function StockDashboard() {
   const [editingDispatchId, setEditingDispatchId] = useState(null);
   const [previewItemsPage, setPreviewItemsPage] = useState(1);
   const [pageSize, setPageSize] = usePageSize();
+  const [toast, setToast] = useState(null);
   const [previewState, setPreviewState] = useState({
     open: false,
     loading: false,
@@ -547,6 +549,7 @@ export default function StockDashboard() {
         ? `${language === 'hi' ? 'खरीद' : 'Purchase'} ${json.shipment?.shipment_number || ''} ${language === 'hi' ? 'अपडेट किया गया।' : 'updated.'}`
         : `${language === 'hi' ? 'खरीद' : 'Purchase'} ${json.shipment?.shipment_number || ''} ${t('sentForReview')}`;
       setArrivalNotice({ type: 'success', message: arrivalSuccessMsg });
+      setToast({ type: 'success', message: arrivalSuccessMsg });
       setEditingArrivalId(null);
 
       try {
@@ -580,6 +583,7 @@ export default function StockDashboard() {
       }
     } catch (submitError) {
       setArrivalNotice({ type: 'error', message: submitError.message });
+      setToast({ type: 'error', message: submitError.message });
     } finally {
       setArrivalSubmitting(false);
     }
@@ -637,12 +641,13 @@ export default function StockDashboard() {
           itemId: String(item.item_id),
           itemName: item.item_name || '',
           brandName: item.brand_name || '',
+          typeName: item.type_name || '',
           divisionName: item.division_name || '',
           finish: item.finish || '',
           grade: item.grade || '',
           sizeLabel: item.size_label || '',
-          sizeWidthMm: '',
-          sizeLengthMm: '',
+          sizeWidthMm: item.size_width_mm != null ? String(item.size_width_mm) : '',
+          sizeLengthMm: item.size_length_mm != null ? String(item.size_length_mm) : '',
           sizeUnit: item.size_unit || 'mm',
           hsnCode: item.hsn_code || '',
           thicknessMm: item.thickness_mm != null ? String(item.thickness_mm) : '',
@@ -654,6 +659,9 @@ export default function StockDashboard() {
           brokenQty: String(item.received_broken_qty ?? 0),
           costPerSqm: item.cost_per_sqm != null ? String(item.cost_per_sqm) : '',
           qtySqm: item.qty_sqm != null ? String(item.qty_sqm) : '',
+          weightPerUnitKg: item.weight_per_unit_kg != null ? String(item.weight_per_unit_kg) : '',
+          ratePerBag: item.cost_per_bag != null ? String(item.cost_per_bag) : '',
+          qtyBags: item.unit_of_measure === 'bag' ? String(item.received_whole_qty ?? 0) : '',
           notes: item.notes || '',
         })) : [createArrivalItemRow()],
       });
@@ -688,6 +696,7 @@ export default function StockDashboard() {
         driverName: shipment.driver_name_snapshot || '',
         invoiceNumber: shipment.invoice_number || '',
         salespersonName: shipment.salesperson_name || '',
+        salespersonUserId: shipment.salesperson_user_id != null ? String(shipment.salesperson_user_id) : '',
         dispatchDate: (shipment.dispatch_date || shipment.created_at) ? (() => {
           const d = new Date(shipment.dispatch_date || shipment.created_at);
           const pad = (n) => String(n).padStart(2, '0');
@@ -700,11 +709,14 @@ export default function StockDashboard() {
           const isBag = item.unit_of_measure === 'bag';
           return {
             itemId: String(item.item_id),
+            itemLabel: item.sku ? `${item.sku} - ${item.item_name}` : (item.item_name || ''),
             itemCategory: isBag ? 'bag' : 'tile',
             loadedWholeQty: isBag ? '' : String(item.loaded_whole_qty ?? 0),
             qtyBags: isBag ? String(item.loaded_whole_qty ?? 0) : '',
             sellUnit: isBag ? 'bag' : (item.sell_unit || 'box'),
-            ratePerUnit: item.rate_per_unit != null ? String(item.rate_per_unit) : '',
+            ratePerUnit: item.rate_per_unit != null
+              ? String(item.rate_per_unit)
+              : (item.rate_per_box != null ? String(item.rate_per_box) : (item.rate_per_bag != null ? String(item.rate_per_bag) : '')),
             returnWholeQty: isBag ? '' : (item.returned_whole_qty != null ? String(item.returned_whole_qty) : ''),
             returnBrokenQty: isBag ? '' : (item.returned_broken_qty != null ? String(item.returned_broken_qty) : ''),
             returnQtyBags: isBag ? (item.returned_whole_qty != null ? String(item.returned_whole_qty) : '') : '',
@@ -736,7 +748,7 @@ export default function StockDashboard() {
             loadedWholeQty: isBag ? 0 : toNumber(item.loadedWholeQty),
             qtyBags: isBag ? toNumber(item.qtyBags) : 0,
             sellUnit: isBag ? 'bag' : (item.sellUnit || 'box'),
-            ratePerUnit: item.ratePerUnit === '' ? null : toNumber(item.ratePerUnit),
+            ratePerUnit: item.ratePerUnit == null || item.ratePerUnit === '' ? null : toNumber(item.ratePerUnit),
             returnWholeQty: isBag ? null : (item.returnWholeQty === '' ? null : toNumber(item.returnWholeQty)),
             returnBrokenQty: isBag ? null : (item.returnBrokenQty === '' ? null : toNumber(item.returnBrokenQty)),
             returnQtyBags: isBag ? (item.returnQtyBags === '' ? 0 : toNumber(item.returnQtyBags)) : 0,
@@ -756,6 +768,7 @@ export default function StockDashboard() {
         driverName: trimText(values.driverName) || undefined,
         invoiceNumber: trimText(values.invoiceNumber) || undefined,
         salespersonName: trimText(values.salespersonName) || undefined,
+        salespersonUserId: values.salespersonUserId ? Number(values.salespersonUserId) : undefined,
         dispatchDate: values.dispatchDate || undefined,
         transportCost: 0,
         loadingLabourCost: 0,
@@ -797,6 +810,7 @@ export default function StockDashboard() {
       setDispatchSheetOpen(false);
       const successMsg = editingDispatchId ? `${language === 'hi' ? 'डिस्पैच' : 'Dispatch'} ${json.shipment?.shipment_number || ''} ${language === 'hi' ? 'अपडेट किया गया।' : 'updated.'}` : `${language === 'hi' ? 'डिस्पैच' : 'Dispatch'} ${json.shipment?.shipment_number || ''} ${t('sentForReview')}`;
       setDispatchNotice({ type: 'success', message: successMsg });
+      setToast({ type: 'success', message: successMsg });
       setEditingDispatchId(null);
 
       try {
@@ -813,6 +827,7 @@ export default function StockDashboard() {
       }
     } catch (submitError) {
       setDispatchNotice({ type: 'error', message: submitError.message });
+      setToast({ type: 'error', message: submitError.message });
     } finally {
       setDispatchSubmitting(false);
     }
@@ -1130,6 +1145,7 @@ export default function StockDashboard() {
           pageSize={pageSize}
           setPageSize={setPageSize}
           onRefreshData={refreshDashboard}
+          onToast={setToast}
         />
       )}
 
@@ -1181,6 +1197,8 @@ export default function StockDashboard() {
         pageSize={pageSize}
         setPageSize={setPageSize}
       />
+
+      <StockToast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }

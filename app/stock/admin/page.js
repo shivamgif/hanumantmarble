@@ -258,6 +258,7 @@ export default function AdminDashboard() {
       email: '',
       password: '',
       role: 'stock_maintainer',
+      division: '',
       department: '',
       status: 'active',
     },
@@ -265,6 +266,7 @@ export default function AdminDashboard() {
   const previewUserForm = useForm({
     defaultValues: {
       role: 'stock_maintainer',
+      division: '',
       status: 'inactive',
       canManageUsers: false,
       canApproveChanges: false,
@@ -719,6 +721,7 @@ export default function AdminDashboard() {
         driverName: shipment.driver_name_snapshot || '',
         invoiceNumber: shipment.invoice_number || '',
         salespersonName: shipment.salesperson_name || '',
+        salespersonUserId: shipment.salesperson_user_id != null ? String(shipment.salesperson_user_id) : '',
         dispatchDate: (shipment.dispatch_date || shipment.created_at) ? (() => {
           const d = new Date(shipment.dispatch_date || shipment.created_at);
           const pad = (n) => String(n).padStart(2, '0');
@@ -731,11 +734,14 @@ export default function AdminDashboard() {
           const isBag = item.unit_of_measure === 'bag';
           return {
             itemId: String(item.item_id),
+            itemLabel: item.sku ? `${item.sku} - ${item.item_name}` : (item.item_name || ''),
             itemCategory: isBag ? 'bag' : 'tile',
             loadedWholeQty: isBag ? '' : String(item.loaded_whole_qty ?? 0),
             qtyBags: isBag ? String(item.loaded_whole_qty ?? 0) : '',
             sellUnit: isBag ? 'bag' : (item.sell_unit || 'box'),
-            ratePerUnit: item.rate_per_unit != null ? String(item.rate_per_unit) : '',
+            ratePerUnit: item.rate_per_unit != null
+              ? String(item.rate_per_unit)
+              : (item.rate_per_box != null ? String(item.rate_per_box) : (item.rate_per_bag != null ? String(item.rate_per_bag) : '')),
             returnWholeQty: isBag ? '' : (item.returned_whole_qty != null ? String(item.returned_whole_qty) : ''),
             returnBrokenQty: isBag ? '' : (item.returned_broken_qty != null ? String(item.returned_broken_qty) : ''),
             returnQtyBags: isBag ? (item.returned_whole_qty != null ? String(item.returned_whole_qty) : '') : '',
@@ -761,7 +767,7 @@ export default function AdminDashboard() {
             loadedWholeQty: isBag ? toNumber(item.qtyBags) : toNumber(item.loadedWholeQty),
             loadedBrokenQty: 0,
             sellUnit: isBag ? 'bag' : (item.sellUnit || 'box'),
-            ratePerUnit: item.ratePerUnit === '' ? null : toNumber(item.ratePerUnit),
+            ratePerUnit: item.ratePerUnit == null || item.ratePerUnit === '' ? null : toNumber(item.ratePerUnit),
             returnWholeQty: isBag
               ? (item.returnQtyBags === '' ? null : toNumber(item.returnQtyBags))
               : (item.returnWholeQty === '' ? null : toNumber(item.returnWholeQty)),
@@ -782,6 +788,7 @@ export default function AdminDashboard() {
           driverName: trimText(values.driverName) || undefined,
           invoiceNumber: trimText(values.invoiceNumber) || undefined,
           salespersonName: trimText(values.salespersonName) || undefined,
+          salespersonUserId: values.salespersonUserId ? Number(values.salespersonUserId) : undefined,
           dispatchDate: values.dispatchDate || undefined,
           transportCost: toNumber(values.transportCost),
           loadingLabourCost: toNumber(values.laborCost),
@@ -919,6 +926,7 @@ export default function AdminDashboard() {
       mergePreviewUser(updatedUser);
       previewUserForm.reset({
         role: updatedUser.role || 'stock_maintainer',
+        division: updatedUser.division_name || '',
         status: updatedUser.status || (updatedUser.is_active ? 'active' : 'inactive'),
         canManageUsers: Boolean(updatedUser.can_manage_users),
         canApproveChanges: Boolean(updatedUser.can_approve_changes),
@@ -1012,7 +1020,7 @@ export default function AdminDashboard() {
         throw new Error(json.error || 'Failed to save user');
       }
 
-      createUserForm.reset({ name: '', phone: '', email: '', password: '', role: 'stock_maintainer', department: '', status: 'active' });
+      createUserForm.reset({ name: '', phone: '', email: '', password: '', role: 'stock_maintainer', division: '', department: '', status: 'active' });
       setConfirmPassword('');
       setShowPrimaryPassword(false);
       setShowConfirmPassword(false);
@@ -1063,6 +1071,7 @@ export default function AdminDashboard() {
 
     previewUserForm.reset({
       role: previewState.record.role || 'stock_maintainer',
+      division: previewState.record.division_name || '',
       status: previewState.record.status || (previewState.record.is_active ? 'active' : 'inactive'),
       canManageUsers: Boolean(previewState.record.can_manage_users),
       canApproveChanges: Boolean(previewState.record.can_approve_changes),
@@ -2185,7 +2194,7 @@ export default function AdminDashboard() {
                       onClick={() => {
                         setShowUserForm(false);
                         setUserFormNotice(null);
-                        createUserForm.reset({ name: '', phone: '', email: '', password: '', role: 'stock_maintainer', department: 'General', status: 'active', division: '' });
+                        createUserForm.reset({ name: '', phone: '', email: '', password: '', role: 'stock_maintainer', department: 'Adhesive', status: 'active', division: '' });
                         setConfirmPassword('');
                         setShowPrimaryPassword(false);
                         setShowConfirmPassword(false);
@@ -2196,7 +2205,7 @@ export default function AdminDashboard() {
                     </button>
                   </div>
                   <input type="hidden" {...createUserForm.register('status')} readOnly />
-                  <input type="hidden" {...createUserForm.register('department')} defaultValue="General" />
+                  <input type="hidden" {...createUserForm.register('department')} defaultValue="Adhesive" />
                 </form>
               </div>
             )}
@@ -2415,7 +2424,7 @@ export default function AdminDashboard() {
                           { label: 'Full Name', value: previewState.record?.full_name, isBold: true },
                           { label: 'Email Address', value: previewState.record?.email },
                           { label: 'Primary Contact', value: previewState.record?.phone_number },
-                          { label: 'Department', value: previewState.record?.department || 'General' },
+                          { label: 'Department', value: previewState.record?.department || 'Adhesive' },
                           { label: 'Status', value: previewState.record?.is_active ? 'Active Identity' : 'Suspended' },
                         ].map((item) => (
                           <div key={item.label} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/50">
@@ -2441,6 +2450,7 @@ export default function AdminDashboard() {
                             previewState.record?.id,
                             {
                               role: previewUserForm.watch('role'),
+                              division: previewUserForm.watch('division') || undefined,
                               canManageUsers: previewUserForm.watch('canManageUsers'),
                               canApproveChanges: previewUserForm.watch('canApproveChanges'),
                               canViewDashboard: previewUserForm.watch('canViewDashboard'),
@@ -2465,6 +2475,23 @@ export default function AdminDashboard() {
                                   <SelectItem value="salesperson">Salesperson</SelectItem>
                                   <SelectItem value="manager">Manager</SelectItem>
                                   <SelectItem value="admin">Admin</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className={FORM_LABEL_CLASS}>Division</Label>
+                              <Select
+                                value={previewUserForm.watch('division') || '__none__'}
+                                onValueChange={(value) => previewUserForm.setValue('division', value === '__none__' ? '' : value, { shouldDirty: true })}
+                              >
+                                <SelectTrigger className="h-11 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                                  <SelectValue placeholder="No division" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="__none__">No division</SelectItem>
+                                  {(suggestions?.divisionName || []).map((name) => (
+                                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                                  ))}
                                 </SelectContent>
                               </Select>
                             </div>
@@ -2553,6 +2580,7 @@ export default function AdminDashboard() {
                               type="button"
                               onClick={() => previewUserForm.reset({
                                 role: previewState.record?.role || 'stock_maintainer',
+                                division: previewState.record?.division_name || '',
                                 status: previewState.record?.status || 'active',
                                 canManageUsers: Boolean(previewState.record?.can_manage_users),
                                 canApproveChanges: Boolean(previewState.record?.can_approve_changes),

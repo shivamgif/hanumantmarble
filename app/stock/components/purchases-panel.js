@@ -56,6 +56,7 @@ export function PurchasesPanel({
   pageSize,
   setPageSize,
   onRefreshData,
+  onToast,
 }) {
   const canEdit = ['admin', 'manager'].includes(userRole);
   const [purchaseType, setPurchaseType] = useState('tile');
@@ -197,6 +198,7 @@ export function PurchasesPanel({
         json = await response.json();
         if (!response.ok) throw new Error(json.error || 'Failed to update bag purchase');
         setBagNotice({ type: 'success', message: `Bag purchase updated.` });
+        if (onToast) onToast({ type: 'success', message: `Bag purchase updated.` });
       } else {
         const formData = new FormData();
         if (bagAttachments.purchaseInvoice) formData.append('purchaseInvoice', bagAttachments.purchaseInvoice);
@@ -210,15 +212,18 @@ export function PurchasesPanel({
         if (!response.ok) throw new Error(json.error || 'Failed to submit bag purchase');
         invalidateShipmentCache('arrival', editingBagArrivalId);
         if (json.shipment?.id) invalidateShipmentCache('arrival', json.shipment.id);
-        setBagNotice({ type: 'success', message: `Bag purchase ${json.shipment?.shipment_number} submitted.` });
+        const bagSuccessMsg = `Bag purchase ${json.shipment?.shipment_number} submitted.`;
+        setBagNotice({ type: 'success', message: bagSuccessMsg });
+        if (onToast) onToast({ type: 'success', message: bagSuccessMsg });
       }
 
       setBagAttachments({});
       bagArrivalForm.reset(createInitialBagArrivalDraft());
       if (setEditingBagArrivalId) setEditingBagArrivalId(null);
-      setTimeout(() => setArrivalSheetOpen(false), 1200);
+      setArrivalSheetOpen(false);
     } catch (err) {
       setBagNotice({ type: 'error', message: err.message });
+      if (onToast) onToast({ type: 'error', message: err.message });
     } finally {
       setBagSubmitting(false);
     }
@@ -453,7 +458,7 @@ export function PurchasesPanel({
                 {expanded ? (
                   <div className="mt-2 space-y-1 text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-white/5 pt-2">
                     <p className="truncate font-medium text-slate-700 dark:text-slate-300">{a.product_names || a.product_skus || '—'}</p>
-                    <p><span className="font-semibold">{tc.division}:</span> {a.divisions || tc.general || 'General'}</p>
+                    <p><span className="font-semibold">{tc.division}:</span> {a.divisions || tc.general || 'Adhesive'}</p>
                     {a.grand_total ? <p><span className="font-semibold">{tc.grandTotal}:</span> ₹{Number(a.grand_total).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p> : null}
                     {a.freight_weight_kg ? <p><span className="font-semibold">{tc.freight}:</span> {Number(a.freight_weight_kg).toFixed(2)} kg</p> : null}
                     <p><span className="font-semibold">{tc.generatedBy}:</span> {a.generated_by || '—'}</p>
@@ -565,7 +570,7 @@ export function PurchasesPanel({
                   </td>
                   <td className="px-4 py-3">
                     <div className="max-w-[260px] truncate text-xs font-black text-slate-900 dark:text-white" title={a.product_names || a.product_skus || ''}>{a.product_names || a.product_skus || '—'}</div>
-                    <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground opacity-60">{a.divisions || tc.general || 'General'}</div>
+                    <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground opacity-60">{a.divisions || tc.general || 'Adhesive'}</div>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex flex-col items-end gap-0.5">

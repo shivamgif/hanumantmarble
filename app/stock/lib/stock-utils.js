@@ -28,6 +28,7 @@ export function createDispatchItemRow() {
   return {
     itemCategory: 'tile',
     itemId: '',
+    itemLabel: '',
     loadedWholeQty: '',
     sellUnit: 'box',
     ratePerUnit: '',
@@ -121,6 +122,7 @@ export function createInitialBagDispatchDraft() {
     driverName: '',
     invoiceNumber: '',
     salespersonName: '',
+    salespersonUserId: '',
     dispatchDate: `${dateStr}T${timeStr}`,
     transportCost: '',
     laborCost: '',
@@ -172,6 +174,7 @@ export function createInitialDispatchDraft() {
     driverName: '',
     invoiceNumber: '',
     salespersonName: '',
+    salespersonUserId: '',
     dispatchDate: fullDateTime,
     transportCost: '',
     laborCost: '',

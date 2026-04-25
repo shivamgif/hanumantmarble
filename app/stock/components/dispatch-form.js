@@ -1,6 +1,6 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { Plus, Send, Truck, ChevronRight, X, Package } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -23,6 +23,7 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
   const { watch, setValue } = useFormContext();
   const itemCategory = watch(`items.${index}.itemCategory`);
   const sellUnit = watch(`items.${index}.sellUnit`);
+  const itemLabel = watch(`items.${index}.itemLabel`);
   const isBag = itemCategory === 'bag';
 
   return (
@@ -57,6 +58,7 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
                 <FormControl>
                   <ItemSuggestCombobox
                     value={field.value ?? ''}
+                    fallbackLabel={itemLabel}
                     onChange={field.onChange}
                     onBlur={field.onBlur}
                     onItemSelect={(item) => setValue(`items.${index}.itemCategory`, item.unit_of_measure === 'bag' ? 'bag' : 'tile')}
@@ -280,6 +282,34 @@ export function DispatchFormContent({
   userRole,
 }) {
   const resolvedItems = allItems || activeItems || [];
+  const salespersonOptions = useMemo(() => {
+    const people = Array.isArray(suggestions?.salespersons) ? suggestions.salespersons : [];
+    return people.map((person) => ({
+      id: String(person.id),
+      name: String(person.name || ''),
+      label: person.divisionName
+        ? `${person.name} (${person.divisionName})`
+        : String(person.name || ''),
+    }));
+  }, [suggestions?.salespersons]);
+
+  const salespersonLabelMap = useMemo(
+    () => new Map(salespersonOptions.map((option) => [option.label, option])),
+    [salespersonOptions]
+  );
+  const salespersonUniqueNameMap = useMemo(() => {
+    const counts = new Map();
+    for (const option of salespersonOptions) {
+      counts.set(option.name, (counts.get(option.name) || 0) + 1);
+    }
+    const unique = new Map();
+    for (const option of salespersonOptions) {
+      if ((counts.get(option.name) || 0) === 1) {
+        unique.set(option.name, option);
+      }
+    }
+    return unique;
+  }, [salespersonOptions]);
 
   return (
     <Form {...form}>
@@ -298,7 +328,31 @@ export function DispatchFormContent({
             <StockFormField control={form.control} name="customerPhoneNumber" label={tc.customerPhone} placeholder="+91 9876543210" type="tel" />
             <StockFormField control={form.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." digitsOnly />
             <StockDateField control={form.control} name="dispatchDate" label={tc.date} placeholder={tc.date} />
-            <SuggestComboboxField control={form.control} name="salespersonName" label={t('salesperson')} placeholder="Salesperson..." options={suggestions?.salespersonName} />
+            <SuggestComboboxField
+              control={form.control}
+              name="salespersonName"
+              label={t('salesperson')}
+              placeholder="Salesperson..."
+              options={salespersonOptions.map((option) => option.label)}
+              onChangeExtra={(value) => {
+                const exact = salespersonLabelMap.get(value) || salespersonUniqueNameMap.get(value) || null;
+                if (exact) {
+                  form.setValue('salespersonName', exact.name, { shouldDirty: true, shouldValidate: true });
+                  form.setValue('salespersonUserId', exact.id, { shouldDirty: true, shouldValidate: true });
+                  return;
+                }
+                form.setValue('salespersonUserId', '', { shouldDirty: true, shouldValidate: true });
+              }}
+            />
+            <FormField
+              control={form.control}
+              name="salespersonUserId"
+              render={() => (
+                <FormItem className="-mt-4 md:col-span-2">
+                  <FormMessage className="text-xs" />
+                </FormItem>
+              )}
+            />
             <AttachmentField label={tc.salesInvoicePhoto} file={attachments.salesInvoice} onChange={(file) => setAttachment('salesInvoice', file)} hint={tc.salesInvoiceHint} tc={tc} />
             <AttachmentField label={tc.gatepassPhoto} file={attachments.gatepass} onChange={(file) => setAttachment('gatepass', file)} accept="image/*" hint={tc.gatepassHint} tc={tc} />
           </div>

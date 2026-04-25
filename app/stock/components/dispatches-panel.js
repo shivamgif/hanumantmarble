@@ -50,6 +50,7 @@ export function DispatchesPanel({
   onRefreshData,
 }) {
   const canEdit = ['admin', 'manager'].includes(userRole);
+  const canCreateDispatch = ['admin', 'manager', 'stock_maintainer'].includes(userRole);
   const [markingPaidId, setMarkingPaidId] = useState(null);
 
   async function handleMarkAsPaid(id) {
@@ -122,6 +123,8 @@ export function DispatchesPanel({
         <button
           type="button"
           onClick={onNewDispatch}
+          disabled={!canCreateDispatch}
+          title={!canCreateDispatch ? 'Salesperson role cannot log new dispatches' : undefined}
           className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-[11px] font-black uppercase tracking-widest text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus className="h-4 w-4" />

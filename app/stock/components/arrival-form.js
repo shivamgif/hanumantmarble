@@ -108,18 +108,22 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className={FORM_LABEL_CLASS}>{tc.division}</FormLabel>
-                  <Select value={field.value || ''} onValueChange={field.onChange} disabled={isCatalogItem}>
-                    <FormControl>
-                      <SelectTrigger className={FORM_INPUT_CLASS}>
-                        <SelectValue placeholder={tc.division} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="glass-panel">
-                      <SelectItem value="Ceramic">Ceramic</SelectItem>
-                      <SelectItem value="Eternity (GVT)">Eternity (GVT)</SelectItem>
-                      <SelectItem value="Vitronite (PVT)">Vitronite (PVT)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {isCatalogItem ? (
+                    <Input disabled value={field.value ?? ''} className={FORM_INPUT_CLASS} />
+                  ) : (
+                    <Select value={field.value || ''} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className={FORM_INPUT_CLASS}>
+                          <SelectValue placeholder={tc.division} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="glass-panel">
+                        <SelectItem value="Ceramic">Ceramic</SelectItem>
+                        <SelectItem value="Eternity (GVT)">Eternity (GVT)</SelectItem>
+                        <SelectItem value="Vitronite (PVT)">Vitronite (PVT)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
                   <FormMessage className="text-xs" />
                 </FormItem>
               )}
@@ -130,21 +134,25 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className={FORM_LABEL_CLASS}>{tc.finish}</FormLabel>
-                  <Select value={field.value || ''} onValueChange={field.onChange} disabled={isCatalogItem}>
-                    <FormControl>
-                      <SelectTrigger className={FORM_INPUT_CLASS}>
-                        <SelectValue placeholder={tc.finish} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="glass-panel">
-                      <SelectItem value="Polished">Polished</SelectItem>
-                      <SelectItem value="Vitrified">Vitrified</SelectItem>
-                      <SelectItem value="Matte">Matte</SelectItem>
-                      <SelectItem value="Satin">Satin</SelectItem>
-                      <SelectItem value="Carving">Carving</SelectItem>
-                      <SelectItem value="High-gloss">High-gloss</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {isCatalogItem ? (
+                    <Input disabled value={field.value ?? ''} className={FORM_INPUT_CLASS} />
+                  ) : (
+                    <Select value={field.value || ''} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className={FORM_INPUT_CLASS}>
+                          <SelectValue placeholder={tc.finish} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="glass-panel">
+                        <SelectItem value="Polished">Polished</SelectItem>
+                        <SelectItem value="Vitrified">Vitrified</SelectItem>
+                        <SelectItem value="Matte">Matte</SelectItem>
+                        <SelectItem value="Satin">Satin</SelectItem>
+                        <SelectItem value="Carving">Carving</SelectItem>
+                        <SelectItem value="High-gloss">High-gloss</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
                   <FormMessage className="text-xs" />
                 </FormItem>
               )}
@@ -155,18 +163,22 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className={FORM_LABEL_CLASS}>{tc.quality}</FormLabel>
-                  <Select value={field.value || ''} onValueChange={field.onChange} disabled={isCatalogItem}>
-                    <FormControl>
-                      <SelectTrigger className={FORM_INPUT_CLASS}>
-                        <SelectValue placeholder={tc.quality} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="glass-panel">
-                      <SelectItem value="Premium">Premium</SelectItem>
-                      <SelectItem value="Standard">Standard</SelectItem>
-                      <SelectItem value="Commercial">Commercial</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {isCatalogItem ? (
+                    <Input disabled value={field.value ?? ''} className={FORM_INPUT_CLASS} />
+                  ) : (
+                    <Select value={field.value || ''} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className={FORM_INPUT_CLASS}>
+                          <SelectValue placeholder={tc.quality} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="glass-panel">
+                        <SelectItem value="Premium">Premium</SelectItem>
+                        <SelectItem value="Standard">Standard</SelectItem>
+                        <SelectItem value="Commercial">Commercial</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
                   <FormMessage className="text-xs" />
                 </FormItem>
               )}
@@ -224,8 +236,8 @@ const BagArrivalItemRow = memo(function BagArrivalItemRow({ index, fieldRow, con
               )}
             />
           </div>
-          <SuggestComboboxField control={control} name={`items.${index}.brandName`} label="Brand" placeholder="e.g. Laticrete" options={bagBrands} />
-          <SuggestComboboxField control={control} name={`items.${index}.typeName`} label="Type" placeholder="e.g. Adhesive" options={bagTypes} />
+          <SuggestComboboxField control={control} name={`items.${index}.brandName`} label="Brand" placeholder="e.g. Fixura, GresBond" options={bagBrands} />
+          <SuggestComboboxField control={control} name={`items.${index}.typeName`} label="Type" placeholder="e.g. Type 1" options={bagTypes} />
           <StockFormField control={control} name={`items.${index}.qtyBags`} label="Qty (Bags)" type="number" placeholder="0" min="0" />
         </div>
         <div className="grid gap-4 sm:grid-cols-3">

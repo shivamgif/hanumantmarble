@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getStockContext, normalizeStockRole } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
+import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 
 export async function GET(request) {
   const { session, appUser } = await getStockContext(request);
@@ -19,6 +20,11 @@ export async function GET(request) {
   }
 
   try {
+    const schemaCaps = await getStockSchemaCapabilities();
+    const ownershipFilter = schemaCaps.hasOutboundSalespersonUserId
+      ? `(s.salesperson_user_id = $1 OR (s.salesperson_user_id IS NULL AND s.submitted_by_user_id = $1))`
+      : `s.submitted_by_user_id = $1`;
+
     const [monthlyRows, currentMonthRows, recentRows] = await Promise.all([
       sql(
         `SELECT
@@ -27,8 +33,8 @@ export async function GET(request) {
            COUNT(DISTINCT s.id) AS dispatch_count,
            COALESCE(SUM(soi.loaded_whole_qty * soi.rate_per_unit), 0) AS total_value
          FROM stock_outbound_shipments s
-         JOIN stock_outbound_items soi ON soi.shipment_id = s.id
-         WHERE s.submitted_by_user_id = $1
+         JOIN stock_outbound_shipment_items soi ON soi.outbound_shipment_id = s.id
+         WHERE ${ownershipFilter}
            AND s.status != 'cancelled'
            AND s.dispatch_date >= NOW() - INTERVAL '6 months'
          GROUP BY DATE_TRUNC('month', s.dispatch_date)
@@ -40,8 +46,8 @@ export async function GET(request) {
            COUNT(DISTINCT s.id) AS this_month_count,
            COALESCE(SUM(soi.loaded_whole_qty * soi.rate_per_unit), 0) AS this_month_value
          FROM stock_outbound_shipments s
-         JOIN stock_outbound_items soi ON soi.shipment_id = s.id
-         WHERE s.submitted_by_user_id = $1
+         JOIN stock_outbound_shipment_items soi ON soi.outbound_shipment_id = s.id
+         WHERE ${ownershipFilter}
            AND DATE_TRUNC('month', s.dispatch_date) = DATE_TRUNC('month', CURRENT_DATE)
            AND s.status != 'cancelled'`,
         [appUser.id]
@@ -51,15 +57,16 @@ export async function GET(request) {
            s.id,
            s.shipment_number,
            s.dispatch_date,
-           s.customer_name,
+           c.name AS customer_name,
            s.status,
            s.approval_status,
            COALESCE(SUM(soi.loaded_whole_qty * soi.rate_per_unit), 0) AS total_value
          FROM stock_outbound_shipments s
-         JOIN stock_outbound_items soi ON soi.shipment_id = s.id
-         WHERE s.submitted_by_user_id = $1
+         JOIN stock_outbound_shipment_items soi ON soi.outbound_shipment_id = s.id
+         LEFT JOIN stock_customers c ON c.id = s.customer_id
+         WHERE ${ownershipFilter}
            AND s.status != 'cancelled'
-         GROUP BY s.id, s.shipment_number, s.dispatch_date, s.customer_name, s.status, s.approval_status
+         GROUP BY s.id, s.shipment_number, s.dispatch_date, c.name, s.status, s.approval_status
          ORDER BY s.dispatch_date DESC
          LIMIT 10`,
         [appUser.id]
@@ -70,8 +77,8 @@ export async function GET(request) {
       `SELECT COALESCE(SUM(soi.loaded_whole_qty * soi.rate_per_unit), 0) AS last_month_value,
               COUNT(DISTINCT s.id) AS last_month_count
        FROM stock_outbound_shipments s
-       JOIN stock_outbound_items soi ON soi.shipment_id = s.id
-       WHERE s.submitted_by_user_id = $1
+       JOIN stock_outbound_shipment_items soi ON soi.outbound_shipment_id = s.id
+       WHERE ${ownershipFilter}
          AND DATE_TRUNC('month', s.dispatch_date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
          AND s.status != 'cancelled'`,
       [appUser.id]

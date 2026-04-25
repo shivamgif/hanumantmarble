@@ -93,21 +93,21 @@ async function runSetup() {
 
   const departmentMatches = await sql`
     SELECT id, name, email, phone,
-           COALESCE(NULLIF(TRIM(department), ''), 'General') AS department
+           COALESCE(NULLIF(TRIM(department), ''), 'Adhesive') AS department
     FROM stock_app_users
     WHERE status = 'active'
       AND role = 'salesperson'
-      AND COALESCE(NULLIF(TRIM(department), ''), 'General') = 'Marble'
+      AND COALESCE(NULLIF(TRIM(department), ''), 'Adhesive') = 'Marble'
     ORDER BY id ASC
   `;
 
   const ignoredSalespeople = await sql`
     SELECT id, name, email, phone,
-           COALESCE(NULLIF(TRIM(department), ''), 'General') AS department
+           COALESCE(NULLIF(TRIM(department), ''), 'Adhesive') AS department
     FROM stock_app_users
     WHERE status = 'active'
       AND role = 'salesperson'
-      AND COALESCE(NULLIF(TRIM(department), ''), 'General') <> 'Marble'
+      AND COALESCE(NULLIF(TRIM(department), ''), 'Adhesive') <> 'Marble'
     ORDER BY id ASC
   `;
 

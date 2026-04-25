@@ -11,23 +11,28 @@ async function fetchDashboardUsers() {
   try {
     return await sql(
       `SELECT
-         id,
-         auth0_sub,
-         external_auth_provider,
-         external_auth_id,
-         email,
-         name AS full_name,
-         phone AS phone_number,
-         role,
-         department,
-         status,
-         can_manage_users,
-         can_approve_changes,
-         can_view_dashboard,
-         (status = 'active') AS is_active,
-         last_login_at
-       FROM stock_app_users
-       ORDER BY created_at DESC`,
+         u.id,
+         u.auth0_sub,
+         u.external_auth_provider,
+         u.external_auth_id,
+         u.email,
+         u.name AS full_name,
+         u.phone AS phone_number,
+         u.role,
+         u.department,
+         u.division_id,
+         d.name AS division_name,
+         u.status,
+         u.can_manage_users,
+         u.can_approve_changes,
+         u.can_view_dashboard,
+         (u.status = 'active') AS is_active,
+         u.salary,
+         u.monthly_sales_goal,
+         u.last_login_at
+       FROM stock_app_users u
+       LEFT JOIN stock_divisions d ON d.id = u.division_id
+       ORDER BY u.created_at DESC`,
       []
     );
   } catch (error) {
@@ -37,23 +42,28 @@ async function fetchDashboardUsers() {
 
     return sql(
       `SELECT
-         id,
-         auth0_sub,
+         u.id,
+         u.auth0_sub,
          NULL::TEXT AS external_auth_provider,
          NULL::TEXT AS external_auth_id,
-         email,
-         name AS full_name,
-         phone AS phone_number,
-         role,
-         department,
-         status,
-         can_manage_users,
-         can_approve_changes,
-         can_view_dashboard,
-         (status = 'active') AS is_active,
-         last_login_at
-       FROM stock_app_users
-       ORDER BY created_at DESC`,
+         u.email,
+         u.name AS full_name,
+         u.phone AS phone_number,
+         u.role,
+         u.department,
+         u.division_id,
+         d.name AS division_name,
+         u.status,
+         u.can_manage_users,
+         u.can_approve_changes,
+         u.can_view_dashboard,
+         (u.status = 'active') AS is_active,
+         u.salary,
+         u.monthly_sales_goal,
+         u.last_login_at
+       FROM stock_app_users u
+       LEFT JOIN stock_divisions d ON d.id = u.division_id
+       ORDER BY u.created_at DESC`,
       []
     );
   }

@@ -225,7 +225,7 @@ export async function GET(request) {
   try {
     const shipments = await sql(
       `SELECT s.*,
-              COALESCE(l.name, s.destination_warehouse_name) AS destination_warehouse_name,
+              l.name AS destination_warehouse_name,
               (SELECT COALESCE(SUM(isi.ordered_qty), 0)
                FROM stock_inbound_shipment_items isi
                JOIN stock_items si ON si.id = isi.item_id

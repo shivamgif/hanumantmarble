@@ -26,7 +26,7 @@ async function resolveStockItem(item) {
 
   if (item.itemId) {
     const rows = await sql(
-      `SELECT i.id, i.sku, i.name, i.current_whole_qty, i.current_broken_qty, i.unit_of_measure,
+      `SELECT i.id, i.sku, i.name, i.current_whole_qty, i.current_broken_qty, i.unit_of_measure, i.division_id,
               ${categorySelect}
        FROM stock_items i
        LEFT JOIN stock_types t ON t.id = i.type_id
@@ -43,7 +43,7 @@ async function resolveStockItem(item) {
   const sku = normalizeText(item.sku);
   if (sku) {
     const rows = await sql(
-      `SELECT i.id, i.sku, i.name, i.current_whole_qty, i.current_broken_qty, i.unit_of_measure,
+      `SELECT i.id, i.sku, i.name, i.current_whole_qty, i.current_broken_qty, i.unit_of_measure, i.division_id,
               ${categorySelect}
        FROM stock_items i
        LEFT JOIN stock_types t ON t.id = i.type_id
@@ -58,6 +58,131 @@ async function resolveStockItem(item) {
   }
 
   throw new Error('Unable to resolve stock item for outbound shipment row');
+}
+
+async function resolveDispatchSalespersonUser(body) {
+  const salespersonUserId = Number(body.salespersonUserId || 0);
+  if (!salespersonUserId || !Number.isFinite(salespersonUserId)) {
+    const err = new Error('Select a salesperson from the list.');
+    err.statusCode = 400;
+    err.reasonCode = 'salesperson_missing';
+    throw err;
+  }
+
+  const rows = await sql(
+    `SELECT u.id, u.name, u.division_id, d.name AS division_name
+     FROM stock_app_users u
+     LEFT JOIN stock_divisions d ON d.id = u.division_id
+     WHERE u.id = $1
+       AND u.role = 'salesperson'
+       AND u.status = 'active'
+     LIMIT 1`,
+    [salespersonUserId]
+  );
+
+  const salespersonUser = rows[0] || null;
+  if (!salespersonUser) {
+    const err = new Error('Selected salesperson is invalid or inactive.');
+    err.statusCode = 400;
+    err.reasonCode = 'salesperson_invalid';
+    throw err;
+  }
+
+  if (!salespersonUser.division_id) {
+    const err = new Error('Selected salesperson has no division assigned.');
+    err.statusCode = 400;
+    err.reasonCode = 'salesperson_division_missing';
+    throw err;
+  }
+
+  return salespersonUser;
+}
+
+async function validateDispatchDivisionIntegrity(resolvedItems, salespersonUser) {
+  const divisionValues = resolvedItems
+    .map((row) => row.item?.division_id)
+    .filter((value) => value != null)
+    .map((value) => Number(value));
+  const itemDivisionIds = [...new Set(divisionValues)];
+
+  const totalItems = resolvedItems.length;
+  const itemsWithDivision = divisionValues.length;
+  if (itemsWithDivision !== totalItems) {
+    const err = new Error('Each dispatch item must belong to a division.');
+    err.statusCode = 400;
+    err.reasonCode = 'item_division_missing';
+    throw err;
+  }
+
+  if (itemDivisionIds.length !== 1) {
+    const err = new Error('All dispatch items must be from the same division.');
+    err.statusCode = 400;
+    err.reasonCode = 'mixed_item_divisions';
+    throw err;
+  }
+
+  const dispatchDivisionId = itemDivisionIds[0];
+  if (Number(salespersonUser.division_id) !== dispatchDivisionId) {
+    const err = new Error('Salesperson division does not match dispatch item division.');
+    err.statusCode = 400;
+    err.reasonCode = 'division_mismatch';
+    throw err;
+  }
+
+  const divisionRows = await sql(
+    `SELECT id, name FROM stock_divisions WHERE id = ANY($1::bigint[])`,
+    [itemDivisionIds]
+  );
+  const divisionNamesById = new Map(divisionRows.map((row) => [Number(row.id), row.name]));
+
+  return {
+    itemIds: resolvedItems.map((row) => Number(row.item.id)),
+    itemDivisionIds,
+    itemDivisionNames: itemDivisionIds.map((id) => divisionNamesById.get(id) || `Division ${id}`),
+    salespersonDivisionId: Number(salespersonUser.division_id),
+    salespersonDivisionName: salespersonUser.division_name || null,
+  };
+}
+
+async function recordDivisionValidationTimeline({
+  appUser,
+  entityId = null,
+  shipmentNumber = null,
+  outcome,
+  reasonCode = null,
+  salespersonUser = null,
+  validation = null,
+}) {
+  try {
+    await recordTimelineEvent({
+      eventType: 'other',
+      entityType: 'outbound_shipment',
+      entityId,
+      summary: `Dispatch division validation ${outcome}`,
+      details: {
+        division_validation: outcome,
+        reason_code: reasonCode,
+        shipmentNumber,
+        actor: {
+          userId: appUser?.id || null,
+          role: normalizeStockRole(appUser?.role),
+          email: appUser?.email || null,
+        },
+        salesperson: salespersonUser ? {
+          id: Number(salespersonUser.id),
+          name: salespersonUser.name,
+          divisionId: salespersonUser.division_id != null ? Number(salespersonUser.division_id) : null,
+          divisionName: salespersonUser.division_name || null,
+        } : null,
+        itemIds: validation?.itemIds || [],
+        itemDivisionIds: validation?.itemDivisionIds || [],
+        itemDivisionNames: validation?.itemDivisionNames || [],
+      },
+      userId: appUser?.id || null,
+    });
+  } catch (error) {
+    console.error('Failed to record dispatch division validation timeline:', error);
+  }
 }
 
 async function resolveCustomerContext(body) {
@@ -333,14 +458,19 @@ export async function POST(request) {
 
     const resolvedCustomer = await resolveCustomerContext(body);
     const vehicleId = await resolveVehicleId(body);
+    const schemaCaps = await getStockSchemaCapabilities();
+    const salespersonUser = await resolveDispatchSalespersonUser(body);
 
     // Resolve FK IDs — dual-write with legacy text columns during transition
     const resolvedCustomerId = resolvedCustomer?.customer_id || null;
-    const resolvedSalespersonId = await resolveSalespersonId(body, resolvedCustomer);
+    const resolvedSalespersonId = await resolveSalespersonId(
+      { ...body, salespersonName: salespersonUser.name },
+      resolvedCustomer
+    );
 
     const customerName = normalizeText(body.customerName || resolvedCustomer?.customer_name);
     const customerPhone = normalizeText(body.customerPhone || resolvedCustomer?.customer_phone);
-    const salespersonName = normalizeText(body.salespersonName || body.salesPersonName || resolvedCustomer?.sales_person);
+    const salespersonName = normalizeText(salespersonUser?.name || body.salespersonName || body.salesPersonName || resolvedCustomer?.sales_person);
     const salespersonPhone = normalizeText(body.salespersonPhone || body.salesPersonPhone);
     const truckLicensePlate = normalizeText(body.truckLicensePlate || body.vehicleNumber || body.truckNumber);
     const truckNumber = normalizeText(body.truckNumber || body.vehicleNumber);
@@ -408,71 +538,77 @@ export async function POST(request) {
       });
     }
 
+    const divisionValidation = await validateDispatchDivisionIntegrity(resolvedItems, salespersonUser);
+
+    const shipmentInsertColumns = [
+      'shipment_number',
+      'sales_order_id',
+      'vehicle_id',
+      'customer_id',
+      'salesperson_id',
+      ...(schemaCaps.hasOutboundSalespersonUserId ? ['salesperson_user_id'] : []),
+      'truck_license_plate_snapshot',
+      'truck_number_snapshot',
+      'driver_name_snapshot',
+      'driver_phone_snapshot',
+      'gatepass_number',
+      'invoice_number',
+      'submitted_at',
+      'submitted_by_user_id',
+      'approval_status',
+      'status',
+      'dispatch_date',
+      'loading_labour_cost',
+      'transport_cost',
+      'return_broken_qty',
+      'return_notes',
+      'recorded_by_user_id',
+      'notes',
+      'created_by',
+    ];
+    const shipmentInsertValues = [
+      shipmentNumber,
+      body.salesOrderId || null,
+      vehicleId,
+      resolvedCustomerId,
+      resolvedSalespersonId,
+      ...(schemaCaps.hasOutboundSalespersonUserId ? [Number(salespersonUser.id)] : []),
+      truckLicensePlate || null,
+      truckNumber || null,
+      driverName || null,
+      driverPhone || null,
+      normalizeText(body.gatepassNumber) || null,
+      normalizeText(body.invoiceNumber) || null,
+      appUser?.id || null,
+      approvalStatus,
+      status,
+      dispatchDate,
+      Number(body.loadingLabourCost || 0),
+      Number(body.transportCost || 0),
+      toPositiveInteger(body.returnBrokenQty),
+      normalizeText(body.returnNotes) || null,
+      appUser?.id || null,
+      normalizeText(body.notes) || null,
+      session.user.email,
+    ];
+    const shipmentValuePlaceholders = shipmentInsertColumns.map((_, index) => {
+      if (shipmentInsertColumns[index] === 'submitted_at') {
+        return 'NOW()';
+      }
+      const nonNowCount = shipmentInsertColumns.slice(0, index + 1).filter((column) => column !== 'submitted_at').length;
+      if (shipmentInsertColumns[index] === 'dispatch_date') {
+        return `COALESCE($${nonNowCount}, NOW())`;
+      }
+      return `$${nonNowCount}`;
+    });
     const shipmentRows = await sql(
       `INSERT INTO stock_outbound_shipments (
-        shipment_number,
-        sales_order_id,
-        vehicle_id,
-        customer_id,
-        salesperson_id,
-        truck_license_plate_snapshot,
-        truck_number_snapshot,
-        driver_name_snapshot,
-        driver_phone_snapshot,
-        gatepass_number,
-        invoice_number,
-        submitted_at,
-        submitted_by_user_id,
-        approval_status,
-        status,
-        dispatch_date,
-        loading_labour_cost,
-        transport_cost,
-        return_broken_qty,
-        return_notes,
-        recorded_by_user_id,
-        notes,
-        created_by
-      ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
-        NOW(),
-        $12,
-        $13,
-        $14,
-        COALESCE($15, NOW()),
-        $16,
-        $17,
-        $18,
-        $19,
-        $20,
-        $21,
-        $22
-      )
-      RETURNING *`,
-      [
-        shipmentNumber,           // $1
-        body.salesOrderId || null, // $2
-        vehicleId,                 // $3
-        resolvedCustomerId,        // $4  ← NEW FK
-        resolvedSalespersonId,     // $5  ← NEW FK
-        truckLicensePlate || null, // $6
-        truckNumber || null,       // $7
-        driverName || null,        // $8
-        driverPhone || null,       // $9
-        normalizeText(body.gatepassNumber) || null,  // $10
-        normalizeText(body.invoiceNumber) || null,   // $11
-        appUser?.id || null,       // $12
-        approvalStatus,            // $13
-        status,                    // $14
-        dispatchDate,              // $15
-        Number(body.loadingLabourCost || 0), // $16
-        Number(body.transportCost || 0),     // $17
-        toPositiveInteger(body.returnBrokenQty), // $18
-        normalizeText(body.returnNotes) || null,  // $19
-        appUser?.id || null,       // $20
-        normalizeText(body.notes) || null, // $21
-        session.user.email,        // $22
-      ]
+         ${shipmentInsertColumns.join(',\n         ')}
+       ) VALUES (
+         ${shipmentValuePlaceholders.join(',\n         ')}
+       )
+       RETURNING *`,
+      shipmentInsertValues
     );
 
     const shipment = shipmentRows[0];
@@ -508,7 +644,9 @@ export async function POST(request) {
       );
     }
 
-    const recipients = await collectNotificationRecipients();
+    const recipients = await collectNotificationRecipients(
+      divisionValidation.itemDivisionIds.length ? divisionValidation.itemDivisionIds : null
+    );
     await queueNotification({
       channel: 'whatsapp',
       eventType: 'outbound_dispatch',
@@ -530,13 +668,41 @@ export async function POST(request) {
         truckLicensePlate: truckLicensePlate || null,
         submitterRole,
         submitterType: submitterRole === 'salesperson' ? 'salesperson' : 'stock_manager',
+        division_validation: 'passed',
+        salesperson: {
+          id: Number(salespersonUser.id),
+          name: salespersonUser.name,
+          divisionId: divisionValidation.salespersonDivisionId,
+          divisionName: divisionValidation.salespersonDivisionName,
+        },
+        itemIds: divisionValidation.itemIds,
+        itemDivisionIds: divisionValidation.itemDivisionIds,
+        itemDivisionNames: divisionValidation.itemDivisionNames,
       },
       userId: appUser?.id || null,
     });
 
+    await recordDivisionValidationTimeline({
+      appUser,
+      entityId: shipment.id,
+      shipmentNumber: shipment.shipment_number,
+      outcome: 'passed',
+      salespersonUser,
+      validation: divisionValidation,
+    });
+
     return NextResponse.json({ shipment }, { status: 201 });
   } catch (error) {
+    await recordDivisionValidationTimeline({
+      appUser,
+      outcome: 'failed',
+      reasonCode: error?.reasonCode || null,
+    });
     console.error('Failed to create outbound shipment:', error);
-    return NextResponse.json({ error: 'Failed to submit dispatch', detail: error.message }, { status: 500 });
+    const status = Number.isInteger(error?.statusCode) ? error.statusCode : 500;
+    return NextResponse.json(
+      { error: status === 500 ? 'Failed to submit dispatch' : error.message, code: error?.reasonCode || undefined, detail: error.message },
+      { status }
+    );
   }
 }

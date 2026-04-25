@@ -432,6 +432,7 @@ CREATE TABLE IF NOT EXISTS stock_outbound_shipments (
   invoice_document_id BIGINT,
   submitted_at TIMESTAMP,
   submitted_by_user_id BIGINT REFERENCES stock_app_users(id),
+  salesperson_user_id BIGINT REFERENCES stock_app_users(id),
   reviewed_at TIMESTAMP,
   reviewed_by_user_id BIGINT REFERENCES stock_app_users(id),
   approval_status TEXT NOT NULL DEFAULT 'pending' CHECK (approval_status IN ('pending', 'reviewed', 'approved', 'rejected', 'changes_requested')),
@@ -589,6 +590,7 @@ ALTER TABLE IF EXISTS stock_purchase_orders ADD COLUMN IF NOT EXISTS currency_co
 ALTER TABLE IF EXISTS stock_inbound_shipments ADD COLUMN IF NOT EXISTS currency_code TEXT NOT NULL DEFAULT 'INR';
 ALTER TABLE IF EXISTS stock_sales_orders ADD COLUMN IF NOT EXISTS currency_code TEXT NOT NULL DEFAULT 'INR';
 ALTER TABLE IF EXISTS stock_outbound_shipments ADD COLUMN IF NOT EXISTS currency_code TEXT NOT NULL DEFAULT 'INR';
+ALTER TABLE IF EXISTS stock_outbound_shipments ADD COLUMN IF NOT EXISTS salesperson_user_id BIGINT REFERENCES stock_app_users(id);
 ALTER TABLE IF EXISTS stock_movements ADD COLUMN IF NOT EXISTS currency_code TEXT NOT NULL DEFAULT 'INR';
 
 ALTER TABLE IF EXISTS stock_items ADD COLUMN IF NOT EXISTS division_id BIGINT REFERENCES stock_divisions(id);
@@ -757,6 +759,7 @@ CREATE INDEX IF NOT EXISTS idx_stock_sales_order_items_item_id ON stock_sales_or
 
 CREATE INDEX IF NOT EXISTS idx_stock_outbound_shipments_order_id ON stock_outbound_shipments(sales_order_id);
 CREATE INDEX IF NOT EXISTS idx_stock_outbound_shipments_status ON stock_outbound_shipments(status);
+CREATE INDEX IF NOT EXISTS idx_stock_outbound_shipments_salesperson_user_id ON stock_outbound_shipments(salesperson_user_id);
 CREATE INDEX IF NOT EXISTS idx_stock_outbound_items_shipment_id ON stock_outbound_shipment_items(outbound_shipment_id);
 CREATE INDEX IF NOT EXISTS idx_stock_outbound_items_item_id ON stock_outbound_shipment_items(item_id);
 
@@ -833,6 +836,9 @@ DO $$ BEGIN
   END IF;
 END $$;
 CREATE INDEX IF NOT EXISTS idx_stock_outbound_shipments_payment_status ON stock_outbound_shipments(payment_status);
+
+ALTER TABLE IF EXISTS stock_outbound_shipments ADD COLUMN IF NOT EXISTS locked_at TIMESTAMP;
+ALTER TABLE IF EXISTS stock_outbound_shipments ADD COLUMN IF NOT EXISTS locked_by_user_id BIGINT REFERENCES stock_app_users(id);
 
 CREATE OR REPLACE VIEW stock_dashboard_summary_view AS
 SELECT

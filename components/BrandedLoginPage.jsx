@@ -4,7 +4,7 @@ import { authClient, getDefaultSocialProvider, getLogoutHref, useAuthUser } from
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Github, ArrowRight, LogIn, LogOut, Shield, Sparkles, User } from 'lucide-react';
+import { Github, ArrowRight, LogOut, Shield, User } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,11 +15,8 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
   const [signInError, setSignInError] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [authMode, setAuthMode] = useState('signin');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSocialSubmitting, setIsSocialSubmitting] = useState(false);
-  const [showSignupSuccess, setShowSignupSuccess] = useState(false);
   const [socialRetryAfter, setSocialRetryAfter] = useState(null);
   const socialProvider = getDefaultSocialProvider();
   const isUnauthorizedError = error?.message === 'Unauthorized' || error?.status === 401;
@@ -80,15 +77,9 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
 
     const cleanEmail = String(email || '').trim().toLowerCase();
     const cleanPassword = String(password || '');
-    const cleanName = String(name || '').trim();
 
     if (!cleanEmail || !cleanPassword) {
       setSignInError('Email and password are required.');
-      return;
-    }
-
-    if (authMode === 'signup' && !cleanName) {
-      setSignInError('Name is required for sign up.');
       return;
     }
 
@@ -96,29 +87,6 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
     setIsSubmitting(true);
 
     try {
-      if (authMode === 'signup') {
-        const { data: signupData, error: signupError } = await authClient.signUp.email({
-          email: cleanEmail,
-          password: cleanPassword,
-          name: cleanName,
-        });
-
-        if (signupError) {
-          const message = String(signupError.message || '').toLowerCase();
-          if (message.includes('already exists') || message.includes('user_exists')) {
-            setSignInError('This email is already registered. Try signing in instead.');
-          } else {
-            setSignInError(signupError.message || 'Unable to create account.');
-          }
-          return;
-        }
-        
-        // Show success message briefly for signup before signing in and redirecting
-        setShowSignupSuccess(true);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        setShowSignupSuccess(false);
-      }
-
       const { data: signinData, error: signinError } = await authClient.signIn.email({
         email: cleanEmail,
         password: cleanPassword,
@@ -260,16 +228,6 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
 
                       <div>
                         <form className="space-y-3" onSubmit={handleEmailPasswordAuth}>
-                          {authMode === 'signup' ? (
-                            <input
-                              type="text"
-                              value={name}
-                              onChange={(event) => setName(event.target.value)}
-                              placeholder="Full name"
-                              className="w-full rounded-xl border border-border bg-card p-3 text-sm outline-none focus:border-primary"
-                              autoComplete="name"
-                            />
-                          ) : null}
                           <input
                             type="email"
                             value={email}
@@ -284,27 +242,16 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
                             onChange={(event) => setPassword(event.target.value)}
                             placeholder="Password"
                             className="w-full rounded-xl border border-border bg-card p-3 text-sm outline-none focus:border-primary"
-                            autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
+                            autoComplete="current-password"
                           />
                           <Button
                             type="submit"
                             disabled={isSubmitting}
                             className="h-10 w-full rounded-xl bg-primary text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
                           >
-                            {isSubmitting
-                              ? 'Please wait...'
-                              : (authMode === 'signin' ? 'Sign in with email' : 'Sign up with email')}
+                            {isSubmitting ? 'Please wait...' : 'Sign in with email'}
                           </Button>
                         </form>
-                        <div className="m-3 flex justify-center items-center">
-                          <button
-                            type="button"
-                            className="text-xs font-medium text-primary hover:underline"
-                            onClick={() => setAuthMode((current) => (current === 'signin' ? 'signup' : 'signin'))}
-                          >
-                            {authMode === 'signin' ? 'Create account' : 'Have an account? Sign in'}
-                          </button>
-                        </div>
                       </div>
                       <span className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                         <p className="h-px flex-1 bg-border" />
@@ -332,16 +279,6 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
                       {signInError ? (
                         <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
                           {signInError}
-                        </div>
-                      ) : null}
-
-                      {showSignupSuccess ? (
-                        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-4 text-center">
-                          <div className="flex justify-center mb-2">
-                            <Sparkles className="h-6 w-6 text-emerald-500 animate-bounce" />
-                          </div>
-                          <p className="text-sm font-bold text-emerald-800">Account created successfully!</p>
-                          <p className="text-xs text-emerald-700 mt-1">Logging you in now...</p>
                         </div>
                       ) : null}
 
