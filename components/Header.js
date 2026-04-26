@@ -25,9 +25,9 @@ export function Header() {
   const [scrolled, setScrolled] = React.useState(false)
   const { user } = useAuthUser()
   const { cartCount } = useCart()
-  
+
   const { language, toggleLanguage } = useLanguage();
-  
+
   const navigationItems = [
     { href: "/#products", label: getTranslation('nav.products', language) },
     { href: "/#brands", label: getTranslation('nav.brands', language) },
@@ -49,7 +49,7 @@ export function Header() {
 
   return (
     <header className={`w-full z-40 sticky top-0 transition-all duration-300 ${scrolled ? 'bg-background/80 backdrop-blur-xl shadow-lg border-b border-border/50' : 'bg-background border-b border-border/50'}`}>
-      <div className="container mx-auto px-4 h-20 flex items-center justify-between">
+      <div className="container mx-auto h-20 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center">
           <Link href="/" className="relative h-20 w-20 hover:scale-105 transition-transform">
@@ -71,8 +71,8 @@ export function Header() {
               {navigationItems.map((item) => (
                 <NavigationMenuItem key={item.href}>
                   <NavigationMenuLink asChild>
-                    <Link 
-                      href={item.href} 
+                    <Link
+                      href={item.href}
                       className="group inline-flex h-10 w-max items-center justify-center rounded-full bg-transparent px-5 py-2 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary focus:outline-none"
                     >
                       {item.label}
@@ -163,7 +163,7 @@ export function Header() {
                           <p className="text-sm text-muted-foreground truncate">{user.email}</p>
                         </div>
                       </div>
-                      
+
                       {/* Profile Quick Actions */}
                       <div className={`grid ${isAdmin(user.email) ? 'grid-cols-4' : 'grid-cols-3'} gap-2 px-4`}>
                         <Link
@@ -231,7 +231,7 @@ export function Header() {
                       <ArrowRight className="h-5 w-5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                     </Link>
                   </div>
-                  
+
                   {/* Navigation Links */}
                   <div className="flex flex-col space-y-2">
                     {navigationItems.map((item) => (

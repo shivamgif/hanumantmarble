@@ -204,7 +204,7 @@ export default function StockLayout({ children }) {
                   alt="Hanumant Marble logo"
                   fill
                   sizes="48px"
-                  className="object-contain p-1.5"
+                  className="object-contain"
                   priority
                 />
               </div>
