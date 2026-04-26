@@ -63,6 +63,9 @@ export function PurchasesPanel({
   const [markingPaidId, setMarkingPaidId] = useState(null);
 
   async function handleMarkAsPaid(id) {
+    if (!window.confirm('Are you sure you want to mark this purchase as paid? This action cannot be undone.')) {
+      return;
+    }
     setMarkingPaidId(id);
     try {
       const res = await fetch(`/api/stock/inbound-shipments/${id}`, {
@@ -413,7 +416,7 @@ export function PurchasesPanel({
                     className="min-w-0 flex-1 text-left"
                     aria-label={`Open purchase ${a.shipment_number}`}
                   >
-                    <p className="break-all font-mono text-xs font-semibold text-primary">{a.shipment_number}</p>
+                    <p className="break-all font-mono text-xs font-semibold text-primary dark:text-orange-400">{a.shipment_number}</p>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">{formatDateTime(a.arrival_date || a.created_at)}</p>
                   </button>
                   <Badge variant={getStatusVariant(a.status)}>{a.status}</Badge>
@@ -488,24 +491,20 @@ export function PurchasesPanel({
             );
           })}
         </div>
-        <div className="overflow-x-auto [scrollbar-width:thin] flex-1">
+        <div className="overflow-x-auto overflow-y-auto max-h-[60vh] no-scrollbar flex-1">
           <table className="hidden w-full text-left whitespace-nowrap md:table border-collapse">
             <thead className="sticky top-0 z-20 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xl">
               <tr className="border-b border-slate-200/60 dark:border-white/5">
                 {[
                   { id: 'datetime', label: tc.datetime },
                   { id: 'shipment', label: t('shipmentNo') },
-                  { id: 'invoice', label: tc.invoice },
                   { id: 'route', label: tc.route },
                   { id: 'payment', label: tc.payment },
                   { id: 'products', label: tc.products },
                   { id: 'quantities', label: tc.quantities, align: 'right' },
                   { id: 'grandTotal', label: tc.grandTotal, align: 'right' },
-                  { id: 'freight', label: `${tc.freight} (kg)`, align: 'right' },
                   ...(canEdit ? [{ id: 'edit', label: tc.edit, align: 'right' }] : []),
                   { id: 'status', label: t('status') },
-                  { id: 'generatedBy', label: tc.generatedBy },
-                  { id: 'approvedBy', label: tc.approvedBy },
                 ].map((col) => (
                   <th key={col.id} className={`px-4 py-3 ${col.align === 'right' ? 'text-right' : ''}`}>
                     <button
@@ -540,13 +539,15 @@ export function PurchasesPanel({
                 >
                   <td className="px-4 py-3 text-[11px] text-muted-foreground tabular-nums">{formatDateTime(a.arrival_date || a.created_at)}</td>
                   <td className="px-4 py-3">
-                    <span className="font-mono text-[10px] font-black tracking-tight text-brand-primary bg-brand-primary/5 px-2 py-1 rounded-md border border-brand-primary/20 transition-colors group-hover/row:bg-brand-primary/10">
+                    <div className="font-mono text-[10px] font-black tracking-tight text-brand-primary dark:text-orange-400 bg-brand-primary/5 px-2 py-1 rounded-md border border-brand-primary/20 inline-block transition-colors group-hover/row:bg-brand-primary/10">
                       {a.shipment_number}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-[11px] text-muted-foreground">
-                    <div className="font-black text-slate-700 dark:text-slate-300">{a.invoice_number || '—'}</div>
-                    <div className="text-[9px] font-bold opacity-60 uppercase">{a.invoice_date ? formatDateTime(a.invoice_date) : '—'}</div>
+                    </div>
+                    {a.invoice_number ? (
+                      <div className="mt-1.5 flex flex-col">
+                        <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 tracking-tight leading-none">{a.invoice_number}</span>
+                        {a.invoice_date && <span className="text-[8px] font-bold opacity-60 uppercase mt-0.5">{formatDateTime(a.invoice_date)}</span>}
+                      </div>
+                    ) : null}
                   </td>
                   <td className="px-4 py-3 text-[11px] text-muted-foreground">
                     <div className="max-w-[170px] truncate font-bold text-slate-700 dark:text-slate-300" title={`${a.origin_city || '—'} to ${a.destination_warehouse_name || '—'}`}>
@@ -595,7 +596,6 @@ export function PurchasesPanel({
                   <td className="px-4 py-3 text-right">
                     <div className="text-xs font-black text-slate-900 dark:text-white tabular-nums">₹{Number(a.grand_total || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</div>
                   </td>
-                  <td className="px-4 py-3 text-right text-[11px] font-bold text-muted-foreground tabular-nums">{Number(a.freight_weight_kg || 0).toFixed(2)}</td>
                   {canEdit && (
                     <td className="px-4 py-3 text-right">
                       <button
@@ -608,18 +608,11 @@ export function PurchasesPanel({
                     </td>
                   )}
                   <td className="px-4 py-3"><Badge variant={getStatusVariant(a.status)}>{a.status}</Badge></td>
-                  <td className="px-4 py-3 text-[11px] text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold">{a.generated_by || '—'}</span>
-                      <Badge variant="neutral" className="text-[9px] font-black uppercase tracking-tighter px-1">{getGeneratedByRoleLabel(a.generated_by_role)}</Badge>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-[11px] font-bold text-muted-foreground">{a.approved_by || '—'}</td>
                 </tr>
               ))}
               {arrivalPagination.total === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 13 : 12} className="px-3 py-10">
+                  <td colSpan={canEdit ? 9 : 8} className="px-3 py-10">
                     <div className="flex flex-col items-center justify-center gap-3 text-center">
                       <PackageCheck className="h-6 w-6 text-slate-400" />
                       <p className="text-sm text-slate-500 dark:text-slate-400">{tc.noPurchases}</p>

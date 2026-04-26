@@ -48,9 +48,10 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
         )}
       </div>
       <div className="p-4 space-y-4">
-        <div className="grid gap-4 md:grid-cols-2">
-          <FormField
-            control={control}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="lg:col-span-1">
+            <FormField
+              control={control}
             name={`items.${index}.itemId`}
             render={({ field }) => (
               <FormItem>
@@ -70,6 +71,7 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
               </FormItem>
             )}
           />
+          </div>
           {isBag ? (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <StockFormField control={control} name={`items.${index}.qtyBags`} label={tc?.qtyBags ?? 'Qty (Bags)'} type="number" min="0" placeholder="0" />
@@ -129,26 +131,28 @@ const BagDispatchItemRow = memo(function BagDispatchItemRow({ index, fieldRow, c
         )}
       </div>
       <div className="p-4 space-y-4">
-        <div className="grid gap-4 md:grid-cols-2">
-          <FormField
-            control={control}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="lg:col-span-1">
+            <FormField
+              control={control}
             name={`items.${index}.itemId`}
             render={({ field }) => (
               <FormItem>
-                <FormLabel className={FORM_LABEL_CLASS}>Product</FormLabel>
+                <FormLabel className={FORM_LABEL_CLASS}>{tc?.productName ?? 'Product Name'}</FormLabel>
                 <FormControl>
                   <ItemSuggestCombobox
                     value={field.value ?? ''}
                     onChange={field.onChange}
                     onBlur={field.onBlur}
                     items={bagActiveItems}
-                    placeholder="Select bag product"
+                    placeholder={tc?.selectProduct ?? 'Select bag product'}
                   />
                 </FormControl>
                 <FormMessage className="text-xs" />
               </FormItem>
             )}
           />
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <StockFormField control={control} name={`items.${index}.qtyBags`} label={tc?.qtyBags ?? 'Qty (Bags)'} type="number" min="0" placeholder="0" />
             <StockMoneyField control={control} name={`items.${index}.ratePerUnit`} label={tc?.ratePerBag ?? 'Rate / Bag'} />
@@ -177,11 +181,11 @@ export function BagDispatchFormContent({
 }) {
   return (
     <Form {...form}>
-      <form className="mt-6 space-y-6" onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
-        <InlineNotice notice={notice} />
+      <form className="mt-6" onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
+        <fieldset disabled={submitting} className="space-y-6 border-0 p-0 m-0 min-w-0">
         <div className={FORM_CARD_CLASS}>
           <FormSectionTitle category="Outbound Strategy" icon={Send} title="Bag Dispatch Basics" description="Invoice and customer details for bag goods dispatch" tc={tc} />
-          <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
+          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
             <StockFormField control={form.control} name="customerName" label={t?.('customer') ?? 'Customer'} placeholder="Customer Name..." autoFocus />
             <StockFormField control={form.control} name="customerPhoneNumber" label={tc?.customerPhone ?? 'Customer Phone'} placeholder="+91 9876543210" type="tel" />
             <StockFormField control={form.control} name="invoiceNumber" label={t?.('invoiceNo') ?? 'Invoice No.'} placeholder="INV-..." digitsOnly />
@@ -193,7 +197,7 @@ export function BagDispatchFormContent({
         </div>
         <div className={FORM_CARD_CLASS}>
           <FormSectionTitle category="Mobility Details" icon={Truck} title={tc?.transportAndVehicle ?? 'Transport & Vehicle'} tc={tc} />
-          <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
+          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
             <StockFormField control={form.control} name="truckLicensePlate" label={t?.('truck') ?? 'Truck'} placeholder="RJ 14 XY 0000" />
             <StockFormField control={form.control} name="driverName" label={t?.('driver') ?? 'Driver'} placeholder="Driver Name..." />
           </div>
@@ -226,10 +230,10 @@ export function BagDispatchFormContent({
             <button
               type="button"
               onClick={onAddItem}
-              className="inline-flex mb-4 items-center gap-2 rounded-full bg-amber-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-amber-400 transition-all hover:bg-amber-500/20 hover:scale-105 active:scale-95"
+              className="inline-flex mt-4 mb-4 items-center gap-2 rounded-full bg-amber-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-amber-400 transition-all hover:bg-amber-500/20 hover:scale-105 active:scale-95"
             >
               <Plus className="h-3.5 w-3.5" />
-              Add Bag Item
+              {tc?.addBagItem ?? 'Add Bag Item'}
             </button>
           </div>
         </div>
@@ -248,6 +252,8 @@ export function BagDispatchFormContent({
             )}
           />
         </div>
+        <InlineNotice notice={notice} />
+        </fieldset>
         <button
           type="submit"
           disabled={submitting}
@@ -255,7 +261,7 @@ export function BagDispatchFormContent({
         >
           <span className="inline-flex items-center justify-center gap-3">
             <Package className="h-5 w-5" />
-            {submitting ? (tc?.submitting ?? 'Submitting...') : 'Submit Bag Dispatch'}
+            {submitting ? (tc?.submitting ?? 'Submitting...') : (tc?.submitBagDispatch ?? 'Submit Bag Dispatch')}
           </span>
         </button>
       </form>
@@ -313,8 +319,8 @@ export function DispatchFormContent({
 
   return (
     <Form {...form}>
-      <form className="mt-6 space-y-6" onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
-        <InlineNotice notice={notice} />
+      <form className="mt-6" onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
+        <fieldset disabled={submitting} className="space-y-6 border-0 p-0 m-0 min-w-0">
         <div className={FORM_CARD_CLASS}>
           <FormSectionTitle
             category="Outbound Strategy"
@@ -323,7 +329,7 @@ export function DispatchFormContent({
             description={tc.dispatchBasicsDesc}
             tc={tc}
           />
-          <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
+          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
             <StockFormField control={form.control} name="customerName" label={t('customer')} placeholder="Customer Name..." autoFocus />
             <StockFormField control={form.control} name="customerPhoneNumber" label={tc.customerPhone} placeholder="+91 9876543210" type="tel" />
             <StockFormField control={form.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." digitsOnly />
@@ -359,7 +365,7 @@ export function DispatchFormContent({
         </div>
         <div className={FORM_CARD_CLASS}>
           <FormSectionTitle category="Mobility Details" icon={Truck} title={tc.transportAndVehicle} tc={tc} />
-          <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
+          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
             <StockFormField control={form.control} name="truckLicensePlate" label={t('truck')} placeholder="RJ 14 XY 0000" />
             <StockFormField control={form.control} name="driverName" label={t('driver')} placeholder="Driver Name..." />
           </div>
@@ -395,16 +401,16 @@ export function DispatchFormContent({
                 />
               ))}
             </div>
-          </div>
-        </div>
-        <button
+            <button
               type="button"
               onClick={onAddItem}
-              className="inline-flex mb-4 items-center gap-2 rounded-full bg-brand-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95"
+              className="inline-flex mt-4 mb-4 items-center gap-2 rounded-full bg-brand-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95"
             >
               <Plus className="h-3.5 w-3.5" />
               {t('addItem')}
             </button>
+          </div>
+        </div>
         <div className={FORM_CARD_CLASS}>
           <FormField
             control={form.control}
@@ -420,6 +426,8 @@ export function DispatchFormContent({
             )}
           />
         </div>
+        <InlineNotice notice={notice} />
+        </fieldset>
         <button
           type="submit"
           disabled={submitting}

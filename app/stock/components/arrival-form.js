@@ -54,7 +54,7 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
         </div>
       </div>
       <div className="p-4 space-y-5">
-        <div className="grid gap-5 md:grid-cols-4">
+        <div className="mb-4">
           <div>
             <div className={FORM_LABEL_CLASS}>{t('name')}</div>
             <FormField
@@ -214,8 +214,8 @@ const BagArrivalItemRow = memo(function BagArrivalItemRow({ index, fieldRow, con
       </div>
       <div className="p-4 space-y-4">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <div className={FORM_LABEL_CLASS}>Product Name</div>
+          <div className="sm:col-span-2 lg:col-span-1">
+            <div className={FORM_LABEL_CLASS}>{tc?.productName ?? 'Product Name'}</div>
             <FormField
               control={control}
               name={`items.${index}.itemName`}
@@ -227,7 +227,7 @@ const BagArrivalItemRow = memo(function BagArrivalItemRow({ index, fieldRow, con
                       onChange={(v) => onItemNameChange(index, v)}
                       onBlur={field.onBlur}
                       options={bagItemNames}
-                      placeholder="e.g. Adhesive, Grout..."
+                      placeholder={tc?.selectProduct ?? 'Select Product'}
                       className={FORM_INPUT_CLASS}
                     />
                   </FormControl>
@@ -236,16 +236,16 @@ const BagArrivalItemRow = memo(function BagArrivalItemRow({ index, fieldRow, con
               )}
             />
           </div>
-          <SuggestComboboxField control={control} name={`items.${index}.brandName`} label="Brand" placeholder="e.g. Fixura, GresBond" options={bagBrands} />
-          <SuggestComboboxField control={control} name={`items.${index}.typeName`} label="Type" placeholder="e.g. Type 1" options={bagTypes} />
-          <StockFormField control={control} name={`items.${index}.qtyBags`} label="Qty (Bags)" type="number" placeholder="0" min="0" />
+          <SuggestComboboxField control={control} name={`items.${index}.brandName`} label={tc?.brand ?? 'Brand'} placeholder={tc?.brand ?? 'Brand'} options={bagBrands} />
+          <SuggestComboboxField control={control} name={`items.${index}.typeName`} label={tc?.type ?? 'Type'} placeholder={tc?.type ?? 'Type'} options={bagTypes} />
+          <StockFormField control={control} name={`items.${index}.qtyBags`} label={tc?.qtyBags ?? 'Qty (Bags)'} type="number" placeholder="0" min="0" />
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
-          <StockFormField control={control} name={`items.${index}.weightPerUnitKg`} label="Weight per Bag (kg)" type="number" placeholder="25" min="0" step="0.1" />
-          <StockFormField control={control} name={`items.${index}.ratePerBag`} label="Rate per Bag (₹)" type="number" placeholder="0" min="0" step="0.01" />
-          <StockFormField control={control} name={`items.${index}.hsnCode`} label="HSN Code" placeholder="HSN..." list="sg-hsnCode" digitsOnly />
+          <StockFormField control={control} name={`items.${index}.weightPerUnitKg`} label={tc?.weightPerBag ?? 'Weight per Bag (kg)'} type="number" placeholder="25" min="0" step="0.1" />
+          <StockFormField control={control} name={`items.${index}.ratePerBag`} label={tc?.ratePerBag ?? 'Rate per Bag (₹)'} type="number" placeholder="0" min="0" step="0.01" />
+          <StockFormField control={control} name={`items.${index}.hsnCode`} label={tc?.hsn ?? 'HSN Code'} placeholder={tc?.hsn ?? 'HSN Code'} list="sg-hsnCode" digitsOnly />
         </div>
-        <StockFormField control={control} name={`items.${index}.description`} label="Description" placeholder="Notes..." />
+        <StockFormField control={control} name={`items.${index}.description`} label={tc?.description ?? 'Description'} placeholder={tc?.notesPlaceholder ?? 'Notes...'} />
       </div>
     </div>
   );
@@ -280,16 +280,16 @@ export function BagArrivalFormContent({
 
   return (
     <Form {...form}>
-      <form className="mt-6 space-y-5" onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
+      <form className="mt-6" onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
+        <fieldset disabled={submitting} className="space-y-6 border-0 p-0 m-0 min-w-0">
         {Object.entries(suggestions || {}).map(([key, values]) => (
           <datalist key={key} id={`sg-${key}`}>
             {[...new Set(values || [])].map((v, idx) => <option key={`${key}-${idx}`} value={v} />)}
           </datalist>
         ))}
-        <InlineNotice notice={notice} />
         <div className={FORM_CARD_CLASS}>
           <FormSectionTitle category="Intake Strategy" icon={FileText} title="Purchase Basics" description="Invoice and cost details for bag goods" tc={tc} />
-          <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
+          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
             <SuggestComboboxField control={form.control} name="supplierName" label={t?.('supplier') ?? 'Supplier'} placeholder="Supplier Name..." options={suggestions?.supplierName} />
             <StockFormField control={form.control} name="invoiceNumber" label={t?.('invoiceNo') ?? 'Invoice No.'} placeholder="INV-..." digitsOnly />
             <StockDateField control={form.control} name="invoiceDate" label={tc?.invoiceDate ?? 'Invoice Date'} placeholder="Invoice Date" />
@@ -302,7 +302,7 @@ export function BagArrivalFormContent({
         </div>
         <div className={FORM_CARD_CLASS}>
           <FormSectionTitle category="Mobility Details" icon={Truck} title={tc?.transportInvoice ?? 'Transport & Vehicle'} tc={tc} />
-          <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
+          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
             <SuggestComboboxField control={form.control} name="transporterName" label={tc?.transporter ?? 'Transporter'} placeholder="Transport company" options={suggestions?.transporterName} />
             <StockFormField control={form.control} name="truckLicensePlate" label={t?.('truck') ?? 'Truck'} placeholder="RJ 14 XY 0000" list="sg-truckLicensePlate" />
             <StockFormField control={form.control} name="driverName" label={t?.('driver') ?? 'Driver'} placeholder="Driver Name..." list="sg-driverName" />
@@ -322,7 +322,7 @@ export function BagArrivalFormContent({
                 return (
                   <FormItem>
                     <FormLabel className={FORM_LABEL_CLASS}>{tc?.weightKg ?? 'Freight Weight'}</FormLabel>
-                      <div className="flex gap-1.5">
+                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-1.5">
                         <FormControl>
                           <Input
                             type="number" min="0" step="0.001" placeholder="0"
@@ -338,7 +338,7 @@ export function BagArrivalFormContent({
                             onBlur={field.onBlur}
                           />
                         </FormControl>
-                        <div className="inline-flex mb-4 items-center gap-2 rounded-full bg-brand-primary/10 p-2 text-[15px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95">
+                        <div className="inline-flex items-center gap-2 rounded-full bg-brand-primary/10 p-2 text-[15px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95">
                           {['kg', 't'].map((u) => (
                             <button key={u} type="button" onClick={() => setWeightUnit(u)}
                               className={`px-3 rounded-full transition-colors uppercase tracking-wider ${weightUnit === u ? 'bg-brand-primary text-white' : 'text-slate-400 hover:bg-slate-500/10'}`}>
@@ -384,10 +384,10 @@ export function BagArrivalFormContent({
             <button
               type="button"
               onClick={onAddItem}
-              className="inline-flex mb-4 items-center gap-2 rounded-full bg-amber-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-amber-400 transition-all hover:bg-amber-500/20 hover:scale-105 active:scale-95"
+              className="inline-flex mb-4 mt-4 items-center gap-2 rounded-full bg-amber-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-amber-400 transition-all hover:bg-amber-500/20 hover:scale-105 active:scale-95"
             >
               <Plus className="h-3.5 w-3.5" />
-              Add Bag Item
+              {tc?.addBagItem ?? 'Add Bag Item'}
             </button>
           </div>
         </div>
@@ -406,6 +406,8 @@ export function BagArrivalFormContent({
             )}
           />
         </div>
+        <InlineNotice notice={notice} />
+        </fieldset>
         <button
           type="submit"
           disabled={submitting}
@@ -445,16 +447,16 @@ export function ArrivalFormContent({
 
   return (
     <Form {...form}>
-      <form className="mt-6 space-y-5" onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
+      <form className="mt-6" onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
+        <fieldset disabled={submitting} className="space-y-6 border-0 p-0 m-0 min-w-0">
         {Object.entries(suggestions).map(([key, values]) => (
           <datalist key={key} id={`sg-${key}`}>
             {[...new Set(values || [])].map((v, idx) => <option key={`${key}-${idx}`} value={v} />)}
           </datalist>
         ))}
-        <InlineNotice notice={notice} />
         <div className={FORM_CARD_CLASS}>
           <FormSectionTitle category="Intake Strategy" icon={FileText} title={tc.purchaseBasics} description={tc.purchaseBasicsDesc} tc={tc} />
-          <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
+          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
             <SuggestComboboxField control={form.control} name="supplierName" label={t('supplier')} placeholder="Supplier Name..." options={suggestions.supplierName} />
             <StockFormField control={form.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." digitsOnly />
             <StockDateField control={form.control} name="invoiceDate" label={tc.invoiceDate} placeholder={tc.invoiceDate} />
@@ -467,7 +469,7 @@ export function ArrivalFormContent({
         </div>
         <div className={FORM_CARD_CLASS}>
           <FormSectionTitle category="Mobility Details" icon={Truck} title={tc.transportInvoice} tc={tc} />
-          <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
+          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
             <SuggestComboboxField control={form.control} name="transporterName" label={tc.transporter} placeholder="Transport company" options={suggestions.transporterName} />
             <StockFormField control={form.control} name="truckLicensePlate" label={t('truck')} placeholder="RJ 14 XY 0000" list="sg-truckLicensePlate" />
             <StockFormField control={form.control} name="driverName" label={t('driver')} placeholder="Driver Name..." list="sg-driverName" />
@@ -488,7 +490,7 @@ export function ArrivalFormContent({
                   <FormItem>
                     <FormLabel className={FORM_LABEL_CLASS}>{tc.weightKg}</FormLabel>
                     
-                      <div className="flex gap-1.5">
+                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-1.5">
                         <FormControl>
                           <Input
                             type="number"
@@ -507,7 +509,7 @@ export function ArrivalFormContent({
                             onBlur={field.onBlur}
                           />
                         </FormControl>
-                        <div className="inline-flex mb-4 items-center gap-2 rounded-full bg-brand-primary/10 p-2 text-[15px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95">
+                        <div className="inline-flex items-center gap-2 rounded-full bg-brand-primary/10 p-2 text-[15px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95">
                           {['kg', 't'].map((u) => (
                             <button
                               key={u}
@@ -583,6 +585,8 @@ export function ArrivalFormContent({
             )}
           />
         </div>
+        <InlineNotice notice={notice} />
+        </fieldset>
         <button
           type="submit"
           disabled={submitting}

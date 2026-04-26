@@ -220,8 +220,8 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
                         <div className={INVOICE_CLASSES.mobileValue}>{item.item_name || '—'} {item.finish ? `(${item.finish})` : ''}</div>
                       </div>
                       <div>
-                        <div className={INVOICE_CLASSES.mobileKey}>{tc.size}</div>
-                        <div className={INVOICE_CLASSES.mobileValue}>{item.size_label || '—'}</div>
+                        <div className={INVOICE_CLASSES.mobileKey}>{item.unit_of_measure === 'bag' ? (tc.weightPerBag || 'Weight') : tc.size}</div>
+                        <div className={INVOICE_CLASSES.mobileValue}>{item.unit_of_measure === 'bag' ? (item.weight_per_unit_kg ? `${item.weight_per_unit_kg} kg` : (item.type_name || '—')) : (item.size_label || '—')}</div>
                       </div>
                       {isInboundPreview ? (
                         item.unit_of_measure === 'bag' ? (

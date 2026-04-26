@@ -77,12 +77,12 @@ const FORM_SELECT_CLASS = 'mt-1';
 const FORM_PANEL_CLASS = 'rounded-2xl border border-border/80 bg-background/80 p-4';
 
 const CLASSES = {
-  heroGrid: 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6',
-  card: 'glass-panel rounded-3xl sm:rounded-[2rem] p-5 sm:p-6 lg:p-8 transition-all duration-500 hover:shadow-xl group/card',
-  title: 'text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 group-hover/card:text-brand-primary transition-colors',
+  heroGrid: 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 lg:gap-6',
+  card: 'glass-panel rounded-3xl sm:rounded-[2rem] p-4 sm:p-6 lg:p-8 transition-all duration-500 hover:shadow-xl group/card bg-white/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800/60',
+  title: 'text-[10px] font-black uppercase tracking-[0.25em] text-slate-600 dark:text-slate-400 group-hover/card:text-brand-primary transition-colors',
   value: 'mt-2 text-3xl font-extrabold text-slate-900 dark:text-slate-100 font-sans tracking-tight',
-  grid: 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3',
-  mobileScroll: 'flex overflow-x-auto no-scrollbar gap-2 pb-2',
+  grid: 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
+  mobileScroll: 'flex overflow-x-auto no-scrollbar gap-2 pb-2 snap-x snap-mandatory overscroll-x-contain',
   avatar: 'h-10 w-10 rounded-2xl bg-slate-100 dark:bg-slate-800 flex shrink-0 items-center justify-center text-slate-600 dark:text-slate-300 font-black text-xs border border-slate-200 dark:border-slate-700 shadow-sm',
   actionButton: 'active:scale-95 transition-all duration-200',
 };
@@ -1591,7 +1591,7 @@ export default function AdminDashboard() {
                         className="group cursor-pointer transition-all duration-300 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 odd:bg-white even:bg-slate-50/70 dark:odd:bg-slate-900 dark:even:bg-slate-900/70"
                         onClick={() => openShipmentPreview('arrival', item)}
                       >
-                        <td className="px-4 py-3 font-black text-brand-primary text-xs">
+                        <td className="px-4 py-3 font-black text-brand-primary dark:text-orange-400 text-xs">
                           <span className="bg-brand-primary/5 px-2 py-1 rounded-md border border-brand-primary/20">{item.shipment_number}</span>
                         </td>
                         <td className="px-4 py-3 text-slate-900 dark:text-slate-100 font-bold text-xs">{item.maintainer_name || '-'}</td>
@@ -1655,7 +1655,7 @@ export default function AdminDashboard() {
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('shipmentNo')}</p>
-                        <p className="text-sm font-black text-brand-primary">{item.shipment_number}</p>
+                        <p className="text-sm font-black text-brand-primary dark:text-orange-400">{item.shipment_number}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('boxesQty')}</p>
@@ -1838,7 +1838,7 @@ export default function AdminDashboard() {
                         className="group cursor-pointer transition-all duration-300 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 odd:bg-white even:bg-slate-50/70 dark:odd:bg-slate-900 dark:even:bg-slate-900/70"
                         onClick={() => openShipmentPreview('dispatch', item)}
                       >
-                        <td className="px-4 py-3 font-black text-brand-secondary text-xs">
+                        <td className="px-4 py-3 font-black text-brand-secondary dark:text-indigo-400 text-xs">
                           <span className="bg-brand-secondary/5 px-2 py-1 rounded-md border border-brand-secondary/20">{item.shipment_number}</span>
                         </td>
                         <td className="px-4 py-3 text-slate-900 dark:text-slate-100 font-bold text-xs">{item.driver_name}</td>
@@ -1902,7 +1902,7 @@ export default function AdminDashboard() {
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('dispatchNo')}</p>
-                        <p className="text-sm font-black text-brand-secondary">{item.shipment_number}</p>
+                        <p className="text-sm font-black text-brand-secondary dark:text-indigo-400">{item.shipment_number}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('boxesQty')}</p>

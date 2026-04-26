@@ -3,10 +3,19 @@ import { ThemeProvider } from '@/components/ThemeProvider'
 import { LanguageProvider } from '@/contexts/LanguageContext'
 import { ClientProviders } from '@/contexts/ClientProviders'
 import Layout from '@/components/Layout'
+import PWAInstall from '@/components/PWAInstall'
 
 const BASE_URL = "https://hanumantmarble.in";
 
+export const viewport = {
+  themeColor: '#000000',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export const metadata = {
+  manifest: "/manifest.json",
   metadataBase: new URL(BASE_URL),
   title: {
     default: "Hanumant Marble – Premium Tiles & Sanitaryware in Lucknow",
@@ -109,6 +118,7 @@ export default function RootLayout({ children }) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        <PWAInstall />
         <LanguageProvider>
           <ThemeProvider
             attribute="class"

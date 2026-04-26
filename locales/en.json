@@ -250,7 +250,7 @@
       "insufficientNewPurchase": "Insufficient permissions to record purchase",
       "logNewPurchase": "Record New Purchase",
       "purchaseSheetDesc": "Log an inbound shipment from a supplier or factory unit.",
-      "datetime": "Date & Time",
+      "datetime": "Date",
       "invoice": "Invoice",
       "route": "Route/Origin",
       "payment": "Payment Status",

@@ -71,6 +71,7 @@ export async function GET(request) {
       inventoryRiskTrend,
       salespersonTrend,
       salespersonRanking,
+      divisionPerformance,
     ] = await Promise.all([
       sql(
         `WITH periods AS (
@@ -213,6 +214,7 @@ export async function GET(request) {
          SELECT
            COALESCE(SUM(
              CASE
+               WHEN payment_status = 'paid' THEN 0
                WHEN payment_status = 'unpaid' THEN estimated_total
                WHEN payment_status = 'partial' THEN GREATEST(estimated_total - paid_amount, 0)
                ELSE GREATEST(estimated_total - paid_amount, 0)
@@ -227,11 +229,24 @@ export async function GET(request) {
            COALESCE(d.name, 'Adhesive') AS division,
            COUNT(*) FILTER (WHERE COALESCE(i.reorder_level, 0) > 0 AND (COALESCE(i.current_whole_qty, 0) + COALESCE(i.current_broken_qty, 0)) <= COALESCE(i.reorder_level, 0))::int AS at_risk,
            COUNT(*)::int AS total_items,
-           COALESCE(SUM(COALESCE(i.current_whole_qty, 0) + COALESCE(i.current_broken_qty, 0)), 0)::numeric(14,2) AS current_stock
+           COALESCE(SUM(COALESCE(i.current_whole_qty, 0) + COALESCE(i.current_broken_qty, 0)), 0)::numeric(14,2) AS current_stock,
+           (
+             SELECT string_agg(sub.name, ', ')
+             FROM (
+               SELECT i2.name
+               FROM stock_items i2
+               WHERE i2.is_active = TRUE
+                 AND COALESCE(i2.division_id, -1) = COALESCE(d.id, -1)
+                 AND COALESCE(i2.reorder_level, 0) > 0 
+                 AND (COALESCE(i2.current_whole_qty, 0) + COALESCE(i2.current_broken_qty, 0)) <= COALESCE(i2.reorder_level, 0)
+               ORDER BY (COALESCE(i2.current_whole_qty, 0) + COALESCE(i2.current_broken_qty, 0)) ASC
+               LIMIT 2
+             ) sub
+           ) AS critical_items_list
          FROM stock_items i
          LEFT JOIN stock_divisions d ON d.id = i.division_id
          WHERE i.is_active = TRUE
-         GROUP BY division
+         GROUP BY d.id, d.name
          ORDER BY at_risk DESC, division ASC`,
         []
       ),
@@ -282,7 +297,8 @@ export async function GET(request) {
              s.id,
              date_trunc('month', COALESCE(s.dispatch_date, s.created_at))::date AS bucket,
              ${salespersonLabelExpr} AS salesperson,
-             COALESCE(SUM(COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)), 0) AS total_qty
+             COALESCE(SUM(COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)), 0) AS total_qty,
+             COALESCE(SUM((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) * COALESCE(osi.rate_per_unit, 0)), 0) AS total_revenue
            FROM stock_outbound_shipments s
            LEFT JOIN stock_sales_people sp ON sp.id = s.salesperson_id
            ${salespersonUserJoin}
@@ -294,7 +310,8 @@ export async function GET(request) {
            bucket,
            salesperson,
            COUNT(*)::int AS shipment_count,
-           COALESCE(SUM(total_qty), 0)::numeric(14,2) AS total_qty
+           COALESCE(SUM(total_qty), 0)::numeric(14,2) AS total_qty,
+           COALESCE(SUM(total_revenue), 0)::numeric(14,2) AS total_revenue
          FROM shipment_qty
          GROUP BY bucket, salesperson
          ORDER BY bucket ASC, total_qty DESC`,
@@ -306,7 +323,8 @@ export async function GET(request) {
              date_trunc('month', COALESCE(s.dispatch_date, s.created_at))::date AS bucket,
              ${salespersonLabelExpr} AS salesperson,
              COUNT(*)::int AS shipment_count,
-             COALESCE(SUM(COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)), 0)::numeric(14,2) AS total_qty
+             COALESCE(SUM(COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)), 0)::numeric(14,2) AS total_qty,
+             COALESCE(SUM((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) * COALESCE(osi.rate_per_unit, 0)), 0)::numeric(14,2) AS total_revenue
            FROM stock_outbound_shipments s
            LEFT JOIN stock_sales_people sp ON sp.id = s.salesperson_id
            ${salespersonUserJoin}
@@ -318,6 +336,7 @@ export async function GET(request) {
              salesperson,
              SUM(shipment_count)::int AS shipments,
              COALESCE(SUM(total_qty), 0)::numeric(14,2) AS quantity,
+             COALESCE(SUM(total_revenue), 0)::numeric(14,2) AS revenue,
              COALESCE(MAX(total_qty) FILTER (WHERE bucket = date_trunc('month', $2::date)), 0)::numeric(14,2) AS current_period_qty,
              COALESCE(MAX(total_qty) FILTER (WHERE bucket = date_trunc('month', $2::date) - interval '1 month'), 0)::numeric(14,2) AS previous_period_qty,
              COUNT(*) FILTER (WHERE total_qty > 0)::int AS active_months,
@@ -331,6 +350,7 @@ export async function GET(request) {
            salesperson,
            shipments,
            quantity,
+           revenue,
            current_period_qty,
            previous_period_qty,
            CASE
@@ -351,6 +371,55 @@ export async function GET(request) {
          FROM ranked
          ORDER BY quantity DESC
          LIMIT 8`,
+        [startDate, endDate]
+      ),
+      sql(
+        `WITH item_sales AS (
+           SELECT
+             COALESCE(d.name, 'Uncategorized') AS division,
+             i.name AS item_name,
+             COALESCE(SUM((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) * COALESCE(osi.rate_per_unit, 0)), 0) AS revenue
+           FROM stock_outbound_shipments s
+           JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = s.id
+           JOIN stock_items i ON i.id = osi.item_id
+           LEFT JOIN stock_divisions d ON d.id = i.division_id
+           WHERE COALESCE(s.dispatch_date, s.created_at)::date BETWEEN $1::date AND $2::date
+           GROUP BY division, i.name
+         ), ranked_items AS (
+           SELECT
+             division,
+             item_name,
+             revenue,
+             ROW_NUMBER() OVER(PARTITION BY division ORDER BY revenue DESC) as rn_desc,
+             ROW_NUMBER() OVER(PARTITION BY division ORDER BY revenue ASC) as rn_asc
+           FROM item_sales
+           WHERE revenue > 0
+         ), division_totals AS (
+           SELECT
+             COALESCE(d.name, 'Uncategorized') AS division,
+             COUNT(DISTINCT s.id)::int AS shipment_count,
+             COALESCE(SUM(COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)), 0)::numeric(14,2) AS total_qty,
+             COALESCE(SUM((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) * COALESCE(osi.rate_per_unit, 0)), 0)::numeric(14,2) AS total_revenue
+           FROM stock_outbound_shipments s
+           JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = s.id
+           JOIN stock_items i ON i.id = osi.item_id
+           LEFT JOIN stock_divisions d ON d.id = i.division_id
+           WHERE COALESCE(s.dispatch_date, s.created_at)::date BETWEEN $1::date AND $2::date
+           GROUP BY division
+         )
+         SELECT
+           dt.division,
+           dt.shipment_count,
+           dt.total_qty,
+           dt.total_revenue,
+           top.item_name AS top_item,
+           top.revenue::numeric(14,2) AS top_item_revenue,
+           worst.item_name AS worst_item,
+           worst.revenue::numeric(14,2) AS worst_item_revenue
+         FROM division_totals dt
+         LEFT JOIN ranked_items top ON top.division = dt.division AND top.rn_desc = 1
+         LEFT JOIN ranked_items worst ON worst.division = dt.division AND worst.rn_asc = 1
+         ORDER BY dt.total_revenue DESC`,
         [startDate, endDate]
       ),
     ]);
@@ -418,6 +487,9 @@ export async function GET(request) {
       salespersonPerformance: {
         trend: salespersonTrend,
         ranking: salespersonRanking,
+      },
+      divisionPerformance: {
+        ranking: divisionPerformance,
       },
     });
   } catch (error) {

@@ -243,7 +243,7 @@
       "insufficientNewPurchase": "खरीद दर्ज करने के लिए अपर्याप्त अनुमति",
       "logNewPurchase": "नई खरीद दर्ज करें",
       "purchaseSheetDesc": "आपूर्तिकर्ता या फैक्ट्री इकाई से आने वाले शिपमेंट को रिकॉर्ड करें।",
-      "datetime": "दिनांक और समय",
+      "datetime": "दिनांक",
       "invoice": "इनवॉइस",
       "route": "मार्ग/मूल",
       "payment": "भुगतान की स्थिति",
@@ -484,7 +484,7 @@
       "outflowAboveInflow": "आज जावक आवक से अधिक है"
     },
     "analytics": {
-      "executiveDashboard": "कार्यकारी डैशबोर्ड", 
+      "executiveDashboard": "कार्यकारी डैशबोर्ड",
       "operationalCore": "परिचालन मूल",
       "businessIntelligence": "बिजनेस इंटेलिजेंस",
       "liveContext": "लाइव संदर्भ",

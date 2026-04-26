@@ -54,6 +54,9 @@ export function DispatchesPanel({
   const [markingPaidId, setMarkingPaidId] = useState(null);
 
   async function handleMarkAsPaid(id) {
+    if (!window.confirm('Are you sure you want to mark this dispatch as paid? This action cannot be undone.')) {
+      return;
+    }
     setMarkingPaidId(id);
     try {
       const res = await fetch(`/api/stock/outbound-shipments/${id}`, {
@@ -197,7 +200,7 @@ export function DispatchesPanel({
                     className="min-w-0 flex-1 text-left"
                     aria-label={`Open dispatch ${d.shipment_number}`}
                   >
-                    <p className="break-all font-mono text-xs font-semibold text-primary">{d.shipment_number}</p>
+                    <p className="break-all font-mono text-xs font-semibold text-primary dark:text-orange-400">{d.shipment_number}</p>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">{formatDateTime(d.dispatch_date || d.created_at)}</p>
                   </button>
                   <Badge variant={getStatusVariant(d.status)}>{d.status}</Badge>
@@ -272,7 +275,7 @@ export function DispatchesPanel({
             );
           })}
         </div>
-        <div className="overflow-x-auto [scrollbar-width:thin] flex-1">
+        <div className="overflow-x-auto overflow-y-auto max-h-[60vh] no-scrollbar flex-1">
           <table className="hidden w-full text-left whitespace-nowrap md:table border-collapse">
             <thead className="sticky top-0 z-20 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xl">
               <tr className="border-b border-slate-200/60 dark:border-white/5">
@@ -285,10 +288,7 @@ export function DispatchesPanel({
                   ...(canEdit ? [{ id: 'price', label: tc.sellingPrice ?? 'Selling Price', align: 'right' }] : []),
                   ...(canEdit ? [{ id: 'payment', label: tc.payment ?? 'Payment' }] : []),
                   ...(canEdit ? [{ id: 'edit', label: tc.edit, align: 'right' }] : []),
-                  { id: 'return', label: tc.return, align: 'right' },
                   { id: 'status', label: t('status') },
-                  { id: 'generatedBy', label: tc.generatedBy },
-                  { id: 'approvedBy', label: tc.approvedBy },
                 ].map((col) => (
                   <th key={col.id} className={`px-4 py-3 ${col.align === 'right' ? 'text-right' : ''}`}>
                     <button
@@ -323,7 +323,7 @@ export function DispatchesPanel({
                 >
                   <td className="px-4 py-3 text-[11px] text-muted-foreground tabular-nums">{formatDateTime(d.dispatch_date || d.created_at)}</td>
                   <td className="px-4 py-3">
-                    <span className="font-mono text-[10px] font-black tracking-tight text-brand-primary bg-brand-primary/5 px-2 py-1 rounded-md border border-brand-primary/20 transition-colors group-hover/row:bg-brand-primary/10">
+                    <span className="font-mono text-[10px] font-black tracking-tight text-brand-primary dark:text-orange-400 bg-brand-primary/5 px-2 py-1 rounded-md border border-brand-primary/20 transition-colors group-hover/row:bg-brand-primary/10">
                       {d.shipment_number}
                     </span>
                   </td>
@@ -345,6 +345,11 @@ export function DispatchesPanel({
                         <div className="text-xs font-black text-slate-900 dark:text-white tabular-nums" title={`${Number(d.total_whole_qty || 0)} Whole and ${Number(d.total_broken_qty || 0)} Broken Tiles`}>
                           {Number(d.total_whole_qty || 0)} <span className="text-[9px] font-bold text-slate-400 mr-1 uppercase">Whole</span>
                           <span className="opacity-50 mx-0.5">/</span> {Number(d.total_broken_qty || 0)} <span className="text-[9px] font-bold text-slate-400 uppercase">Broken</span>
+                        </div>
+                      )}
+                      {(Number(d.total_return_whole_qty || 0) > 0 || Number(d.total_return_broken_qty || 0) > 0) && (
+                        <div className="text-[9px] font-bold text-rose-600 dark:text-rose-400 tabular-nums mt-0.5" title={`${Number(d.total_return_whole_qty || 0)} Whole and ${Number(d.total_return_broken_qty || 0)} Broken Tiles Returned`}>
+                          {tc.return}: {Number(d.total_return_whole_qty || 0)} W / {Number(d.total_return_broken_qty || 0)} B
                         </div>
                       )}
                     </div>
@@ -395,24 +400,12 @@ export function DispatchesPanel({
                       </button>
                     </td>
                   )}
-                  <td className="px-4 py-3 text-right text-xs text-rose-700 dark:text-rose-300 tabular-nums font-bold" title={(Number(d.total_return_whole_qty || 0) > 0 || Number(d.total_return_broken_qty || 0) > 0) ? `${Number(d.total_return_whole_qty || 0)} Whole and ${Number(d.total_return_broken_qty || 0)} Broken Tiles Returned` : 'No Returns'}>
-                    {(Number(d.total_return_whole_qty || 0) > 0 || Number(d.total_return_broken_qty || 0) > 0)
-                      ? `${Number(d.total_return_whole_qty || 0)} Whole / ${Number(d.total_return_broken_qty || 0)} Broken`
-                      : <span className="text-slate-400 font-semibold">—</span>}
-                  </td>
                   <td className="px-4 py-3"><Badge variant={getStatusVariant(d.status)}>{d.status}</Badge></td>
-                  <td className="px-4 py-3 text-[11px] text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold">{d.generated_by || '—'}</span>
-                      <Badge variant="neutral" className="text-[9px] font-black uppercase tracking-tighter px-1">{getGeneratedByRoleLabel(d.generated_by_role)}</Badge>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-[11px] font-bold text-muted-foreground">{d.approved_by || '—'}</td>
                 </tr>
               ))}
               {dispatchPagination.total === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 12 : 9} className="px-3 py-10">
+                  <td colSpan={canEdit ? 9 : 6} className="px-3 py-10">
                     <div className="flex flex-col items-center justify-center gap-3 text-center">
                       <PackageCheck className="h-6 w-6 text-slate-400" />
                       <p className="text-sm text-slate-500 dark:text-slate-400">{tc.noDispatches}</p>

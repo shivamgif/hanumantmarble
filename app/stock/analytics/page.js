@@ -63,12 +63,12 @@ function formatCompactINR(value) {
 }
 
 const CLASSES = {
-  heroGrid: 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6',
-  card: 'glass-panel rounded-3xl sm:rounded-[2rem] p-5 sm:p-6 lg:p-8 transition-all duration-500 hover:shadow-xl group/card',
-  title: 'text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 group-hover/card:text-brand-primary transition-colors',
+  heroGrid: 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 lg:gap-6',
+  card: 'glass-panel rounded-3xl sm:rounded-[2rem] p-4 sm:p-6 lg:p-8 transition-all duration-500 hover:shadow-xl group/card bg-white/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800/60 relative z-10 hover:z-50',
+  title: 'text-[10px] font-black uppercase tracking-[0.25em] text-slate-600 dark:text-slate-400 group-hover/card:text-brand-primary transition-colors',
   value: 'mt-2 text-3xl font-extrabold text-slate-900 dark:text-slate-100 font-sans tracking-tight',
-  grid: 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3',
-  mobileScroll: 'flex overflow-x-auto no-scrollbar gap-2 pb-2',
+  grid: 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
+  mobileScroll: 'flex overflow-x-auto no-scrollbar gap-2 pb-2 snap-x snap-mandatory overscroll-x-contain',
 };
 
 function TrendCapsule({ value, isPositive }) {
@@ -110,7 +110,7 @@ function AnalyticsCard({ title, subtitle, topRight, contextBar, insight, showIns
           <p className="text-[10px] text-slate-500 dark:text-slate-400 font-black italic tracking-tight uppercase opacity-60">{contextBar}</p>
         </div>
       )}
-      <div className="relative w-full overflow-hidden">
+      <div className="relative w-full">
         {children}
       </div>
     </div>
@@ -253,13 +253,30 @@ function SalesRevenueChart({ data, showInsight }) {
       topRight={<TrendCapsule value={trend} isPositive={isPositive} />}
     >
       <div
-        className="relative h-72 lg:h-80 bg-slate-50/30 dark:bg-slate-900/40 rounded-[2rem] border border-slate-100 dark:border-slate-800 overflow-hidden flex items-end p-4"
+        className="relative h-72 lg:h-80 bg-slate-50/30 dark:bg-slate-900/40 rounded-[2rem] border border-slate-100 dark:border-slate-800 flex items-end p-4 select-none"
         ref={containerRef}
         onMouseMove={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
-          setMouseX(e.clientX - rect.left);
+          const x = e.clientX - rect.left;
+          const nearest = points.reduce((prev, curr, i) => Math.abs(curr.x - x) < Math.abs(prev.x - x) ? { ...curr, i } : prev, { x: Infinity, i: null });
+          if (nearest.i !== null && Math.abs(nearest.x - x) < 40) {
+            setHoveredIndex(nearest.i);
+          } else {
+            setHoveredIndex(null);
+          }
         }}
-        onMouseLeave={() => { setMouseX(null); setHoveredIndex(null); }}
+        onMouseLeave={() => setHoveredIndex(null)}
+        onTouchMove={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = e.touches[0].clientX - rect.left;
+          const nearest = points.reduce((prev, curr, i) => Math.abs(curr.x - x) < Math.abs(prev.x - x) ? { ...curr, i } : prev, { x: Infinity, i: null });
+          if (nearest.i !== null && Math.abs(nearest.x - x) < 40) {
+            setHoveredIndex(nearest.i);
+          } else {
+            setHoveredIndex(null);
+          }
+        }}
+        onTouchEnd={() => setHoveredIndex(null)}
       >
         <svg className="absolute inset-0" width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
           <defs>
@@ -269,13 +286,19 @@ function SalesRevenueChart({ data, showInsight }) {
             </linearGradient>
           </defs>
 
+          {[0, 0.5, 1].map((t) => (
+            <text key={`y-${t}`} x={pad.l - 8} y={pad.t + innerH * (1 - t) + 4} textAnchor="end" fontSize="10" className="fill-slate-400 font-bold">
+              {formatCompactNumber(maxVal * t)}
+            </text>
+          ))}
+
           {points.map((p, i) => (
             <line key={`grid-${i}`} x1={p.x} x2={p.x} y1={pad.t} y2={height - pad.b} stroke="currentColor" className="text-slate-100 dark:text-slate-800/40" strokeDasharray="4 4" />
           ))}
 
-          {mouseX !== null && mouseX >= pad.l && mouseX <= width - pad.r && (
+          {hoveredIndex !== null && points[hoveredIndex] && (
             <line
-              x1={mouseX} x2={mouseX}
+              x1={points[hoveredIndex].x} x2={points[hoveredIndex].x}
               y1={pad.t} y2={height - pad.b}
               stroke={BRAND_PRIMARY}
               strokeWidth="2"
@@ -298,17 +321,18 @@ function SalesRevenueChart({ data, showInsight }) {
                 strokeWidth="3"
                 className={`transition-all duration-300 ${hoveredIndex === i ? 'scale-150' : 'opacity-0 hover:opacity-100'}`}
                 onMouseEnter={() => setHoveredIndex(i)}
+                onTouchStart={() => setHoveredIndex(i)}
               />
               <text x={p.x} y={height - 15} textAnchor="middle" fontSize="10" className="fill-slate-400 font-black uppercase tracking-tighter">
-                {formatMonthLabel(p.d.month || p.d.bucket)}
+                {(width > 500 || data.length <= 6 || i % 2 === 0) ? formatMonthLabel(p.d.month || p.d.bucket) : ''}
               </text>
             </g>
           ))}
         </svg>
         {hoveredIndex !== null && (
           <div
-            className="absolute z-20 pointer-events-none rounded-2xl bg-slate-900/95 backdrop-blur-md dark:bg-slate-800/95 text-white p-4 shadow-2xl animate-scale-in border border-white/10"
-            style={{ left: points[hoveredIndex].x, top: points[hoveredIndex].y - 80, transform: 'translateX(-50%)' }}
+            className="absolute z-50 pointer-events-none rounded-2xl bg-slate-900/95 backdrop-blur-md dark:bg-slate-800/95 text-white p-4 shadow-2xl animate-scale-in border border-white/10"
+            style={{ left: points[hoveredIndex].x, top: Math.max(0, points[hoveredIndex].y - 80), transform: 'translate(-50%, -100%)' }}
           >
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">{formatMonthLabel(points[hoveredIndex].d.month || points[hoveredIndex].d.bucket)}</p>
             <p className="text-lg font-black font-sans tracking-tight">{formatCompactNumber(points[hoveredIndex].d.total)} {t('units')}</p>
@@ -324,7 +348,6 @@ function TopDivisionsChart({ data, showInsight }) {
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   const containerRef = useRef(null);
   const [width, setWidth] = useState(500);
-  const [hoveredIndex, setHoveredIndex] = useState(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -340,8 +363,8 @@ function TopDivisionsChart({ data, showInsight }) {
       </AnalyticsCard>
     );
 
-  const topDivisions = [...data].sort((a, b) => Number(b.total_items || 0) - Number(a.total_items || 0)).slice(0, 5);
-  const maxVal = Math.max(...topDivisions.map((d) => Number(d.total_items || 0)), 1);
+  const topDivisions = [...data].sort((a, b) => Number(b.total_revenue || 0) - Number(a.total_revenue || 0)).slice(0, 5);
+  const maxVal = Math.max(...topDivisions.map((d) => Number(d.total_revenue || 0)), 1);
 
   return (
     <AnalyticsCard
@@ -352,18 +375,16 @@ function TopDivisionsChart({ data, showInsight }) {
     >
       <div className="space-y-6" ref={containerRef}>
         {topDivisions.map((d, i) => {
-          const actualPercent = (Number(d.total_items || 1) / maxVal) * 100;
+          const actualPercent = (Number(d.total_revenue || 0) / maxVal) * 100;
           const color = INDUSTRIAL_COLORS[i % INDUSTRIAL_COLORS.length];
           return (
             <div
               key={d.division || i}
               className="relative group cursor-default"
-              onMouseEnter={() => setHoveredIndex(i)}
-              onMouseLeave={() => setHoveredIndex(null)}
             >
               <div className="flex justify-between text-xs font-black mb-2 px-1">
                 <span className="text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] text-[10px] group-hover:text-brand-primary transition-colors">{d.division || 'Unknown'}</span>
-                <span className="font-sans text-slate-900 dark:text-white tracking-widest">{formatCompactNumber(d.total_items)}</span>
+                <span className="font-sans text-slate-900 dark:text-white tracking-widest">{formatCompactINR(d.total_revenue)}</span>
               </div>
               <div className="h-2.5 w-full bg-slate-100/50 dark:bg-slate-800/30 rounded-full overflow-hidden border border-slate-200/20">
                 <div
@@ -372,6 +393,18 @@ function TopDivisionsChart({ data, showInsight }) {
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent" />
                 </div>
+              </div>
+              <div className="flex justify-between mt-1 px-1">
+                {d.top_item && (
+                  <span className="text-[9px] text-slate-400 truncate max-w-[50%]" title={d.top_item}>
+                    <span className="text-emerald-500 font-bold">Top:</span> {d.top_item} ({formatCompactINR(d.top_item_revenue)})
+                  </span>
+                )}
+                {d.worst_item && d.worst_item !== d.top_item && (
+                  <span className="text-[9px] text-slate-400 truncate max-w-[50%] text-right" title={d.worst_item}>
+                    <span className="text-amber-500 font-bold">Low:</span> {d.worst_item} ({formatCompactINR(d.worst_item_revenue)})
+                  </span>
+                )}
               </div>
             </div>
           );
@@ -446,26 +479,35 @@ function MonthlyCostVolumeChart({ dispatchTrend, costTrend, showInsight }) {
       className="col-span-1 lg:col-span-2"
     >
       <div
-        className="relative h-[280px] bg-slate-50/20 dark:bg-slate-900/40 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 overflow-hidden p-6"
+        className="relative h-[280px] bg-slate-50/20 dark:bg-slate-900/40 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 select-none"
         ref={containerRef}
         onMouseMove={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
           setMouseX(e.clientX - rect.left);
         }}
         onMouseLeave={() => { setMouseX(null); setHoveredIndex(null); }}
+        onTouchMove={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          setMouseX(e.touches[0].clientX - rect.left);
+        }}
+        onTouchEnd={() => { setMouseX(null); setHoveredIndex(null); }}
       >
         <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
           {[0, 0.5, 1].map((t) => (
-            <line
-              key={t}
-              x1={pad.l}
-              x2={width - pad.r}
-              y1={pad.t + innerH * t}
-              y2={pad.t + innerH * t}
-              stroke="currentColor"
-              strokeDasharray="4 6"
-              className="text-slate-200 dark:text-slate-800/60"
-            />
+            <g key={`y-${t}`}>
+              <line
+                x1={pad.l}
+                x2={width - pad.r}
+                y1={pad.t + innerH * (1 - t)}
+                y2={pad.t + innerH * (1 - t)}
+                stroke="currentColor"
+                strokeDasharray="4 6"
+                className="text-slate-200 dark:text-slate-800/60"
+              />
+              <text x={pad.l - 8} y={pad.t + innerH * (1 - t) + 4} textAnchor="end" fontSize="10" className="fill-slate-400 font-bold">
+                {formatCompactNumber(maxVal * t)}
+              </text>
+            </g>
           ))}
 
           {chartData.map((d, i) => {
@@ -476,11 +518,11 @@ function MonthlyCostVolumeChart({ dispatchTrend, costTrend, showInsight }) {
             const soldY = pad.t + innerH - soldH;
 
             return (
-              <g key={i} onMouseEnter={() => setHoveredIndex(i)} onMouseLeave={() => setHoveredIndex(null)} className="cursor-pointer group">
+              <g key={i} onMouseEnter={() => setHoveredIndex(i)} onMouseLeave={() => setHoveredIndex(null)} onTouchStart={() => setHoveredIndex(i)} className="cursor-pointer group">
                 <rect x={groupX - barWidth - 4} y={costY} width={barWidth} height={costH} fill="#F43F5E" rx="6" className="transition-all duration-300 group-hover:brightness-125" fillOpacity="0.9" />
                 <rect x={groupX + 4} y={soldY} width={barWidth} height={soldH} fill="#10B981" rx="6" className="transition-all duration-300 group-hover:brightness-125" fillOpacity="0.9" />
                 <text x={groupX} y={height - 15} textAnchor="middle" fontSize="10" className="fill-slate-400 font-black uppercase tracking-widest">
-                  {formatMonthLabel(d.month || d.bucket)}
+                  {(width > 500 || chartData.length <= 6 || i % 2 === 0) ? formatMonthLabel(d.month || d.bucket) : ''}
                 </text>
               </g>
             );
@@ -488,7 +530,7 @@ function MonthlyCostVolumeChart({ dispatchTrend, costTrend, showInsight }) {
         </svg>
         {hoveredIndex !== null && (
           <div
-            className="absolute z-20 pointer-events-none rounded-[1.5rem] bg-slate-900/95 backdrop-blur-md dark:bg-slate-800/95 text-white p-4 shadow-2xl border border-white/10"
+            className="absolute z-50 pointer-events-none rounded-[1.5rem] bg-slate-900/95 backdrop-blur-md dark:bg-slate-800/95 text-white p-4 shadow-2xl border border-white/10"
             style={{
               left: pad.l + (hoveredIndex + 0.5) * (innerW / chartData.length),
               top: pad.t + innerH / 2,
@@ -507,7 +549,7 @@ function MonthlyCostVolumeChart({ dispatchTrend, costTrend, showInsight }) {
   );
 }
 
-function LeaderboardRow({ row, i, maxQty }) {
+function LeaderboardRow({ row, i, maxVal }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   const [expanded, setExpanded] = useState(false);
@@ -523,22 +565,25 @@ function LeaderboardRow({ row, i, maxQty }) {
         onClick={() => setExpanded(!expanded)}
       >
         <div className="relative h-12 w-12 shrink-0">
-          <div className="absolute inset-0 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-center text-sm font-black text-slate-500 group-hover:text-brand-primary transition-colors">
-            {(row.name || row.salesperson).charAt(0)}
+          <div className={`absolute inset-0 rounded-2xl border shadow-sm flex items-center justify-center text-sm font-black transition-colors ${i === 0 ? 'bg-yellow-100 dark:bg-yellow-900/40 border-yellow-200 dark:border-yellow-700 text-yellow-600 dark:text-yellow-400' : i === 1 ? 'bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300' : i === 2 ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-200 dark:border-amber-700 text-amber-700 dark:text-amber-500' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 group-hover:text-brand-primary'}`}>
+            {i < 3 ? <Trophy className="h-5 w-5" /> : (row.name || row.salesperson).charAt(0)}
           </div>
           {isHighConsistency && (
-            <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-950 animate-pulse" />
+            <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-950 animate-pulse" title="High Consistency Performer" />
           )}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-black text-slate-900 dark:text-slate-100 truncate tracking-tight">{row.name || row.salesperson}</p>
-            <p className="text-sm font-black font-sans text-slate-900 dark:text-white tracking-widest">{formatCompactNumber(row.totalQty || row.quantity)}</p>
+            <div className="text-right">
+              <p className="text-sm font-black font-sans text-slate-900 dark:text-white tracking-widest leading-none mb-1">{formatCompactINR(row.revenue)}</p>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">{formatCompactNumber(row.totalQty || row.quantity)} {t('units')}</p>
+            </div>
           </div>
           <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
             <div
               className="h-full bg-brand-secondary rounded-full transition-all duration-1000 ease-in-out"
-              style={{ width: `${Math.min(100, ((row.totalQty || row.quantity) / (maxQty || 1)) * 100)}%` }}
+              style={{ width: `${Math.min(100, ((row.revenue || 0) / (maxVal || 1)) * 100)}%` }}
             />
           </div>
         </div>
@@ -575,6 +620,7 @@ function LeaderboardRow({ row, i, maxQty }) {
 function Leaderboard({ ranking, showInsight }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+  const maxRev = Math.max(...ranking.map(r => Number(r.revenue || 0)), 1);
   return (
     <AnalyticsCard
       title={t('salesPerformance')}
@@ -585,7 +631,7 @@ function Leaderboard({ ranking, showInsight }) {
     >
       <div className="space-y-1">
         {ranking.slice(0, 5).map((row, i) => (
-          <LeaderboardRow key={row.name || row.salesperson} row={row} i={i} maxQty={Math.max(...ranking.map(r => Number(r.totalQty || r.quantity || 0)), 1)} />
+          <LeaderboardRow key={row.name || row.salesperson} row={row} i={i} maxVal={maxRev} />
         ))}
       </div>
     </AnalyticsCard>
@@ -832,6 +878,7 @@ export default function AnalyticsDashboard() {
   }
 
   const divisionRisk = adminAnalytics?.inventoryHealth?.divisionRisk || [];
+  const divisionPerformance = adminAnalytics?.divisionPerformance?.ranking || [];
   const dispatchTrend = adminAnalytics?.dispatchPerformance?.trend || [];
   const costTrend = adminAnalytics?.costAndPayment?.trend || [];
   const salespersonRanking = adminAnalytics?.salespersonPerformance?.ranking || [];
@@ -933,7 +980,7 @@ export default function AnalyticsDashboard() {
             <MonthlyCostVolumeChart dispatchTrend={dispatchTrend} costTrend={costTrend} showInsight={showInsights} />
           </div>
           <div className="xl:col-span-4 space-y-8 lg:space-y-12">
-            <TopDivisionsChart data={divisionRisk} showInsight={showInsights} />
+            <TopDivisionsChart data={divisionPerformance} showInsight={showInsights} />
             <Leaderboard ranking={salespersonRanking} showInsight={showInsights} />
           </div>
         </div>
@@ -968,7 +1015,12 @@ export default function AnalyticsDashboard() {
 
                   return (
                     <tr key={d.division} className="group hover:bg-slate-100/50 dark:hover:bg-slate-800/20 transition-colors">
-                      <td className="px-8 py-6 font-bold text-slate-900 dark:text-slate-100 text-xs">{d.division}</td>
+                      <td className="px-8 py-6">
+                        <p className="font-bold text-slate-900 dark:text-slate-100 text-xs">{d.division}</p>
+                        {d.critical_items_list && (
+                          <p className="text-[10px] text-slate-500 mt-1 max-w-[200px] truncate" title={d.critical_items_list}>⚠️ {d.critical_items_list}</p>
+                        )}
+                      </td>
                       <td className="px-8 py-6 text-right font-sans text-emerald-600 dark:text-emerald-400 font-black text-xs">{formatCompactNumber(healthy)}</td>
                       <td className="px-8 py-6 text-right font-sans text-amber-600 dark:text-amber-400 font-black text-xs">{formatCompactNumber(d.at_risk)}</td>
                       <td className="px-8 py-6 text-right">
@@ -998,7 +1050,12 @@ export default function AnalyticsDashboard() {
                   className="p-5 rounded-2xl border border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-slate-900/10 space-y-4"
                 >
                   <div className="flex justify-between items-start">
-                    <p className="text-sm font-black text-slate-900 dark:text-white">{d.division}</p>
+                    <div>
+                      <p className="text-sm font-black text-slate-900 dark:text-white">{d.division}</p>
+                      {d.critical_items_list && (
+                        <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">⚠️ {d.critical_items_list}</p>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
                       <span className={isCritical ? 'text-rose-500' : 'text-emerald-500'}>{isCritical ? t('critical') : t('stable')}</span>
                       <span className={`w-2 h-2 rounded-full ${isCritical ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`} />

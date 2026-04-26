@@ -32,6 +32,7 @@ import {
   fetchShipmentDetails,
   fetchShipmentDocuments,
   invalidateShipmentCache,
+  shipmentCache,
 } from './lib/stock-utils';
 import { StockStatsGrid } from './components/stock-stats-grid';
 import { StockItemsTable } from './components/stock-items-table';
@@ -323,12 +324,29 @@ export default function StockDashboard() {
       : `/api/stock/outbound-shipments/${row.id}`;
     setPreviewItemsPage(1);
 
+    const cacheKey = `${kind}-${row.id}`;
+    if (shipmentCache.has(cacheKey)) {
+      const cached = shipmentCache.get(cacheKey);
       setPreviewState({
         open: true,
-        loading: true,
+        loading: false,
         kind,
-        title: `${kind === 'arrival' ? (language === 'hi' ? 'खरीद' : 'Purchase') : (language === 'hi' ? 'डिस्पैच' : 'Dispatch')} ${row.shipment_number}`,
-        description: '',
+        title: `${kind === 'arrival' ? (language === 'hi' ? 'खरीद' : 'Purchase') : (language === 'hi' ? 'डिस्पैच' : 'Dispatch')} ${cached.shipment?.shipment_number || row.shipment_number}`,
+        description: kind === 'arrival' ? t('inboundPreviewDesc') : t('outboundPreviewDesc'),
+        record: cached.shipment || row,
+        items: cached.items || [],
+        documents: cached.documents || [],
+        error: null,
+      });
+      return;
+    }
+
+    setPreviewState({
+      open: true,
+      loading: true,
+      kind,
+      title: `${kind === 'arrival' ? (language === 'hi' ? 'खरीद' : 'Purchase') : (language === 'hi' ? 'डिस्पैच' : 'Dispatch')} ${row.shipment_number}`,
+      description: '',
       record: row,
       items: [],
       documents: [],
@@ -362,7 +380,7 @@ export default function StockDashboard() {
         error: fetchError.message,
       });
     }
-  }, []);
+  }, [language, t]);
 
   const openStockItemPreview = useCallback((item) => {
     setPreviewItemsPage(1);
