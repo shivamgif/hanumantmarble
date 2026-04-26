@@ -14,7 +14,7 @@ import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 
 function generateSku({ brandName, typeName, sizeLabel, itemName }) {
-  const parts = [brandName, typeName, sizeLabel, itemName]
+  const parts = [itemName,typeName, sizeLabel, brandName]
     .map((value) => normalizeText(value).toUpperCase().replace(/[^A-Z0-9]+/g, '-'))
     .filter(Boolean);
 
@@ -102,10 +102,13 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
         unit: 'mm',
       },
     });
+  }
 
+  const divisionValue = item.divisionName || item.division || item.department || (isBagItem ? null : item.brandName);
+  if (divisionValue) {
     division = await upsertNamedRecord({
       table: 'stock_divisions',
-      value: item.divisionName || item.division || item.department || item.brandName,
+      value: divisionValue,
     });
   }
 

@@ -278,7 +278,7 @@
       "stockLedger": "स्टॉक लेजर",
       "products": "उत्पाद",
       "quantities": "मात्रा",
-      "grandTotal": "कुल योग",
+      "grandTotal": "कुल योग (छूट रहित)",
       "active": "सक्रिय",
       "collapse": "छोटा करें",
       "expand": "विस्तार करें",

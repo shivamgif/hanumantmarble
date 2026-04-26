@@ -287,8 +287,8 @@ export function DispatchFormContent({
     return people.map((person) => ({
       id: String(person.id),
       name: String(person.name || ''),
-      label: person.divisionName
-        ? `${person.name} (${person.divisionName})`
+      label: person.divisionNames
+        ? `${person.name} (${person.divisionNames})`
         : String(person.name || ''),
     }));
   }, [suggestions?.salespersons]);

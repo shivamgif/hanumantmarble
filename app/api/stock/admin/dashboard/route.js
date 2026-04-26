@@ -9,7 +9,7 @@ function isMissingExternalAuthColumnError(error) {
 
 async function fetchDashboardUsers() {
   try {
-    return await sql(
+    const rows = await sql(
       `SELECT
          u.id,
          u.auth0_sub,
@@ -21,7 +21,8 @@ async function fetchDashboardUsers() {
          u.role,
          u.department,
          u.division_id,
-         d.name AS division_name,
+         ARRAY_AGG(d.name ORDER BY d.name) FILTER (WHERE d.name IS NOT NULL) AS division_names,
+         STRING_AGG(d.name, ', ' ORDER BY d.name) AS division_name,
          u.status,
          u.can_manage_users,
          u.can_approve_changes,
@@ -31,16 +32,19 @@ async function fetchDashboardUsers() {
          u.monthly_sales_goal,
          u.last_login_at
        FROM stock_app_users u
-       LEFT JOIN stock_divisions d ON d.id = u.division_id
+       LEFT JOIN stock_user_divisions ud ON ud.user_id = u.id
+       LEFT JOIN stock_divisions d ON d.id = ud.division_id
+       GROUP BY u.id
        ORDER BY u.created_at DESC`,
       []
     );
+    return rows;
   } catch (error) {
     if (!isMissingExternalAuthColumnError(error)) {
       throw error;
     }
 
-    return sql(
+    const rows = await sql(
       `SELECT
          u.id,
          u.auth0_sub,
@@ -52,7 +56,8 @@ async function fetchDashboardUsers() {
          u.role,
          u.department,
          u.division_id,
-         d.name AS division_name,
+         ARRAY_AGG(d.name ORDER BY d.name) FILTER (WHERE d.name IS NOT NULL) AS division_names,
+         STRING_AGG(d.name, ', ' ORDER BY d.name) AS division_name,
          u.status,
          u.can_manage_users,
          u.can_approve_changes,
@@ -62,10 +67,13 @@ async function fetchDashboardUsers() {
          u.monthly_sales_goal,
          u.last_login_at
        FROM stock_app_users u
-       LEFT JOIN stock_divisions d ON d.id = u.division_id
+       LEFT JOIN stock_user_divisions ud ON ud.user_id = u.id
+       LEFT JOIN stock_divisions d ON d.id = ud.division_id
+       GROUP BY u.id
        ORDER BY u.created_at DESC`,
       []
     );
+    return rows;
   }
 }
 

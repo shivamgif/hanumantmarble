@@ -290,7 +290,7 @@
       "stockLedger": "Stock Ledger",
       "products": "Products",
       "quantities": "Quantities",
-      "grandTotal": "Grand Total",
+      "grandTotal": "Grand Total (excl. Discount)",
       "active": "Active",
       "collapse": "Collapse",
       "expand": "Expand",

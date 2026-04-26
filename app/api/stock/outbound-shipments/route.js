@@ -70,13 +70,16 @@ async function resolveDispatchSalespersonUser(body) {
   }
 
   const rows = await sql(
-    `SELECT u.id, u.name, u.division_id, d.name AS division_name
+    `SELECT u.id, u.name,
+       ARRAY_AGG(ud.division_id) FILTER (WHERE ud.division_id IS NOT NULL) AS division_ids,
+       STRING_AGG(d.name, ', ' ORDER BY d.name) AS division_names
      FROM stock_app_users u
-     LEFT JOIN stock_divisions d ON d.id = u.division_id
+     LEFT JOIN stock_user_divisions ud ON ud.user_id = u.id
+     LEFT JOIN stock_divisions d ON d.id = ud.division_id
      WHERE u.id = $1
        AND u.role = 'salesperson'
        AND u.status = 'active'
-     LIMIT 1`,
+     GROUP BY u.id`,
     [salespersonUserId]
   );
 
@@ -88,7 +91,7 @@ async function resolveDispatchSalespersonUser(body) {
     throw err;
   }
 
-  if (!salespersonUser.division_id) {
+  if (!salespersonUser.division_ids?.length) {
     const err = new Error('Selected salesperson has no division assigned.');
     err.statusCode = 400;
     err.reasonCode = 'salesperson_division_missing';
@@ -122,7 +125,8 @@ async function validateDispatchDivisionIntegrity(resolvedItems, salespersonUser)
   }
 
   const dispatchDivisionId = itemDivisionIds[0];
-  if (Number(salespersonUser.division_id) !== dispatchDivisionId) {
+  const salespersonDivisionIds = (salespersonUser.division_ids || []).map(Number);
+  if (!salespersonDivisionIds.includes(dispatchDivisionId)) {
     const err = new Error('Salesperson division does not match dispatch item division.');
     err.statusCode = 400;
     err.reasonCode = 'division_mismatch';
@@ -139,8 +143,8 @@ async function validateDispatchDivisionIntegrity(resolvedItems, salespersonUser)
     itemIds: resolvedItems.map((row) => Number(row.item.id)),
     itemDivisionIds,
     itemDivisionNames: itemDivisionIds.map((id) => divisionNamesById.get(id) || `Division ${id}`),
-    salespersonDivisionId: Number(salespersonUser.division_id),
-    salespersonDivisionName: salespersonUser.division_name || null,
+    salespersonDivisionIds,
+    salespersonDivisionNames: salespersonUser.division_names || null,
   };
 }
 
@@ -171,8 +175,8 @@ async function recordDivisionValidationTimeline({
         salesperson: salespersonUser ? {
           id: Number(salespersonUser.id),
           name: salespersonUser.name,
-          divisionId: salespersonUser.division_id != null ? Number(salespersonUser.division_id) : null,
-          divisionName: salespersonUser.division_name || null,
+          divisionIds: (salespersonUser.division_ids || []).map(Number),
+          divisionNames: salespersonUser.division_names || null,
         } : null,
         itemIds: validation?.itemIds || [],
         itemDivisionIds: validation?.itemDivisionIds || [],

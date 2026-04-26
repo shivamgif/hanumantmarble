@@ -75,12 +75,14 @@ export async function GET(request) {
         `SELECT
            u.id AS salesperson_user_id,
            u.name AS salesperson_name,
-           u.division_id,
-           d.name AS division_name
+           ARRAY_AGG(ud.division_id ORDER BY ud.division_id) FILTER (WHERE ud.division_id IS NOT NULL) AS division_ids,
+           STRING_AGG(d.name, ', ' ORDER BY d.name) AS division_names
          FROM stock_app_users u
-         LEFT JOIN stock_divisions d ON d.id = u.division_id
+         LEFT JOIN stock_user_divisions ud ON ud.user_id = u.id
+         LEFT JOIN stock_divisions d ON d.id = ud.division_id
          WHERE u.role = 'salesperson'
            AND u.status = 'active'
+         GROUP BY u.id
          ORDER BY u.name`,
         []
       ),
@@ -109,8 +111,8 @@ export async function GET(request) {
           ? salespersons.value.map((row) => ({
               id: Number(row.salesperson_user_id),
               name: row.salesperson_name,
-              divisionId: row.division_id != null ? Number(row.division_id) : null,
-              divisionName: row.division_name || null,
+              divisionIds: Array.isArray(row.division_ids) ? row.division_ids.map(Number) : [],
+              divisionNames: row.division_names || null,
             }))
           : [],
       },

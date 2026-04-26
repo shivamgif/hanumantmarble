@@ -16,7 +16,9 @@
     "db:rollback-external-auth-identity": "node scripts/rollback-external-auth-identity.mjs",
     "db:reset-seed-stock-ops": "node scripts/reset-and-seed-stock-ops.mjs",
     "db:migrate-bag-support": "node scripts/migrate-bag-support.mjs",
-    "db:migrate-salesperson-salary": "node scripts/migrate-salesperson-salary.mjs"
+    "db:migrate-salesperson-salary": "node scripts/migrate-salesperson-salary.mjs",
+    "db:migrate-salesperson-multi-division": "node scripts/migrate-salesperson-multi-division.mjs",
+    "db:fix-bag-item-divisions": "node scripts/fix-bag-item-divisions.mjs"
   },
   "dependencies": {
     "@better-auth/infra": "^0.2.3",

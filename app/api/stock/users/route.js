@@ -117,6 +117,43 @@ async function resolveDivisionId(value) {
   return rows[0]?.id || null;
 }
 
+async function resolveDivisionIds(names) {
+  const unique = [...new Set(names.map((n) => String(n || '').trim()).filter(Boolean))];
+  const ids = await Promise.all(unique.map(resolveDivisionId));
+  return ids.filter((id) => id != null).map(Number);
+}
+
+async function resolveAndEnforceDivisions(body) {
+  const hasDivisionsKey = Object.prototype.hasOwnProperty.call(body, 'divisions');
+  const hasDivisionKey = Object.prototype.hasOwnProperty.call(body, 'division');
+
+  let names = [];
+  if (hasDivisionsKey) {
+    names = Array.isArray(body.divisions) ? body.divisions : [body.divisions];
+  } else if (hasDivisionKey) {
+    names = body.division ? [body.division] : [];
+  }
+
+  // Always include Adhesive
+  names = ['Adhesive', ...names];
+
+  return resolveDivisionIds(names);
+}
+
+async function upsertUserDivisions(userId, divisionIds) {
+  if (!divisionIds.length) return;
+  // Delete existing and re-insert (clean replace)
+  await sql(`DELETE FROM stock_user_divisions WHERE user_id = $1`, [userId]);
+  for (const divId of divisionIds) {
+    await sql(
+      `INSERT INTO stock_user_divisions (user_id, division_id)
+       VALUES ($1, $2)
+       ON CONFLICT (user_id, division_id) DO NOTHING`,
+      [userId, divId]
+    );
+  }
+}
+
 async function resolveDivisionIdFromPayload(body) {
   const rawDivisionId = body?.divisionId ?? body?.division_id ?? null;
   const divisionIdNumber = Number(rawDivisionId);
@@ -156,14 +193,23 @@ export async function GET(request) {
 
   try {
     const users = await sql(
-      `SELECT u.*, d.name AS division_name
+      `SELECT u.*,
+         ARRAY_AGG(d.name ORDER BY d.name) FILTER (WHERE d.name IS NOT NULL) AS division_names,
+         ARRAY_AGG(ud.division_id ORDER BY ud.division_id) FILTER (WHERE ud.division_id IS NOT NULL) AS division_ids
        FROM stock_app_users u
-       LEFT JOIN stock_divisions d ON d.id = u.division_id
+       LEFT JOIN stock_user_divisions ud ON ud.user_id = u.id
+       LEFT JOIN stock_divisions d ON d.id = ud.division_id
+       GROUP BY u.id
        ORDER BY u.created_at DESC`,
       []
     );
 
-    return NextResponse.json({ users });
+    const usersWithDivisionName = users.map((u) => ({
+      ...u,
+      division_name: Array.isArray(u.division_names) ? u.division_names.join(', ') : (u.division_names || ''),
+    }));
+
+    return NextResponse.json({ users: usersWithDivisionName });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load users', detail: error.message }, { status: 500 });
   }
@@ -200,10 +246,19 @@ export async function POST(request) {
   }
 
   try {
-    const divisionId = await resolveDivisionIdFromPayload(body);
-    if (normalizedRole === 'salesperson' && !divisionId) {
-      return NextResponse.json({ error: 'Division is required for salesperson' }, { status: 400 });
+    // Resolve divisions for salesperson (Adhesive always included)
+    let divisionIds = [];
+    let primaryDivisionId = null;
+    if (normalizedRole === 'salesperson') {
+      divisionIds = await resolveAndEnforceDivisions(body);
+      // Primary division: first non-Adhesive, or Adhesive if only one
+      const adhesiveRows = await sql(`SELECT id FROM stock_divisions WHERE name = 'Adhesive' LIMIT 1`, []);
+      const adhesiveId = adhesiveRows[0]?.id ? Number(adhesiveRows[0].id) : null;
+      primaryDivisionId = divisionIds.find((id) => id !== adhesiveId) ?? divisionIds[0] ?? null;
+    } else {
+      primaryDivisionId = await resolveDivisionIdFromPayload(body);
     }
+
     const autoApprovedStatus = 'active';
     const autoApprovedCanViewDashboard = true;
 
@@ -277,7 +332,7 @@ export async function POST(request) {
           body.email || null,
           roleFlags.role,
           department,
-          divisionId,
+          primaryDivisionId,
           autoApprovedStatus,
           roleFlags.canManageUsers,
           roleFlags.canApproveChanges,
@@ -325,7 +380,7 @@ export async function POST(request) {
           body.email || null,
           roleFlags.role,
           department,
-          divisionId,
+          primaryDivisionId,
           autoApprovedStatus,
           roleFlags.canManageUsers,
           roleFlags.canApproveChanges,
@@ -335,16 +390,23 @@ export async function POST(request) {
       );
     }
 
+    const savedUser = rows[0];
+
+    // Upsert junction table for salesperson divisions
+    if (normalizedRole === 'salesperson' && divisionIds.length) {
+      await upsertUserDivisions(savedUser.id, divisionIds);
+    }
+
     await recordTimelineEvent({
       eventType: 'user_created',
       entityType: 'user',
-      entityId: rows[0].id,
-      summary: `User ${rows[0].name} saved`,
-      details: rows[0],
+      entityId: savedUser.id,
+      summary: `User ${savedUser.name} saved`,
+      details: savedUser,
       userId: appUser?.id || null,
     });
 
-    return NextResponse.json({ user: rows[0] }, { status: 201 });
+    return NextResponse.json({ user: savedUser }, { status: 201 });
   } catch (error) {
     const errorDetail = extractErrorDetail(error);
     console.error('Failed to save user:', errorDetail || error);
@@ -390,6 +452,7 @@ export async function PATCH(request) {
   const hasCanApproveChangesInPayload = Object.prototype.hasOwnProperty.call(body, 'canApproveChanges');
   const hasCanViewDashboardInPayload = Object.prototype.hasOwnProperty.call(body, 'canViewDashboard');
   const hasDepartmentInPayload = Object.prototype.hasOwnProperty.call(body, 'department');
+  const hasDivisionsInPayload = Object.prototype.hasOwnProperty.call(body, 'divisions');
   const hasDivisionInPayload = Object.prototype.hasOwnProperty.call(body, 'division');
   const hasSalaryInPayload = Object.prototype.hasOwnProperty.call(body, 'salary');
   const hasSalesGoalInPayload = Object.prototype.hasOwnProperty.call(body, 'monthlySalesGoal');
@@ -398,12 +461,18 @@ export async function PATCH(request) {
     : null;
 
   try {
-    const divisionInput = hasDivisionInPayload
-      ? body.division
-      : hasDepartmentInPayload
-        ? department
-        : null;
-    const divisionId = divisionInput ? await resolveDivisionId(divisionInput) : null;
+    let divisionId = null;
+    let divisionIds = null;
+
+    if (hasDivisionsInPayload || hasDivisionInPayload) {
+      divisionIds = await resolveAndEnforceDivisions(body);
+      // Sync primary division_id: first non-Adhesive, or Adhesive fallback
+      const adhesiveRows = await sql(`SELECT id FROM stock_divisions WHERE name = 'Adhesive' LIMIT 1`, []);
+      const adhesiveId = adhesiveRows[0]?.id ? Number(adhesiveRows[0].id) : null;
+      divisionId = divisionIds.find((id) => id !== adhesiveId) ?? divisionIds[0] ?? null;
+    } else if (hasDepartmentInPayload && department) {
+      divisionId = await resolveDivisionId(department);
+    }
 
     const rows = await sql(
       `UPDATE stock_app_users
@@ -421,7 +490,7 @@ export async function PATCH(request) {
            monthly_sales_goal = COALESCE($13, monthly_sales_goal),
            updated_at = NOW()
        WHERE id = $11
-       RETURNING *, (SELECT d.name FROM stock_divisions d WHERE d.id = stock_app_users.division_id) AS division_name`,
+       RETURNING *`,
       [
         body.name || null,
         body.phone || null,
@@ -439,7 +508,26 @@ export async function PATCH(request) {
       ]
     );
 
-    return NextResponse.json({ user: rows[0] });
+    const updatedUser = rows[0];
+
+    // Replace junction table divisions when payload includes divisions
+    if (divisionIds !== null && updatedUser) {
+      await upsertUserDivisions(updatedUser.id, divisionIds);
+    }
+
+    // Attach division_names for response
+    if (updatedUser) {
+      const divRows = await sql(
+        `SELECT d.name FROM stock_user_divisions ud
+         JOIN stock_divisions d ON d.id = ud.division_id
+         WHERE ud.user_id = $1 ORDER BY d.name`,
+        [updatedUser.id]
+      );
+      updatedUser.division_names = divRows.map((r) => r.name);
+      updatedUser.division_name = updatedUser.division_names.join(', ');
+    }
+
+    return NextResponse.json({ user: updatedUser });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to update user', detail: error.message }, { status: 500 });
   }

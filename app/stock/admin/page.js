@@ -258,7 +258,7 @@ export default function AdminDashboard() {
       email: '',
       password: '',
       role: 'stock_maintainer',
-      division: '',
+      divisions: ['Adhesive'],
       department: '',
       status: 'active',
     },
@@ -266,7 +266,7 @@ export default function AdminDashboard() {
   const previewUserForm = useForm({
     defaultValues: {
       role: 'stock_maintainer',
-      division: '',
+      divisions: ['Adhesive'],
       status: 'inactive',
       canManageUsers: false,
       canApproveChanges: false,
@@ -926,7 +926,7 @@ export default function AdminDashboard() {
       mergePreviewUser(updatedUser);
       previewUserForm.reset({
         role: updatedUser.role || 'stock_maintainer',
-        division: updatedUser.division_name || '',
+        divisions: Array.isArray(updatedUser.division_names) && updatedUser.division_names.length ? updatedUser.division_names : ['Adhesive'],
         status: updatedUser.status || (updatedUser.is_active ? 'active' : 'inactive'),
         canManageUsers: Boolean(updatedUser.can_manage_users),
         canApproveChanges: Boolean(updatedUser.can_approve_changes),
@@ -1020,7 +1020,7 @@ export default function AdminDashboard() {
         throw new Error(json.error || 'Failed to save user');
       }
 
-      createUserForm.reset({ name: '', phone: '', email: '', password: '', role: 'stock_maintainer', division: '', department: '', status: 'active' });
+      createUserForm.reset({ name: '', phone: '', email: '', password: '', role: 'stock_maintainer', divisions: ['Adhesive'], department: '', status: 'active' });
       setConfirmPassword('');
       setShowPrimaryPassword(false);
       setShowConfirmPassword(false);
@@ -1071,7 +1071,7 @@ export default function AdminDashboard() {
 
     previewUserForm.reset({
       role: previewState.record.role || 'stock_maintainer',
-      division: previewState.record.division_name || '',
+      divisions: Array.isArray(previewState.record.division_names) && previewState.record.division_names.length ? previewState.record.division_names : ['Adhesive'],
       status: previewState.record.status || (previewState.record.is_active ? 'active' : 'inactive'),
       canManageUsers: Boolean(previewState.record.can_manage_users),
       canApproveChanges: Boolean(previewState.record.can_approve_changes),
@@ -2152,10 +2152,29 @@ export default function AdminDashboard() {
                   </div>
 
                   {createUserForm.watch('role') === 'salesperson' && (
-                    <div className="grid gap-6 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{language === 'hi' ? 'डिवीज़न' : 'Division'}</Label>
-                        <Input {...createUserForm.register('division')} className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold" placeholder="e.g. Marble, Granite, Tiles" />
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{language === 'hi' ? 'डिवीज़न' : 'Divisions'}</Label>
+                      <div className="flex flex-wrap gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                        {['Adhesive', ...(suggestions?.divisionName || []).filter((n) => n !== 'Adhesive')].map((name) => {
+                          const selected = (createUserForm.watch('divisions') || []).includes(name);
+                          const isAdhesive = name === 'Adhesive';
+                          return (
+                            <label key={name} className={`flex items-center gap-2 cursor-pointer select-none ${isAdhesive ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                              <input
+                                type="checkbox"
+                                checked={selected}
+                                disabled={isAdhesive}
+                                onChange={() => {
+                                  if (isAdhesive) return;
+                                  const current = createUserForm.getValues('divisions') || [];
+                                  createUserForm.setValue('divisions', selected ? current.filter((d) => d !== name) : [...current, name], { shouldDirty: true });
+                                }}
+                                className="accent-brand-primary"
+                              />
+                              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{name}</span>
+                            </label>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -2450,7 +2469,7 @@ export default function AdminDashboard() {
                             previewState.record?.id,
                             {
                               role: previewUserForm.watch('role'),
-                              division: previewUserForm.watch('division') || undefined,
+                              divisions: previewUserForm.getValues('divisions') || ['Adhesive'],
                               canManageUsers: previewUserForm.watch('canManageUsers'),
                               canApproveChanges: previewUserForm.watch('canApproveChanges'),
                               canViewDashboard: previewUserForm.watch('canViewDashboard'),
@@ -2479,21 +2498,29 @@ export default function AdminDashboard() {
                               </Select>
                             </div>
                             <div className="space-y-2">
-                              <Label className={FORM_LABEL_CLASS}>Division</Label>
-                              <Select
-                                value={previewUserForm.watch('division') || '__none__'}
-                                onValueChange={(value) => previewUserForm.setValue('division', value === '__none__' ? '' : value, { shouldDirty: true })}
-                              >
-                                <SelectTrigger className="h-11 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-                                  <SelectValue placeholder="No division" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="__none__">No division</SelectItem>
-                                  {(suggestions?.divisionName || []).map((name) => (
-                                    <SelectItem key={name} value={name}>{name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <Label className={FORM_LABEL_CLASS}>Divisions</Label>
+                              <div className="flex flex-wrap gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 min-h-[44px]">
+                                {['Adhesive', ...(suggestions?.divisionName || []).filter((n) => n !== 'Adhesive')].map((name) => {
+                                  const selected = (previewUserForm.watch('divisions') || []).includes(name);
+                                  const isAdhesive = name === 'Adhesive';
+                                  return (
+                                    <label key={name} className={`flex items-center gap-2 cursor-pointer select-none ${isAdhesive ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                                      <input
+                                        type="checkbox"
+                                        checked={selected}
+                                        disabled={isAdhesive}
+                                        onChange={() => {
+                                          if (isAdhesive) return;
+                                          const current = previewUserForm.getValues('divisions') || [];
+                                          previewUserForm.setValue('divisions', selected ? current.filter((d) => d !== name) : [...current, name], { shouldDirty: true });
+                                        }}
+                                        className="accent-brand-primary"
+                                      />
+                                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{name}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
                             </div>
                           </div>
 
@@ -2580,7 +2607,7 @@ export default function AdminDashboard() {
                               type="button"
                               onClick={() => previewUserForm.reset({
                                 role: previewState.record?.role || 'stock_maintainer',
-                                division: previewState.record?.division_name || '',
+                                divisions: Array.isArray(previewState.record?.division_names) && previewState.record.division_names.length ? previewState.record.division_names : ['Adhesive'],
                                 status: previewState.record?.status || 'active',
                                 canManageUsers: Boolean(previewState.record?.can_manage_users),
                                 canApproveChanges: Boolean(previewState.record?.can_approve_changes),

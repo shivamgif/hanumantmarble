@@ -17,8 +17,10 @@ export async function GET(request) {
     );
   }
 
-  const salespersonDivisionId = appUser?.role === 'salesperson' && appUser?.division_id
-    ? appUser.division_id
+  const isSalesperson = appUser?.role === 'salesperson';
+  // A salesperson with no divisions assigned gets an empty array — return nothing, not everything.
+  const salespersonDivisionIds = isSalesperson
+    ? (appUser?.division_ids?.length ? appUser.division_ids : [-1])
     : null;
 
   try {
@@ -73,10 +75,10 @@ export async function GET(request) {
          LEFT JOIN stock_divisions d ON d.id = i.division_id
          LEFT JOIN stock_sizes s ON s.id = i.size_id
          WHERE i.is_active = true
-         ${salespersonDivisionId ? 'AND i.division_id = $1' : ''}
+         ${salespersonDivisionIds ? 'AND i.division_id = ANY($1::bigint[])' : ''}
          ORDER BY COALESCE(i.current_whole_qty, 0) + COALESCE(i.current_broken_qty, 0) ASC, i.name ASC
          LIMIT 50`,
-        salespersonDivisionId ? [salespersonDivisionId] : []
+        salespersonDivisionIds ? [salespersonDivisionIds] : []
       ),
       sql(
         `SELECT
@@ -110,13 +112,13 @@ export async function GET(request) {
          LEFT JOIN stock_app_users submitter ON submitter.id = s.submitted_by_user_id
          LEFT JOIN stock_app_users approver ON approver.id = s.approved_by_user_id
          LEFT JOIN stock_locations loc ON loc.id = s.destination_location_id
-         ${salespersonDivisionId ? `WHERE s.id IN (
+         ${salespersonDivisionIds ? `WHERE s.id IN (
            SELECT DISTINCT isi.inbound_shipment_id FROM stock_inbound_shipment_items isi
-           JOIN stock_items i ON i.id = isi.item_id WHERE i.division_id = $1
+           JOIN stock_items i ON i.id = isi.item_id WHERE i.division_id = ANY($1::bigint[])
          )` : ''}
          ORDER BY s.created_at DESC
          LIMIT 20`,
-        salespersonDivisionId ? [salespersonDivisionId] : []
+        salespersonDivisionIds ? [salespersonDivisionIds] : []
       ),
       sql(
         `SELECT
@@ -133,9 +135,9 @@ export async function GET(request) {
          WHERE isi.inbound_shipment_id IN (
            SELECT id FROM stock_inbound_shipments ORDER BY created_at DESC LIMIT 20
          )
-         ${salespersonDivisionId ? 'AND i.division_id = $1' : ''}
+         ${salespersonDivisionIds ? 'AND i.division_id = ANY($1::bigint[])' : ''}
          GROUP BY isi.inbound_shipment_id`,
-        salespersonDivisionId ? [salespersonDivisionId] : []
+        salespersonDivisionIds ? [salespersonDivisionIds] : []
       ),
       sql(
         `SELECT
@@ -149,17 +151,17 @@ export async function GET(request) {
          WHERE soi.outbound_shipment_id IN (
            SELECT id FROM stock_outbound_shipments ORDER BY created_at DESC LIMIT 20
          )
-         ${salespersonDivisionId ? 'AND i.division_id = $1' : ''}
+         ${salespersonDivisionIds ? 'AND i.division_id = ANY($1::bigint[])' : ''}
          GROUP BY soi.outbound_shipment_id`,
-        salespersonDivisionId ? [salespersonDivisionId] : []
+        salespersonDivisionIds ? [salespersonDivisionIds] : []
       ),
       sql(
         `WITH recent_sos AS (
            SELECT *
            FROM stock_outbound_shipments
-           ${salespersonDivisionId ? `WHERE id IN (
+           ${salespersonDivisionIds ? `WHERE id IN (
              SELECT DISTINCT soi.outbound_shipment_id FROM stock_outbound_shipment_items soi
-             JOIN stock_items i ON i.id = soi.item_id WHERE i.division_id = $1
+             JOIN stock_items i ON i.id = soi.item_id WHERE i.division_id = ANY($1::bigint[])
            )` : ''}
            ORDER BY created_at DESC
            LIMIT 20
@@ -195,7 +197,7 @@ export async function GET(request) {
           LEFT JOIN stock_customers c ON c.id = sos.customer_id
           GROUP BY sos.id, sos.shipment_number, sos.truck_license_plate_snapshot, sos.driver_name_snapshot, sos.created_at, sos.status, sos.approval_status, sos.payment_status, c.name, c.phone
           ORDER BY sos.created_at DESC`,
-        salespersonDivisionId ? [salespersonDivisionId] : []
+        salespersonDivisionIds ? [salespersonDivisionIds] : []
       ),
     ]);
 
@@ -226,12 +228,14 @@ export async function GET(request) {
         `SELECT
            u.id AS salesperson_user_id,
            u.name AS salesperson_name,
-           u.division_id,
-           d.name AS division_name
+           ARRAY_AGG(ud.division_id ORDER BY ud.division_id) FILTER (WHERE ud.division_id IS NOT NULL) AS division_ids,
+           STRING_AGG(d.name, ', ' ORDER BY d.name) AS division_names
          FROM stock_app_users u
-         LEFT JOIN stock_divisions d ON d.id = u.division_id
+         LEFT JOIN stock_user_divisions ud ON ud.user_id = u.id
+         LEFT JOIN stock_divisions d ON d.id = ud.division_id
          WHERE u.role = 'salesperson'
            AND u.status = 'active'
+         GROUP BY u.id
          ORDER BY u.name`,
         []
       ),
@@ -311,8 +315,8 @@ export async function GET(request) {
           ? salespersons.value.map((row) => ({
               id: Number(row.salesperson_user_id),
               name: row.salesperson_name,
-              divisionId: row.division_id != null ? Number(row.division_id) : null,
-              divisionName: row.division_name || null,
+              divisionIds: Array.isArray(row.division_ids) ? row.division_ids.map(Number) : [],
+              divisionNames: row.division_names || null,
             }))
           : [],
       },
