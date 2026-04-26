@@ -158,7 +158,7 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
     'description'
   );
   values.push(
-    Number(orderedBoxes*0.5|| 0),
+    Math.round(Number(orderedBoxes) * 0.5) || 0,
     item.safetyStock || 0,
     item.purchasePrice || null,
     item.landedCost || null,
