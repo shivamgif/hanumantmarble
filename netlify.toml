@@ -3,7 +3,6 @@
 [build]
   command = "npm run build"
   functions = "netlify/functions"
-  publish = ".next"
 
 [build.environment]
   # Node.js version
