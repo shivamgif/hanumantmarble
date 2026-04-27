@@ -277,6 +277,7 @@ export default function AdminDashboard() {
   });
 
   const [resetPasswordModal, setResetPasswordModal] = useState({ open: false, email: '', newPassword: '', confirm: '', loading: false, error: null, success: false });
+  const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', confirmText: 'Confirm', confirmVariant: 'emerald', onConfirm: () => {} });
   const [editingArrivalId, setEditingArrivalId] = useState(null);
   const [editingBagArrivalId, setEditingBagArrivalId] = useState(null);
   const [editingDispatchId, setEditingDispatchId] = useState(null);

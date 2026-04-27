@@ -423,6 +423,7 @@
       "email": "Email",
       "phone": "Phone",
       "role": "Role",
+      "date": "Date",
       "status": "Status",
       "active": "Active",
       "inactive": "Inactive",
