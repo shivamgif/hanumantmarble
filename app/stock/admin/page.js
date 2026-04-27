@@ -396,18 +396,28 @@ export default function AdminDashboard() {
     if (user) loadSuggestions();
   }, [user]);
 
+  function promptApproveShipment(type, item) {
+    setConfirmModal({ open: true, title: t('approveShipment') || 'Approve Shipment', message: `Are you sure you want to approve ${item.shipment_number}? This will permanently adjust inventory levels.`, confirmText: 'Approve', confirmVariant: 'emerald', onConfirm: () => handleShipmentAction(type, item.id, 'approve') });
+  }
+
+  function promptRejectShipment(type, item) {
+    setConfirmModal({ open: true, title: 'Reject Shipment', message: `Are you sure you want to reject ${item.shipment_number}? It will be marked as rejected and no stock changes will apply.`, confirmText: 'Reject', confirmVariant: 'rose', onConfirm: () => handleShipmentAction(type, item.id, 'reject', 'Rejected from hub') });
+  }
+
+  function promptDeleteShipment(type, item) {
+    setConfirmModal({ open: true, title: 'Delete Cancelled Shipment', message: `Permanently delete ${item.shipment_number}? This action cannot be undone.`, confirmText: 'Delete', confirmVariant: 'rose', onConfirm: () => handleShipmentAction(type, item.id, 'delete', null, { status: 'cancelled' }) });
+  }
+
+  function promptToggleUser(user) {
+    const isSuspending = user.is_active;
+    setConfirmModal({ open: true, title: isSuspending ? 'Suspend Access' : 'Restore Access', message: isSuspending ? `Revoke system access for ${user.full_name || user.email}?` : `Grant system access to ${user.full_name || user.email}?`, confirmText: isSuspending ? 'Suspend' : 'Restore', confirmVariant: isSuspending ? 'amber' : 'emerald', onConfirm: () => isSuspending ? handleRejectUser(user) : handleApproveUser(user) });
+  }
+
+  function promptDeleteUser(user) {
+    setConfirmModal({ open: true, title: 'Remove User', message: `Are you sure you want to permanently remove ${user.full_name || user.email}?`, confirmText: 'Remove', confirmVariant: 'rose', onConfirm: () => handleDeleteUser(user.id) });
+  }
+
   async function handleShipmentAction(type, id, action, notes = null, additionalData = {}) {
-    let confirmMessage = null;
-    if (action === 'reject') {
-      confirmMessage = 'Are you sure you want to reject this shipment?';
-    } else if (action === 'delete') {
-      confirmMessage = 'Are you sure you want to permanently delete this cancelled shipment? This action cannot be undone.';
-    }
-
-    if (confirmMessage && !window.confirm(confirmMessage)) {
-      return;
-    }
-
     setActionLoading(`${type}-${id}-${action}`);
     setActionNotice(null);
     try {
@@ -1035,10 +1045,6 @@ export default function AdminDashboard() {
   });
 
   async function handleDeleteUser(id) {
-    if (!window.confirm('Deactivate this user?')) {
-      return;
-    }
-
     setActionLoading(`user-${id}-delete`);
     setError(null);
 
@@ -1578,9 +1584,10 @@ export default function AdminDashboard() {
                 <table className="w-full text-left text-sm whitespace-nowrap">
                   <thead className="sticky top-0 z-20 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xl">
                     <tr className="border-b border-slate-200/60 dark:border-white/5">
-                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('shipmentNo')}</th>
-                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('maintainer')}</th>
-                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('boxesQty')}</th>
+                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('date')}</th>
+                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Shipment & Maintainer</th>
+                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Supplier & Transport</th>
+                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Quantities</th>
                       <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
                     </tr>
                   </thead>
@@ -1591,11 +1598,25 @@ export default function AdminDashboard() {
                         className="group cursor-pointer transition-all duration-300 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 odd:bg-white even:bg-slate-50/70 dark:odd:bg-slate-900 dark:even:bg-slate-900/70"
                         onClick={() => openShipmentPreview('arrival', item)}
                       >
-                        <td className="px-4 py-3 font-black text-brand-primary dark:text-orange-400 text-xs">
-                          <span className="bg-brand-primary/5 px-2 py-1 rounded-md border border-brand-primary/20">{item.shipment_number}</span>
+                        <td className="px-4 py-3 text-slate-900 dark:text-slate-100 font-bold text-xs">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col gap-1">
+                            <span className="w-fit bg-brand-primary/5 px-2 py-0.5 rounded border border-brand-primary/20 font-black text-brand-primary dark:text-orange-400 text-[10px]">{item.shipment_number}</span>
+                            <span className="text-slate-500 dark:text-slate-400 text-[9px] uppercase font-bold tracking-widest">{item.maintainer_name || '-'}</span>
+                          </div>
                         </td>
-                        <td className="px-4 py-3 text-slate-900 dark:text-slate-100 font-bold text-xs">{item.maintainer_name || '-'}</td>
-                        <td className="px-4 py-3 text-slate-900 dark:text-slate-100 font-black text-xs font-sans">{item.total_whole_qty} Units</td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-slate-900 dark:text-slate-100 font-bold text-xs truncate max-w-[150px]">{item.supplier_name || '—'}</span>
+                            <span className="text-slate-500 dark:text-slate-400 text-[9px] uppercase font-bold tracking-widest">{item.truck_license_plate || '—'}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-slate-900 dark:text-slate-100 font-black text-xs font-sans">{item.total_whole_qty} <span className="text-[9px] text-slate-400 uppercase tracking-widest">Whole</span></span>
+                            {Number(item.total_broken_qty) > 0 && <span className="text-rose-500 font-black text-xs font-sans">{item.total_broken_qty} <span className="text-[9px] text-rose-400 uppercase tracking-widest">Broken</span></span>}
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             <button
@@ -1613,7 +1634,7 @@ export default function AdminDashboard() {
                               type="button"
                               onClick={(event) => {
                                 event.stopPropagation();
-                                handleShipmentAction('inbound-shipments', item.id, 'approve');
+                                promptApproveShipment('inbound-shipments', item);
                               }}
                               disabled={actionLoading === `inbound-shipments-${item.id}-approve`}
                               className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all disabled:opacity-50"
@@ -1625,7 +1646,7 @@ export default function AdminDashboard() {
                               type="button"
                               onClick={(event) => {
                                 event.stopPropagation();
-                                handleShipmentAction('inbound-shipments', item.id, 'reject', 'Rejected from hub');
+                                promptRejectShipment('inbound-shipments', item);
                               }}
                               disabled={actionLoading === `inbound-shipments-${item.id}-reject`}
                               className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500 hover:text-white transition-all disabled:opacity-50"
@@ -1638,7 +1659,7 @@ export default function AdminDashboard() {
                       </tr>
                     ))}
                     {arrivalPagination.total === 0 && (
-                      <tr><td colSpan="4" className="px-6 py-8 text-center text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] italic">{t('noPending')}</td></tr>
+                      <tr><td colSpan="5" className="px-6 py-8 text-center text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] italic">{t('noPending')}</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -1654,17 +1675,25 @@ export default function AdminDashboard() {
                   >
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('shipmentNo')}</p>
-                        <p className="text-sm font-black text-brand-primary dark:text-orange-400">{item.shipment_number}</p>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('date')}</p>
+                        <p className="text-xs font-black text-slate-900 dark:text-white">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('boxesQty')}</p>
-                        <p className="text-xs font-black text-slate-900 dark:text-white">{item.total_whole_qty} Units</p>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Source</p>
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 max-w-[120px] truncate">{item.supplier_name || '—'}</p>
                       </div>
                     </div>
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('maintainer')}</p>
-                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{item.maintainer_name || '-'}</p>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('shipmentNo')} & Maintainer</p>
+                        <p className="text-sm font-black text-brand-primary dark:text-orange-400 mb-1">{item.shipment_number}</p>
+                        <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{item.maintainer_name || '-'}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Quantities</p>
+                        <p className="text-xs font-black text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>
+                        {Number(item.total_broken_qty) > 0 && <p className="text-xs font-black text-rose-500">{item.total_broken_qty} Broken</p>}
+                      </div>
                     </div>
                     <div className="flex gap-2 pt-2">
                       <button
@@ -1682,7 +1711,7 @@ export default function AdminDashboard() {
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          handleShipmentAction('inbound-shipments', item.id, 'approve');
+                          promptApproveShipment('inbound-shipments', item);
                         }}
                         disabled={actionLoading === `inbound-shipments-${item.id}-approve`}
                         className="flex-1 h-10 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20"
@@ -1693,7 +1722,7 @@ export default function AdminDashboard() {
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          handleShipmentAction('inbound-shipments', item.id, 'reject', 'Rejected from hub');
+                          promptRejectShipment('inbound-shipments', item);
                         }}
                         disabled={actionLoading === `inbound-shipments-${item.id}-reject`}
                         className="h-10 px-4 flex items-center gap-2 rounded-xl bg-rose-500/10 text-rose-600 text-[10px] font-black uppercase tracking-widest"
@@ -1729,9 +1758,10 @@ export default function AdminDashboard() {
                   <table className="w-full text-left text-sm whitespace-nowrap">
                     <thead className="sticky top-0 z-20 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xl">
                       <tr className="border-b border-slate-200/60 dark:border-white/5">
-                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('shipmentNo')}</th>
-                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('maintainer')}</th>
-                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('boxesQty')}</th>
+                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('date')}</th>
+                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Shipment & Maintainer</th>
+                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Supplier & Transport</th>
+                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Quantities</th>
                         <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
                       </tr>
                     </thead>
@@ -1742,17 +1772,31 @@ export default function AdminDashboard() {
                           className="group cursor-pointer transition-all duration-300 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 odd:bg-white even:bg-slate-50/70 dark:odd:bg-slate-900 dark:even:bg-slate-900/70"
                           onClick={() => openShipmentPreview('arrival', item)}
                         >
-                          <td className="px-4 py-3 font-black text-amber-600 dark:text-amber-400 text-xs">
-                            <span className="bg-amber-500/5 px-2 py-1 rounded-md border border-amber-500/20">{item.shipment_number}</span>
+                          <td className="px-4 py-3 text-slate-900 dark:text-slate-100 font-bold text-xs">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-col gap-1">
+                              <span className="w-fit bg-amber-500/5 px-2 py-0.5 rounded border border-amber-500/20 font-black text-amber-600 dark:text-amber-400 text-[10px]">{item.shipment_number}</span>
+                              <span className="text-slate-500 dark:text-slate-400 text-[9px] uppercase font-bold tracking-widest">{item.maintainer_name || '-'}</span>
+                            </div>
                           </td>
-                          <td className="px-4 py-3 text-slate-900 dark:text-slate-100 font-bold text-xs">{item.maintainer_name || '-'}</td>
-                          <td className="px-4 py-3 text-slate-900 dark:text-slate-100 font-black text-xs font-sans">{item.total_whole_qty} Units</td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-col gap-1">
+                              <span className="text-slate-900 dark:text-slate-100 font-bold text-xs truncate max-w-[150px]">{item.supplier_name || '—'}</span>
+                              <span className="text-slate-500 dark:text-slate-400 text-[9px] uppercase font-bold tracking-widest">{item.truck_license_plate || '—'}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-col gap-1">
+                              <span className="text-slate-900 dark:text-slate-100 font-black text-xs font-sans">{item.total_whole_qty} <span className="text-[9px] text-slate-400 uppercase tracking-widest">Whole</span></span>
+                              {Number(item.total_broken_qty) > 0 && <span className="text-rose-500 font-black text-xs font-sans">{item.total_broken_qty} <span className="text-[9px] text-rose-400 uppercase tracking-widest">Broken</span></span>}
+                            </div>
+                          </td>
                           <td className="px-4 py-3 text-right">
                             <button
                               type="button"
                               onClick={(event) => {
                                 event.stopPropagation();
-                                handleShipmentAction('inbound-shipments', item.id, 'delete', null, { status: 'cancelled' });
+                                promptDeleteShipment('inbound-shipments', item);
                               }}
                               disabled={actionLoading === `inbound-shipments-${item.id}-delete`}
                               className="p-1.5 rounded-lg bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white transition-all disabled:opacity-50"
@@ -1775,16 +1819,24 @@ export default function AdminDashboard() {
                       onClick={() => openShipmentPreview('arrival', item)}
                       className="p-5 rounded-2xl border border-amber-200 dark:border-amber-900/30 bg-amber-50/30 dark:bg-amber-900/10 space-y-4 active:scale-[0.98] transition-transform"
                     >
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('date')}</p>
+                          <p className="text-xs font-black text-slate-900 dark:text-white">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</p>
+                        </div>
+                        <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">Cancelled</Badge>
+                      </div>
                       <div className="flex justify-between items-start">
                         <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('shipmentNo')}</p>
-                          <p className="text-sm font-black text-amber-600 dark:text-amber-400">{item.shipment_number}</p>
+                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('shipmentNo')} & Maintainer</p>
+                          <p className="text-sm font-black text-amber-600 dark:text-amber-400 mb-1">{item.shipment_number}</p>
+                          <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{item.maintainer_name || '-'}</p>
                         </div>
-                        <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400">Cancelled</Badge>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('maintainer')}</p>
-                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{item.maintainer_name || '-'}</p>
+                        <div className="text-right">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Source & Quantities</p>
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300 max-w-[120px] truncate mb-1">{item.supplier_name || '—'}</p>
+                          <p className="text-xs font-black text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>
+                        </div>
                       </div>
                       <div className="flex gap-2 pt-2">
                         <button
@@ -1825,9 +1877,10 @@ export default function AdminDashboard() {
                 <table className="w-full text-left text-sm whitespace-nowrap">
                   <thead className="sticky top-0 z-20 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xl">
                     <tr className="border-b border-slate-200/60 dark:border-white/5">
-                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('dispatchNo')}</th>
-                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('driver')}</th>
-                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('boxesQty')}</th>
+                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('date')}</th>
+                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Dispatch & Driver</th>
+                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Customer & Value</th>
+                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Quantities</th>
                       <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
                     </tr>
                   </thead>
@@ -1838,11 +1891,25 @@ export default function AdminDashboard() {
                         className="group cursor-pointer transition-all duration-300 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 odd:bg-white even:bg-slate-50/70 dark:odd:bg-slate-900 dark:even:bg-slate-900/70"
                         onClick={() => openShipmentPreview('dispatch', item)}
                       >
-                        <td className="px-4 py-3 font-black text-brand-secondary dark:text-indigo-400 text-xs">
-                          <span className="bg-brand-secondary/5 px-2 py-1 rounded-md border border-brand-secondary/20">{item.shipment_number}</span>
+                        <td className="px-4 py-3 text-slate-900 dark:text-slate-100 font-bold text-xs">{formatDateTime(item.dispatch_date).split(',')[0]}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col gap-1">
+                            <span className="w-fit bg-brand-secondary/5 px-2 py-0.5 rounded border border-brand-secondary/20 font-black text-brand-secondary dark:text-indigo-400 text-[10px]">{item.shipment_number}</span>
+                            <span className="text-slate-500 dark:text-slate-400 text-[9px] uppercase font-bold tracking-widest">{item.driver_name || '-'}</span>
+                          </div>
                         </td>
-                        <td className="px-4 py-3 text-slate-900 dark:text-slate-100 font-bold text-xs">{item.driver_name}</td>
-                        <td className="px-4 py-3 text-slate-900 dark:text-slate-100 font-black text-xs font-sans">{item.total_whole_qty} Units</td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-slate-900 dark:text-slate-100 font-bold text-xs truncate max-w-[150px]">{item.customer_name || '—'}</span>
+                            {Number(item.total_selling_price_excl) > 0 && <span className="text-emerald-600 dark:text-emerald-400 text-[10px] uppercase font-bold tracking-widest">₹{Number(item.total_selling_price_excl).toLocaleString('en-IN')}</span>}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-slate-900 dark:text-slate-100 font-black text-xs font-sans">{item.total_whole_qty} <span className="text-[9px] text-slate-400 uppercase tracking-widest">Whole</span></span>
+                            {Number(item.total_broken_qty) > 0 && <span className="text-rose-500 font-black text-xs font-sans">{item.total_broken_qty} <span className="text-[9px] text-rose-400 uppercase tracking-widest">Broken</span></span>}
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             <button
@@ -1860,7 +1927,7 @@ export default function AdminDashboard() {
                               type="button"
                               onClick={(event) => {
                                 event.stopPropagation();
-                                handleShipmentAction('outbound-shipments', item.id, 'approve');
+                                promptApproveShipment('outbound-shipments', item);
                               }}
                               disabled={actionLoading === `outbound-shipments-${item.id}-approve`}
                               className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all disabled:opacity-50"
@@ -1872,7 +1939,7 @@ export default function AdminDashboard() {
                               type="button"
                               onClick={(event) => {
                                 event.stopPropagation();
-                                handleShipmentAction('outbound-shipments', item.id, 'reject', 'Rejected from hub');
+                                promptRejectShipment('outbound-shipments', item);
                               }}
                               disabled={actionLoading === `outbound-shipments-${item.id}-reject`}
                               className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500 hover:text-white transition-all disabled:opacity-50"
@@ -1885,7 +1952,7 @@ export default function AdminDashboard() {
                       </tr>
                     ))}
                     {dispatchPagination.total === 0 && (
-                      <tr><td colSpan="4" className="px-6 py-8 text-center text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] italic">{t('noPending')}</td></tr>
+                      <tr><td colSpan="5" className="px-6 py-8 text-center text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] italic">{t('noPending')}</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -1901,17 +1968,25 @@ export default function AdminDashboard() {
                   >
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('dispatchNo')}</p>
-                        <p className="text-sm font-black text-brand-secondary dark:text-indigo-400">{item.shipment_number}</p>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('date')}</p>
+                        <p className="text-xs font-black text-slate-900 dark:text-white">{formatDateTime(item.dispatch_date).split(',')[0]}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('boxesQty')}</p>
-                        <p className="text-xs font-black text-slate-900 dark:text-white">{item.total_whole_qty} Units</p>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Customer</p>
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 max-w-[120px] truncate">{item.customer_name || '—'}</p>
                       </div>
                     </div>
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('driver')}</p>
-                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{item.driver_name || '-'}</p>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('dispatchNo')} & {t('driver')}</p>
+                        <p className="text-sm font-black text-brand-secondary dark:text-indigo-400 mb-1">{item.shipment_number}</p>
+                        <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{item.driver_name || '-'}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Quantities</p>
+                        <p className="text-xs font-black text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>
+                        {Number(item.total_broken_qty) > 0 && <p className="text-xs font-black text-rose-500">{item.total_broken_qty} Broken</p>}
+                      </div>
                     </div>
                     <div className="flex gap-2 pt-2">
                       <button
@@ -1929,7 +2004,7 @@ export default function AdminDashboard() {
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          handleShipmentAction('outbound-shipments', item.id, 'approve');
+                          promptApproveShipment('outbound-shipments', item);
                         }}
                         disabled={actionLoading === `outbound-shipments-${item.id}-approve`}
                         className="flex-1 h-10 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20"
@@ -1940,7 +2015,7 @@ export default function AdminDashboard() {
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          handleShipmentAction('outbound-shipments', item.id, 'reject', 'Rejected from hub');
+                          promptRejectShipment('outbound-shipments', item);
                         }}
                         disabled={actionLoading === `outbound-shipments-${item.id}-reject`}
                         className="h-10 px-4 flex items-center gap-2 rounded-xl bg-rose-500/10 text-rose-600 text-[10px] font-black uppercase tracking-widest"
@@ -2276,8 +2351,7 @@ export default function AdminDashboard() {
                             type="button"
                             onClick={(event) => {
                               event.stopPropagation();
-                              if (u.is_active) handleRejectUser(u);
-                              else handleApproveUser(u);
+                              promptToggleUser(u);
                             }}
                             disabled={actionLoading === `user-${u.id}-update`}
                             title={u.is_active ? 'Suspend Access' : 'Restore Access'}
@@ -2293,7 +2367,7 @@ export default function AdminDashboard() {
                               type="button"
                               onClick={(event) => {
                                 event.stopPropagation();
-                                handleDeleteUser(u.id);
+                                promptDeleteUser(u);
                               }}
                               disabled={actionLoading === `user-${u.id}-delete`}
                               title="Remove User"
@@ -2346,8 +2420,7 @@ export default function AdminDashboard() {
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          if (u.is_active) handleRejectUser(u);
-                          else handleApproveUser(u);
+                          promptToggleUser(u);
                         }}
                         disabled={actionLoading === `user-${u.id}-update`}
                         className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border transition-all text-[9px] font-black uppercase tracking-widest ${u.is_active
@@ -2393,6 +2466,36 @@ export default function AdminDashboard() {
           </AnalyticsCard>
         </section>
       </div>
+
+      {confirmModal.open && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full p-6 sm:p-8 animate-in zoom-in-95 duration-300">
+            <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight mb-2">{confirmModal.title}</h3>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">{confirmModal.message}</p>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setConfirmModal({ ...confirmModal, open: false })}
+                className="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  confirmModal.onConfirm();
+                  setConfirmModal({ ...confirmModal, open: false });
+                }}
+                className={`px-6 py-2.5 rounded-xl text-white font-black text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95 ${
+                  confirmModal.confirmVariant === 'rose' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-500/20' :
+                  confirmModal.confirmVariant === 'amber' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-500/20' :
+                  'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20'
+                }`}
+              >
+                {confirmModal.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <EntryPreviewSheet
         open={previewState.open}
@@ -2631,7 +2734,7 @@ export default function AdminDashboard() {
                         <div className="flex items-center gap-3">
                           <button
                             type="button"
-                            onClick={() => handleApproveUser(previewState.record)}
+                            onClick={() => promptToggleUser(previewState.record)}
                             disabled={actionLoading === `user-${previewState.record?.id}-update` || previewState.record?.is_active}
                             className="flex-1 py-3 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
                           >
@@ -2639,7 +2742,7 @@ export default function AdminDashboard() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleRejectUser(previewState.record)}
+                            onClick={() => promptToggleUser(previewState.record)}
                             disabled={actionLoading === `user-${previewState.record?.id}-update` || !previewState.record?.is_active}
                             className="flex-1 py-3 rounded-xl bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
                           >

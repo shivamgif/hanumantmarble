@@ -97,6 +97,7 @@ export async function GET(request) {
            s.shipment_number,
            s.truck_license_plate_snapshot AS truck_license_plate,
            s.driver_name_snapshot AS driver_name,
+           sup.name AS supplier_name,
            s.arrival_date,
            s.status,
            s.total_whole_qty,
@@ -105,18 +106,21 @@ export async function GET(request) {
            COALESCE(u.name, u.email, s.created_by) AS maintainer_name
          FROM stock_inbound_shipments s
          LEFT JOIN stock_app_users u ON u.id = s.submitted_by_user_id
+         LEFT JOIN stock_suppliers sup ON sup.id = s.supplier_id
          WHERE approval_status = 'pending'
          ORDER BY s.created_at DESC`,
         []
       ),
       sql(
-        `SELECT sos.id, sos.shipment_number, sos.truck_license_plate_snapshot AS truck_license_plate, sos.driver_name_snapshot AS driver_name, sos.created_at AS dispatch_date, sos.status,
+        `SELECT sos.id, sos.shipment_number, sos.truck_license_plate_snapshot AS truck_license_plate, sos.driver_name_snapshot AS driver_name, c.name AS customer_name, sos.created_at AS dispatch_date, sos.status,
                 COALESCE(SUM(soi.loaded_whole_qty), 0) as total_whole_qty, COALESCE(SUM(soi.loaded_broken_qty), 0) as total_broken_qty,
                 COALESCE(SUM(soi.loaded_whole_qty * soi.rate_per_unit), 0) as total_selling_price_excl
          FROM stock_outbound_shipments sos
          LEFT JOIN stock_outbound_shipment_items soi ON sos.id = soi.outbound_shipment_id
+         LEFT JOIN stock_sales_orders sso ON sos.sales_order_id = sso.id
+         LEFT JOIN stock_customers c ON sso.customer_id = c.id
          WHERE sos.approval_status = 'pending'
-         GROUP BY sos.id
+         GROUP BY sos.id, c.name
          ORDER BY sos.created_at DESC`,
         []
       ),
@@ -126,6 +130,7 @@ export async function GET(request) {
            s.shipment_number,
            s.truck_license_plate_snapshot AS truck_license_plate,
            s.driver_name_snapshot AS driver_name,
+           sup.name AS supplier_name,
            s.arrival_date,
            s.status,
            s.total_whole_qty,
@@ -134,6 +139,7 @@ export async function GET(request) {
            COALESCE(u.name, u.email, s.created_by) AS maintainer_name
          FROM stock_inbound_shipments s
          LEFT JOIN stock_app_users u ON u.id = s.submitted_by_user_id
+         LEFT JOIN stock_suppliers sup ON sup.id = s.supplier_id
          WHERE s.status = 'cancelled'
          ORDER BY s.created_at DESC`,
         []
