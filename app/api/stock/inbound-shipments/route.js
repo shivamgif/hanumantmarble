@@ -559,7 +559,7 @@ export async function POST(request) {
     const handlingPct = Number(body.handlingCostPercent ?? 1.0);
     const fuelPct = Number(body.fuelCostPercent ?? 5.0);
     const gstPct = Number(body.gstPercent ?? 18.0);
-    const grand_total = Number((subtotal + (subtotal * handlingPct / 100) + (subtotal * fuelPct / 100) + (subtotal * gstPct / 100)).toFixed(2));
+    const grand_total = Math.round(subtotal * (1 + fuelPct / 100) * (1 + handlingPct / 100) * (1 + gstPct / 100));
 
     await sql(
       `UPDATE stock_inbound_shipments
