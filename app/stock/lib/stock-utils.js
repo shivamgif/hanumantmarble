@@ -194,7 +194,7 @@ export function trimText(value) {
 
 export function parseSizeLabelDimensions(sizeLabel) {
   const clean = trimText(sizeLabel).toLowerCase().replace(/\s+/g, '');
-  const match = clean.match(/^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)(mm)?$/);
+  const match = clean.match(/^(\d+(?:\.\d+)?)\s*[x×*]\s*(\d+(?:\.\d+)?)(mm)?$/i);
   if (!match) return null;
   const w = Number(match[1]);
   const l = Number(match[2]);
@@ -204,7 +204,7 @@ export function parseSizeLabelDimensions(sizeLabel) {
 
 export function parseSizeLabelSqm(sizeLabel) {
   const clean = trimText(sizeLabel).toLowerCase().replace(/\s+/g, '');
-  const match = clean.match(/^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)(mm)?$/);
+  const match = clean.match(/^(\d+(?:\.\d+)?)\s*[x×*]\s*(\d+(?:\.\d+)?)(mm)?$/i);
   if (!match) return null;
 
   const widthMm = Number(match[1]);
