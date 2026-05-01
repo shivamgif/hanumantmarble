@@ -192,6 +192,16 @@ export function trimText(value) {
   return String(value ?? '').trim();
 }
 
+export function parseSizeLabelDimensions(sizeLabel) {
+  const clean = trimText(sizeLabel).toLowerCase().replace(/\s+/g, '');
+  const match = clean.match(/^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)(mm)?$/);
+  if (!match) return null;
+  const w = Number(match[1]);
+  const l = Number(match[2]);
+  if (!Number.isFinite(w) || !Number.isFinite(l) || w <= 0 || l <= 0) return null;
+  return { widthMm: w, lengthMm: l };
+}
+
 export function parseSizeLabelSqm(sizeLabel) {
   const clean = trimText(sizeLabel).toLowerCase().replace(/\s+/g, '');
   const match = clean.match(/^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)(mm)?$/);

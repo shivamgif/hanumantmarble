@@ -10,7 +10,7 @@ import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { arrivalFormSchema, bagArrivalFormSchema, dispatchFormSchema } from '@/lib/forms/stock-forms';
 import { useStockFormStore } from '@/lib/stores/stock-form-store';
-import { createArrivalItemRow, createBagArrivalItemRow, createDispatchItemRow, createInitialArrivalDraft, createInitialBagArrivalDraft, createInitialDispatchDraft, toNumber, trimText } from '@/app/stock/lib/stock-utils';
+import { createArrivalItemRow, createBagArrivalItemRow, createDispatchItemRow, createInitialArrivalDraft, createInitialBagArrivalDraft, createInitialDispatchDraft, toNumber, trimText, parseSizeLabelDimensions } from '@/app/stock/lib/stock-utils';
 import { ArrivalFormContent, BagArrivalFormContent } from '@/app/stock/components/arrival-form';
 import { DispatchFormContent } from '@/app/stock/components/dispatch-form';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -528,7 +528,9 @@ export default function AdminDashboard() {
         gstPercent: s.gst_percent != null ? String(s.gst_percent) : '18.0',
         freightWeightKg: s.freight_weight_kg != null ? String(s.freight_weight_kg) : '',
         notes: s.notes || '',
-        items: items.length > 0 ? items.map((item) => ({
+        items: items.length > 0 ? items.map((item) => {
+          const parsedDims = parseSizeLabelDimensions(item.size_label);
+          return ({
           itemId: String(item.item_id),
           itemName: item.item_name || '',
           brandName: item.brand_name || '',
@@ -536,8 +538,8 @@ export default function AdminDashboard() {
           finish: item.finish || '',
           grade: item.grade || '',
           sizeLabel: item.size_label || '',
-          sizeWidthMm: '',
-          sizeLengthMm: '',
+          sizeWidthMm: item.size_width_mm != null ? String(item.size_width_mm) : (parsedDims?.widthMm != null ? String(parsedDims.widthMm) : ''),
+          sizeLengthMm: item.size_length_mm != null ? String(item.size_length_mm) : (parsedDims?.lengthMm != null ? String(parsedDims.lengthMm) : ''),
           sizeUnit: item.size_unit || 'mm',
           hsnCode: item.hsn_code || '',
           thicknessMm: item.thickness_mm != null ? String(item.thickness_mm) : '',
@@ -550,7 +552,7 @@ export default function AdminDashboard() {
           costPerSqm: item.cost_per_sqm != null ? String(item.cost_per_sqm) : '',
           qtySqm: item.qty_sqm != null ? String(item.qty_sqm) : '',
           notes: item.notes || '',
-        })) : [createArrivalItemRow()],
+        });}) : [createArrivalItemRow()],
       });
       setArrivalNotice(null);
     } catch (err) {
