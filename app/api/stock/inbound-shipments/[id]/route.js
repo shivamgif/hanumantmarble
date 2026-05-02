@@ -172,7 +172,7 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
             created_by
           ) VALUES ($1,'purchase_receive','in',$2,NULL,$3,'whole',$4,$5,$6,'inbound_shipment',$7,$8,$9,$10)`,
           [
-            `MOV-${shipment.shipment_number}-${item.item_id}-W`,
+            `MOV-${shipment.shipment_number}-${item.id}-W`,
             item.item_id,
             item.received_whole_qty,
             item.unit_cost,
@@ -246,7 +246,7 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
             created_by
           ) VALUES ($1,'purchase_receive','in',$2,NULL,$3,'broken',$4,$5,$6,'inbound_shipment',$7,$8,$9,$10)`,
           [
-            `MOV-${shipment.shipment_number}-${item.item_id}-B`,
+            `MOV-${shipment.shipment_number}-${item.id}-B`,
             item.item_id,
             item.received_broken_qty,
             item.unit_cost,
