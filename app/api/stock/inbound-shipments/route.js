@@ -13,8 +13,8 @@ import {
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 
-function generateSku({ brandName, typeName, sizeLabel, itemName }) {
-  const parts = [itemName,typeName, sizeLabel, brandName]
+function generateSku({ brandName, typeName, sizeLabel, itemName, grade }) {
+  const parts = [itemName,grade, typeName, sizeLabel, brandName]
     .map((value) => normalizeText(value).toUpperCase().replace(/[^A-Z0-9]+/g, '-'))
     .filter(Boolean);
 
@@ -112,7 +112,7 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
     });
   }
 
-  const sku = generateSku({ brandName: brand.name, typeName: item.typeName, sizeLabel: sizeRow?.label || null, itemName: item.itemName });
+  const sku = generateSku({ brandName: brand.name, typeName: item.typeName, sizeLabel: sizeRow?.label || null, itemName: item.itemName, grade: item.grade });
 
   const columns = [
     'sku',
