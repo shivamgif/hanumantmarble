@@ -20,6 +20,7 @@ import {
   createInitialDispatchDraft,
   fetchDashboardData,
   findMatchingActiveItem,
+  findActiveItemByNameAndGrade,
   getSortedRows,
   matchesQuery,
   normalizeSearchValue,
@@ -429,6 +430,18 @@ export default function StockDashboard() {
       return;
     }
     arrivalForm.setValue(`items.${index}.itemId`, '', { shouldDirty: true, shouldValidate: true });
+  }, [arrivalForm, data?.activeItems, autoPopulateArrivalItem]);
+
+  const handleArrivalItemGradeChange = useCallback((index, value) => {
+    arrivalForm.setValue(`items.${index}.grade`, value, { shouldDirty: true, shouldValidate: true });
+    const currentItem = arrivalForm.getValues(`items.${index}`);
+    if (!currentItem?.itemId) return;
+    const matched = findActiveItemByNameAndGrade(data?.activeItems, currentItem.itemName, value);
+    if (matched) {
+      autoPopulateArrivalItem(index, matched);
+    } else {
+      arrivalForm.setValue(`items.${index}.itemId`, '', { shouldDirty: true, shouldValidate: true });
+    }
   }, [arrivalForm, data?.activeItems, autoPopulateArrivalItem]);
 
   const addArrivalItemRow = useCallback(() => { arrivalItemsFieldArray.append(createArrivalItemRow()); }, [arrivalItemsFieldArray]);
@@ -1153,6 +1166,7 @@ export default function StockDashboard() {
           openShipmentPreview={openShipmentPreview}
           onAddArrivalItem={addArrivalItemRow}
           onArrivalItemNameChange={handleArrivalItemNameChange}
+          onArrivalItemGradeChange={handleArrivalItemGradeChange}
           suggestions={suggestions}
           activeItems={data?.activeItems}
           t={t}

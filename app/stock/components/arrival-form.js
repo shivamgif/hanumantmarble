@@ -18,7 +18,7 @@ import {
 } from './stock-form-fields';
 import { FORM_CARD_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS, parseSizeLabelSqm, round3, toNumber } from '../lib/stock-utils';
 
-const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, item, activeItems, itemNames, onItemNameChange, t, tc, language, totalItems, onRemoveItem }) {
+const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, item, activeItems, itemNames, onItemNameChange, onGradeChange, t, tc, language, totalItems, onRemoveItem }) {
   const isCatalogItem = Boolean(item?.itemId);
   const _sizeSqm = parseSizeLabelSqm(item?.sizeLabel);
   const _piecesPerBox = toNumber(item?.piecesPerBox);
@@ -163,22 +163,18 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className={FORM_LABEL_CLASS}>{tc.quality}</FormLabel>
-                  {isCatalogItem ? (
-                    <Input disabled value={field.value ?? ''} className={FORM_INPUT_CLASS} />
-                  ) : (
-                    <Select value={field.value || ''} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger className={FORM_INPUT_CLASS}>
-                          <SelectValue placeholder={tc.quality} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent className="glass-panel">
-                        <SelectItem value="Premium">Premium</SelectItem>
-                        <SelectItem value="Standard">Standard</SelectItem>
-                        <SelectItem value="Commercial">Commercial</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
+                  <Select value={field.value || ''} onValueChange={(v) => onGradeChange ? onGradeChange(index, v) : field.onChange(v)}>
+                    <FormControl>
+                      <SelectTrigger className={FORM_INPUT_CLASS}>
+                        <SelectValue placeholder={tc.quality} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="glass-panel">
+                      <SelectItem value="Premium">Premium</SelectItem>
+                      <SelectItem value="Standard">Standard</SelectItem>
+                      <SelectItem value="Commercial">Commercial</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage className="text-xs" />
                 </FormItem>
               )}
@@ -188,7 +184,7 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
             <StockFormField control={control} name={`items.${index}.piecesPerBox`} label={tc.piecesPerBox} type="number" placeholder="2" min="0" disabled={isCatalogItem} />
             <StockFormField control={control} name={`items.${index}.hsnCode`} label={tc.hsn} placeholder={tc.hsn} list="sg-hsnCode" disabled={isCatalogItem} digitsOnly />
             <StockFormField control={control} name={`items.${index}.thicknessMm`} label={`${tc.thickness} (${tc.mm})`} type="number" min="0" step="0.01" disabled={isCatalogItem} />
-            <StockFormField control={control} name={`items.${index}.costPerSqm`} label={t('costPerSqm')} type="number" min="0" step="0.01" disabled={isCatalogItem} />
+            <StockFormField control={control} name={`items.${index}.costPerSqm`} label={t('costPerSqm')} type="number" min="0" step="0.01" />
             <StockFormField control={control} name={`items.${index}.description`} label={tc.description} placeholder="Notes..." className="lg:col-span-2" disabled={isCatalogItem} />
           </div>
         </div>
@@ -432,6 +428,7 @@ export function ArrivalFormContent({
   onSubmit,
   onInvalid,
   submitting,
+  onGradeChange,
   notice,
   suggestions,
   activeItems,
@@ -553,6 +550,7 @@ export function ArrivalFormContent({
                 activeItems={activeItems}
                 itemNames={itemNames}
                 onItemNameChange={onItemNameChange}
+                onGradeChange={onGradeChange}
                 t={t}
                 tc={tc}
                 language={language}

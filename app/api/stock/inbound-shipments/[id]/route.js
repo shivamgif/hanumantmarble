@@ -141,7 +141,7 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
             created_by
           ) VALUES ($1,$2,$3,'purchase','stock_inbound_shipments',$4,'whole',$5,$5,0,$6,$7,NOW(),'passed',$8,$9)`,
           [
-            `LOT-${shipment.shipment_number}-${item.item_id}-W`,
+            `LOT-${shipment.shipment_number}-${item.id}-W`,
             item.item_id,
             null,
             shipment.id,

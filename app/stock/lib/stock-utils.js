@@ -287,6 +287,15 @@ export function findMatchingActiveItem(activeItems, value) {
   )) || null;
 }
 
+export function findActiveItemByNameAndGrade(activeItems, name, grade) {
+  const normalizedName = normalizeItemKey(name);
+  const normalizedGrade = normalizeItemKey(grade);
+  if (!normalizedName || !normalizedGrade) return null;
+  return (activeItems || []).find((item) => (
+    normalizeItemKey(item.name) === normalizedName && normalizeItemKey(item.grade) === normalizedGrade
+  )) || null;
+}
+
 export async function fetchDashboardData() {
   const response = await fetch('/api/stock/dashboard');
   const json = await response.json();

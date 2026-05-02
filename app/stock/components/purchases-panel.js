@@ -43,6 +43,7 @@ export function PurchasesPanel({
   openShipmentPreview,
   onAddArrivalItem,
   onArrivalItemNameChange,
+  onArrivalItemGradeChange,
   suggestions,
   activeItems,
   t,
@@ -361,6 +362,7 @@ export function PurchasesPanel({
                   suggestions={suggestions}
                   activeItems={activeItems}
                   onItemNameChange={onArrivalItemNameChange}
+                  onGradeChange={onArrivalItemGradeChange}
                   onAddItem={onAddArrivalItem}
                   t={t}
                   tc={tc}
