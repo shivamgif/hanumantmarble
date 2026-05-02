@@ -141,6 +141,12 @@ export function SuggestCombobox({ value, onChange, options = [], placeholder, cl
   );
 }
 
+function itemLabel(item) {
+  const grade = item.grade ? ` · ${item.grade}` : '';
+  const bag = item.unit_of_measure === 'bag' ? ' (Bag)' : '';
+  return `${item.sku} - ${item.name}${grade}${bag}`;
+}
+
 export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [], placeholder, className, onBlur, disabled, fallbackLabel, ...props }) {
   const [open, setOpen] = useState(false);
   const [inputText, setInputText] = useState('');
@@ -150,14 +156,14 @@ export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [],
   useEffect(() => {
     if (!isTyping) {
       const found = (items || []).find((i) => String(i.id) === String(value));
-      setInputText(found ? `${found.sku} - ${found.name}` : (fallbackLabel || ''));
+      setInputText(found ? itemLabel(found) : (fallbackLabel || ''));
     }
   }, [value, items, isTyping, fallbackLabel]);
 
   const needle = isTyping ? inputText.trim().toLowerCase() : '';
   const filtered = useMemo(() => {
     return (items || [])
-      .filter((i) => !needle || i.sku.toLowerCase().includes(needle) || i.name.toLowerCase().includes(needle))
+      .filter((i) => !needle || i.sku.toLowerCase().includes(needle) || i.name.toLowerCase().includes(needle) || (i.grade || '').toLowerCase().includes(needle))
       .slice(0, 50);
   }, [items, needle]);
 
@@ -179,7 +185,7 @@ export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [],
 
   const handleSelect = useCallback((item) => {
     setIsTyping(false);
-    setInputText(`${item.sku} - ${item.name}`);
+    setInputText(itemLabel(item));
     setOpen(false);
     onChange(String(item.id));
     onItemSelect?.(item);
@@ -217,7 +223,7 @@ export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [],
                   handleSelect(item);
                 }}
               >
-                {item.sku} - {item.name}{item.unit_of_measure === 'bag' ? ' (Bag)' : ''}
+                {itemLabel(item)}
               </button>
             </li>
           ))}
