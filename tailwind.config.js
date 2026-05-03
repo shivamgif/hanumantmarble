@@ -20,9 +20,14 @@ module.exports = {
         brand: {
           primary: "#E07A00",
           secondary: "#1A1A54",
-          accent: "#F59E0B",
+          accent: "#0d9488",
           slateSidebar: "#0f172a",
           slateCanvas: "#f8fafc",
+        },
+        teal: {
+          DEFAULT: "#0d9488",
+          light: "#2dd4bf",
+          muted: "rgba(13, 148, 136, 0.1)",
         },
         border: "var(--border)",
         input: "var(--input)",
@@ -57,6 +62,10 @@ module.exports = {
           DEFAULT: "var(--card)",
           foreground: "var(--card-foreground)",
         },
+      },
+      fontFamily: {
+        display: ["DM Serif Display", "Georgia", "Times New Roman", "serif"],
+        sans: ["DM Sans", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       borderRadius: {
         lg: "var(--radius)",

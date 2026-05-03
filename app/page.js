@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import "../styles/Home.module.css";
 
 const heroPlaceholder = (
-  <section className="relative h-[75vh] bg-gradient-to-b from-background via-muted/30 to-background overflow-hidden">
+  <section className="relative bg-[#0a0a1a] overflow-hidden" style={{ height: '88vh', minHeight: 600 }}>
     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_60%)]" />
   </section>
 );
@@ -42,6 +42,11 @@ const ProductShowcase = dynamic(
 const Branches = dynamic(
   () => import("../components/ui/branches").then((mod) => mod.Branches),
   { ssr: false, loading: () => sectionPlaceholder("py-20") }
+);
+
+const LiquidChrome = dynamic(
+  () => import("../components/ui/liquid-chrome").then((mod) => mod.LiquidChrome),
+  { ssr: false }
 );
 
 export default function Home() {

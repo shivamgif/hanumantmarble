@@ -4,10 +4,9 @@ import React, { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import useEmblaCarousel from 'embla-carousel-react'
 import Autoplay from 'embla-carousel-autoplay'
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ArrowRight, ArrowLeft, Sparkles } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button"
+import { ArrowRight, ArrowLeft } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 export function HeroCarousel({
   images = ["/hero1.png", "/hero2.jpeg", "/hero3.jpeg", "/hero4.jpeg", "/hero5.jpeg", "/hero6.jpeg"],
@@ -44,7 +43,6 @@ export function HeroCarousel({
     return () => emblaApi.off('select', onSelect)
   }, [emblaApi, onSelect])
 
-  // Keyboard navigation
   useEffect(() => {
     const handleKey = (e) => {
       if (e.key === 'ArrowLeft') scrollPrev()
@@ -55,94 +53,116 @@ export function HeroCarousel({
   }, [scrollPrev, scrollNext])
 
   return (
-    <section className="relative bg-background text-foreground overflow-hidden" aria-label="Hero carousel">
-      <div className="overflow-hidden" ref={emblaRef}>
-        <div className="flex">
+    <section
+      className="relative overflow-hidden bg-[#0a0a1a]"
+      style={{ height: '88vh', minHeight: 600 }}
+      aria-label="Hero carousel"
+    >
+      {/* Slides */}
+      <div className="overflow-hidden absolute inset-0" ref={emblaRef}>
+        <div className="flex h-full">
           {images.map((image, index) => (
-            <div className="relative h-[75vh] w-full flex-shrink-0 min-w-0" key={index}>
+            <div className="relative h-full w-full flex-shrink-0 min-w-0" key={index}>
               <Image
                 src={image}
                 alt={`Hanumant Marble showroom image ${index + 1}`}
                 fill
-                className="object-cover"
+                className="object-cover brightness-[0.72] saturate-110"
                 priority={index === 0}
                 sizes="100vw"
               />
-              {/* Enhanced gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/40 to-black/70" aria-hidden="true" />
             </div>
           ))}
         </div>
       </div>
 
-      {/* Carousel Controls */}
-      <div className="absolute bottom-8 right-8 flex gap-3 z-20">
-        <Button
-          variant="outline"
-          size="icon"
-          className="rounded-full h-12 w-12 bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/20 hover:scale-110 transition-all duration-300 text-white"
-          onClick={scrollPrev}
-          aria-label="Previous slide"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          className="rounded-full h-12 w-12 bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/20 hover:scale-110 transition-all duration-300 text-white"
-          onClick={scrollNext}
-          aria-label="Next slide"
-        >
-          <ArrowRight className="h-5 w-5" />
-        </Button>
-      </div>
+      {/* Left-side directional gradient overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'linear-gradient(105deg, rgba(5,5,20,0.75) 0%, rgba(5,5,20,0.45) 50%, rgba(5,5,20,0.15) 100%), linear-gradient(to top, rgba(224,122,0,0.18) 0%, transparent 40%)',
+          zIndex: 2,
+        }}
+        aria-hidden="true"
+      />
 
-      {/* Dot indicators */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-20" role="tablist" aria-label="Slide indicators">
-        {scrollSnaps.map((_, index) => (
-          <button
-            key={index}
-            role="tab"
-            aria-selected={index === selectedIndex}
-            aria-label={`Go to slide ${index + 1}`}
-            onClick={() => scrollTo(index)}
-            className={cn(
-              "rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white/60",
-              index === selectedIndex
-                ? "bg-white w-6 h-2.5"
-                : "bg-white/40 hover:bg-white/60 w-2.5 h-2.5"
-            )}
-          />
-        ))}
-      </div>
+      {/* Warm orange left-side glow orb */}
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          top: '30%', left: -80, width: 400, height: 400,
+          borderRadius: '50%', background: 'rgba(224,122,0,0.14)',
+          filter: 'blur(100px)', zIndex: 3,
+        }}
+        aria-hidden="true"
+      />
 
-      {/* Decorative elements */}
-      <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl pointer-events-none" aria-hidden="true" />
-      <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" aria-hidden="true" />
-
-      {/* Hero Content */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center z-10 px-4">
-        <Badge
-          variant="outline"
-          className="mb-6 px-4 py-2 bg-white/10 backdrop-blur-md text-white border-white/20 hover:bg-white/20 transition-all animate-float"
+      {/* Editorial content — left aligned */}
+      <div
+        className="absolute inset-0 flex flex-col justify-center"
+        style={{ padding: '0 6vw', maxWidth: 760, zIndex: 10 }}
+      >
+        {/* Eyebrow badge */}
+        <div
+          className="inline-flex items-center self-start mb-6"
+          style={{
+            gap: 8, padding: '6px 14px', borderRadius: 9999,
+            background: 'rgba(224,122,0,0.22)', backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(224,122,0,0.4)', color: '#fbbf60',
+            fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
+          }}
         >
-          <Sparkles className="w-4 h-4 mr-2" aria-hidden="true" />
-          Premium Collection
-        </Badge>
-        
-        <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-4 sm:mb-6 tracking-tight animate-slide-up">
-          <span className="block">{title}</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          </svg>
+          Premium Collection · Lucknow
+        </div>
+
+        {/* Orange accent bar */}
+        <div style={{ width: 48, height: 4, background: '#e07a00', borderRadius: 9999, marginBottom: 20 }} />
+
+        {/* Headline — DM Serif Display */}
+        <h1
+          className="font-display text-white animate-slide-up"
+          style={{
+            fontSize: 'clamp(2.4rem, 4.4vw, 4rem)',
+            fontWeight: 400,
+            letterSpacing: '-0.01em',
+            lineHeight: 1.1,
+            marginBottom: 36,
+          }}
+        >
+          For Your<br />
+          <em style={{ fontStyle: 'italic', color: '#fbbf60' }}>Sweet Home</em>
         </h1>
-        
-        <p className="max-w-[600px] text-white/90 text-base sm:text-lg md:text-xl mb-6 sm:mb-10 leading-relaxed animate-slide-up px-4" style={{ animationDelay: '200ms' }}>
+
+        {/* Subtitle */}
+        <p
+          className="animate-slide-up"
+          style={{
+            fontSize: 'clamp(1rem, 1.4vw, 1.15rem)',
+            color: 'rgba(255,255,255,0.75)',
+            maxWidth: 480,
+            lineHeight: 1.7,
+            marginBottom: 40,
+            fontWeight: 400,
+            animationDelay: '200ms',
+          }}
+        >
           {subtitle}
         </p>
-        
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-16 px-4">
+
+        {/* CTAs */}
+        <div className="flex flex-wrap gap-4 items-center animate-scale-in" style={{ animationDelay: '400ms' }}>
           <Button
             size="lg"
-            className="animate-scale-in rounded-full px-6 sm:px-8 h-12 sm:h-14 text-base sm:text-lg bg-white text-black hover:bg-white/90 shadow-2xl hover:shadow-white/25 hover:scale-105 transition-all duration-300"
-            style={{ animationDelay: '400ms' }}
+            className="rounded-full h-[52px] px-8 text-base font-bold hover:scale-105 transition-all duration-300"
+            style={{
+              background: '#e07a00',
+              color: '#fff',
+              boxShadow: '0 8px 28px rgba(224,122,0,0.4)',
+              border: 'none',
+            }}
             asChild
           >
             <a href="/quote" className="flex items-center gap-2">
@@ -153,19 +173,91 @@ export function HeroCarousel({
           <Button
             size="lg"
             variant="outline"
-            className="animate-scale-in rounded-full px-6 sm:px-8 h-12 sm:h-14 text-base sm:text-lg bg-transparent text-white border-2 border-white/30 hover:bg-white/10 hover:border-white/50 hover:scale-105 transition-all duration-300"
-            style={{ animationDelay: '500ms' }}
+            className="rounded-full h-[52px] px-8 text-base font-medium hover:scale-105 transition-all duration-300"
+            style={{
+              background: 'rgba(255,255,255,0.1)',
+              color: '#fff',
+              border: '1.5px solid rgba(255,255,255,0.3)',
+              backdropFilter: 'blur(8px)',
+            }}
             asChild
           >
-            <a href="#products">
-              Explore Products
-            </a>
+            <a href="#products">Explore Products</a>
           </Button>
         </div>
       </div>
 
-      {/* Bottom gradient fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent z-5 pointer-events-none" aria-hidden="true" />
+      {/* Slide counter — bottom left, editorial */}
+      <div
+        className="absolute flex items-center gap-2 z-20"
+        style={{
+          bottom: 36, left: '6vw',
+          color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 600, letterSpacing: '0.1em',
+        }}
+        aria-hidden="true"
+      >
+        <span style={{ color: '#fff', fontSize: 18, fontWeight: 700 }}>
+          {String(selectedIndex + 1).padStart(2, '0')}
+        </span>
+        <span style={{ width: 24, height: 1, background: 'rgba(255,255,255,0.3)', display: 'inline-block' }} />
+        <span>{String(images.length).padStart(2, '0')}</span>
+      </div>
+
+      {/* Carousel Controls */}
+      <div className="absolute bottom-7 right-8 flex gap-2 z-20">
+        <Button
+          variant="outline"
+          size="icon"
+          className="rounded-full h-[42px] w-[42px] transition-all duration-300 text-white"
+          style={{
+            background: 'rgba(255,255,255,0.1)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255,255,255,0.18)',
+          }}
+          onClick={scrollPrev}
+          aria-label="Previous slide"
+        >
+          <ArrowLeft className="h-[17px] w-[17px]" />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          className="rounded-full h-[42px] w-[42px] transition-all duration-300 text-white"
+          style={{
+            background: 'rgba(255,255,255,0.1)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255,255,255,0.18)',
+          }}
+          onClick={scrollNext}
+          aria-label="Next slide"
+        >
+          <ArrowRight className="h-[17px] w-[17px]" />
+        </Button>
+      </div>
+
+      {/* Dot indicators */}
+      <div className="absolute bottom-9 left-1/2 -translate-x-1/2 flex gap-1.5 z-20" role="tablist" aria-label="Slide indicators">
+        {scrollSnaps.map((_, index) => (
+          <button
+            key={index}
+            role="tab"
+            aria-selected={index === selectedIndex}
+            aria-label={`Go to slide ${index + 1}`}
+            onClick={() => scrollTo(index)}
+            className={cn(
+              "rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white/60",
+              index === selectedIndex ? "w-7 h-[3px] bg-[#e07a00]" : "w-2 h-[3px] bg-white/30 hover:bg-white/60"
+            )}
+          />
+        ))}
+      </div>
+
+      {/* Bottom fade into the next section's warm cream tone */}
+      <div
+        className="absolute bottom-0 left-0 right-0 pointer-events-none"
+        style={{ height: 160, background: 'linear-gradient(to top, #f5f0eb, transparent)', zIndex: 5 }}
+        aria-hidden="true"
+      />
     </section>
   );
 }
