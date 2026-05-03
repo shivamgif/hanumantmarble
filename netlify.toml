@@ -27,6 +27,13 @@ package = "@netlify/plugin-nextjs"
 
 # Headers for security and SEO
 [[headers]]
+  for = "/sw.js"
+
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    Service-Worker-Allowed = "/"
+
+[[headers]]
   for = "/stock/*"
   
   [headers.values]
