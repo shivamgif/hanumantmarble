@@ -38,7 +38,7 @@ import {
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-8">
                 <div className={`w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center rounded-2xl sm:rounded-[1.25rem] border ${bgClass} ${borderClass} shadow-sm transition-transform duration-500 group-hover:scale-110`}>
-                  <Icon className={`h-7 w-7 sm:h-8 sm:h-8 ${colorClass}`} />
+                  <Icon className={`h-7 w-7 sm:h-8 sm:w-8 ${colorClass}`} />
                 </div>
                 <div className="flex flex-col items-end">
                   <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">{t('logisticsKPI')}</span>

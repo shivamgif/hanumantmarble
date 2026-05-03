@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import { Download, Boxes, ChevronRight, Package, Search } from 'lucide-react';
+import { Download, Boxes, ChevronRight, ChevronUp, ChevronDown, Package, Search } from 'lucide-react';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
 import { FORM_INPUT_CLASS, FORM_LABEL_CLASS, exportToCSV } from '../lib/stock-utils';
@@ -88,7 +88,13 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
                       className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 hover:text-brand-primary transition-all duration-300 flex items-center gap-2 group/th"
                     >
                       {col.label}
-                      <span className={`h-1 w-1 rounded-full bg-brand-primary opacity-0 transition-opacity ${sort.key === col.id ? 'opacity-100' : 'group-hover/th:opacity-40'}`} />
+                      {sort.key === col.id ? (
+                        sort.direction === 'asc'
+                          ? <ChevronUp className="h-2.5 w-2.5 text-brand-primary" />
+                          : <ChevronDown className="h-2.5 w-2.5 text-brand-primary" />
+                      ) : (
+                        <span className="h-1 w-1 rounded-full bg-brand-primary opacity-0 transition-opacity group-hover/th:opacity-40" />
+                      )}
                     </button>
                   </th>
                 ))}
@@ -155,7 +161,7 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="tabular-nums text-[10px] font-bold text-slate-500 opacity-40 group-hover/row:opacity-80 transition-opacity">
+                    <div className="tabular-nums text-[10px] font-bold text-slate-500 opacity-60 group-hover/row:opacity-90 transition-opacity">
                       {item.reorder_level}
                     </div>
                   </td>

@@ -412,15 +412,17 @@ export default function StockTopbar({
 
             <div className="flex items-center gap-2">
               {[
-                { onClick: toggleLanguage, icon: <Languages className="h-4 w-4" />, badge: null },
-                { onClick: () => setNotificationOpen(true), icon: <Bell className="h-4 w-4" />, badge: unreadCount > 0 ? unreadCount : null },
-                { onClick: () => setTheme(isDarkTheme ? 'light' : 'dark'), icon: isDarkTheme ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />, badge: null },
-                { onClick: handleStockLogout, icon: <LogOut className="h-4 w-4" />, badge: null },
+                { onClick: toggleLanguage, icon: <Languages className="h-4 w-4" />, badge: null, ariaLabel: 'Toggle language' },
+                { onClick: () => setNotificationOpen(true), icon: <Bell className="h-4 w-4" />, badge: unreadCount > 0 ? unreadCount : null, ariaLabel: 'Notifications' },
+                { onClick: () => setTheme(isDarkTheme ? 'light' : 'dark'), icon: isDarkTheme ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />, badge: null, ariaLabel: isDarkTheme ? 'Switch to light mode' : 'Switch to dark mode' },
+                { onClick: handleStockLogout, icon: <LogOut className="h-4 w-4" />, badge: null, ariaLabel: 'Log out' },
               ].map((btn, i) => (
                 <button
                   key={i}
                   type="button"
                   onClick={btn.onClick}
+                  aria-label={btn.ariaLabel}
+                  title={btn.ariaLabel}
                   className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-100 bg-white text-slate-500 shadow-sm transition-all active:scale-90 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
                 >
                   {btn.icon}

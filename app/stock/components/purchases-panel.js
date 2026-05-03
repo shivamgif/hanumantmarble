@@ -5,6 +5,7 @@ import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Download, ChevronRight, PackageCheck, Plus, Search, Package, Boxes } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
@@ -62,12 +63,11 @@ export function PurchasesPanel({
   const canEdit = ['admin', 'manager'].includes(userRole);
   const [purchaseType, setPurchaseType] = useState('tile');
   const [markingPaidId, setMarkingPaidId] = useState(null);
+  const [confirmPaidId, setConfirmPaidId] = useState(null);
 
   async function handleMarkAsPaid(id) {
-    if (!window.confirm('Are you sure you want to mark this purchase as paid? This action cannot be undone.')) {
-      return;
-    }
     setMarkingPaidId(id);
+    setConfirmPaidId(null);
     try {
       const res = await fetch(`/api/stock/inbound-shipments/${id}`, {
         method: 'PATCH',
@@ -453,7 +453,7 @@ export function PurchasesPanel({
                 {canEdit && a.approval_status === 'approved' && a.payment_status !== 'paid' && (
                   <button
                     type="button"
-                    onClick={e => { e.stopPropagation(); handleMarkAsPaid(a.id); }}
+                    onClick={e => { e.stopPropagation(); setConfirmPaidId(a.id); }}
                     disabled={markingPaidId === a.id}
                     className="mt-1 px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[9px] font-black uppercase tracking-widest disabled:opacity-50"
                   >
@@ -562,7 +562,7 @@ export function PurchasesPanel({
                     {canEdit && a.approval_status === 'approved' && a.payment_status !== 'paid' && (
                       <button
                         type="button"
-                        onClick={e => { e.stopPropagation(); handleMarkAsPaid(a.id); }}
+                        onClick={e => { e.stopPropagation(); setConfirmPaidId(a.id); }}
                         disabled={markingPaidId === a.id}
                         title="Mark this purchase as fully paid"
                         className="mt-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 text-[9px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all disabled:opacity-50 whitespace-nowrap"
@@ -650,6 +650,21 @@ export function PurchasesPanel({
           />
         </div>
       </section>
+
+      <AlertDialog open={!!confirmPaidId} onOpenChange={(open) => { if (!open) setConfirmPaidId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark as Paid?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will mark the purchase as fully paid. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmPaidId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleMarkAsPaid(confirmPaidId)}>Confirm</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

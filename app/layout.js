@@ -4,11 +4,12 @@ import { LanguageProvider } from '@/contexts/LanguageContext'
 import { ClientProviders } from '@/contexts/ClientProviders'
 import Layout from '@/components/Layout'
 import PWAInstall from '@/components/PWAInstall'
+import HapticProvider from '@/components/HapticProvider'
 
-const BASE_URL = "https://hanumantmarble.in";
+const BASE_URL = "https://hanumantmarble.com";
 
 export const viewport = {
-  themeColor: '#000000',
+  themeColor: '#E07A00',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -79,6 +80,11 @@ export const metadata = {
   alternates: {
     canonical: BASE_URL,
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Hanumant Marble',
+  },
 };
 
 export default function RootLayout({ children }) {
@@ -118,6 +124,7 @@ export default function RootLayout({ children }) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        <HapticProvider />
         <PWAInstall />
         <LanguageProvider>
           <ThemeProvider
