@@ -117,17 +117,12 @@ async function validateDispatchDivisionIntegrity(resolvedItems, salespersonUser)
     throw err;
   }
 
-  if (itemDivisionIds.length !== 1) {
-    const err = new Error('All dispatch items must be from the same division.');
-    err.statusCode = 400;
-    err.reasonCode = 'mixed_item_divisions';
-    throw err;
-  }
-
-  const dispatchDivisionId = itemDivisionIds[0];
   const salespersonDivisionIds = (salespersonUser.division_ids || []).map(Number);
-  if (!salespersonDivisionIds.includes(dispatchDivisionId)) {
-    const err = new Error('Salesperson division does not match dispatch item division.');
+  const unauthorizedDivisions = itemDivisionIds.filter(
+    (id) => !salespersonDivisionIds.includes(id)
+  );
+  if (unauthorizedDivisions.length > 0) {
+    const err = new Error('Dispatch items contain divisions not assigned to this salesperson.');
     err.statusCode = 400;
     err.reasonCode = 'division_mismatch';
     throw err;
