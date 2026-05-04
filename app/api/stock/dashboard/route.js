@@ -76,8 +76,7 @@ export async function GET(request) {
          LEFT JOIN stock_sizes s ON s.id = i.size_id
          WHERE i.is_active = true
          ${salespersonDivisionIds ? 'AND i.division_id = ANY($1::bigint[])' : ''}
-         ORDER BY COALESCE(i.current_whole_qty, 0) + COALESCE(i.current_broken_qty, 0) ASC, i.name ASC
-         LIMIT 50`,
+         ORDER BY COALESCE(i.current_whole_qty, 0) + COALESCE(i.current_broken_qty, 0) ASC, i.name ASC`,
         salespersonDivisionIds ? [salespersonDivisionIds] : []
       ),
       sql(
