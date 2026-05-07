@@ -49,6 +49,7 @@ export function DispatchesPanel({
   pageSize,
   setPageSize,
   onRefreshData,
+  dispatchFetching,
 }) {
   const canEdit = ['admin', 'manager'].includes(userRole);
   const canCreateDispatch = ['admin', 'manager', 'stock_maintainer'].includes(userRole);
@@ -188,7 +189,13 @@ export function DispatchesPanel({
             />
           </div>
         </div>
-        <div className="space-y-4 p-3 md:hidden">
+        <div className={`space-y-4 p-3 md:hidden transition-opacity duration-200 ${dispatchFetching ? 'opacity-50' : ''}`}>
+          {dispatchFetching && dispatchPagination.rows.length === 0 && (
+            <div className="flex items-center justify-center gap-2 py-8 text-slate-400">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-brand-primary" />
+              <span className="text-sm">Loading…</span>
+            </div>
+          )}
           {dispatchPagination.rows.map((d) => {
             const expanded = dispatchExpandedId === d.id;
             return (
@@ -403,7 +410,16 @@ export function DispatchesPanel({
                   <td className="px-4 py-3"><Badge variant={getStatusVariant(d.status)}>{d.status}</Badge></td>
                 </tr>
               ))}
-              {dispatchPagination.total === 0 ? (
+              {dispatchFetching ? (
+                <tr>
+                  <td colSpan={canEdit ? 9 : 6} className="px-3 py-10">
+                    <div className="flex items-center justify-center gap-2 text-slate-400">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-brand-primary" />
+                      <span className="text-sm">Loading…</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : dispatchPagination.total === 0 ? (
                 <tr>
                   <td colSpan={canEdit ? 9 : 6} className="px-3 py-10">
                     <div className="flex flex-col items-center justify-center gap-3 text-center">

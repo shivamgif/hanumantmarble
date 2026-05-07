@@ -139,63 +139,13 @@ export async function GET(request) {
         salespersonDivisionIds ? [salespersonDivisionIds] : []
       ),
       sql(
-        `SELECT
-           soi.outbound_shipment_id,
-           STRING_AGG(DISTINCT i.name, ', ' ORDER BY i.name) AS product_names,
-           STRING_AGG(DISTINCT i.sku, ', ' ORDER BY i.sku) AS product_skus,
-           SUM(soi.loaded_whole_qty) AS total_whole_qty,
-           SUM(soi.loaded_broken_qty) AS total_broken_qty
-         FROM stock_outbound_shipment_items soi
-         JOIN stock_items i ON i.id = soi.item_id
-         WHERE soi.outbound_shipment_id IN (
-           SELECT id FROM stock_outbound_shipments ORDER BY created_at DESC LIMIT 20
-         )
-         ${salespersonDivisionIds ? 'AND i.division_id = ANY($1::bigint[])' : ''}
-         GROUP BY soi.outbound_shipment_id`,
-        salespersonDivisionIds ? [salespersonDivisionIds] : []
-      ),
-      sql(
-        `WITH recent_sos AS (
-           SELECT *
-           FROM stock_outbound_shipments
-           ${salespersonDivisionIds ? `WHERE id IN (
-             SELECT DISTINCT soi.outbound_shipment_id FROM stock_outbound_shipment_items soi
-             JOIN stock_items i ON i.id = soi.item_id WHERE i.division_id = ANY($1::bigint[])
-           )` : ''}
-           ORDER BY created_at DESC
-           LIMIT 20
-         )
-          SELECT
-             sos.id,
-             sos.shipment_number,
-             sos.truck_license_plate_snapshot AS truck_license_plate,
-             sos.driver_name_snapshot AS driver_name,
-             sos.created_at AS dispatch_date,
-             sos.status,
-             sos.approval_status,
-             sos.payment_status,
-             c.name AS customer_name,
-             c.phone AS customer_phone_number,
-             COALESCE(SUM(CASE WHEN i.unit_of_measure != 'bag' THEN soi.loaded_whole_qty ELSE 0 END), 0) as total_whole_qty,
-             COALESCE(SUM(CASE WHEN i.unit_of_measure != 'bag' THEN soi.loaded_broken_qty ELSE 0 END), 0) as total_broken_qty,
-             COALESCE(SUM(CASE WHEN i.unit_of_measure = 'bag' THEN soi.loaded_whole_qty ELSE 0 END), 0) as total_bag_qty,
-             COALESCE(SUM(soi.returned_whole_qty), 0) as total_return_whole_qty,
-             COALESCE(SUM(soi.returned_broken_qty), 0) as total_return_broken_qty,
-             COALESCE(SUM(soi.loaded_whole_qty * soi.rate_per_unit), 0) as total_selling_price_excl,
-             COALESCE(MAX(submitter.name), MAX(submitter.email), MAX(sos.created_by), '—') AS generated_by,
-             COALESCE(MAX(submitter.role), 'stock_maintainer') AS generated_by_role,
-             CASE
-               WHEN sos.approval_status = 'approved' THEN COALESCE(MAX(approver.name), MAX(approver.email), '—')
-               ELSE '—'
-             END AS approved_by
-          FROM recent_sos sos
-          LEFT JOIN stock_outbound_shipment_items soi ON sos.id = soi.outbound_shipment_id
-          LEFT JOIN stock_items i ON i.id = soi.item_id
-          LEFT JOIN stock_app_users submitter ON submitter.id = sos.submitted_by_user_id
-          LEFT JOIN stock_app_users approver ON approver.id = sos.approved_by_user_id
-          LEFT JOIN stock_customers c ON c.id = sos.customer_id
-          GROUP BY sos.id, sos.shipment_number, sos.truck_license_plate_snapshot, sos.driver_name_snapshot, sos.created_at, sos.status, sos.approval_status, sos.payment_status, c.name, c.phone
-          ORDER BY sos.created_at DESC`,
+        `SELECT COUNT(*) AS pending_dispatch_count
+         FROM stock_outbound_shipments sos
+         WHERE sos.status ILIKE '%pending%'
+         ${salespersonDivisionIds ? `AND sos.id IN (
+           SELECT DISTINCT soi.outbound_shipment_id FROM stock_outbound_shipment_items soi
+           JOIN stock_items i ON i.id = soi.item_id WHERE i.division_id = ANY($1::bigint[])
+         )` : ''}`,
         salespersonDivisionIds ? [salespersonDivisionIds] : []
       ),
     ]);
@@ -255,7 +205,7 @@ export async function GET(request) {
       : Promise.resolve([{ current_month_dispatch_value: 0 }]);
 
     const [dashboardResults, suggestionsResults, currentMonthValueRows] = await Promise.all([dashboardPromise, suggestionsPromise, currentMonthValuePromise]);
-    const [summaryRows, activeItems, recentArrivalsRaw, recentArrivalProducts, recentDispatchProducts, recentDispatchesRaw] = dashboardResults;
+    const [summaryRows, activeItems, recentArrivalsRaw, recentArrivalProducts, pendingDispatchCountRows] = dashboardResults;
     const [suppliers, transporters, items, brands, divisions, finishes, grades, sizes, hsnCodes, originCities, warehouses, drivers, trucks, paymentModes, bagTypes, bagItems, salespersons] = suggestionsResults;
 
     const recentArrivalProductsByShipment = new Map(
@@ -273,20 +223,6 @@ export async function GET(request) {
         avg_cost_per_sqm: details.avg_cost_per_sqm || 0,
         divisions: details.divisions || '',
         total_bag_qty: details.total_bag_qty || 0,
-      };
-    });
-
-    const recentDispatchProductsByShipment = new Map(
-      recentDispatchProducts.map((item) => [String(item.outbound_shipment_id), item])
-    );
-
-    const recentDispatches = recentDispatchesRaw.map((shipment) => {
-      const details = recentDispatchProductsByShipment.get(String(shipment.id)) || {};
-
-      return {
-        ...shipment,
-        product_names: details.product_names || '',
-        product_skus: details.product_skus || '',
       };
     });
 
@@ -323,7 +259,7 @@ export async function GET(request) {
       activeItems,
       recentPurchases: recentArrivals,
       recentArrivals,
-      recentDispatches,
+      pendingDispatchCount: Number(pendingDispatchCountRows[0]?.pending_dispatch_count ?? 0),
       currentMonthDispatchValue: Number(currentMonthValueRows[0]?.current_month_dispatch_value ?? 0),
     });
   } catch (error) {

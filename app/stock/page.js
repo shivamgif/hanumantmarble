@@ -19,6 +19,7 @@ import {
   createInitialArrivalDraft,
   createInitialDispatchDraft,
   fetchDashboardData,
+  fetchDispatches,
   findMatchingActiveItem,
   findActiveItemByNameAndGrade,
   getSortedRows,
@@ -216,6 +217,11 @@ export default function StockDashboard() {
   const [stockPage, setStockPage] = useState(1);
   const [arrivalPage, setArrivalPage] = useState(1);
   const [dispatchPage, setDispatchPage] = useState(1);
+  const [dispatches, setDispatches] = useState([]);
+  const [dispatchTotal, setDispatchTotal] = useState(0);
+  const [dispatchFetching, setDispatchFetching] = useState(false);
+  const [debouncedDispatchSearch, setDebouncedDispatchSearch] = useState('');
+  const [dispatchRefreshKey, setDispatchRefreshKey] = useState(0);
   const [editingArrivalId, setEditingArrivalId] = useState(null);
   const [editingBagArrivalId, setEditingBagArrivalId] = useState(null);
   const [editingDispatchId, setEditingDispatchId] = useState(null);
@@ -264,6 +270,7 @@ export default function StockDashboard() {
     setData(json);
     if (json.role) setAccessRole(json.role);
     if (json.suggestions) setSuggestions(json.suggestions);
+    setDispatchRefreshKey((k) => k + 1);
     return json;
   }, []);
 
@@ -297,6 +304,46 @@ export default function StockDashboard() {
 
     return () => { mounted = false; };
   }, [user?.id, userLoading, t]);
+
+  // Debounce dispatch search — reset to page 1 when search text changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedDispatchSearch(dispatchSearch);
+      setDispatchPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [dispatchSearch]);
+
+  // Reset dispatch page when sort changes
+  useEffect(() => {
+    setDispatchPage(1);
+  }, [dispatchSort.key, dispatchSort.direction]);
+
+  // Fetch dispatches from server whenever page/pageSize/search/sort/refreshKey changes
+  useEffect(() => {
+    if (!user) return;
+    let mounted = true;
+    setDispatchFetching(true);
+    fetchDispatches({
+      page: dispatchPage,
+      pageSize,
+      search: debouncedDispatchSearch,
+      sortKey: dispatchSort.key,
+      sortDir: dispatchSort.direction,
+    })
+      .then((result) => {
+        if (!mounted) return;
+        setDispatches(result.dispatches || []);
+        setDispatchTotal(result.total || 0);
+      })
+      .catch((err) => {
+        console.error('Failed to fetch dispatches:', err);
+      })
+      .finally(() => {
+        if (mounted) setDispatchFetching(false);
+      });
+    return () => { mounted = false; };
+  }, [user?.id, dispatchPage, pageSize, debouncedDispatchSearch, dispatchSort.key, dispatchSort.direction, dispatchRefreshKey]);
 
   async function uploadShipmentDocument({ entityType, entityId, documentType, file, documentNumber, notes }) {
     if (!file) return null;
@@ -899,21 +946,7 @@ export default function StockDashboard() {
     }
   ), [purchaseSourceRows, arrivalSearch, arrivalSort]);
 
-  const dispatchRows = useMemo(() => getSortedRows(
-    (data?.recentDispatches || []).filter((shipment) => {
-      const query = normalizeSearchValue(dispatchSearch);
-      if (!query) return true;
-      return [shipment.shipment_number, shipment.status, shipment.generated_by, shipment.approved_by, formatDateTime(shipment.dispatch_date), shipment.truck_license_plate, shipment.driver_name, shipment.product_names, shipment.product_skus, shipment.total_whole_qty, shipment.total_broken_qty].some((value) => matchesQuery(value, query));
-    }),
-    dispatchSort,
-    {
-      datetime: (s) => new Date(s.dispatch_date || s.created_at || 0).getTime(),
-      shipment: (s) => s.shipment_number || '',
-      products: (s) => s.product_names || '',
-      quantities: (s) => Number(s.total_whole_qty || 0) + Number(s.total_broken_qty || 0),
-      status: (s) => s.status || '',
-    }
-  ), [data?.recentDispatches, dispatchSearch, dispatchSort]);
+  // dispatch rows come from server — no client-side filtering or sorting needed
 
   const stockRows = useMemo(() => getSortedRows(
     (data?.activeItems || []).filter((item) => {
@@ -934,13 +967,25 @@ export default function StockDashboard() {
 
   const stockPagination = useMemo(() => paginateRows(stockRows, stockPage, pageSize), [stockRows, stockPage, pageSize]);
   const arrivalPagination = useMemo(() => paginateRows(arrivalRows, arrivalPage, pageSize), [arrivalRows, arrivalPage, pageSize]);
-  const dispatchPagination = useMemo(() => paginateRows(dispatchRows, dispatchPage, pageSize), [dispatchRows, dispatchPage, pageSize]);
+  const dispatchPagination = useMemo(() => {
+    const pageCount = Math.max(1, Math.ceil(dispatchTotal / pageSize));
+    return {
+      page: dispatchPage,
+      pageCount,
+      rows: dispatches,
+      allRows: dispatches,
+      total: dispatchTotal,
+      startIndex: (dispatchPage - 1) * pageSize,
+      endIndex: Math.min(dispatchPage * pageSize, dispatchTotal),
+    };
+  }, [dispatches, dispatchTotal, dispatchPage, pageSize]);
   const previewItemPagination = useMemo(() => paginateRows(previewState.items || [], previewItemsPage, pageSize), [previewState.items, previewItemsPage, pageSize]);
 
   useEffect(() => { setStockPage((p) => Math.min(p, stockPagination.pageCount)); }, [stockPagination.pageCount]);
   useEffect(() => { setArrivalPage((p) => Math.min(p, arrivalPagination.pageCount)); }, [arrivalPagination.pageCount]);
   useEffect(() => { setDispatchPage((p) => Math.min(p, dispatchPagination.pageCount)); }, [dispatchPagination.pageCount]);
   useEffect(() => { setPreviewItemsPage((p) => Math.min(p, previewItemPagination.pageCount)); }, [previewItemPagination.pageCount]);
+
 
   useEffect(() => {
     if (!data) return;
@@ -968,7 +1013,7 @@ export default function StockDashboard() {
     }
 
     if (entityType === 'outbound_shipment') {
-      const target = (data.recentDispatches || []).find((item) => Number(item.id) === entityId);
+      const target = dispatches.find((item) => Number(item.id) === entityId);
       setActiveTableView('dispatches');
       setHighlightedShipmentKey(`dispatch-${entityId}`);
       openShipmentPreview('dispatch', target || { id: entityId, shipment_number: `OUT-${entityId}` });
@@ -1008,10 +1053,10 @@ export default function StockDashboard() {
     const broken = (data?.activeItems || []).reduce((sum, item) => sum + Number(item.current_broken_qty || 0), 0);
     const total = whole + broken;
     const pending = (data?.recentPurchases || data?.recentArrivals || []).filter((item) => String(item.status || '').toLowerCase().includes('pending')).length;
-    const dispatchPending = (data?.recentDispatches || []).filter((item) => String(item.status || '').toLowerCase().includes('pending')).length;
+    const dispatchPending = data?.pendingDispatchCount ?? 0;
     const risk = (data?.activeItems || []).filter((item) => Number(item.reorder_level || 0) > 0 && (Number(item.current_whole_qty || 0) + Number(item.current_broken_qty || 0)) <= Number(item.reorder_level || 0)).length;
     return { totalWholeStock: whole, totalBrokenStock: broken, totalStockUnits: total, pendingArrivals: pending, pendingDispatches: dispatchPending, riskItems: risk };
-  }, [data?.activeItems, data?.recentPurchases, data?.recentArrivals, data?.recentDispatches]);
+  }, [data?.activeItems, data?.recentPurchases, data?.recentArrivals, data?.pendingDispatchCount]);
 
   const stockStats = useMemo(() => [
     { label: t('totalStock'), value: totalStockUnits, trend: totalStockUnits ? Math.round((totalWholeStock / totalStockUnits) * 100) : 0, trendLabel: t('wholeRatio'), icon: Boxes, accent: 'from-[#E07A00]/20 to-[#E07A00]/5', isNeutral: true },
@@ -1200,6 +1245,7 @@ export default function StockDashboard() {
           setDispatchSort={setDispatchSort}
           dispatchPagination={dispatchPagination}
           setDispatchPage={setDispatchPage}
+          dispatchFetching={dispatchFetching}
           dispatchExpandedId={dispatchExpandedId}
           setDispatchExpandedId={setDispatchExpandedId}
           highlightedShipmentKey={highlightedShipmentKey}
