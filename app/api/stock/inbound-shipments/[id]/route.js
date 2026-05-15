@@ -814,7 +814,9 @@ export async function PATCH(request, context) {
           const handlingPct = Number(shipmentForPct.handling_cost_percent ?? 1.0);
           const fuelPct = Number(shipmentForPct.fuel_cost_percent ?? 5.0);
           const gstPct = Number(shipmentForPct.gst_percent ?? 18.0);
-          const grand_total = Number((subtotal + (subtotal * handlingPct / 100) + (subtotal * fuelPct / 100) + (subtotal * gstPct / 100)).toFixed(2));
+          const afterFuel = subtotal * (1 + fuelPct / 100);
+          const afterHandling = afterFuel * (1 + handlingPct / 100);
+          const grand_total = Number((afterHandling * (1 + gstPct / 100)).toFixed(2));
           await sql(`UPDATE stock_inbound_shipments SET grand_total = $1, updated_at = NOW() WHERE id = $2`, [grand_total, id]);
         }
       }
@@ -892,7 +894,9 @@ export async function PATCH(request, context) {
         const handlingPct = shipmentData[0].handling_cost_percent || 1.0;
         const fuelPct = shipmentData[0].fuel_cost_percent || 5.0;
         const gstPct = shipmentData[0].gst_percent || 18.0;
-        const grand_total = Number((subtotal + (subtotal * handlingPct / 100) + (subtotal * fuelPct / 100) + (subtotal * gstPct / 100)).toFixed(2));
+        const afterFuel = subtotal * (1 + fuelPct / 100);
+        const afterHandling = afterFuel * (1 + handlingPct / 100);
+        const grand_total = Number((afterHandling * (1 + gstPct / 100)).toFixed(2));
 
         await sql(
           `UPDATE stock_inbound_shipments SET grand_total = $1, updated_at = NOW() WHERE id = $2`,
