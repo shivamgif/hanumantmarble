@@ -128,8 +128,8 @@ export function DispatchesPanel({
         <button
           type="button"
           onClick={onNewDispatch}
-          disabled={!canCreateDispatch}
-          title={!canCreateDispatch ? 'Salesperson role cannot log new dispatches' : undefined}
+          disabled={!canCreateDispatch || dispatchSubmitting}
+          title={!canCreateDispatch ? 'Salesperson role cannot log new dispatches' : dispatchSubmitting ? 'Submission in progress...' : undefined}
           className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-[11px] font-black uppercase tracking-widest text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus className="h-4 w-4" />
