@@ -19,6 +19,7 @@ import {
   createInitialArrivalDraft,
   createInitialDispatchDraft,
   fetchDashboardData,
+  fetchArrivals,
   fetchDispatches,
   findMatchingActiveItem,
   findActiveItemByNameAndGrade,
@@ -30,7 +31,6 @@ import {
   parseSizeLabelSqm,
   parseSizeLabelDimensions,
   round3,
-  formatDateTime,
   CLASSES,
   fetchShipmentDetails,
   fetchShipmentDocuments,
@@ -217,6 +217,11 @@ export default function StockDashboard() {
   const [stockPage, setStockPage] = useState(1);
   const [arrivalPage, setArrivalPage] = useState(1);
   const [dispatchPage, setDispatchPage] = useState(1);
+  const [arrivals, setArrivals] = useState([]);
+  const [arrivalTotal, setArrivalTotal] = useState(0);
+  const [arrivalFetching, setArrivalFetching] = useState(false);
+  const [debouncedArrivalSearch, setDebouncedArrivalSearch] = useState('');
+  const [arrivalRefreshKey, setArrivalRefreshKey] = useState(0);
   const [dispatches, setDispatches] = useState([]);
   const [dispatchTotal, setDispatchTotal] = useState(0);
   const [dispatchFetching, setDispatchFetching] = useState(false);
@@ -270,6 +275,7 @@ export default function StockDashboard() {
     setData(json);
     if (json.role) setAccessRole(json.role);
     if (json.suggestions) setSuggestions(json.suggestions);
+    setArrivalRefreshKey((k) => k + 1);
     setDispatchRefreshKey((k) => k + 1);
     return json;
   }, []);
@@ -304,6 +310,46 @@ export default function StockDashboard() {
 
     return () => { mounted = false; };
   }, [user?.id, userLoading, t]);
+
+  // Debounce arrival search — reset to page 1 when search text changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedArrivalSearch(arrivalSearch);
+      setArrivalPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [arrivalSearch]);
+
+  // Reset arrival page when sort changes
+  useEffect(() => {
+    setArrivalPage(1);
+  }, [arrivalSort.key, arrivalSort.direction]);
+
+  // Fetch arrivals from server whenever page/pageSize/search/sort/refreshKey changes
+  useEffect(() => {
+    if (!user) return;
+    let mounted = true;
+    setArrivalFetching(true);
+    fetchArrivals({
+      page: arrivalPage,
+      pageSize,
+      search: debouncedArrivalSearch,
+      sortKey: arrivalSort.key,
+      sortDir: arrivalSort.direction,
+    })
+      .then((result) => {
+        if (!mounted) return;
+        setArrivals(result.arrivals || []);
+        setArrivalTotal(result.total || 0);
+      })
+      .catch((err) => {
+        console.error('Failed to fetch arrivals:', err);
+      })
+      .finally(() => {
+        if (mounted) setArrivalFetching(false);
+      });
+    return () => { mounted = false; };
+  }, [user?.id, arrivalPage, pageSize, debouncedArrivalSearch, arrivalSort.key, arrivalSort.direction, arrivalRefreshKey]);
 
   // Debounce dispatch search — reset to page 1 when search text changes
   useEffect(() => {
@@ -928,23 +974,7 @@ export default function StockDashboard() {
     { id: 'items', label: t('currentStock') },
   ];
 
-  const purchaseSourceRows = data?.recentPurchases || data?.recentArrivals || [];
-
-  const arrivalRows = useMemo(() => getSortedRows(
-    purchaseSourceRows.filter((shipment) => {
-      const query = normalizeSearchValue(arrivalSearch);
-      if (!query) return true;
-      return [shipment.shipment_number, shipment.status, shipment.generated_by, shipment.approved_by, formatDateTime(shipment.arrival_date), shipment.truck_license_plate, shipment.driver_name, shipment.product_names, shipment.product_skus, shipment.total_whole_qty, shipment.total_broken_qty].some((value) => matchesQuery(value, query));
-    }),
-    arrivalSort,
-    {
-      datetime: (s) => new Date(s.arrival_date || s.created_at || 0).getTime(),
-      shipment: (s) => s.shipment_number || '',
-      products: (s) => s.product_names || '',
-      quantities: (s) => Number(s.total_whole_qty || 0) + Number(s.total_broken_qty || 0),
-      status: (s) => s.status || '',
-    }
-  ), [purchaseSourceRows, arrivalSearch, arrivalSort]);
+  // arrival rows come from server — no client-side filtering or sorting needed
 
   // dispatch rows come from server — no client-side filtering or sorting needed
 
@@ -966,7 +996,18 @@ export default function StockDashboard() {
   ), [data?.activeItems, stockSearch, stockSort]);
 
   const stockPagination = useMemo(() => paginateRows(stockRows, stockPage, pageSize), [stockRows, stockPage, pageSize]);
-  const arrivalPagination = useMemo(() => paginateRows(arrivalRows, arrivalPage, pageSize), [arrivalRows, arrivalPage, pageSize]);
+  const arrivalPagination = useMemo(() => {
+    const pageCount = Math.max(1, Math.ceil(arrivalTotal / pageSize));
+    return {
+      page: arrivalPage,
+      pageCount,
+      rows: arrivals,
+      allRows: arrivals,
+      total: arrivalTotal,
+      startIndex: (arrivalPage - 1) * pageSize,
+      endIndex: Math.min(arrivalPage * pageSize, arrivalTotal),
+    };
+  }, [arrivals, arrivalTotal, arrivalPage, pageSize]);
   const dispatchPagination = useMemo(() => {
     const pageCount = Math.max(1, Math.ceil(dispatchTotal / pageSize));
     return {
@@ -1004,7 +1045,7 @@ export default function StockDashboard() {
     if (processedDeepLink === deepLinkKey) return;
 
     if (entityType === 'inbound_shipment') {
-      const target = (data.recentPurchases || data.recentArrivals || []).find((item) => Number(item.id) === entityId);
+      const target = arrivals.find((item) => Number(item.id) === entityId);
       setActiveTableView('purchases');
       setHighlightedShipmentKey(`arrival-${entityId}`);
       openShipmentPreview('arrival', target || { id: entityId, shipment_number: `INB-${entityId}` });
@@ -1052,11 +1093,11 @@ export default function StockDashboard() {
     const whole = (data?.activeItems || []).reduce((sum, item) => sum + Number(item.current_whole_qty || 0), 0);
     const broken = (data?.activeItems || []).reduce((sum, item) => sum + Number(item.current_broken_qty || 0), 0);
     const total = whole + broken;
-    const pending = (data?.recentPurchases || data?.recentArrivals || []).filter((item) => String(item.status || '').toLowerCase().includes('pending')).length;
+    const pending = data?.pendingArrivalCount ?? 0;
     const dispatchPending = data?.pendingDispatchCount ?? 0;
     const risk = (data?.activeItems || []).filter((item) => Number(item.reorder_level || 0) > 0 && (Number(item.current_whole_qty || 0) + Number(item.current_broken_qty || 0)) <= Number(item.reorder_level || 0)).length;
     return { totalWholeStock: whole, totalBrokenStock: broken, totalStockUnits: total, pendingArrivals: pending, pendingDispatches: dispatchPending, riskItems: risk };
-  }, [data?.activeItems, data?.recentPurchases, data?.recentArrivals, data?.pendingDispatchCount]);
+  }, [data?.activeItems, data?.pendingArrivalCount, data?.pendingDispatchCount]);
 
   const stockStats = useMemo(() => [
     { label: t('totalStock'), value: totalStockUnits, trend: totalStockUnits ? Math.round((totalWholeStock / totalStockUnits) * 100) : 0, trendLabel: t('wholeRatio'), icon: Boxes, accent: 'from-[#E07A00]/20 to-[#E07A00]/5', isNeutral: true },
@@ -1226,6 +1267,7 @@ export default function StockDashboard() {
           setPageSize={setPageSize}
           onRefreshData={refreshDashboard}
           onToast={setToast}
+          arrivalFetching={arrivalFetching}
         />
       )}
 

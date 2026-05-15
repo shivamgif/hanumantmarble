@@ -303,6 +303,20 @@ export async function fetchDashboardData() {
   return json;
 }
 
+export async function fetchArrivals({ page = 1, pageSize = 25, search = '', sortKey = 'datetime', sortDir = 'desc' } = {}) {
+  const params = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+    sortKey,
+    sortDir,
+  });
+  if (search) params.set('search', search);
+  const response = await fetch(`/api/stock/arrivals?${params}`);
+  const json = await response.json();
+  if (!response.ok) throw new Error(json.error || json.message || 'Fetch failed');
+  return json;
+}
+
 export async function fetchDispatches({ page = 1, pageSize = 25, search = '', sortKey = 'datetime', sortDir = 'desc' } = {}) {
   const params = new URLSearchParams({
     page: String(page),

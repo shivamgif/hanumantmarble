@@ -80,62 +80,13 @@ export async function GET(request) {
         salespersonDivisionIds ? [salespersonDivisionIds] : []
       ),
       sql(
-        `SELECT
-           s.id,
-           s.shipment_number,
-           s.truck_license_plate_snapshot AS truck_license_plate,
-           s.driver_name_snapshot AS driver_name,
-           s.arrival_date,
-           s.invoice_number,
-           s.invoice_date,
-           s.origin_city,
-           loc.name AS destination_warehouse_name,
-           s.payment_status,
-           s.paid_amount,
-           s.payment_date,
-           s.payment_reference,
-           s.payment_mode,
-           s.status,
-           s.approval_status,
-           s.total_whole_qty,
-           s.total_broken_qty,
-           s.grand_total,
-           s.freight_weight_kg,
-           COALESCE(submitter.name, submitter.email, s.created_by, '—') AS generated_by,
-           COALESCE(submitter.role, 'stock_maintainer') AS generated_by_role,
-           CASE
-             WHEN s.approval_status = 'approved' THEN COALESCE(approver.name, approver.email, '—')
-             ELSE '—'
-           END AS approved_by
+        `SELECT COUNT(*) AS pending_arrival_count
          FROM stock_inbound_shipments s
-         LEFT JOIN stock_app_users submitter ON submitter.id = s.submitted_by_user_id
-         LEFT JOIN stock_app_users approver ON approver.id = s.approved_by_user_id
-         LEFT JOIN stock_locations loc ON loc.id = s.destination_location_id
-         ${salespersonDivisionIds ? `WHERE s.id IN (
+         WHERE s.status ILIKE '%pending%'
+         ${salespersonDivisionIds ? `AND s.id IN (
            SELECT DISTINCT isi.inbound_shipment_id FROM stock_inbound_shipment_items isi
            JOIN stock_items i ON i.id = isi.item_id WHERE i.division_id = ANY($1::bigint[])
-         )` : ''}
-         ORDER BY s.created_at DESC
-         LIMIT 20`,
-        salespersonDivisionIds ? [salespersonDivisionIds] : []
-      ),
-      sql(
-        `SELECT
-           isi.inbound_shipment_id,
-           STRING_AGG(DISTINCT i.name, ', ' ORDER BY i.name) AS product_names,
-           STRING_AGG(DISTINCT i.sku, ', ' ORDER BY i.sku) AS product_skus
-           ,COALESCE(SUM(isi.qty_sqm), 0) AS total_qty_sqm
-           ,COALESCE(AVG(NULLIF(isi.cost_per_sqm, 0)), 0) AS avg_cost_per_sqm
-           ,STRING_AGG(DISTINCT COALESCE(d.name, 'Adhesive'), ', ' ORDER BY COALESCE(d.name, 'Adhesive')) AS divisions
-           ,COALESCE(SUM(CASE WHEN i.unit_of_measure = 'bag' THEN isi.ordered_qty ELSE 0 END), 0) AS total_bag_qty
-         FROM stock_inbound_shipment_items isi
-         JOIN stock_items i ON i.id = isi.item_id
-         LEFT JOIN stock_divisions d ON d.id = i.division_id
-         WHERE isi.inbound_shipment_id IN (
-           SELECT id FROM stock_inbound_shipments ORDER BY created_at DESC LIMIT 20
-         )
-         ${salespersonDivisionIds ? 'AND i.division_id = ANY($1::bigint[])' : ''}
-         GROUP BY isi.inbound_shipment_id`,
+         )` : ''}`,
         salespersonDivisionIds ? [salespersonDivisionIds] : []
       ),
       sql(
@@ -205,26 +156,8 @@ export async function GET(request) {
       : Promise.resolve([{ current_month_dispatch_value: 0 }]);
 
     const [dashboardResults, suggestionsResults, currentMonthValueRows] = await Promise.all([dashboardPromise, suggestionsPromise, currentMonthValuePromise]);
-    const [summaryRows, activeItems, recentArrivalsRaw, recentArrivalProducts, pendingDispatchCountRows] = dashboardResults;
+    const [summaryRows, activeItems, pendingArrivalCountRows, pendingDispatchCountRows] = dashboardResults;
     const [suppliers, transporters, items, brands, divisions, finishes, grades, sizes, hsnCodes, originCities, warehouses, drivers, trucks, paymentModes, bagTypes, bagItems, salespersons] = suggestionsResults;
-
-    const recentArrivalProductsByShipment = new Map(
-      recentArrivalProducts.map((item) => [String(item.inbound_shipment_id), item])
-    );
-
-    const recentArrivals = recentArrivalsRaw.map((shipment) => {
-      const details = recentArrivalProductsByShipment.get(String(shipment.id)) || {};
-
-      return {
-        ...shipment,
-        product_names: details.product_names || '',
-        product_skus: details.product_skus || '',
-        total_qty_sqm: details.total_qty_sqm || 0,
-        avg_cost_per_sqm: details.avg_cost_per_sqm || 0,
-        divisions: details.divisions || '',
-        total_bag_qty: details.total_bag_qty || 0,
-      };
-    });
 
     return NextResponse.json({
       role: normalizeStockRole(appUser?.role),
@@ -257,8 +190,7 @@ export async function GET(request) {
       },
       summary: summaryRows[0] || {},
       activeItems,
-      recentPurchases: recentArrivals,
-      recentArrivals,
+      pendingArrivalCount: Number(pendingArrivalCountRows[0]?.pending_arrival_count ?? 0),
       pendingDispatchCount: Number(pendingDispatchCountRows[0]?.pending_dispatch_count ?? 0),
       currentMonthDispatchValue: Number(currentMonthValueRows[0]?.current_month_dispatch_value ?? 0),
     });
