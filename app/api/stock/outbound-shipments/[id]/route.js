@@ -144,13 +144,11 @@ async function validateDispatchDivisionIntegrityTx(tx, items, salespersonUser) {
   }
 
   const itemDivisionIds = [...new Set(orderedRows.map((row) => Number(row.division_id)))];
-  if (itemDivisionIds.length !== 1) {
-    throw createValidationError('All dispatch items must be from the same division.', 'mixed_item_divisions');
-  }
 
   const salespersonDivisionIds = (salespersonUser.division_ids || []).map(Number);
-  if (!salespersonDivisionIds.includes(itemDivisionIds[0])) {
-    throw createValidationError('Salesperson division does not match dispatch item division.', 'division_mismatch');
+  const unauthorizedDivisions = itemDivisionIds.filter((divId) => !salespersonDivisionIds.includes(divId));
+  if (unauthorizedDivisions.length > 0) {
+    throw createValidationError('Dispatch items contain divisions not assigned to this salesperson.', 'division_mismatch');
   }
 
   return {
