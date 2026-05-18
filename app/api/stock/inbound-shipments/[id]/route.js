@@ -760,7 +760,7 @@ export async function PATCH(request, context) {
         const approvalCheck = await sql('SELECT approval_status, locked_at FROM stock_inbound_shipments WHERE id = $1', [id]);
         if (approvalCheck[0]?.locked_at) {
           const existingItems = await sql(
-            `SELECT id, item_id, ordered_qty, received_whole_qty, received_broken_qty, unit_cost, cost_per_sqm, ordered_qty_sqm, total_cost
+            `SELECT id, item_id, ordered_qty, received_whole_qty, received_broken_qty, unit_cost, cost_per_sqm, ordered_qty_sqm, total_cost, discount_amount
              FROM stock_inbound_shipment_items
              WHERE inbound_shipment_id = $1
              ORDER BY id ASC`,
@@ -778,6 +778,8 @@ export async function PATCH(request, context) {
             if (!item) {
               return {
                 existing,
+                costPerSqm: existing.cost_per_sqm,
+                unitCost: existing.unit_cost,
                 lineGross: Number(existing.total_cost || 0),
                 discountAmount: Number(existing.discount_amount || 0),
               };
@@ -796,11 +798,22 @@ export async function PATCH(request, context) {
               Number(existing.received_broken_qty || 0) !== requestedBroken ||
               Number(existing.ordered_qty || 0) !== requestedOrdered
             ) {
-              throw new Error('Locked inbound shipment can only update discounts, not quantities');
+              throw new Error('Locked inbound shipment can only update rates and discounts, not quantities');
             }
+            const requestedCostPerSqm = item.costPerSqm != null && item.costPerSqm !== ''
+              ? Number(item.costPerSqm)
+              : Number(existing.cost_per_sqm || 0);
+            const requestedRatePerBag = item.ratePerBag != null && item.ratePerBag !== ''
+              ? Number(item.ratePerBag)
+              : Number(existing.unit_cost || 0);
+            const lineGross = Number(existing.ordered_qty_sqm || 0) > 0
+              ? Number((Number(existing.ordered_qty_sqm) * requestedCostPerSqm).toFixed(2))
+              : Number((Number(existing.ordered_qty || 0) * requestedRatePerBag).toFixed(2));
             return {
               existing,
-              lineGross: Number(existing.total_cost || 0),
+              costPerSqm: Number(existing.ordered_qty_sqm || 0) > 0 ? requestedCostPerSqm : null,
+              unitCost: Number(existing.ordered_qty_sqm || 0) > 0 ? Number(existing.unit_cost || 0) : requestedRatePerBag,
+              lineGross,
               discountAmount: Math.max(0, Number(item.discountAmount || 0)),
             };
           });
@@ -823,9 +836,14 @@ export async function PATCH(request, context) {
             const landedCost = qtyBasis > 0 ? Number((priced.effectiveLineCost / qtyBasis).toFixed(2)) : Number(existing.unit_cost || 0);
             await sql(
               `UPDATE stock_inbound_shipment_items
-               SET discount_amount = $1, landed_cost = $2, updated_at = NOW()
-               WHERE id = $3`,
-              [priced.lineDiscount, landedCost, existing.id]
+               SET discount_amount = $1,
+                   landed_cost = $2,
+                   cost_per_sqm = COALESCE($3::numeric, cost_per_sqm),
+                   unit_cost = COALESCE($4::numeric, unit_cost),
+                   total_cost = $5,
+                   updated_at = NOW()
+               WHERE id = $6`,
+              [priced.lineDiscount, landedCost, priced.costPerSqm, priced.unitCost, priced.lineGross, existing.id]
             );
             await sql(
               `UPDATE stock_inventory_lots
