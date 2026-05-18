@@ -1,34 +1,76 @@
 'use client';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  Legend,
+} from 'recharts';
 import { getTranslation } from '@/lib/translations';
 import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { useRouter } from 'next/navigation';
 import {
-  BarChart3,
   TrendingUp,
   TrendingDown,
-  Activity,
   ChevronRight,
-  ArrowLeft,
-  Calendar,
   AlertCircle,
-  Trophy,
-  Users,
-  ChevronDown,
-  ChevronUp,
   Clock,
   Package,
-  ShieldCheck,
-  CheckCircle2,
   Hourglass,
-  Search,
-  Printer,
   X,
-  FileText,
+  Download,
+  PackageX,
+  Archive,
+  Check,
+  Loader2,
 } from 'lucide-react';
+
+function formatRelativeTime(date) {
+  if (!date) return '—';
+  const d = new Date(date);
+  const diffMs = Date.now() - d.getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'now';
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d`;
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
+function paceAdjustedTarget(goal) {
+  const now = new Date();
+  const day = now.getDate();
+  const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  return (Number(goal || 0) * day) / totalDays;
+}
+
+function CsvExportButton({ type, months, label }) {
+  const href = `/api/stock/admin/analytics/export?type=${type}&months=${months}`;
+  return (
+    <a
+      href={href}
+      className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-brand-primary hover:border-brand-primary/40 transition-all"
+      download
+    >
+      <Download className="h-3.5 w-3.5" />
+      {label}
+    </a>
+  );
+}
 
 const BRAND_PRIMARY = '#E07A00';
 const BRAND_SECONDARY = '#1A1A54';
@@ -64,11 +106,12 @@ function formatCompactINR(value) {
 
 const CLASSES = {
   heroGrid: 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 lg:gap-6',
-  card: 'glass-panel rounded-3xl sm:rounded-[2rem] p-4 sm:p-6 lg:p-8 transition-all duration-500 hover:shadow-xl group/card bg-white/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800/60 relative z-10 hover:z-50',
-  title: 'text-[10px] font-black uppercase tracking-[0.25em] text-slate-600 dark:text-slate-400 group-hover/card:text-brand-primary transition-colors',
+  card: 'rounded-2xl p-5 sm:p-6 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800',
+  title: 'text-[10px] font-black uppercase tracking-[0.25em] text-slate-600 dark:text-slate-400',
   value: 'mt-2 text-3xl font-extrabold text-slate-900 dark:text-slate-100 font-sans tracking-tight',
   grid: 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
   mobileScroll: 'flex overflow-x-auto no-scrollbar gap-2 pb-2 snap-x snap-mandatory overscroll-x-contain',
+  sectionHead: 'text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400 mb-4',
 };
 
 function TrendCapsule({ value, isPositive }) {
@@ -85,49 +128,75 @@ function TrendCapsule({ value, isPositive }) {
   );
 }
 
-function AnalyticsCard({ title, subtitle, topRight, contextBar, insight, showInsight, children, className = '' }) {
+function AnalyticsCard({ title, subtitle, topRight, contextBar, children, className = '' }) {
   return (
     <div className={`${CLASSES.card} ${className}`}>
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
+        <div className="min-w-0">
           <h3 className={CLASSES.title}>{title}</h3>
-          {subtitle && <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 font-bold tracking-tight leading-relaxed uppercase opacity-70">{subtitle}</p>}
+          {subtitle ? <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-bold tracking-tight leading-relaxed">{subtitle}</p> : null}
         </div>
-        <div className="shrink-0">
-          {topRight}
-        </div>
+        <div className="shrink-0">{topRight}</div>
       </div>
-      {showInsight && insight && (
-        <div className="mb-8 p-5 rounded-2xl bg-brand-primary/5 border border-brand-primary/10 animate-scale-in">
-          <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 font-bold">
-            <span className="font-black text-brand-primary uppercase mr-2 text-[9px] tracking-[0.2em] border-b-2 border-brand-primary/20 pb-0.5">Analysis:</span>
-            {insight}
-          </p>
+      {contextBar ? (
+        <div className="mb-4 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800/50">
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold tracking-tight">{contextBar}</p>
         </div>
-      )}
-      {contextBar && (
-        <div className="mb-8 px-4 py-3 rounded-2xl bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800/50">
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-black italic tracking-tight uppercase opacity-60">{contextBar}</p>
-        </div>
-      )}
-      <div className="relative w-full">
-        {children}
-      </div>
+      ) : null}
+      <div className="relative w-full">{children}</div>
     </div>
   );
 }
 
-function StockHealthScorecard({ data, inventoryKpis, onTimeRatio, approvalRate, outstandingExposure, showInsight }) {
+function formatHours(hours) {
+  const h = Number(hours || 0);
+  if (h < 1) return `${Math.round(h * 60)}m`;
+  if (h < 48) return `${h.toFixed(1)}h`;
+  return `${(h / 24).toFixed(1)}d`;
+}
+
+function StockHealthScorecard({ data, stockRisk, approvalOps }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   const healthy = data.reduce((s, d) => s + Math.max(0, Number(d.total_items || 0) - Number(d.at_risk || 0)), 0);
   const totalItems = data.reduce((s, d) => s + Number(d.total_items || 0), 0);
-  const atRiskCount = data.reduce((s, d) => s + Number(d.at_risk || 0), 0);
   const healthyRatio = totalItems > 0 ? healthy / totalItems : 0;
-  const onTimePct = Math.round((onTimeRatio || 0) * 100);
-  const approvalPct = Math.round((approvalRate || 0) * 100);
+
+  const zeroStock = Number(stockRisk?.zeroStock || 0);
+  const lowStock = Number(stockRisk?.lowStock || 0);
+  const riskCount = zeroStock + lowStock;
+  const pendingCount = Number(approvalOps?.pendingCount || 0);
+  const oldestPendingHours = Number(approvalOps?.oldestPendingHours || 0);
+  const medianLagHours = Number(approvalOps?.medianLagHours || 0);
 
   const metrics = [
+    {
+      label: t('stockRisk'),
+      value: formatCompactNumber(riskCount),
+      subValue: `${zeroStock} ${t('zeroStock')} · ${lowStock} ${t('lowStock')}`,
+      color: riskCount > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400',
+      bg: riskCount > 0 ? 'bg-rose-500/10' : 'bg-emerald-500/10',
+      border: riskCount > 0 ? 'border-rose-500/20' : 'border-emerald-500/20',
+      icon: AlertCircle,
+    },
+    {
+      label: t('pendingApprovals'),
+      value: formatCompactNumber(pendingCount),
+      subValue: pendingCount > 0 ? `${formatHours(oldestPendingHours)} ${t('oldestPending')}` : t('awaitingReview'),
+      color: pendingCount > 10 ? 'text-rose-600 dark:text-rose-400' : pendingCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400',
+      bg: pendingCount > 10 ? 'bg-rose-500/10' : pendingCount > 0 ? 'bg-amber-500/10' : 'bg-emerald-500/10',
+      border: pendingCount > 10 ? 'border-rose-500/20' : pendingCount > 0 ? 'border-amber-500/20' : 'border-emerald-500/20',
+      icon: Hourglass,
+    },
+    {
+      label: t('approvalLag'),
+      value: formatHours(medianLagHours),
+      subValue: t('medianHoursToApprove'),
+      color: medianLagHours > 24 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400',
+      bg: medianLagHours > 24 ? 'bg-amber-500/10' : 'bg-emerald-500/10',
+      border: medianLagHours > 24 ? 'border-amber-500/20' : 'border-emerald-500/20',
+      icon: Clock,
+    },
     {
       label: t('operationalStability'),
       value: `${(healthyRatio * 100).toFixed(1)}%`,
@@ -136,37 +205,6 @@ function StockHealthScorecard({ data, inventoryKpis, onTimeRatio, approvalRate, 
       bg: 'bg-emerald-500/10',
       border: 'border-emerald-500/20',
       icon: Package,
-      trend: null,
-    },
-    {
-      label: t('inventoryVulnerability'),
-      value: formatCompactNumber(atRiskCount),
-      subValue: t('unitsBelowThreshold'),
-      color: 'text-amber-600 dark:text-amber-400',
-      bg: 'bg-amber-500/10',
-      border: 'border-amber-500/20',
-      icon: AlertCircle,
-      trend: null,
-    },
-    {
-      label: t('onTimeDelivery'),
-      value: `${onTimePct}%`,
-      subValue: t('shipmentsOnSchedule'),
-      color: onTimePct >= 80 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400',
-      bg: onTimePct >= 80 ? 'bg-emerald-500/10' : 'bg-rose-500/10',
-      border: onTimePct >= 80 ? 'border-emerald-500/20' : 'border-rose-500/20',
-      icon: ShieldCheck,
-      trend: null,
-    },
-    {
-      label: t('approvalRate'),
-      value: `${approvalPct}%`,
-      subValue: t('purchasesApproved'),
-      color: approvalPct >= 70 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400',
-      bg: approvalPct >= 70 ? 'bg-emerald-500/10' : 'bg-amber-500/10',
-      border: approvalPct >= 70 ? 'border-emerald-500/20' : 'border-amber-500/20',
-      icon: CheckCircle2,
-      trend: null,
     },
   ];
 
@@ -195,20 +233,25 @@ function StockHealthScorecard({ data, inventoryKpis, onTimeRatio, approvalRate, 
   );
 }
 
-function SalesRevenueChart({ data, showInsight }) {
+function ChartTooltip({ active, payload, label, formatter, labelFormatter }) {
+  if (!active || !payload || !payload.length) return null;
+  return (
+    <div className="rounded-2xl bg-slate-900/95 backdrop-blur-md dark:bg-slate-800/95 text-white p-3 shadow-2xl border border-white/10">
+      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">
+        {labelFormatter ? labelFormatter(label) : label}
+      </p>
+      {payload.map((entry, i) => (
+        <p key={i} className="text-sm font-black font-sans tracking-tight" style={{ color: entry.color || entry.stroke || entry.fill }}>
+          {entry.name}: {formatter ? formatter(entry.value, entry) : entry.value}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function SalesRevenueChart({ data }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
-  const containerRef = useRef(null);
-  const [width, setWidth] = useState(500);
-  const [hoveredIndex, setHoveredIndex] = useState(null);
-  const [mouseX, setMouseX] = useState(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
-  }, []);
 
   if (!data || data.length === 0)
     return (
@@ -217,20 +260,10 @@ function SalesRevenueChart({ data, showInsight }) {
       </AnalyticsCard>
     );
 
-  const height = 256;
-  const pad = { t: 20, r: 10, b: 40, l: 40 };
-  const innerH = height - pad.t - pad.b;
-  const innerW = width - pad.l - pad.r;
-  const maxVal = Math.max(...data.map((d) => Number(d.total || 0)), 1);
-
-  const points = data.map((d, i) => ({
-    x: pad.l + (i / Math.max(data.length - 1, 1)) * innerW,
-    y: pad.t + innerH - (Number(d.total || 0) / maxVal) * innerH,
-    d,
+  const chartData = data.map((d) => ({
+    month: formatMonthLabel(d.month || d.bucket),
+    total: Number(d.total || 0),
   }));
-
-  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-  const areaPath = `${linePath} L ${points[points.length - 1]?.x || 0} ${height - pad.b} L ${points[0]?.x || 0} ${height - pad.b} Z`;
 
   const trend =
     data.length >= 2
@@ -240,121 +273,40 @@ function SalesRevenueChart({ data, showInsight }) {
       : 0;
   const isPositive = trend >= 0;
 
-  const peakPoint = points.reduce((best, p) => (Number(p.d.total || 0) > Number(best.d.total || 0) ? p : best), points[0]);
-  const peakLabel = peakPoint ? `${t('highestActivity')}: ${formatCompactNumber(peakPoint.d.total)} ${t('unitsIn')} ${formatMonthLabel(peakPoint.d.month || peakPoint.d.bucket)}` : null;
+  const peak = data.reduce((best, d) => (Number(d.total || 0) > Number(best.total || 0) ? d : best), data[0]);
+  const peakLabel = peak ? `${t('highestActivity')}: ${formatCompactNumber(peak.total)} ${t('unitsIn')} ${formatMonthLabel(peak.month || peak.bucket)}` : null;
 
   return (
     <AnalyticsCard
       title={t('activityTrend')}
       subtitle={t('monthlyOutboundVolume')}
       contextBar={peakLabel}
-      insight={t('analysisActivity')}
-      showInsight={showInsight}
       topRight={<TrendCapsule value={trend} isPositive={isPositive} />}
     >
-      <div
-        className="relative h-72 lg:h-80 bg-slate-50/30 dark:bg-slate-900/40 rounded-[2rem] border border-slate-100 dark:border-slate-800 flex items-end p-4 select-none"
-        ref={containerRef}
-        onMouseMove={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const nearest = points.reduce((prev, curr, i) => Math.abs(curr.x - x) < Math.abs(prev.x - x) ? { ...curr, i } : prev, { x: Infinity, i: null });
-          if (nearest.i !== null && Math.abs(nearest.x - x) < 40) {
-            setHoveredIndex(nearest.i);
-          } else {
-            setHoveredIndex(null);
-          }
-        }}
-        onMouseLeave={() => setHoveredIndex(null)}
-        onTouchMove={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          const x = e.touches[0].clientX - rect.left;
-          const nearest = points.reduce((prev, curr, i) => Math.abs(curr.x - x) < Math.abs(prev.x - x) ? { ...curr, i } : prev, { x: Infinity, i: null });
-          if (nearest.i !== null && Math.abs(nearest.x - x) < 40) {
-            setHoveredIndex(nearest.i);
-          } else {
-            setHoveredIndex(null);
-          }
-        }}
-        onTouchEnd={() => setHoveredIndex(null)}
-      >
-        <svg className="absolute inset-0" width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-          <defs>
-            <linearGradient id="salesAreaGradient" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor={BRAND_PRIMARY} stopOpacity="0.25" />
-              <stop offset="100%" stopColor={BRAND_PRIMARY} stopOpacity="0.01" />
-            </linearGradient>
-          </defs>
-
-          {[0, 0.5, 1].map((t) => (
-            <text key={`y-${t}`} x={pad.l - 8} y={pad.t + innerH * (1 - t) + 4} textAnchor="end" fontSize="10" className="fill-slate-400 font-bold">
-              {formatCompactNumber(maxVal * t)}
-            </text>
-          ))}
-
-          {points.map((p, i) => (
-            <line key={`grid-${i}`} x1={p.x} x2={p.x} y1={pad.t} y2={height - pad.b} stroke="currentColor" className="text-slate-100 dark:text-slate-800/40" strokeDasharray="4 4" />
-          ))}
-
-          {hoveredIndex !== null && points[hoveredIndex] && (
-            <line
-              x1={points[hoveredIndex].x} x2={points[hoveredIndex].x}
-              y1={pad.t} y2={height - pad.b}
-              stroke={BRAND_PRIMARY}
-              strokeWidth="2"
-              strokeDasharray="6 4"
-              opacity="0.6"
-            />
-          )}
-
-          <path d={areaPath} fill="url(#salesAreaGradient)" />
-          <path d={linePath} fill="none" stroke={BRAND_PRIMARY} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-lg" />
-
-          {points.map((p, i) => (
-            <g key={i}>
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r="6"
-                fill={BRAND_PRIMARY}
-                stroke="white"
-                strokeWidth="3"
-                className={`transition-all duration-300 ${hoveredIndex === i ? 'scale-150' : 'opacity-0 hover:opacity-100'}`}
-                onMouseEnter={() => setHoveredIndex(i)}
-                onTouchStart={() => setHoveredIndex(i)}
-              />
-              <text x={p.x} y={height - 15} textAnchor="middle" fontSize="10" className="fill-slate-400 font-black uppercase tracking-tighter">
-                {(width > 500 || data.length <= 6 || i % 2 === 0) ? formatMonthLabel(p.d.month || p.d.bucket) : ''}
-              </text>
-            </g>
-          ))}
-        </svg>
-        {hoveredIndex !== null && (
-          <div
-            className="absolute z-50 pointer-events-none rounded-2xl bg-slate-900/95 backdrop-blur-md dark:bg-slate-800/95 text-white p-4 shadow-2xl animate-scale-in border border-white/10"
-            style={{ left: points[hoveredIndex].x, top: Math.max(0, points[hoveredIndex].y - 80), transform: 'translate(-50%, -100%)' }}
-          >
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">{formatMonthLabel(points[hoveredIndex].d.month || points[hoveredIndex].d.bucket)}</p>
-            <p className="text-lg font-black font-sans tracking-tight">{formatCompactNumber(points[hoveredIndex].d.total)} {t('units')}</p>
-          </div>
-        )}
+      <div className="h-72 lg:h-80 bg-slate-50/30 dark:bg-slate-900/40 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
+          <AreaChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="salesArea" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor={BRAND_PRIMARY} stopOpacity={0.3} />
+                <stop offset="100%" stopColor={BRAND_PRIMARY} stopOpacity={0.01} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="4 4" className="stroke-slate-100 dark:stroke-slate-800/40" vertical={false} />
+            <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactNumber} width={40} />
+            <RechartsTooltip content={<ChartTooltip formatter={(v) => `${formatCompactNumber(v)} ${t('units')}`} />} />
+            <Area type="monotone" dataKey="total" name={t('units')} stroke={BRAND_PRIMARY} strokeWidth={3} fill="url(#salesArea)" dot={{ fill: BRAND_PRIMARY, r: 4 }} activeDot={{ r: 7, stroke: 'white', strokeWidth: 3 }} />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
     </AnalyticsCard>
   );
 }
 
-function TopDivisionsChart({ data, showInsight }) {
+function TopDivisionsChart({ data }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
-  const containerRef = useRef(null);
-  const [width, setWidth] = useState(500);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
-  }, []);
 
   if (!data || data.length === 0)
     return (
@@ -364,48 +316,40 @@ function TopDivisionsChart({ data, showInsight }) {
     );
 
   const topDivisions = [...data].sort((a, b) => Number(b.total_revenue || 0) - Number(a.total_revenue || 0)).slice(0, 5);
-  const maxVal = Math.max(...topDivisions.map((d) => Number(d.total_revenue || 0)), 1);
+  const totalRev = topDivisions.reduce((s, d) => s + Number(d.total_revenue || 0), 0) || 1;
+  const pieData = topDivisions.map((d, i) => ({
+    name: d.division || 'Unknown',
+    value: Number(d.total_revenue || 0),
+    color: INDUSTRIAL_COLORS[i % INDUSTRIAL_COLORS.length],
+  }));
 
   return (
     <AnalyticsCard
       title={t('divisionContribution')}
       subtitle={t('performanceByUnit')}
-      insight={t('analysisDivision')}
-      showInsight={showInsight}
     >
-      <div className="space-y-6" ref={containerRef}>
+      <div className="h-44 mb-4">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
+          <PieChart>
+            <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={2}>
+              {pieData.map((entry, i) => (
+                <Cell key={i} fill={entry.color} stroke="none" />
+              ))}
+            </Pie>
+            <RechartsTooltip content={<ChartTooltip formatter={(v) => formatCompactINR(v)} />} />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="space-y-3">
         {topDivisions.map((d, i) => {
-          const actualPercent = (Number(d.total_revenue || 0) / maxVal) * 100;
+          const pct = (Number(d.total_revenue || 0) / totalRev) * 100;
           const color = INDUSTRIAL_COLORS[i % INDUSTRIAL_COLORS.length];
           return (
-            <div
-              key={d.division || i}
-              className="relative group cursor-default"
-            >
-              <div className="flex justify-between text-xs font-black mb-2 px-1">
-                <span className="text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] text-[10px] group-hover:text-brand-primary transition-colors">{d.division || 'Unknown'}</span>
-                <span className="font-sans text-slate-900 dark:text-white tracking-widest">{formatCompactINR(d.total_revenue)}</span>
-              </div>
-              <div className="h-2.5 w-full bg-slate-100/50 dark:bg-slate-800/30 rounded-full overflow-hidden border border-slate-200/20">
-                <div
-                  className="h-full rounded-full transition-all duration-1000 ease-out relative"
-                  style={{ width: `${actualPercent}%`, backgroundColor: color }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent" />
-                </div>
-              </div>
-              <div className="flex justify-between mt-1 px-1">
-                {d.top_item && (
-                  <span className="text-[9px] text-slate-400 truncate max-w-[50%]" title={d.top_item}>
-                    <span className="text-emerald-500 font-bold">Top:</span> {d.top_item} ({formatCompactINR(d.top_item_revenue)})
-                  </span>
-                )}
-                {d.worst_item && d.worst_item !== d.top_item && (
-                  <span className="text-[9px] text-slate-400 truncate max-w-[50%] text-right" title={d.worst_item}>
-                    <span className="text-amber-500 font-bold">Low:</span> {d.worst_item} ({formatCompactINR(d.worst_item_revenue)})
-                  </span>
-                )}
-              </div>
+            <div key={d.division || i} className="flex items-center gap-3 text-xs">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+              <span className="font-black uppercase tracking-[0.15em] text-[10px] text-slate-600 dark:text-slate-300 flex-1 truncate">{d.division || 'Unknown'}</span>
+              <span className="font-sans font-black text-slate-900 dark:text-white tracking-wider">{formatCompactINR(d.total_revenue)}</span>
+              <span className="text-[9px] font-bold text-slate-400 w-10 text-right">{pct.toFixed(0)}%</span>
             </div>
           );
         })}
@@ -414,20 +358,9 @@ function TopDivisionsChart({ data, showInsight }) {
   );
 }
 
-function MonthlyCostVolumeChart({ dispatchTrend, costTrend, showInsight }) {
+function MonthlyCostVolumeChart({ dispatchTrend, costTrend }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
-  const containerRef = useRef(null);
-  const [width, setWidth] = useState(500);
-  const [hoveredIndex, setHoveredIndex] = useState(null);
-  const [mouseX, setMouseX] = useState(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
-  }, []);
 
   const chartData = useMemo(() => {
     const byMonth = {};
@@ -443,7 +376,12 @@ function MonthlyCostVolumeChart({ dispatchTrend, costTrend, showInsight }) {
     });
     return Object.values(byMonth)
       .sort((a, b) => (a.month < b.month ? -1 : 1))
-      .slice(-6);
+      .slice(-6)
+      .map((d) => ({
+        month: formatMonthLabel(d.month),
+        inbound: d.inboundSqm || 0,
+        outbound: d.outboundSqm || 0,
+      }));
   }, [costTrend, dispatchTrend]);
 
   if (!chartData || chartData.length === 0)
@@ -453,19 +391,10 @@ function MonthlyCostVolumeChart({ dispatchTrend, costTrend, showInsight }) {
       </AnalyticsCard>
     );
 
-  const height = 280;
-  const pad = { t: 20, r: 10, b: 40, l: 40 };
-  const innerH = height - pad.t - pad.b;
-  const innerW = width - pad.l - pad.r;
-  const maxVal = Math.max(...chartData.map((d) => Math.max(d.inboundSqm || 0, d.outboundSqm || 0)), 1);
-  const barWidth = Math.max(12, (innerW / chartData.length) * 0.22);
-
   return (
     <AnalyticsCard
       title={t('businessFlow')}
       subtitle={t('inboundOutboundMatch')}
-      insight={t('analysisFlow')}
-      showInsight={showInsight}
       topRight={
         <div className="flex gap-4">
           <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] shadow-sm bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-800">
@@ -478,72 +407,17 @@ function MonthlyCostVolumeChart({ dispatchTrend, costTrend, showInsight }) {
       }
       className="col-span-1 lg:col-span-2"
     >
-      <div
-        className="relative h-[280px] bg-slate-50/20 dark:bg-slate-900/40 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 select-none"
-        ref={containerRef}
-        onMouseMove={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          setMouseX(e.clientX - rect.left);
-        }}
-        onMouseLeave={() => { setMouseX(null); setHoveredIndex(null); }}
-        onTouchMove={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          setMouseX(e.touches[0].clientX - rect.left);
-        }}
-        onTouchEnd={() => { setMouseX(null); setHoveredIndex(null); }}
-      >
-        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
-          {[0, 0.5, 1].map((t) => (
-            <g key={`y-${t}`}>
-              <line
-                x1={pad.l}
-                x2={width - pad.r}
-                y1={pad.t + innerH * (1 - t)}
-                y2={pad.t + innerH * (1 - t)}
-                stroke="currentColor"
-                strokeDasharray="4 6"
-                className="text-slate-200 dark:text-slate-800/60"
-              />
-              <text x={pad.l - 8} y={pad.t + innerH * (1 - t) + 4} textAnchor="end" fontSize="10" className="fill-slate-400 font-bold">
-                {formatCompactNumber(maxVal * t)}
-              </text>
-            </g>
-          ))}
-
-          {chartData.map((d, i) => {
-            const groupX = pad.l + (i + 0.5) * (innerW / chartData.length);
-            const costH = ((d.inboundSqm || 0) / maxVal) * innerH;
-            const soldH = ((d.outboundSqm || 0) / maxVal) * innerH;
-            const costY = pad.t + innerH - costH;
-            const soldY = pad.t + innerH - soldH;
-
-            return (
-              <g key={i} onMouseEnter={() => setHoveredIndex(i)} onMouseLeave={() => setHoveredIndex(null)} onTouchStart={() => setHoveredIndex(i)} className="cursor-pointer group">
-                <rect x={groupX - barWidth - 4} y={costY} width={barWidth} height={costH} fill="#F43F5E" rx="6" className="transition-all duration-300 group-hover:brightness-125" fillOpacity="0.9" />
-                <rect x={groupX + 4} y={soldY} width={barWidth} height={soldH} fill="#10B981" rx="6" className="transition-all duration-300 group-hover:brightness-125" fillOpacity="0.9" />
-                <text x={groupX} y={height - 15} textAnchor="middle" fontSize="10" className="fill-slate-400 font-black uppercase tracking-widest">
-                  {(width > 500 || chartData.length <= 6 || i % 2 === 0) ? formatMonthLabel(d.month || d.bucket) : ''}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
-        {hoveredIndex !== null && (
-          <div
-            className="absolute z-50 pointer-events-none rounded-[1.5rem] bg-slate-900/95 backdrop-blur-md dark:bg-slate-800/95 text-white p-4 shadow-2xl border border-white/10"
-            style={{
-              left: pad.l + (hoveredIndex + 0.5) * (innerW / chartData.length),
-              top: pad.t + innerH / 2,
-              transform: 'translate(-50%, -100%)',
-            }}
-          >
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">{formatMonthLabel(chartData[hoveredIndex].month)}</p>
-            <div className="flex flex-col gap-2 text-sm font-black tracking-tight">
-              <span className="text-rose-400 flex items-center justify-between gap-4">{t('inbound')}: <span>{formatCompactNumber(chartData[hoveredIndex].inboundSqm)} sqm</span></span>
-              <span className="text-emerald-400 flex items-center justify-between gap-4">{t('outbound')}: <span>{formatCompactNumber(chartData[hoveredIndex].outboundSqm)} sqm</span></span>
-            </div>
-          </div>
-        )}
+      <div className="h-[280px] bg-slate-50/20 dark:bg-slate-900/40 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-4">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
+          <BarChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }} barGap={4}>
+            <CartesianGrid strokeDasharray="4 6" className="stroke-slate-200 dark:stroke-slate-800/60" vertical={false} />
+            <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactNumber} width={40} />
+            <RechartsTooltip content={<ChartTooltip formatter={(v) => `${formatCompactNumber(v)} sqm`} />} cursor={{ fill: 'rgba(148,163,184,0.08)' }} />
+            <Bar dataKey="inbound" name={t('inbound')} fill="#F43F5E" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="outbound" name={t('outbound')} fill="#10B981" radius={[6, 6, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </AnalyticsCard>
   );
@@ -552,72 +426,35 @@ function MonthlyCostVolumeChart({ dispatchTrend, costTrend, showInsight }) {
 function LeaderboardRow({ row, i, maxVal }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
-  const [expanded, setExpanded] = useState(false);
-
-  const consistencyScore = Math.round(Number(row.consistency_score || 0));
-  const growthRatio = Number(row.growth_ratio || 0);
-  const isHighConsistency = consistencyScore >= 70;
+  const growthRatio = row.growth_ratio != null ? Number(row.growth_ratio) : null;
 
   return (
-    <div className="group border border-slate-100/50 dark:border-slate-800/40 rounded-2xl overflow-hidden mb-4 transition-all hover:border-brand-primary/20 hover:shadow-lg">
-      <div
-        className="flex items-center gap-5 p-5 bg-white/50 dark:bg-slate-950/50 hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer transition-colors"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <div className="relative h-12 w-12 shrink-0">
-          <div className={`absolute inset-0 rounded-2xl border shadow-sm flex items-center justify-center text-sm font-black transition-colors ${i === 0 ? 'bg-yellow-100 dark:bg-yellow-900/40 border-yellow-200 dark:border-yellow-700 text-yellow-600 dark:text-yellow-400' : i === 1 ? 'bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300' : i === 2 ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-200 dark:border-amber-700 text-amber-700 dark:text-amber-500' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 group-hover:text-brand-primary'}`}>
-            {i < 3 ? <Trophy className="h-5 w-5" /> : (row.name || row.salesperson).charAt(0)}
-          </div>
-          {isHighConsistency && (
-            <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-950 animate-pulse" title="High Consistency Performer" />
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-black text-slate-900 dark:text-slate-100 truncate tracking-tight">{row.name || row.salesperson}</p>
-            <div className="text-right">
-              <p className="text-sm font-black font-sans text-slate-900 dark:text-white tracking-widest leading-none mb-1">{formatCompactINR(row.revenue)}</p>
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">{formatCompactNumber(row.totalQty || row.quantity)} {t('units')}</p>
-            </div>
-          </div>
-          <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-brand-secondary rounded-full transition-all duration-1000 ease-in-out"
-              style={{ width: `${Math.min(100, ((row.revenue || 0) / (maxVal || 1)) * 100)}%` }}
-            />
+    <div className="flex items-center gap-3 py-2.5 border-b border-slate-100 dark:border-slate-800/40 last:border-b-0">
+      <span className="w-6 text-xs font-black text-slate-400 text-right tabular-nums">{i + 1}.</span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-3 mb-1">
+          <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{row.name || row.salesperson}</p>
+          <div className="flex items-center gap-2 shrink-0">
+            <p className="text-xs font-black font-sans text-slate-900 dark:text-white tabular-nums">{formatCompactINR(row.revenue)}</p>
+            {growthRatio != null ? (
+              <span className={`text-[10px] font-black tabular-nums ${growthRatio >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {growthRatio >= 0 ? '+' : ''}{(growthRatio * 100).toFixed(0)}%
+              </span>
+            ) : null}
           </div>
         </div>
-        <div className="shrink-0 text-slate-300 group-hover:text-brand-primary transition-colors">
-          {expanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+        <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-brand-secondary rounded-full"
+            style={{ width: `${Math.min(100, ((row.revenue || 0) / (maxVal || 1)) * 100)}%` }}
+          />
         </div>
       </div>
-
-      {expanded && (
-        <div className="p-6 bg-slate-50/50 dark:bg-slate-950/30 border-t border-slate-100 dark:border-slate-800 animate-slide-up space-y-5">
-          <div>
-            <p className="text-xs font-bold text-slate-500 mb-2">{t('consistencyScore')}</p>
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full bg-brand-primary rounded-full transition-all duration-700" style={{ width: `${consistencyScore}%` }} />
-              </div>
-              <span className="text-sm font-black text-slate-900 dark:text-white w-10 text-right">{consistencyScore}%</span>
-            </div>
-          </div>
-          {row.growth_ratio != null && (
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-slate-500">{t('growthVsLastPeriod')}</p>
-              <span className={`text-sm font-black ${growthRatio >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                {growthRatio >= 0 ? '+' : ''}{(growthRatio * 100).toFixed(1)}%
-              </span>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
 
-function Leaderboard({ ranking, showInsight }) {
+function Leaderboard({ ranking, months }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   const maxRev = Math.max(...ranking.map(r => Number(r.revenue || 0)), 1);
@@ -625,12 +462,11 @@ function Leaderboard({ ranking, showInsight }) {
     <AnalyticsCard
       title={t('salesPerformance')}
       subtitle={t('personnelRanking')}
-      insight={t('analysisPersonnel')}
-      showInsight={showInsight}
       className="col-span-1 lg:col-span-2 xl:col-span-1"
+      topRight={<CsvExportButton type="leaderboard" months={months} label={t('exportCsv')} />}
     >
-      <div className="space-y-1">
-        {ranking.slice(0, 5).map((row, i) => (
+      <div>
+        {ranking.slice(0, 8).map((row, i) => (
           <LeaderboardRow key={row.name || row.salesperson} row={row} i={i} maxVal={maxRev} />
         ))}
       </div>
@@ -638,29 +474,353 @@ function Leaderboard({ ranking, showInsight }) {
   );
 }
 
-function MoneyOwedBanner({ outstandingExposure, estimatedGross, language }) {
+function ReorderNowWidget({ items, months }) {
+  const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
-  if (!outstandingExposure && !estimatedGross) return null;
-  const ratio = estimatedGross > 0 ? (outstandingExposure / estimatedGross) : 0;
-  const isCritical = ratio > 0.5;
   return (
-    <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 sm:p-6 rounded-3xl border-2 ${isCritical ? 'border-rose-200 bg-rose-50/50 dark:bg-rose-950/20 dark:border-rose-800/40' : 'border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800/40'}`}>
-      <div className="flex items-center gap-4">
-        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isCritical ? 'bg-rose-100 dark:bg-rose-900/40' : 'bg-amber-100 dark:bg-amber-900/40'}`}>
-          <AlertCircle className={`h-6 w-6 ${isCritical ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400'}`} />
-        </div>
-        <div>
-          <p className={`text-xs font-bold ${isCritical ? 'text-rose-700 dark:text-rose-300' : 'text-amber-700 dark:text-amber-300'}`}>{t('moneyOwedToSuppliers')}</p>
-          <p className={`text-2xl sm:text-3xl font-black font-sans ${isCritical ? 'text-rose-700 dark:text-rose-200' : 'text-amber-700 dark:text-amber-200'}`}>{formatINR(outstandingExposure)}</p>
-        </div>
-      </div>
-      {estimatedGross > 0 && (
-        <div className="text-right">
-          <p className="text-xs font-bold text-slate-500">{t('totalStockValue')}</p>
-          <p className="text-lg font-black text-slate-700 dark:text-slate-300">{formatINR(estimatedGross)}</p>
-          <p className={`text-xs font-bold mt-1 ${isCritical ? 'text-rose-600' : 'text-amber-600'}`}>{(ratio * 100).toFixed(0)}% {t('unpaid')}</p>
+    <AnalyticsCard
+      title={t('reorderNow')}
+      subtitle={t('reorderSubtitle')}
+      topRight={items.length > 0 ? <CsvExportButton type="reorder" months={months} label={t('exportCsv')} /> : null}
+    >
+      {items.length === 0 ? (
+        <p className="text-xs text-slate-400 font-bold py-6 text-center">{t('noData')}</p>
+      ) : (
+        <div className="space-y-1.5">
+          {items.map((item) => {
+            const cover = Number(item.days_cover || 0);
+            const isCritical = cover <= 0;
+            return (
+              <div key={item.id} className="flex items-center gap-3 py-2 border-b border-slate-100 dark:border-slate-800/40 last:border-b-0">
+                <PackageX className={`h-4 w-4 shrink-0 ${isCritical ? 'text-rose-500' : 'text-amber-500'}`} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate" title={item.name}>{item.name}</p>
+                  <p className="text-[10px] text-slate-400 font-bold truncate">{item.division} · {item.sku}</p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-xs font-black font-sans text-slate-900 dark:text-white tabular-nums">{item.sold_30d}</p>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{t('sold30d')}</p>
+                </div>
+                <div className={`shrink-0 text-right w-16 px-2 py-1 rounded-lg ${isCritical ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400' : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400'}`}>
+                  <p className="text-xs font-black tabular-nums">{cover.toFixed(1)}d</p>
+                  <p className="text-[9px] font-bold uppercase tracking-widest leading-none">{t('daysCover')}</p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
+    </AnalyticsCard>
+  );
+}
+
+function DeadStockWidget({ data, months }) {
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+  const count = Number(data?.itemCount || 0);
+  const units = Number(data?.unitsIdle || 0);
+  const value = Number(data?.estimatedValue || 0);
+  return (
+    <AnalyticsCard
+      title={t('deadStock')}
+      subtitle={t('deadStockSubtitle')}
+      topRight={count > 0 ? <CsvExportButton type="deadstock" months={months} label={t('exportCsv')} /> : null}
+    >
+      <div className="flex items-start gap-4">
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-slate-100 dark:bg-slate-800 shrink-0">
+          <Archive className="h-7 w-7 text-slate-500" />
+        </div>
+        <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <p className="text-3xl font-black font-sans text-slate-900 dark:text-white tabular-nums leading-none">{count}</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">{t('items')}</p>
+          </div>
+          <div>
+            <p className="text-3xl font-black font-sans text-slate-900 dark:text-white tabular-nums leading-none">{formatCompactNumber(units)}</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">{t('unitsIdle')}</p>
+          </div>
+          {value > 0 ? (
+            <div>
+              <p className="text-2xl font-black font-sans text-slate-900 dark:text-white tabular-nums leading-none">{formatCompactINR(value)}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">{t('capitalIdle')}</p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </AnalyticsCard>
+  );
+}
+
+function PendingQueueWidget({ items, onApprove, onReject, actionLoading }) {
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+  return (
+    <AnalyticsCard title={t('pendingQueueTitle')} subtitle={t('pendingQueueSubtitle')}>
+      {items.length === 0 ? (
+        <p className="text-xs text-slate-400 font-bold py-6 text-center">{t('noData')}</p>
+      ) : (
+        <div className="space-y-1.5">
+          {items.map((item) => {
+            const hrs = Number(item.hours_pending || 0);
+            const ageColor = hrs > 48 ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400' : hrs > 24 ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
+            const isLoading = actionLoading === `${item.id}`;
+            return (
+              <div key={item.id} className="flex items-center gap-2 py-2 border-b border-slate-100 dark:border-slate-800/40 last:border-b-0">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{item.shipment_number}</p>
+                  <p className="text-[10px] text-slate-400 font-bold truncate">{item.customer_name || '—'} · {item.salesperson_name || '—'}</p>
+                </div>
+                <span className={`shrink-0 text-[10px] font-black px-2 py-1 rounded-lg tabular-nums ${ageColor}`}>{formatHours(hrs)}</span>
+                <div className="flex gap-1 shrink-0">
+                  <button
+                    type="button"
+                    disabled={isLoading || !onApprove}
+                    onClick={() => onApprove?.(item)}
+                    className="p-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition-all disabled:opacity-50"
+                    title={t('approve')}
+                  >
+                    {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isLoading || !onReject}
+                    onClick={() => onReject?.(item)}
+                    className="p-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white transition-all disabled:opacity-50"
+                    title={t('reject')}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </AnalyticsCard>
+  );
+}
+
+function SalesPaceWidget({ rows }) {
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+  if (!rows || rows.length === 0) {
+    return (
+      <AnalyticsCard title={t('salesPace')} subtitle={t('salesPaceSubtitle')}>
+        <p className="text-xs text-slate-400 font-bold py-6 text-center">{t('noData')}</p>
+      </AnalyticsCard>
+    );
+  }
+  const now = new Date();
+  const day = now.getDate();
+  const total = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const pacePct = Math.round((day / total) * 100);
+  return (
+    <AnalyticsCard
+      title={t('salesPace')}
+      subtitle={t('salesPaceSubtitle')}
+      contextBar={`Day ${day} of ${total} · expected pace ${pacePct}%`}
+    >
+      <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
+        {rows.map((row) => {
+          const goal = Number(row.goal || 0);
+          const actual = Number(row.actual || 0);
+          const pct = goal > 0 ? (actual / goal) * 100 : 0;
+          const expected = paceAdjustedTarget(goal);
+          const expectedPct = goal > 0 ? (expected / goal) * 100 : 0;
+          const behindPace = actual < expected;
+          return (
+            <div key={row.id} className="space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate flex-1">{row.name}</p>
+                <span className={`text-xs font-black tabular-nums shrink-0 ${behindPace ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                  {Math.round(pct)}%
+                </span>
+              </div>
+              <div className="relative h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className={`absolute top-0 left-0 h-full rounded-full ${behindPace ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                  style={{ width: `${Math.min(100, pct)}%` }}
+                />
+                <div
+                  className="absolute top-0 h-full w-0.5 bg-slate-900 dark:bg-slate-100 opacity-60"
+                  style={{ left: `${Math.min(100, expectedPct)}%` }}
+                  title={`expected pace ${Math.round(expectedPct)}%`}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 tabular-nums">
+                <span>{formatCompactINR(actual)} / {formatCompactINR(goal)}</span>
+                <span>{row.shipments} disp.</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </AnalyticsCard>
+  );
+}
+
+function CustomerConcentrationWidget({ rows }) {
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+  if (!rows || rows.length === 0) {
+    return (
+      <AnalyticsCard title={t('topCustomers')} subtitle={t('concentrationSubtitle')}>
+        <p className="text-xs text-slate-400 font-bold py-6 text-center">{t('noData')}</p>
+      </AnalyticsCard>
+    );
+  }
+  const pieData = rows.map((row, i) => ({
+    name: row.name,
+    value: Number(row.revenue || 0),
+    color: INDUSTRIAL_COLORS[i % INDUSTRIAL_COLORS.length],
+  }));
+  return (
+    <AnalyticsCard title={t('topCustomers')} subtitle={t('concentrationSubtitle')}>
+      <div className="h-36 mb-3">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
+          <PieChart>
+            <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={36} outerRadius={62} paddingAngle={2}>
+              {pieData.map((entry, i) => <Cell key={i} fill={entry.color} stroke="none" />)}
+            </Pie>
+            <RechartsTooltip content={<ChartTooltip formatter={(v) => formatCompactINR(v)} />} />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="space-y-1.5">
+        {rows.slice(0, 5).map((row, i) => {
+          const share = Number(row.share_pct || 0);
+          const isConcentrated = share >= 10;
+          return (
+            <div key={row.id} className="flex items-center gap-2 text-xs">
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: INDUSTRIAL_COLORS[i % INDUSTRIAL_COLORS.length] }} />
+              <span className="font-bold text-slate-700 dark:text-slate-300 flex-1 truncate" title={row.name}>{row.name}</span>
+              <span className="font-sans font-black text-slate-900 dark:text-white tabular-nums shrink-0">{formatCompactINR(row.revenue)}</span>
+              <span className={`text-[10px] font-black tabular-nums shrink-0 w-12 text-right ${isConcentrated ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}>
+                {share.toFixed(1)}%
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </AnalyticsCard>
+  );
+}
+
+function ActivityFeedWidget({ events }) {
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+  if (!events || events.length === 0) {
+    return (
+      <AnalyticsCard title={t('activityFeed')} subtitle={t('activityFeedSubtitle')}>
+        <p className="text-xs text-slate-400 font-bold py-6 text-center">{t('noData')}</p>
+      </AnalyticsCard>
+    );
+  }
+  const eventColor = (ev) => {
+    if (ev.includes('approved')) return 'bg-emerald-500';
+    if (ev.includes('rejected') || ev.includes('change_rejected')) return 'bg-rose-500';
+    if (ev.includes('submitted')) return 'bg-amber-500';
+    return 'bg-slate-400';
+  };
+  const eventLabel = (ev) => ev.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return (
+    <AnalyticsCard title={t('activityFeed')} subtitle={t('activityFeedSubtitle')}>
+      <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+        {events.map((e) => (
+          <div key={e.id} className="flex items-start gap-2.5 text-xs">
+            <span className={`mt-1 w-2 h-2 rounded-full shrink-0 ${eventColor(e.event_type)}`} />
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{eventLabel(e.event_type)}</p>
+              <p className="text-[10px] text-slate-400 truncate">{e.summary || `${e.entity_type} #${e.entity_id}`}{e.actor_name ? ` · ${e.actor_name}` : ''}</p>
+            </div>
+            <span className="text-[10px] font-bold text-slate-400 shrink-0 tabular-nums">{formatRelativeTime(e.occurred_at)}</span>
+          </div>
+        ))}
+      </div>
+    </AnalyticsCard>
+  );
+}
+
+function AbcItemsWidget({ items }) {
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+  if (!items || items.length === 0) {
+    return (
+      <AnalyticsCard title={t('abcItems')} subtitle={t('abcSubtitle')}>
+        <p className="text-xs text-slate-400 font-bold py-6 text-center">{t('noData')}</p>
+      </AnalyticsCard>
+    );
+  }
+  const totalItems = Number(items[0]?.total_items_with_sales || items.length);
+  const top80 = items.findIndex((it) => Number(it.cumulative_pct) >= 80);
+  const top80Count = top80 >= 0 ? top80 + 1 : items.length;
+  const chartData = items.slice(0, 30).map((it) => ({
+    rank: it.rank,
+    revenue: Number(it.revenue),
+    cumulative: Number(it.cumulative_pct),
+  }));
+  return (
+    <AnalyticsCard
+      title={t('abcItems')}
+      subtitle={t('abcSubtitle')}
+      contextBar={`${top80Count} of ${totalItems} items = 80% revenue`}
+    >
+      <div className="h-44">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
+          <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-100 dark:stroke-slate-800/40" />
+            <XAxis dataKey="rank" tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactNumber} width={36} />
+            <RechartsTooltip content={<ChartTooltip formatter={(v, e) => e.dataKey === 'cumulative' ? `${v}%` : formatCompactINR(v)} labelFormatter={(l) => `Rank ${l}`} />} cursor={{ fill: 'rgba(148,163,184,0.08)' }} />
+            <Bar dataKey="revenue" name="Revenue" fill={BRAND_PRIMARY} radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </AnalyticsCard>
+  );
+}
+
+function HeroCallouts({ stockedOut, approvalsWaiting, oldestPendingHours, salespeopleBehindPace }) {
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+  const pills = [
+    {
+      icon: PackageX,
+      value: stockedOut,
+      label: t('stockedOut'),
+      tone: stockedOut > 0 ? 'text-rose-700 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20' : 'text-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
+      target: '#widget-reorder',
+    },
+    {
+      icon: Hourglass,
+      value: approvalsWaiting,
+      label: t('approvalsWaiting'),
+      hint: approvalsWaiting > 0 ? `${formatHours(oldestPendingHours)} oldest` : null,
+      tone: approvalsWaiting > 10 ? 'text-rose-700 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20' : approvalsWaiting > 0 ? 'text-amber-700 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20' : 'text-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
+      target: '#widget-pending',
+    },
+    {
+      icon: TrendingDown,
+      value: salespeopleBehindPace,
+      label: t('salespeopleBehindPace'),
+      tone: salespeopleBehindPace > 0 ? 'text-amber-700 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20' : 'text-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
+      target: '#widget-pace',
+    },
+  ];
+  return (
+    <div className="flex flex-wrap gap-3">
+      {pills.map((p) => (
+        <a
+          key={p.label}
+          href={p.target}
+          className={`flex items-center gap-2.5 px-4 py-2.5 rounded-2xl border text-xs font-black uppercase tracking-widest transition-all hover:scale-[1.02] ${p.tone}`}
+        >
+          <p.icon className="h-4 w-4" />
+          <span className="tabular-nums text-base">{p.value}</span>
+          <span>{p.label}</span>
+          {p.hint ? <span className="opacity-70 text-[10px]">· {p.hint}</span> : null}
+        </a>
+      ))}
     </div>
   );
 }
@@ -674,7 +834,6 @@ export default function AnalyticsDashboard() {
   const [adminAnalytics, setAdminAnalytics] = useState(null);
   const [salespersonAnalytics, setSalespersonAnalytics] = useState(null);
   const [analyticsRangeMonths, setAnalyticsRangeMonths] = useState(6);
-  const [showInsights, setShowInsights] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -716,7 +875,60 @@ export default function AnalyticsDashboard() {
     };
   }, [user, analyticsRangeMonths, isManager, isSalesperson, isAuthorized]);
 
-  const [showSummary, setShowSummary] = useState(false);
+  const [pendingActionLoading, setPendingActionLoading] = useState(null);
+
+  const refetchAnalytics = useCallback(async () => {
+    if (!isManager) return;
+    try {
+      const response = await fetch(`/api/stock/admin/analytics?months=${analyticsRangeMonths}&fresh=1`, { cache: 'no-store' });
+      const json = await response.json();
+      if (response.ok) setAdminAnalytics(json);
+    } catch {}
+  }, [analyticsRangeMonths, isManager]);
+
+  const handlePendingApprove = useCallback(async (item) => {
+    setPendingActionLoading(String(item.id));
+    try {
+      const response = await fetch(`/api/stock/outbound-shipments/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'approve' }),
+      });
+      if (!response.ok) throw new Error((await response.json()).error || 'Failed');
+      await refetchAnalytics();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setPendingActionLoading(null);
+    }
+  }, [refetchAnalytics]);
+
+  const handlePendingReject = useCallback(async (item) => {
+    const reason = window.prompt('Reason for rejection (optional):') || 'Rejected from analytics';
+    setPendingActionLoading(String(item.id));
+    try {
+      const response = await fetch(`/api/stock/outbound-shipments/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reject', notes: reason, reason }),
+      });
+      if (!response.ok) throw new Error((await response.json()).error || 'Failed');
+      await refetchAnalytics();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setPendingActionLoading(null);
+    }
+  }, [refetchAnalytics]);
+
+  const salespersonGoalsAll = adminAnalytics?.salespersonGoals || [];
+  const salespeopleBehindPace = useMemo(() => {
+    return salespersonGoalsAll.filter((r) => {
+      const goal = Number(r.goal || 0);
+      const actual = Number(r.actual || 0);
+      return goal > 0 && actual < paceAdjustedTarget(goal);
+    }).length;
+  }, [salespersonGoalsAll]);
 
   if (loading)
     return (
@@ -886,6 +1098,15 @@ export default function AnalyticsDashboard() {
   const dispatchKpis = adminAnalytics?.dispatchPerformance?.kpis || {};
   const purchaseKpis = adminAnalytics?.purchasePerformance?.kpis || {};
   const exposure = adminAnalytics?.costAndPayment?.exposure || {};
+  const approvalOps = adminAnalytics?.approvalOps || {};
+  const stockRisk = adminAnalytics?.stockRisk || {};
+  const reorderNow = adminAnalytics?.reorderNow || [];
+  const deadStock = adminAnalytics?.deadStock || {};
+  const pendingQueue = adminAnalytics?.pendingQueue || [];
+  const salespersonGoals = salespersonGoalsAll;
+  const customerConcentration = adminAnalytics?.customerConcentration || [];
+  const activityFeed = adminAnalytics?.activityFeed || [];
+  const abcItems = adminAnalytics?.abcItems || [];
 
   const overallTrend =
     dispatchTrend.length >= 2
@@ -896,39 +1117,26 @@ export default function AnalyticsDashboard() {
 
   return (
     <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-12 space-y-12 lg:space-y-20 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
-      <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-10">
-        <div className="space-y-4 max-w-4xl">
-          <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-4">
+      <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+        <div className="space-y-2">
+          <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
             <Link href="/stock/admin" className="hover:text-brand-primary transition-colors">{t('operationalCore')}</Link>
             <ChevronRight className="h-3 w-3 opacity-50" />
             <span className="text-slate-900 dark:text-white">{t('businessIntelligence')}</span>
           </nav>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-6">
-            <h1 className="text-5xl sm:text-7xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter leading-[0.9]">
-              <><span className="text-brand-primary"> {t('executiveDashboard').split(' ')[0]}</span><br className="sm:hidden" /> {t('executiveDashboard').split(' ')[1] || 'Dashboard'}</>
-            </h1>
-            <div className="flex items-center self-start sm:self-center gap-3 px-5 py-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest border border-emerald-500/20 shadow-sm whitespace-nowrap">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              {t('liveContext')}
-            </div>
-          </div>
-          <p className="text-lg text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-3xl">
-            {t('operationalAnalysisIdentified')}{' '}
-            <span className={`font-black ${overallTrend >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-              {overallTrend >= 0 ? '+' : ''}{overallTrend.toFixed(1)}% {overallTrend >= 0 ? t('acceleration') : t('deceleration')}
-            </span>{' '}
-            {t('logisticsThroughputOver')} {analyticsRangeMonths} {t('monthsPortfolioStability')} <span className="font-black text-slate-900 dark:text-white underline decoration-brand-primary/30 decoration-8 underline-offset-4">{t('optimal')}</span>.
-          </p>
+          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+            <span className="text-brand-primary">{t('executiveDashboard').split(' ')[0]}</span> {t('executiveDashboard').split(' ').slice(1).join(' ')}
+          </h1>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-          <div className="flex items-center bg-slate-100/50 dark:bg-slate-900/30 p-1.5 rounded-[1.75rem] border border-slate-200 dark:border-white/5">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-900/40 p-1 rounded-xl border border-slate-200 dark:border-white/5">
             {[3, 6, 12].map((m) => (
               <button
                 key={m}
                 onClick={() => setAnalyticsRangeMonths(m)}
-                className={`flex-1 sm:flex-none px-6 py-3 text-xs font-black rounded-2xl transition-all duration-500 ${analyticsRangeMonths === m
-                  ? 'bg-white dark:bg-slate-800 text-brand-primary shadow-xl scale-[1.05] orange-glow'
+                className={`px-4 py-2 text-xs font-black rounded-lg transition-all ${analyticsRangeMonths === m
+                  ? 'bg-white dark:bg-slate-800 text-brand-primary shadow-sm'
                   : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                   }`}
               >
@@ -936,66 +1144,90 @@ export default function AnalyticsDashboard() {
               </button>
             ))}
           </div>
-          <div className="flex flex-row justify-between sm:flex-row items-stretch sm:items-center gap-4">
-            <button
-              onClick={() => setShowInsights(!showInsights)}
-              className={`flex items-center justify-center p-4 rounded-[1.5rem] bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/5 hover:shadow-xl transition-all active:scale-95 group ${showInsights ? 'text-brand-primary' : 'text-slate-400'}`}
-            >
-              <Activity className="h-6 w-6" />
-            </button>
-            <button
-              onClick={() => setShowSummary(!showSummary)}
-              className="flex items-center justify-center gap-3 px-4 py-4 rounded-[1.5rem] bg-brand-primary text-white text-xs font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-lg active:scale-95 hover:shadow-brand-primary/20"
-            >
-              <FileText className="h-5 w-5" />
-              {t('summary')}
-            </button>
-          </div>
+          <a
+            href={`/api/stock/admin/analytics/export?type=trends&months=${analyticsRangeMonths}`}
+            download
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:text-brand-primary text-xs font-black uppercase tracking-widest transition-all"
+            title="Download monthly trends CSV"
+          >
+            <Download className="h-4 w-4" />
+            CSV
+          </a>
         </div>
       </header>
 
-      <MoneyOwedBanner
-        outstandingExposure={Number(exposure.outstanding_exposure || 0)}
-        estimatedGross={Number(exposure.estimated_gross || 0)}
-        language={language}
+      <HeroCallouts
+        stockedOut={reorderNow.length}
+        approvalsWaiting={Number(approvalOps?.pendingCount || 0)}
+        oldestPendingHours={Number(approvalOps?.oldestPendingHours || 0)}
+        salespeopleBehindPace={salespeopleBehindPace}
       />
 
-      <section className="space-y-12">
-        <div className="flex items-center gap-6">
-          <h2 className="text-sm font-bold text-slate-500 whitespace-nowrap">I. {t('businessSnapshot')}</h2>
-          <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
-        </div>
+      <section className="space-y-6">
+        <h2 className={CLASSES.sectionHead}>{t('businessSnapshot')}</h2>
         <StockHealthScorecard
           data={divisionRisk}
-          inventoryKpis={inventoryKpis}
-          onTimeRatio={dispatchKpis.onTimeRatio}
-          approvalRate={purchaseKpis.approvalRate}
-          outstandingExposure={Number(exposure.outstanding_exposure || 0)}
-          showInsight={showInsights}
+          stockRisk={stockRisk}
+          approvalOps={approvalOps}
         />
+      </section>
 
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 lg:gap-12">
-          <div className="xl:col-span-8 space-y-8 lg:space-y-12">
-            <SalesRevenueChart data={dispatchTrend} showInsight={showInsights} />
-            <MonthlyCostVolumeChart dispatchTrend={dispatchTrend} costTrend={costTrend} showInsight={showInsights} />
+      <section className="space-y-6" id="action-band">
+        <h2 className={CLASSES.sectionHead}>Action</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-5" id="widget-reorder">
+            <ReorderNowWidget items={reorderNow} months={analyticsRangeMonths} />
           </div>
-          <div className="xl:col-span-4 space-y-8 lg:space-y-12">
-            <TopDivisionsChart data={divisionPerformance} showInsight={showInsights} />
-            <Leaderboard ranking={salespersonRanking} showInsight={showInsights} />
+          <div className="lg:col-span-3" id="widget-deadstock">
+            <DeadStockWidget data={deadStock} months={analyticsRangeMonths} />
+          </div>
+          <div className="lg:col-span-4" id="widget-pending">
+            <PendingQueueWidget
+              items={pendingQueue}
+              onApprove={handlePendingApprove}
+              onReject={handlePendingReject}
+              actionLoading={pendingActionLoading}
+            />
           </div>
         </div>
       </section>
 
-      <section className="space-y-12">
-        <div className="flex items-center gap-6">
-          <h2 className="text-sm font-bold text-slate-500 whitespace-nowrap">II. {t('riskInventory')}</h2>
-          <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
+      <section className="space-y-6" id="people-band">
+        <h2 className={CLASSES.sectionHead}>People & Customers</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-5" id="widget-pace">
+            <SalesPaceWidget rows={salespersonGoals} />
+          </div>
+          <div className="lg:col-span-4">
+            <CustomerConcentrationWidget rows={customerConcentration} />
+          </div>
+          <div className="lg:col-span-3">
+            <ActivityFeedWidget events={activityFeed} />
+          </div>
         </div>
+      </section>
+
+      <section className="space-y-6">
+        <h2 className={CLASSES.sectionHead}>Trends</h2>
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          <div className="xl:col-span-8 space-y-6">
+            <SalesRevenueChart data={dispatchTrend} />
+            <MonthlyCostVolumeChart dispatchTrend={dispatchTrend} costTrend={costTrend} />
+          </div>
+          <div className="xl:col-span-4 space-y-6">
+            <TopDivisionsChart data={divisionPerformance} />
+            <AbcItemsWidget items={abcItems} />
+            <Leaderboard ranking={salespersonRanking} months={analyticsRangeMonths} />
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-8">
+        <h2 className={CLASSES.sectionHead}>{t('riskInventory')}</h2>
         <AnalyticsCard
           title={t('riskInventory')}
           subtitle={t('divisionsNeedingAttention')}
-          insight={t('analysisRisk')}
-          showInsight={showInsights}
+              topRight={<CsvExportButton type="risk" months={analyticsRangeMonths} label={t('exportCsv')} />}
         >
           <div className="hidden md:block overflow-x-auto rounded-[2rem] border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
             <table className="w-full text-left text-sm min-w-[600px]">

@@ -244,6 +244,7 @@ export default function StockDashboard() {
     documents: [],
     error: null,
   });
+  const [shipmentActionLoading, setShipmentActionLoading] = useState(null);
 
   const arrivalSheetOpen = useStockFormStore((state) => state.arrivalSheetOpen);
   const dispatchSheetOpen = useStockFormStore((state) => state.dispatchSheetOpen);
@@ -411,6 +412,45 @@ export default function StockDashboard() {
   const closePreview = useCallback(() => {
     setPreviewState((current) => ({ ...current, open: false }));
   }, []);
+
+  const handleShipmentInlineAction = useCallback(async (kind, record, action, body = {}) => {
+    if (!record?.id) return;
+    const type = kind === 'arrival' ? 'inbound-shipments' : 'outbound-shipments';
+    const loadingKey = `${type}-${record.id}-${action}`;
+    setShipmentActionLoading(loadingKey);
+    try {
+      const response = await fetch(`/api/stock/${type}/${record.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, ...body }),
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || json.detail || 'Action failed');
+      const nextRecord = json.shipment ? { ...record, ...json.shipment } : record;
+      setPreviewState((current) => current.record?.id === record.id ? { ...current, record: nextRecord } : current);
+      setToast({ type: 'success', message: `${kind === 'arrival' ? 'Arrival' : 'Dispatch'} ${action.replace(/_/g, ' ')} succeeded` });
+      await refreshDashboard();
+    } catch (err) {
+      setToast({ type: 'error', message: err.message || 'Action failed' });
+    } finally {
+      setShipmentActionLoading(null);
+    }
+  }, [refreshDashboard]);
+
+  const onApproveShipment = useCallback((kind, record) => handleShipmentInlineAction(kind, record, 'approve'), [handleShipmentInlineAction]);
+  const onRejectShipment = useCallback((kind, record) => {
+    const reason = window.prompt('Reason for rejection (optional):') || 'Rejected from preview';
+    return handleShipmentInlineAction(kind, record, 'reject', { notes: reason, reason });
+  }, [handleShipmentInlineAction]);
+  const onRequestShipmentChanges = useCallback((kind, record) => {
+    const reason = window.prompt('What changes are needed?');
+    if (!reason) return;
+    return handleShipmentInlineAction(kind, record, 'request_changes', { notes: reason, reason });
+  }, [handleShipmentInlineAction]);
+  const onMarkShipmentPaid = useCallback((kind, record) => {
+    if (kind !== 'dispatch') return;
+    return handleShipmentInlineAction(kind, record, 'update_payment', { paymentStatus: 'paid' });
+  }, [handleShipmentInlineAction]);
 
   const openShipmentPreview = useCallback(async (kind, row) => {
     const shipmentType = kind === 'arrival' ? 'inbound_shipment' : 'outbound_shipment';
@@ -589,6 +629,7 @@ export default function StockDashboard() {
             qtySqm,
             costPerSqm,
             unitPrice,
+            discountAmount: toNumber(item.discountAmount),
             notes: trimText(item.notes),
           };
         })
@@ -630,6 +671,7 @@ export default function StockDashboard() {
           fuelCostPercent: values.fuelCostPercent === '' ? undefined : toNumber(values.fuelCostPercent),
           gstPercent: values.gstPercent === '' ? undefined : toNumber(values.gstPercent),
           freightWeightKg: values.freightWeightKg === '' ? undefined : toNumber(values.freightWeightKg),
+          discountAmount: values.discountAmount === '' ? 0 : toNumber(values.discountAmount),
           notes: trimText(values.notes) || undefined,
           items: items.map((item) => ({
             itemId: item.itemId ? Number(item.itemId) : undefined,
@@ -652,6 +694,7 @@ export default function StockDashboard() {
             qtySqm: item.qtySqm ?? undefined,
             costPerSqm: item.costPerSqm ?? undefined,
             unitPrice: item.unitPrice || undefined,
+            discountAmount: item.discountAmount,
             wholeQty: item.wholeQty,
             brokenQty: item.brokenQty,
             notes: item.notes || undefined,
@@ -712,7 +755,7 @@ export default function StockDashboard() {
     } finally {
       setArrivalSubmitting(false);
     }
-  }, [canCreateArrival, arrivalForm, arrivalAttachments, resetArrivalAttachments, setArrivalSheetOpen, refreshDashboard]);
+  }, [canCreateArrival, arrivalForm, arrivalAttachments, resetArrivalAttachments, setArrivalSheetOpen, refreshDashboard, editingArrivalId, language, t]);
 
   const handleNewArrival = useCallback(() => {
     setEditingArrivalId(null);
@@ -761,6 +804,7 @@ export default function StockDashboard() {
         fuelCostPercent: s.fuel_cost_percent != null ? String(s.fuel_cost_percent) : '5.0',
         gstPercent: s.gst_percent != null ? String(s.gst_percent) : '18.0',
         freightWeightKg: s.freight_weight_kg != null ? String(s.freight_weight_kg) : '',
+        discountAmount: s.discount_amount != null && Number(s.discount_amount) !== 0 ? String(s.discount_amount) : '',
         notes: s.notes || '',
         items: items.length > 0 ? items.map(item => {
           const parsedDims = parseSizeLabelDimensions(item.size_label);
@@ -789,6 +833,7 @@ export default function StockDashboard() {
           weightPerUnitKg: item.weight_per_unit_kg != null ? String(item.weight_per_unit_kg) : '',
           ratePerBag: item.cost_per_bag != null ? String(item.cost_per_bag) : '',
           qtyBags: item.unit_of_measure === 'bag' ? String(item.received_whole_qty ?? 0) : '',
+          discountAmount: item.discount_amount != null && Number(item.discount_amount) !== 0 ? String(item.discount_amount) : '',
           notes: item.notes || '',
         });}) : [createArrivalItemRow()],
       });
@@ -1319,6 +1364,11 @@ export default function StockDashboard() {
         userRole={accessRole}
         pageSize={pageSize}
         setPageSize={setPageSize}
+        actionLoading={shipmentActionLoading}
+        onApprove={onApproveShipment}
+        onReject={onRejectShipment}
+        onRequestChanges={onRequestShipmentChanges}
+        onMarkPaid={onMarkShipmentPaid}
       />
 
       <StockToast toast={toast} onDismiss={() => setToast(null)} />

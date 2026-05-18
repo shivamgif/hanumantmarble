@@ -1,11 +1,80 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
-import { Calendar, Hash, Truck, ChevronRight, FileText, Sparkles } from 'lucide-react';
+import { Calendar, Hash, Truck, ChevronRight, FileText, Sparkles, Check, X, MessageSquare, IndianRupee, PackageCheck, Loader2 } from 'lucide-react';
 import EntryPreviewSheet, { PreviewKeyValueGrid } from '@/components/ui/entry-preview-sheet';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
 import { formatDateTime, INVOICE_CLASSES } from '../lib/stock-utils';
+
+const COMPACT_ITEMS_THRESHOLD = 2;
+
+function ActionFooter({ record, kind, userRole, actionLoading, onApprove, onReject, onRequestChanges, onMarkPaid, onMarkDelivered }) {
+  const canAct = ['admin', 'manager'].includes(userRole);
+  if (!canAct || !record) return null;
+
+  const approvalStatus = String(record.approval_status || '').toLowerCase();
+  const paymentStatus = String(record.payment_status || '').toLowerCase();
+  const deliveredDate = record.delivered_date;
+  const shipmentId = record.id;
+  const actionType = kind === 'arrival' ? 'inbound-shipments' : 'outbound-shipments';
+
+  const buttons = [];
+  const baseBtn = 'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 shadow-sm';
+
+  const isLoading = (action) => actionLoading === `${actionType}-${shipmentId}-${action}`;
+  const anyLoading = Boolean(actionLoading);
+
+  if (approvalStatus === 'pending' || approvalStatus === 'reviewed' || approvalStatus === 'changes_requested') {
+    if (onApprove) {
+      buttons.push(
+        <button key="approve" type="button" disabled={anyLoading} onClick={() => onApprove(kind, record)} className={`${baseBtn} bg-emerald-500 hover:bg-emerald-600 text-white`}>
+          {isLoading('approve') ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Approve
+        </button>
+      );
+    }
+    if (onReject) {
+      buttons.push(
+        <button key="reject" type="button" disabled={anyLoading} onClick={() => onReject(kind, record)} className={`${baseBtn} bg-rose-500 hover:bg-rose-600 text-white`}>
+          {isLoading('reject') ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />} Reject
+        </button>
+      );
+    }
+    if (onRequestChanges) {
+      buttons.push(
+        <button key="changes" type="button" disabled={anyLoading} onClick={() => onRequestChanges(kind, record)} className={`${baseBtn} bg-amber-500 hover:bg-amber-600 text-white`}>
+          {isLoading('request_changes') ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageSquare className="h-3.5 w-3.5" />} Request Changes
+        </button>
+      );
+    }
+  }
+
+  if (approvalStatus === 'approved') {
+    if (kind === 'dispatch' && !deliveredDate && onMarkDelivered) {
+      buttons.push(
+        <button key="delivered" type="button" disabled={anyLoading} onClick={() => onMarkDelivered(kind, record)} className={`${baseBtn} bg-blue-500 hover:bg-blue-600 text-white`}>
+          {isLoading('mark_delivered') ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PackageCheck className="h-3.5 w-3.5" />} Mark Delivered
+        </button>
+      );
+    }
+    if (paymentStatus && paymentStatus !== 'paid' && onMarkPaid) {
+      buttons.push(
+        <button key="paid" type="button" disabled={anyLoading} onClick={() => onMarkPaid(kind, record)} className={`${baseBtn} bg-emerald-600 hover:bg-emerald-700 text-white`}>
+          {isLoading('mark_paid') ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <IndianRupee className="h-3.5 w-3.5" />} Mark Paid
+        </button>
+      );
+    }
+  }
+
+  if (buttons.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 px-4 py-3">
+      <span className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 mr-2">Actions</span>
+      {buttons}
+    </div>
+  );
+}
 
 function renderDocumentPreview(document, tc) {
   if (!document?.file_url) {
@@ -36,9 +105,15 @@ function renderDocumentPreview(document, tc) {
   );
 }
 
-export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPagination, setPreviewItemsPage, tc, userRole, pageSize, setPageSize }) {
+export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPagination, setPreviewItemsPage, tc, userRole, pageSize, setPageSize, onApprove, onReject, onRequestChanges, onMarkPaid, onMarkDelivered, actionLoading }) {
   const isInboundPreview = previewState.kind === 'arrival';
   const canViewPricing = ['admin', 'manager'].includes(userRole);
+  const totalItems = previewState.items?.length || 0;
+  const isCompactItems = totalItems > 0 && totalItems <= COMPACT_ITEMS_THRESHOLD;
+  const lineDiscountTotal = useMemo(
+    () => (previewState.items || []).reduce((sum, item) => sum + Number(item.discount_amount || 0), 0),
+    [previewState.items]
+  );
 
   const inboundMetaItems = useMemo(() => [
     { label: tc.status, value: previewState.record?.status },
@@ -47,10 +122,12 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
     { label: tc.originCity, value: previewState.record?.origin_city },
     { label: tc.destinationWarehouse, value: previewState.record?.destination_warehouse_name },
     { label: tc.paymentStatus, value: previewState.record?.payment_status },
+    ...(lineDiscountTotal > 0 ? [{ label: tc.lineDiscount || 'Line Discounts', value: `₹${lineDiscountTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}` }] : []),
+    ...(Number(previewState.record?.discount_amount || 0) > 0 ? [{ label: tc.shipmentDiscount || 'Shipment Discount', value: `₹${Number(previewState.record.discount_amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}` }] : []),
     { label: tc.totalWhole, value: previewState.record?.total_whole_qty },
     { label: tc.totalBroken, value: previewState.record?.total_broken_qty },
     { label: tc.notes, value: previewState.record?.notes },
-  ], [previewState.record, tc]);
+  ], [previewState.record, tc, lineDiscountTotal]);
 
   const hasTechnicalSubBar = Boolean(previewState.record?.eway_bill_number || previewState.record?.irn_number);
 
@@ -207,14 +284,21 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
       },
       previewState.items?.length
         ? {
-          title: tc.itemsTitle,
+          title: isCompactItems ? `${tc.itemsTitle} (${totalItems})` : tc.itemsTitle,
           children: (
             <>
               <div className={INVOICE_CLASSES.mobileGrid}>
-                {previewItemPagination.rows.map((item, index) => (
+                {(isCompactItems ? previewState.items : previewItemPagination.rows).map((item, index) => (
                   <article key={`shipment-item-${item.id || index}`} className={INVOICE_CLASSES.mobileCard}>
                     <div className={INVOICE_CLASSES.mobileCardHeader}>{tc.line} {index + 1}</div>
                     <div className="mt-2 grid grid-cols-2 gap-2">
+                      {isInboundPreview && Number(item.discount_amount || 0) > 0 ? (
+                        <div className="col-span-2">
+                          <span className="inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black text-emerald-600 dark:text-emerald-300">
+                            - ₹{Number(item.discount_amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })} discount
+                          </span>
+                        </div>
+                      ) : null}
                       <div>
                         <div className={INVOICE_CLASSES.mobileKey}>{tc.description}</div>
                         <div className={INVOICE_CLASSES.mobileValue}>{item.item_name || '—'} {item.finish ? `(${item.finish})` : ''}</div>
@@ -312,21 +396,23 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
                   </article>
                 ))}
               </div>
-              <PaginationControls
-                page={previewItemPagination.page}
-                pageCount={previewItemPagination.pageCount}
-                total={previewItemPagination.total}
-                pageSize={pageSize}
-                onPageChange={setPreviewItemsPage}
-                onPageSizeChange={setPageSize}
-                labels={{
-                  showing: tc.paginationShowing,
-                  of: tc.paginationOf,
-                  previous: tc.paginationPrevious,
-                  next: tc.paginationNext,
-                  page: tc.paginationPage,
-                }}
-              />
+              {isCompactItems ? null : (
+                <PaginationControls
+                  page={previewItemPagination.page}
+                  pageCount={previewItemPagination.pageCount}
+                  total={previewItemPagination.total}
+                  pageSize={pageSize}
+                  onPageChange={setPreviewItemsPage}
+                  onPageSizeChange={setPageSize}
+                  labels={{
+                    showing: tc.paginationShowing,
+                    of: tc.paginationOf,
+                    previous: tc.paginationPrevious,
+                    next: tc.paginationNext,
+                    page: tc.paginationPage,
+                  }}
+                />
+              )}
             </>
           ),
         }
@@ -355,7 +441,7 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
         }
         : null,
     ];
-  }, [previewState, tc, isInboundPreview, previewItemPagination, setPreviewItemsPage, inboundMetaItems, pageSize, setPageSize]);
+  }, [previewState, tc, isInboundPreview, previewItemPagination, setPreviewItemsPage, inboundMetaItems, pageSize, setPageSize, isCompactItems, totalItems, canViewPricing]);
 
   const handleOpenChange = useCallback((open) => { if (!open) closePreview(); }, [closePreview]);
 
@@ -373,6 +459,21 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
         ) : null
       }
       sections={stockSections}
+      footer={
+        previewState.kind !== 'stock' && !previewState.loading && !previewState.error ? (
+          <ActionFooter
+            record={previewState.record}
+            kind={previewState.kind}
+            userRole={userRole}
+            actionLoading={actionLoading}
+            onApprove={onApprove}
+            onReject={onReject}
+            onRequestChanges={onRequestChanges}
+            onMarkPaid={onMarkPaid}
+            onMarkDelivered={onMarkDelivered}
+          />
+        ) : null
+      }
     />
   );
 }

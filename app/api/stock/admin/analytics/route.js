@@ -34,6 +34,27 @@ function normalizeRange(searchParams) {
   };
 }
 
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const analyticsCache = new Map();
+
+function cacheGet(key) {
+  const entry = analyticsCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > CACHE_TTL_MS) {
+    analyticsCache.delete(key);
+    return null;
+  }
+  return entry.payload;
+}
+
+function cacheSet(key, payload) {
+  analyticsCache.set(key, { ts: Date.now(), payload });
+  if (analyticsCache.size > 64) {
+    const oldest = [...analyticsCache.entries()].sort((a, b) => a[1].ts - b[1].ts)[0];
+    if (oldest) analyticsCache.delete(oldest[0]);
+  }
+}
+
 export async function GET(request) {
   const { session, appUser } = await getStockContext(request);
   const userRole = normalizeStockRole(appUser?.role);
@@ -47,6 +68,18 @@ export async function GET(request) {
   }
 
   try {
+    const { searchParams: searchParamsForCache } = new URL(request.url);
+    const months = clampNumber(searchParamsForCache.get('months'), 1, 24, 6);
+    const endDateParam = searchParamsForCache.get('endDate') || '';
+    const fresh = searchParamsForCache.get('fresh');
+    const cacheKey = `admin:${months}:${endDateParam}`;
+    if (!fresh) {
+      const cached = cacheGet(cacheKey);
+      if (cached) {
+        return NextResponse.json({ ...cached, _cache: 'hit' });
+      }
+    }
+
     const schemaCaps = await getStockSchemaCapabilities();
     const salespersonLabelExpr = schemaCaps.hasOutboundSalespersonUserId
       ? `COALESCE(spu.name, sp.name, 'Unassigned')`
@@ -72,6 +105,15 @@ export async function GET(request) {
       salespersonTrend,
       salespersonRanking,
       divisionPerformance,
+      approvalOps,
+      stockRisk,
+      reorderNowRows,
+      deadStockRow,
+      pendingQueueRows,
+      salespersonGoalRows,
+      customerConcentrationRows,
+      activityFeedRows,
+      abcItemRows,
     ] = await Promise.all([
       sql(
         `WITH periods AS (
@@ -422,6 +464,221 @@ export async function GET(request) {
          ORDER BY dt.total_revenue DESC`,
         [startDate, endDate]
       ),
+      sql(
+        `WITH outbound AS (
+           SELECT
+             approval_status,
+             submitted_at,
+             approved_at,
+             CASE
+               WHEN approved_at IS NOT NULL AND submitted_at IS NOT NULL
+               THEN EXTRACT(EPOCH FROM (approved_at - submitted_at)) / 3600.0
+               ELSE NULL
+             END AS lag_hours,
+             CASE
+               WHEN approval_status = 'pending' AND submitted_at IS NOT NULL
+               THEN EXTRACT(EPOCH FROM (NOW() - submitted_at)) / 3600.0
+               ELSE NULL
+             END AS pending_age_hours
+           FROM stock_outbound_shipments
+         )
+         SELECT
+           COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY lag_hours) FILTER (WHERE lag_hours IS NOT NULL), 0)::numeric(10,2) AS median_lag_hours,
+           COALESCE(AVG(lag_hours) FILTER (WHERE lag_hours IS NOT NULL), 0)::numeric(10,2) AS avg_lag_hours,
+           COUNT(*) FILTER (WHERE approval_status = 'pending')::int AS pending_count,
+           COALESCE(MAX(pending_age_hours), 0)::numeric(10,2) AS oldest_pending_hours
+         FROM outbound`,
+        []
+      ),
+      sql(
+        `SELECT
+           COUNT(*) FILTER (WHERE COALESCE(current_whole_qty, 0) + COALESCE(current_broken_qty, 0) <= 0)::int AS zero_stock,
+           COUNT(*) FILTER (
+             WHERE COALESCE(current_whole_qty, 0) + COALESCE(current_broken_qty, 0) > 0
+               AND COALESCE(reorder_level, 0) > 0
+               AND COALESCE(current_whole_qty, 0) + COALESCE(current_broken_qty, 0) <= COALESCE(reorder_level, 0)
+           )::int AS low_stock,
+           COUNT(*)::int AS total_items
+         FROM stock_items
+         WHERE is_active = TRUE`,
+        []
+      ),
+      // Reorder Now: items at zero stock with active 30d velocity
+      sql(
+        `WITH velocity AS (
+           SELECT osi.item_id, SUM(COALESCE(osi.loaded_whole_qty,0) + COALESCE(osi.loaded_broken_qty,0))::numeric AS sold_30d
+           FROM stock_outbound_shipment_items osi
+           JOIN stock_outbound_shipments o ON o.id = osi.outbound_shipment_id
+           WHERE o.dispatch_date > NOW() - INTERVAL '30 days'
+           GROUP BY osi.item_id
+         )
+         SELECT
+           i.id,
+           i.sku,
+           i.name,
+           COALESCE(d.name, 'Uncategorized') AS division,
+           (COALESCE(i.current_whole_qty,0) + COALESCE(i.current_broken_qty,0))::int AS available_qty,
+           v.sold_30d::int AS sold_30d,
+           CASE WHEN v.sold_30d > 0
+             THEN ROUND((COALESCE(i.current_whole_qty,0) + COALESCE(i.current_broken_qty,0)) / v.sold_30d * 30, 1)
+             ELSE NULL
+           END AS days_cover
+         FROM stock_items i
+         JOIN velocity v ON v.item_id = i.id
+         LEFT JOIN stock_divisions d ON d.id = i.division_id
+         WHERE i.is_active = TRUE
+           AND v.sold_30d > 0
+           AND (COALESCE(i.current_whole_qty,0) + COALESCE(i.current_broken_qty,0)) <= COALESCE(i.reorder_level, 0)
+         ORDER BY days_cover NULLS FIRST, v.sold_30d DESC
+         LIMIT 8`,
+        []
+      ),
+      // Dead Stock: items with qty > 0 and no outbound in 60d
+      sql(
+        `SELECT
+           COUNT(*)::int AS item_count,
+           COALESCE(SUM(COALESCE(i.current_whole_qty,0) + COALESCE(i.current_broken_qty,0)), 0)::int AS units_idle,
+           COALESCE(SUM(
+             (COALESCE(i.current_whole_qty,0) + COALESCE(i.current_broken_qty,0)) * COALESCE(NULLIF(i.landed_cost, 0), NULLIF(i.purchase_price, 0), 0)
+           ), 0)::numeric(14,2) AS estimated_value
+         FROM stock_items i
+         WHERE i.is_active = TRUE
+           AND (COALESCE(i.current_whole_qty,0) + COALESCE(i.current_broken_qty,0)) > 0
+           AND NOT EXISTS (
+             SELECT 1 FROM stock_outbound_shipment_items osi
+             JOIN stock_outbound_shipments o ON o.id = osi.outbound_shipment_id
+             WHERE osi.item_id = i.id AND o.dispatch_date > NOW() - INTERVAL '60 days'
+           )`,
+        []
+      ),
+      // Pending Queue: 5 oldest pending dispatches
+      sql(
+        `SELECT
+           o.id,
+           o.shipment_number,
+           o.submitted_at,
+           o.customer_id,
+           ${schemaCaps.hasOutboundSalespersonUserId ? `COALESCE(spu.name, sp.name) AS salesperson_name,` : `sp.name AS salesperson_name,`}
+           c.name AS customer_name,
+           EXTRACT(EPOCH FROM (NOW() - o.submitted_at)) / 3600.0 AS hours_pending
+         FROM stock_outbound_shipments o
+         LEFT JOIN stock_customers c ON c.id = o.customer_id
+         LEFT JOIN stock_sales_people sp ON sp.id = o.salesperson_id
+         ${schemaCaps.hasOutboundSalespersonUserId ? `LEFT JOIN stock_app_users spu ON spu.id = o.salesperson_user_id` : ''}
+         WHERE o.approval_status = 'pending' AND o.submitted_at IS NOT NULL
+         ORDER BY o.submitted_at ASC
+         LIMIT 5`,
+        []
+      ),
+      // Salesperson Goal Tracker (current month, actual vs goal)
+      sql(
+        `WITH actual AS (
+           SELECT
+             o.salesperson_user_id AS uid,
+             COALESCE(SUM((COALESCE(osi.loaded_whole_qty,0) + COALESCE(osi.loaded_broken_qty,0)) * COALESCE(osi.rate_per_unit,0)), 0) AS rev,
+             COUNT(DISTINCT o.id) AS shipments
+           FROM stock_outbound_shipments o
+           LEFT JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = o.id
+           WHERE o.salesperson_user_id IS NOT NULL
+             AND date_trunc('month', o.dispatch_date) = date_trunc('month', NOW())
+           GROUP BY o.salesperson_user_id
+         )
+         SELECT
+           u.id,
+           u.name,
+           u.monthly_sales_goal::numeric(14,2) AS goal,
+           COALESCE(a.rev, 0)::numeric(14,2) AS actual,
+           COALESCE(a.shipments, 0)::int AS shipments
+         FROM stock_app_users u
+         LEFT JOIN actual a ON a.uid = u.id
+         WHERE u.role = 'salesperson' AND u.monthly_sales_goal IS NOT NULL AND u.monthly_sales_goal > 0
+         ORDER BY (COALESCE(a.rev,0) / u.monthly_sales_goal) DESC
+         LIMIT 20`,
+        []
+      ),
+      // Customer Concentration (top 8 in range)
+      sql(
+        `WITH totals AS (
+           SELECT
+             c.id,
+             c.name,
+             COALESCE(SUM((COALESCE(osi.loaded_whole_qty,0) + COALESCE(osi.loaded_broken_qty,0)) * COALESCE(osi.rate_per_unit,0)), 0) AS revenue,
+             COUNT(DISTINCT o.id)::int AS shipments
+           FROM stock_outbound_shipments o
+           JOIN stock_customers c ON c.id = o.customer_id
+           LEFT JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = o.id
+           WHERE COALESCE(o.dispatch_date, o.created_at)::date BETWEEN $1::date AND $2::date
+           GROUP BY c.id, c.name
+         ), grand AS (SELECT SUM(revenue) AS total FROM totals)
+         SELECT
+           t.id,
+           t.name,
+           t.revenue::numeric(14,2) AS revenue,
+           t.shipments,
+           CASE WHEN g.total > 0 THEN ROUND((t.revenue / g.total) * 100, 1)::numeric(6,1) ELSE 0 END AS share_pct
+         FROM totals t, grand g
+         WHERE t.revenue > 0
+         ORDER BY t.revenue DESC
+         LIMIT 8`,
+        [startDate, endDate]
+      ),
+      // Activity Feed: last 12 outbound/inbound events
+      sql(
+        `SELECT
+           e.id,
+           e.event_type,
+           e.entity_type,
+           e.entity_id,
+           e.occurred_at,
+           e.summary,
+           u.name AS actor_name
+         FROM stock_timeline_events e
+         LEFT JOIN stock_app_users u ON u.id = e.recorded_by_user_id
+         WHERE e.entity_type IN ('outbound_shipment', 'inbound_shipment')
+           AND e.event_type NOT IN ('other')
+         ORDER BY e.occurred_at DESC
+         LIMIT 12`,
+        []
+      ),
+      // ABC Items: Pareto (per-item revenue in range, compute cumulative)
+      sql(
+        `WITH item_rev AS (
+           SELECT
+             i.id,
+             i.name,
+             i.sku,
+             SUM((COALESCE(osi.loaded_whole_qty,0) + COALESCE(osi.loaded_broken_qty,0)) * COALESCE(osi.rate_per_unit,0)) AS revenue
+           FROM stock_outbound_shipment_items osi
+           JOIN stock_outbound_shipments o ON o.id = osi.outbound_shipment_id
+           JOIN stock_items i ON i.id = osi.item_id
+           WHERE COALESCE(o.dispatch_date, o.created_at)::date BETWEEN $1::date AND $2::date
+           GROUP BY i.id, i.name, i.sku
+           HAVING SUM((COALESCE(osi.loaded_whole_qty,0) + COALESCE(osi.loaded_broken_qty,0)) * COALESCE(osi.rate_per_unit,0)) > 0
+         ), ranked AS (
+           SELECT
+             id,
+             name,
+             sku,
+             revenue,
+             ROW_NUMBER() OVER (ORDER BY revenue DESC) AS rank,
+             SUM(revenue) OVER (ORDER BY revenue DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cum_revenue,
+             SUM(revenue) OVER () AS total_revenue,
+             COUNT(*) OVER () AS total_items
+           FROM item_rev
+         )
+         SELECT
+           rank::int AS rank,
+           id,
+           name,
+           sku,
+           revenue::numeric(14,2) AS revenue,
+           ROUND((cum_revenue / NULLIF(total_revenue,0)) * 100, 2)::numeric(6,2) AS cumulative_pct,
+           total_items::int AS total_items_with_sales
+         FROM ranked
+         ORDER BY rank
+         LIMIT 50`,
+        [startDate, endDate]
+      ),
     ]);
 
     const purchaseFunnel = {
@@ -442,7 +699,10 @@ export async function GET(request) {
     const totalPurchases = purchaseTrend.reduce((sum, row) => sum + Number(row.total || 0), 0);
     const totalApproved = purchaseTrend.reduce((sum, row) => sum + Number(row.approved || 0), 0);
 
-    return NextResponse.json({
+    const approvalOpsRow = approvalOps[0] || {};
+    const stockRiskRow = stockRisk[0] || {};
+
+    const payload = {
       range: {
         months: range.months,
         startDate,
@@ -491,7 +751,32 @@ export async function GET(request) {
       divisionPerformance: {
         ranking: divisionPerformance,
       },
-    });
+      approvalOps: {
+        medianLagHours: Number(approvalOpsRow.median_lag_hours || 0),
+        avgLagHours: Number(approvalOpsRow.avg_lag_hours || 0),
+        pendingCount: Number(approvalOpsRow.pending_count || 0),
+        oldestPendingHours: Number(approvalOpsRow.oldest_pending_hours || 0),
+      },
+      stockRisk: {
+        zeroStock: Number(stockRiskRow.zero_stock || 0),
+        lowStock: Number(stockRiskRow.low_stock || 0),
+        totalItems: Number(stockRiskRow.total_items || 0),
+      },
+      reorderNow: reorderNowRows,
+      deadStock: {
+        itemCount: Number((deadStockRow[0] || {}).item_count || 0),
+        unitsIdle: Number((deadStockRow[0] || {}).units_idle || 0),
+        estimatedValue: Number((deadStockRow[0] || {}).estimated_value || 0),
+      },
+      pendingQueue: pendingQueueRows,
+      salespersonGoals: salespersonGoalRows,
+      customerConcentration: customerConcentrationRows,
+      activityFeed: activityFeedRows,
+      abcItems: abcItemRows,
+    };
+
+    cacheSet(cacheKey, payload);
+    return NextResponse.json({ ...payload, _cache: 'miss' });
   } catch (error) {
     console.error('Failed to load admin analytics:', error);
     return NextResponse.json({ error: 'Failed to load admin analytics', detail: error.message }, { status: 500 });

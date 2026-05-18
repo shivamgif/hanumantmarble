@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, generateReference, getStockContext, hasAnyStockRole, queueNotification, recordTimelineEvent } from '@/lib/stock-workflow';
 import { sql, withTransaction } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
+import { computeInboundTotals } from '@/lib/stock-pricing';
 
 function computeSqmValues(item, size) {
   const widthMm = size?.width_mm;
@@ -723,9 +724,10 @@ export async function PATCH(request, context) {
              fuel_cost_percent = COALESCE($18::numeric, fuel_cost_percent),
              gst_percent = COALESCE($19::numeric, gst_percent),
              freight_weight_kg = COALESCE($20::numeric, freight_weight_kg),
-             notes = COALESCE($21, notes),
+             discount_amount = COALESCE($21::numeric, discount_amount),
+             notes = COALESCE($22, notes),
              updated_at = NOW()
-         WHERE id = $22
+         WHERE id = $23
          RETURNING *`,
         [
           body.shipmentNumber || null,
@@ -748,6 +750,7 @@ export async function PATCH(request, context) {
           body.fuelCostPercent != null ? Number(body.fuelCostPercent) : null,
           body.gstPercent != null ? Number(body.gstPercent) : null,
           body.freightWeightKg != null && body.freightWeightKg !== '' ? Number(body.freightWeightKg) : null,
+          body.discountAmount != null && body.discountAmount !== '' ? Number(body.discountAmount) : null,
           body.notes || null,
           id,
         ]
@@ -756,11 +759,99 @@ export async function PATCH(request, context) {
       if (body.items && Array.isArray(body.items)) {
         const approvalCheck = await sql('SELECT approval_status, locked_at FROM stock_inbound_shipments WHERE id = $1', [id]);
         if (approvalCheck[0]?.locked_at) {
-          return NextResponse.json({ error: 'Locked inbound shipment cannot be modified' }, { status: 409 });
+          const existingItems = await sql(
+            `SELECT id, item_id, ordered_qty, received_whole_qty, received_broken_qty, unit_cost, cost_per_sqm, ordered_qty_sqm, total_cost
+             FROM stock_inbound_shipment_items
+             WHERE inbound_shipment_id = $1
+             ORDER BY id ASC`,
+            [id]
+          );
+          const existingByItemId = new Map(existingItems.map((item) => [String(item.item_id), item]));
+          const requestedByItemId = new Map(
+            body.items
+              .filter((item) => item.itemId && existingByItemId.has(String(item.itemId)))
+              .map((item) => [String(item.itemId), item])
+          );
+
+          const preparedItems = existingItems.map((existing) => {
+            const item = requestedByItemId.get(String(existing.item_id));
+            if (!item) {
+              return {
+                existing,
+                lineGross: Number(existing.total_cost || 0),
+                discountAmount: Number(existing.discount_amount || 0),
+              };
+            }
+            const requestedWhole = item.itemCategory === 'bag'
+              ? (item.qtyBags != null ? Number(item.qtyBags || 0) : Number(existing.received_whole_qty || 0))
+              : (item.wholeQty != null ? Number(item.wholeQty || 0) : Number(existing.received_whole_qty || 0));
+            const requestedBroken = item.itemCategory === 'bag'
+              ? 0
+              : (item.brokenQty != null ? Number(item.brokenQty || 0) : Number(existing.received_broken_qty || 0));
+            const requestedOrdered = item.itemCategory === 'bag'
+              ? (item.qtyBags != null ? Number(item.qtyBags || 0) : Number(existing.ordered_qty || 0))
+              : (item.orderedBoxes != null ? Number(item.orderedBoxes || 0) : Number(existing.ordered_qty || 0));
+            if (
+              Number(existing.received_whole_qty || 0) !== requestedWhole ||
+              Number(existing.received_broken_qty || 0) !== requestedBroken ||
+              Number(existing.ordered_qty || 0) !== requestedOrdered
+            ) {
+              throw new Error('Locked inbound shipment can only update discounts, not quantities');
+            }
+            return {
+              existing,
+              lineGross: Number(existing.total_cost || 0),
+              discountAmount: Math.max(0, Number(item.discountAmount || 0)),
+            };
+          });
+
+          const shipmentForPct = updatedRows[0];
+          const handlingPct = Number(shipmentForPct.handling_cost_percent ?? 1.0);
+          const fuelPct = Number(shipmentForPct.fuel_cost_percent ?? 5.0);
+          const gstPct = Number(shipmentForPct.gst_percent ?? 18.0);
+          const pricing = computeInboundTotals({
+            items: preparedItems,
+            discountAmount: shipmentForPct.discount_amount || 0,
+            fuelPct,
+            handlingPct,
+            gstPct,
+          });
+
+          for (const priced of pricing.lines) {
+            const existing = priced.existing;
+            const qtyBasis = Number(existing.ordered_qty_sqm || 0) > 0 ? Number(existing.ordered_qty_sqm) : Number(existing.ordered_qty || 0);
+            const landedCost = qtyBasis > 0 ? Number((priced.effectiveLineCost / qtyBasis).toFixed(2)) : Number(existing.unit_cost || 0);
+            await sql(
+              `UPDATE stock_inbound_shipment_items
+               SET discount_amount = $1, landed_cost = $2, updated_at = NOW()
+               WHERE id = $3`,
+              [priced.lineDiscount, landedCost, existing.id]
+            );
+            await sql(
+              `UPDATE stock_inventory_lots
+               SET landed_cost = $1
+               WHERE source_type = 'purchase'
+                 AND source_table = 'stock_inbound_shipments'
+                 AND source_id = $2
+                 AND item_id = $3`,
+              [landedCost, id, existing.item_id]
+            );
+            await sql(`UPDATE stock_items SET landed_cost = $1, updated_at = NOW() WHERE id = $2`, [landedCost, existing.item_id]);
+          }
+
+          await sql(
+            `UPDATE stock_inbound_shipments
+             SET grand_total = $1, discount_amount = $2, updated_at = NOW()
+             WHERE id = $3`,
+            [pricing.grandTotal, pricing.shipmentDiscount, id]
+          );
+
+          const refreshed = await sql('SELECT * FROM stock_inbound_shipments WHERE id = $1', [id]);
+          return NextResponse.json({ shipment: refreshed[0] });
         }
         if (approvalCheck[0]?.approval_status !== 'approved') {
           await sql('DELETE FROM stock_inbound_shipment_items WHERE inbound_shipment_id = $1', [id]);
-          let subtotal = 0;
+          const preparedItems = [];
           for (const item of body.items) {
             if (!item.itemId) continue;
             const isBag = item.itemCategory === 'bag';
@@ -786,12 +877,40 @@ export async function PATCH(request, context) {
               total_cost = Number((qtyBags * ratePerBag).toFixed(2));
             }
 
-            subtotal += total_cost;
+            preparedItems.push({
+              item,
+              isBag,
+              qtyBags,
+              orderedBoxes,
+              ordered_qty_sqm,
+              costPerSqm,
+              total_cost,
+              lineGross: total_cost,
+              discountAmount: Math.max(0, Number(item.discountAmount || 0)),
+            });
+          }
 
+          const shipmentForPct = updatedRows[0];
+          const handlingPct = Number(shipmentForPct.handling_cost_percent ?? 1.0);
+          const fuelPct = Number(shipmentForPct.fuel_cost_percent ?? 5.0);
+          const gstPct = Number(shipmentForPct.gst_percent ?? 18.0);
+          const pricing = computeInboundTotals({
+            items: preparedItems,
+            discountAmount: shipmentForPct.discount_amount || 0,
+            fuelPct,
+            handlingPct,
+            gstPct,
+          });
+
+          for (const priced of pricing.lines) {
+            const { item, isBag, qtyBags, orderedBoxes, ordered_qty_sqm, costPerSqm, total_cost } = priced;
+            const landedCost = isBag
+              ? (qtyBags > 0 ? Number((priced.effectiveLineCost / qtyBags).toFixed(2)) : 0)
+              : (ordered_qty_sqm > 0 ? Number((priced.effectiveLineCost / ordered_qty_sqm).toFixed(2)) : Number(item.landedCost || item.unitPrice || 0));
             await sql(
               `INSERT INTO stock_inbound_shipment_items
-                 (inbound_shipment_id, item_id, received_whole_qty, received_broken_qty, ordered_qty, unit_cost, landed_cost, cost_per_sqm, ordered_qty_sqm, total_cost, hsn_code, notes)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+                 (inbound_shipment_id, item_id, received_whole_qty, received_broken_qty, ordered_qty, unit_cost, landed_cost, cost_per_sqm, ordered_qty_sqm, total_cost, discount_amount, hsn_code, notes)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
               [
                 id,
                 Number(item.itemId),
@@ -799,25 +918,18 @@ export async function PATCH(request, context) {
                 isBag ? 0 : Number(item.brokenQty || 0),
                 orderedBoxes,
                 isBag ? (item.ratePerBag != null ? Number(item.ratePerBag) : 0) : Number(item.unitPrice || 0),
-                isBag ? (item.ratePerBag != null ? Number(item.ratePerBag) : 0) : Number(item.landedCost || item.unitPrice || 0),
+                landedCost,
                 costPerSqm,
                 ordered_qty_sqm,
                 total_cost,
+                priced.lineDiscount,
                 item.hsnCode || null,
                 item.notes || null,
               ]
             );
           }
 
-          // Recompute grand_total after re-inserting items
-          const shipmentForPct = updatedRows[0];
-          const handlingPct = Number(shipmentForPct.handling_cost_percent ?? 1.0);
-          const fuelPct = Number(shipmentForPct.fuel_cost_percent ?? 5.0);
-          const gstPct = Number(shipmentForPct.gst_percent ?? 18.0);
-          const afterFuel = subtotal * (1 + fuelPct / 100);
-          const afterHandling = afterFuel * (1 + handlingPct / 100);
-          const grand_total = Number((afterHandling * (1 + gstPct / 100)).toFixed(2));
-          await sql(`UPDATE stock_inbound_shipments SET grand_total = $1, updated_at = NOW() WHERE id = $2`, [grand_total, id]);
+          await sql(`UPDATE stock_inbound_shipments SET grand_total = $1, discount_amount = $2, updated_at = NOW() WHERE id = $3`, [pricing.grandTotal, pricing.shipmentDiscount, id]);
         }
       }
 

@@ -20,6 +20,7 @@ export function createArrivalItemRow() {
     orderedBoxes: '',
     wholeQty: '',
     brokenQty: '',
+    discountAmount: '',
     notes: '',
   };
 }
@@ -66,6 +67,7 @@ export function createBagArrivalItemRow() {
     ratePerBag: '',
     hsnCode: '',
     description: '',
+    discountAmount: '',
     notes: '',
   };
 }
@@ -105,6 +107,7 @@ export function createInitialBagArrivalDraft() {
     fuelCostPercent: '0',
     gstPercent: '18.0',
     freightWeightKg: '',
+    discountAmount: '',
     notes: '',
     items: [createBagArrivalItemRow()],
   };
@@ -156,6 +159,7 @@ export function createInitialArrivalDraft() {
     fuelCostPercent: '5.0',
     gstPercent: '18.0',
     freightWeightKg: '',
+    discountAmount: '',
     notes: '',
     items: [createArrivalItemRow()],
   };

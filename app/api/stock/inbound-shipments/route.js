@@ -12,6 +12,7 @@ import {
 } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
+import { computeInboundTotals } from '@/lib/stock-pricing';
 
 function generateSku({ brandName, typeName, sizeLabel, itemName, grade }) {
   const parts = [itemName,grade, typeName, sizeLabel, brandName]
@@ -365,6 +366,31 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Valid paid amount is required when payment status is partial or paid' }, { status: 400 });
     }
 
+    const invoiceNumber = normalizeText(body.invoiceNumber);
+    const duplicateInvoiceRows = invoiceNumber && (supplier?.id || body.supplierId)
+      ? await sql(
+          `SELECT id, shipment_number, approval_status
+           FROM stock_inbound_shipments
+           WHERE supplier_id = $1
+             AND lower(trim(invoice_number)) = lower(trim($2))
+             AND status <> 'cancelled'
+           ORDER BY created_at DESC
+           LIMIT 1`,
+          [supplier?.id || body.supplierId, invoiceNumber]
+        )
+      : [];
+
+    if (duplicateInvoiceRows[0]) {
+      return NextResponse.json(
+        {
+          error: `Purchase invoice already exists as ${duplicateInvoiceRows[0].shipment_number}. Open and edit that purchase instead of creating a new one.`,
+          duplicateShipmentId: duplicateInvoiceRows[0].id,
+          duplicateShipmentNumber: duplicateInvoiceRows[0].shipment_number,
+        },
+        { status: 409 }
+      );
+    }
+
     const shipmentRows = await sql(
       `INSERT INTO stock_inbound_shipments (
         shipment_number,
@@ -405,7 +431,8 @@ export async function POST(request) {
         handling_cost_percent,
         fuel_cost_percent,
         gst_percent,
-        freight_weight_kg
+        freight_weight_kg,
+        discount_amount
       ) VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
         COALESCE($13, NOW()),
@@ -427,7 +454,8 @@ export async function POST(request) {
         $33,
         $34,
         $35,
-        $36
+        $36,
+        $37
       )
       RETURNING *`,
       [
@@ -445,7 +473,7 @@ export async function POST(request) {
         normalizeText(body.driverPhone) || null,       // $12
         body.purchaseDate || body.arrivalDate || null, // $13
         appUser?.id || null,                           // $14
-        normalizeText(body.invoiceNumber) || null,     // $15
+        invoiceNumber || null,                         // $15
         body.invoiceDate || null,                      // $16
         normalizeText(body.originCity) || null,        // $17
         paymentStatus,                                 // $18
@@ -467,13 +495,14 @@ export async function POST(request) {
         Number(body.fuelCostPercent ?? 5.0),           // $34
         Number(body.gstPercent ?? 18.0),               // $35
         body.freightWeightKg || null,                  // $36
+        body.discountAmount === '' || body.discountAmount == null ? 0 : Number(body.discountAmount), // $37
       ]
     );
 
     const shipment = shipmentRows[0];
     const insertedItems = [];
     const itemDivisionIds = [];
-    let subtotal = 0;
+    const preparedItems = [];
 
     for (const row of items) {
       const isBagRow = row.itemCategory === 'bag';
@@ -510,8 +539,37 @@ export async function POST(request) {
         total_cost = Number((orderedBoxes * ratePerBag).toFixed(2));
       }
 
-      subtotal += total_cost;
+      const discountAmount = Math.max(0, Number(row.discountAmount || 0));
+      preparedItems.push({
+        row,
+        item,
+        isBagRow,
+        orderedBoxes,
+        whole_qty_sqm,
+        broken_qty_sqm,
+        ordered_qty_sqm,
+        total_cost,
+        lineGross: total_cost,
+        discountAmount,
+      });
+    }
 
+    const handlingPct = Number(body.handlingCostPercent ?? 1.0);
+    const fuelPct = Number(body.fuelCostPercent ?? 5.0);
+    const gstPct = Number(body.gstPercent ?? 18.0);
+    const pricing = computeInboundTotals({
+      items: preparedItems,
+      discountAmount: body.discountAmount === '' || body.discountAmount == null ? 0 : Number(body.discountAmount),
+      fuelPct,
+      handlingPct,
+      gstPct,
+    });
+
+    for (const priced of pricing.lines) {
+      const { row, item, isBagRow, orderedBoxes, whole_qty_sqm, broken_qty_sqm, ordered_qty_sqm, total_cost } = priced;
+      const landed_cost = isBagRow
+        ? (orderedBoxes > 0 ? Number((priced.effectiveLineCost / orderedBoxes).toFixed(2)) : 0)
+        : (ordered_qty_sqm > 0 ? Number((priced.effectiveLineCost / ordered_qty_sqm).toFixed(2)) : Number(row.landedCost || row.unitPrice || 0));
       const insertResult = await sql(
         `INSERT INTO stock_inbound_shipment_items (
           inbound_shipment_id,
@@ -530,8 +588,9 @@ export async function POST(request) {
           broken_qty_sqm,
           ordered_qty_sqm,
           total_cost,
+          discount_amount,
           notes
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
         RETURNING *`,
         [
           shipment.id,
@@ -541,7 +600,7 @@ export async function POST(request) {
           isBagRow ? 0 : Number(row.brokenQty || 0),
           Number(row.rejectedQty || 0),
           isBagRow ? (row.ratePerBag != null ? Number(row.ratePerBag) : 0) : Number(row.unitPrice || 0),
-          isBagRow ? (row.ratePerBag != null ? Number(row.ratePerBag) : 0) : Number(row.landedCost || row.unitPrice || 0),
+          landed_cost,
           normalizeText(row.hsnCode) || null,
           whole_qty_sqm,
           isBagRow ? null : (row.costPerSqm != null && row.costPerSqm !== '' ? Number(row.costPerSqm) : null),
@@ -550,24 +609,18 @@ export async function POST(request) {
           broken_qty_sqm,
           ordered_qty_sqm,
           total_cost,
+          priced.lineDiscount,
           row.notes || null,
         ]
       );
       insertedItems.push(insertResult[0]);
     }
 
-    const handlingPct = Number(body.handlingCostPercent ?? 1.0);
-    const fuelPct = Number(body.fuelCostPercent ?? 5.0);
-    const gstPct = Number(body.gstPercent ?? 18.0);
-    const afterFuel = subtotal * (1 + fuelPct / 100);
-    const afterHandling = afterFuel * (1 + handlingPct / 100);
-    const grand_total = Math.round(afterHandling * (1 + gstPct / 100));
-
     await sql(
       `UPDATE stock_inbound_shipments
-       SET handling_cost_percent=$1, fuel_cost_percent=$2, gst_percent=$3, grand_total=$4, freight_weight_kg=$5
-       WHERE id=$6`,
-      [handlingPct, fuelPct, gstPct, grand_total, body.freightWeightKg || null, shipment.id]
+       SET handling_cost_percent=$1, fuel_cost_percent=$2, gst_percent=$3, grand_total=$4, freight_weight_kg=$5, discount_amount=$6
+       WHERE id=$7`,
+      [handlingPct, fuelPct, gstPct, pricing.grandTotal, body.freightWeightKg || null, pricing.shipmentDiscount, shipment.id]
     );
 
     const uniqueDivisionIds = [...new Set(itemDivisionIds)];

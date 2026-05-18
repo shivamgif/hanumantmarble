@@ -338,6 +338,7 @@ CREATE TABLE IF NOT EXISTS stock_inbound_shipments (
   transporter_bill_amount NUMERIC(14, 2) NOT NULL DEFAULT 0,
   delivery_cost NUMERIC(14, 2) NOT NULL DEFAULT 0,
   unloading_labour_cost NUMERIC(14, 2) NOT NULL DEFAULT 0,
+  discount_amount NUMERIC(14, 2) NOT NULL DEFAULT 0,
   total_whole_qty INTEGER NOT NULL DEFAULT 0,
   total_broken_qty INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'submitted', 'arrived', 'partially_received', 'received', 'closed', 'cancelled')),
@@ -363,6 +364,7 @@ CREATE TABLE IF NOT EXISTS stock_inbound_shipment_items (
   hsn_code TEXT,
   qty_sqm NUMERIC(14, 3),
   cost_per_sqm NUMERIC(12, 2),
+  discount_amount NUMERIC(14, 2) NOT NULL DEFAULT 0,
   thickness_mm_snapshot NUMERIC(10, 2),
   whole_inventory_lot_id BIGINT,
   broken_inventory_lot_id BIGINT,
@@ -621,6 +623,9 @@ ALTER TABLE IF EXISTS stock_inbound_shipment_items ADD COLUMN IF NOT EXISTS whol
 ALTER TABLE IF EXISTS stock_inbound_shipment_items ADD COLUMN IF NOT EXISTS broken_qty_sqm NUMERIC(14, 3);
 ALTER TABLE IF EXISTS stock_inbound_shipment_items ADD COLUMN IF NOT EXISTS ordered_qty_sqm NUMERIC(14, 3);
 ALTER TABLE IF EXISTS stock_inbound_shipment_items ADD COLUMN IF NOT EXISTS total_cost NUMERIC(14, 2) NOT NULL DEFAULT 0;
+
+ALTER TABLE IF EXISTS stock_inbound_shipments ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(14, 2) NOT NULL DEFAULT 0;
+ALTER TABLE IF EXISTS stock_inbound_shipment_items ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(14, 2) NOT NULL DEFAULT 0;
 
 DO $$
 BEGIN

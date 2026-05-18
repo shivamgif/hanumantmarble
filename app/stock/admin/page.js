@@ -527,6 +527,7 @@ export default function AdminDashboard() {
         fuelCostPercent: s.fuel_cost_percent != null ? String(s.fuel_cost_percent) : '5.0',
         gstPercent: s.gst_percent != null ? String(s.gst_percent) : '18.0',
         freightWeightKg: s.freight_weight_kg != null ? String(s.freight_weight_kg) : '',
+        discountAmount: s.discount_amount != null && Number(s.discount_amount) !== 0 ? String(s.discount_amount) : '',
         notes: s.notes || '',
         items: items.length > 0 ? items.map((item) => {
           const parsedDims = parseSizeLabelDimensions(item.size_label);
@@ -551,6 +552,7 @@ export default function AdminDashboard() {
           brokenQty: String(item.received_broken_qty ?? 0),
           costPerSqm: item.cost_per_sqm != null ? String(item.cost_per_sqm) : '',
           qtySqm: item.qty_sqm != null ? String(item.qty_sqm) : '',
+          discountAmount: item.discount_amount != null && Number(item.discount_amount) !== 0 ? String(item.discount_amount) : '',
           notes: item.notes || '',
         });}) : [createArrivalItemRow()],
       });
@@ -589,6 +591,7 @@ export default function AdminDashboard() {
           fuelCostPercent: s.fuel_cost_percent != null ? String(s.fuel_cost_percent) : '5.0',
           gstPercent: s.gst_percent != null ? String(s.gst_percent) : '18.0',
           freightWeightKg: s.freight_weight_kg != null ? String(s.freight_weight_kg) : '',
+          discountAmount: s.discount_amount != null && Number(s.discount_amount) !== 0 ? String(s.discount_amount) : '',
           notes: s.notes || '',
           items: items.length > 0 ? items.map((item) => ({
             itemCategory: 'bag',
@@ -601,6 +604,7 @@ export default function AdminDashboard() {
             ratePerBag: item.cost_per_bag != null ? String(item.cost_per_bag) : '',
             hsnCode: item.hsn_code || '',
             description: item.description || '',
+            discountAmount: item.discount_amount != null && Number(item.discount_amount) !== 0 ? String(item.discount_amount) : '',
             notes: item.notes || '',
           })) : [createBagArrivalItemRow()],
         });
@@ -625,6 +629,7 @@ export default function AdminDashboard() {
         hsnCode: trimText(item.hsnCode),
         description: trimText(item.description),
         notes: trimText(item.notes),
+        discountAmount: toNumber(item.discountAmount),
       })).filter((item) => item.itemId || item.qtyBags > 0);
       const payload = {
         ...values,
@@ -636,6 +641,7 @@ export default function AdminDashboard() {
         fuelCostPercent: values.fuelCostPercent === '' ? 5.0 : toNumber(values.fuelCostPercent),
         gstPercent: values.gstPercent === '' ? 18.0 : toNumber(values.gstPercent),
         freightWeightKg: values.freightWeightKg === '' ? null : toNumber(values.freightWeightKg),
+        discountAmount: values.discountAmount === '' ? 0 : toNumber(values.discountAmount),
       };
       const response = await fetch(`/api/stock/inbound-shipments/${editingBagArrivalId}`, {
         method: 'PATCH',
@@ -669,6 +675,7 @@ export default function AdminDashboard() {
           brokenQty: toNumber(item.brokenQty),
           orderedBoxes: item.orderedBoxes || undefined,
           costPerSqm: item.costPerSqm ?? undefined,
+          discountAmount: toNumber(item.discountAmount),
           notes: trimText(item.notes),
         }))
         .filter((item) => item.itemId || item.wholeQty > 0 || item.brokenQty > 0);
@@ -698,6 +705,7 @@ export default function AdminDashboard() {
           fuelCostPercent: values.fuelCostPercent === '' ? undefined : toNumber(values.fuelCostPercent),
           gstPercent: values.gstPercent === '' ? undefined : toNumber(values.gstPercent),
           freightWeightKg: values.freightWeightKg === '' ? undefined : toNumber(values.freightWeightKg),
+          discountAmount: values.discountAmount === '' ? 0 : toNumber(values.discountAmount),
           notes: trimText(values.notes) || undefined,
           items,
         }),
