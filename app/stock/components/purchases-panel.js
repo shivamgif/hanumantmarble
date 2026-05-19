@@ -122,8 +122,10 @@ export function PurchasesPanel({
           fuelCostPercent: s.fuel_cost_percent != null ? String(s.fuel_cost_percent) : '5.0',
           gstPercent: s.gst_percent != null ? String(s.gst_percent) : '18.0',
           freightWeightKg: s.freight_weight_kg != null ? String(s.freight_weight_kg) : '',
+          discountAmount: s.discount_amount != null && Number(s.discount_amount) !== 0 ? String(s.discount_amount) : '',
           notes: s.notes || '',
           items: items.length > 0 ? items.map((item) => ({
+            id: item.id != null ? Number(item.id) : undefined,
             itemCategory: 'bag',
             itemId: String(item.item_id),
             itemName: item.item_name || '',
@@ -134,6 +136,7 @@ export function PurchasesPanel({
             ratePerBag: item.cost_per_bag != null ? String(item.cost_per_bag) : '',
             hsnCode: item.hsn_code || '',
             description: item.description || '',
+            discountAmount: item.discount_amount != null && Number(item.discount_amount) !== 0 ? String(item.discount_amount) : '',
             notes: item.notes || '',
           })) : [createBagArrivalItemRow()],
         });
@@ -179,6 +182,7 @@ export function PurchasesPanel({
         typeName: trimText(item.typeName),
         hsnCode: trimText(item.hsnCode),
         description: trimText(item.description),
+        discountAmount: item.discountAmount === '' ? 0 : toNumber(item.discountAmount),
         notes: trimText(item.notes),
       }));
 
@@ -191,6 +195,7 @@ export function PurchasesPanel({
         fuelCostPercent: values.fuelCostPercent === '' ? 0 : toNumber(values.fuelCostPercent),
         gstPercent: values.gstPercent === '' ? 18 : toNumber(values.gstPercent),
         freightWeightKg: values.freightWeightKg === '' ? null : toNumber(values.freightWeightKg),
+        discountAmount: values.discountAmount === '' ? 0 : toNumber(values.discountAmount),
       };
 
       let response, json;
@@ -202,6 +207,9 @@ export function PurchasesPanel({
         });
         json = await response.json();
         if (!response.ok) throw new Error(json.error || 'Failed to update bag purchase');
+        invalidateShipmentCache('arrival', editingBagArrivalId);
+        if (json.shipment?.id) invalidateShipmentCache('arrival', json.shipment.id);
+        if (onRefreshData) await onRefreshData();
         setBagNotice({ type: 'success', message: `Bag purchase updated.` });
         if (onToast) onToast({ type: 'success', message: `Bag purchase updated.` });
       } else {
