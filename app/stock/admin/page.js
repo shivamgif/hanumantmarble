@@ -1624,7 +1624,8 @@ export default function AdminDashboard() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-col gap-1">
-                            <span className="text-slate-900 dark:text-slate-100 font-black text-xs font-sans">{item.total_whole_qty} <span className="text-[9px] text-slate-400 uppercase tracking-widest">Whole</span></span>
+                            {Number(item.total_bag_qty) > 0 && <span className="text-amber-600 dark:text-amber-400 font-black text-xs font-sans">{item.total_bag_qty} <span className="text-[9px] uppercase tracking-widest">Bags</span></span>}
+                            {Number(item.total_whole_qty) > 0 && <span className="text-slate-900 dark:text-slate-100 font-black text-xs font-sans">{item.total_whole_qty} <span className="text-[9px] text-slate-400 uppercase tracking-widest">Whole</span></span>}
                             {Number(item.total_broken_qty) > 0 && <span className="text-rose-500 font-black text-xs font-sans">{item.total_broken_qty} <span className="text-[9px] text-rose-400 uppercase tracking-widest">Broken</span></span>}
                           </div>
                         </td>
@@ -1702,7 +1703,8 @@ export default function AdminDashboard() {
                       </div>
                       <div className="text-right">
                         <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Quantities</p>
-                        <p className="text-xs font-black text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>
+                        {Number(item.total_bag_qty) > 0 && <p className="text-xs font-black text-amber-600 dark:text-amber-400">{item.total_bag_qty} Bags</p>}
+                        {Number(item.total_whole_qty) > 0 && <p className="text-xs font-black text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>}
                         {Number(item.total_broken_qty) > 0 && <p className="text-xs font-black text-rose-500">{item.total_broken_qty} Broken</p>}
                       </div>
                     </div>

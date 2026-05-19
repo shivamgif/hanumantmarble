@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, generateReference, getStockContext, hasAnyStockRole, queueNotification, recordTimelineEvent } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, generateReference, getStockContext, hasAnyStockRole, queueNotification, recordTimelineEvent, upsertNamedRecord } from '@/lib/stock-workflow';
 import { sql, withTransaction } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { computeInboundTotals } from '@/lib/stock-pricing';
@@ -920,6 +920,7 @@ export async function PATCH(request, context) {
             gstPct,
           });
 
+          const schemaCaps = await getStockSchemaCapabilities();
           for (const priced of pricing.lines) {
             const { item, isBag, qtyBags, orderedBoxes, ordered_qty_sqm, costPerSqm, total_cost } = priced;
             const landedCost = isBag
@@ -945,6 +946,38 @@ export async function PATCH(request, context) {
                 item.notes || null,
               ]
             );
+
+            if (isBag) {
+              const brandRow = item.brandName ? await upsertNamedRecord({ table: 'stock_brands', value: item.brandName }) : null;
+              const typeRow = item.typeName ? await upsertNamedRecord({
+                table: 'stock_types',
+                value: item.typeName,
+                extra: schemaCaps.hasStockTypesCategory ? { category: 'bag' } : {},
+              }) : null;
+
+              const masterCols = [];
+              const masterVals = [];
+              if (brandRow?.id) { masterCols.push(`brand_id = $${masterVals.length + 1}`); masterVals.push(brandRow.id); }
+              if (typeRow?.id) { masterCols.push(`type_id = $${masterVals.length + 1}`); masterVals.push(typeRow.id); }
+              if (item.itemName) { masterCols.push(`name = $${masterVals.length + 1}`); masterVals.push(item.itemName); }
+              if (item.description !== undefined) { masterCols.push(`description = $${masterVals.length + 1}`); masterVals.push(item.description || null); }
+              if (schemaCaps.hasStockItemsWeightPerUnitKg && item.weightPerUnitKg !== undefined) {
+                masterCols.push(`weight_per_unit_kg = $${masterVals.length + 1}`);
+                masterVals.push(item.weightPerUnitKg === '' || item.weightPerUnitKg == null ? null : Number(item.weightPerUnitKg));
+              }
+              if (schemaCaps.hasStockItemsRatePerBag && item.ratePerBag !== undefined) {
+                masterCols.push(`rate_per_bag = $${masterVals.length + 1}`);
+                masterVals.push(item.ratePerBag === '' || item.ratePerBag == null ? null : Number(item.ratePerBag));
+              }
+              if (masterCols.length > 0) {
+                masterCols.push('updated_at = NOW()');
+                masterVals.push(Number(item.itemId));
+                await sql(
+                  `UPDATE stock_items SET ${masterCols.join(', ')} WHERE id = $${masterVals.length}`,
+                  masterVals
+                );
+              }
+            }
           }
 
           await sql(`UPDATE stock_inbound_shipments SET grand_total = $1, discount_amount = $2, updated_at = NOW() WHERE id = $3`, [pricing.grandTotal, pricing.shipmentDiscount, id]);

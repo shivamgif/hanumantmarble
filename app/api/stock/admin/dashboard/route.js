@@ -102,6 +102,12 @@ export async function GET(request) {
            s.status,
            s.total_whole_qty,
            s.total_broken_qty,
+           COALESCE((
+             SELECT SUM(isi.ordered_qty)
+             FROM stock_inbound_shipment_items isi
+             JOIN stock_items si ON si.id = isi.item_id
+             WHERE isi.inbound_shipment_id = s.id AND si.unit_of_measure = 'bag'
+           ), 0) AS total_bag_qty,
            s.created_at,
            COALESCE(u.name, u.email, s.created_by) AS maintainer_name
          FROM stock_inbound_shipments s
@@ -112,15 +118,18 @@ export async function GET(request) {
         []
       ),
       sql(
-        `SELECT sos.id, sos.shipment_number, sos.truck_license_plate_snapshot AS truck_license_plate, sos.driver_name_snapshot AS driver_name, c.name AS customer_name, sos.created_at AS dispatch_date, sos.status,
+        `SELECT sos.id, sos.shipment_number, sos.truck_license_plate_snapshot AS truck_license_plate, sos.driver_name_snapshot AS driver_name,
+                COALESCE(c_direct.name, c_so.name) AS customer_name,
+                sos.created_at AS dispatch_date, sos.status,
                 COALESCE(SUM(soi.loaded_whole_qty), 0) as total_whole_qty, COALESCE(SUM(soi.loaded_broken_qty), 0) as total_broken_qty,
                 COALESCE(SUM(soi.loaded_whole_qty * soi.rate_per_unit), 0) as total_selling_price_excl
          FROM stock_outbound_shipments sos
          LEFT JOIN stock_outbound_shipment_items soi ON sos.id = soi.outbound_shipment_id
+         LEFT JOIN stock_customers c_direct ON c_direct.id = sos.customer_id
          LEFT JOIN stock_sales_orders sso ON sos.sales_order_id = sso.id
-         LEFT JOIN stock_customers c ON sso.customer_id = c.id
+         LEFT JOIN stock_customers c_so ON c_so.id = sso.customer_id
          WHERE sos.approval_status = 'pending'
-         GROUP BY sos.id, c.name
+         GROUP BY sos.id, c_direct.name, c_so.name
          ORDER BY sos.created_at DESC`,
         []
       ),
