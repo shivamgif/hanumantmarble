@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, generateReference, getStockContext, hasAnyStockRole, queueNotification, recordTimelineEvent, upsertNamedRecord } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, generateReference, getStockContext, hasAnyStockRole, normalizeText, queueNotification, recordTimelineEvent, upsertNamedRecord } from '@/lib/stock-workflow';
 import { sql, withTransaction } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { computeInboundTotals } from '@/lib/stock-pricing';
@@ -17,6 +17,55 @@ function computeSqmValues(item, size) {
   const sqmPerBox = piecesPerBox ? sqmPerTile * piecesPerBox : null;
 
   return { sqmPerBox, sqmPerTile };
+}
+
+function buildBagSku({ brandName, typeName, itemName, grade }) {
+  const parts = [itemName, grade, typeName, brandName]
+    .map((value) => normalizeText(value || '').toUpperCase().replace(/[^A-Z0-9]+/g, '-'))
+    .filter(Boolean);
+  return parts.join('-').replace(/-+/g, '-').replace(/^-|-$/g, '') || generateReference('BAG');
+}
+
+async function resolveBagItemMaster(item, schemaCaps) {
+  const brandRow = await upsertNamedRecord({ table: 'stock_brands', value: item.brandName || 'Generic' });
+  const typeRow = await upsertNamedRecord({
+    table: 'stock_types',
+    value: item.typeName || 'Adhesive',
+    extra: schemaCaps.hasStockTypesCategory ? { category: 'bag' } : {},
+  });
+
+  const sku = buildBagSku({ brandName: brandRow?.name, typeName: typeRow?.name, itemName: item.itemName, grade: item.grade });
+  const itemName = normalizeText(item.itemName || typeRow?.name || 'Adhesive');
+  const weight = item.weightPerUnitKg === '' || item.weightPerUnitKg == null ? null : Number(item.weightPerUnitKg);
+  const ratePerBag = item.ratePerBag === '' || item.ratePerBag == null ? null : Number(item.ratePerBag);
+
+  const columns = ['sku', 'brand_id', 'type_id', 'name', 'grade', 'unit_of_measure', 'description'];
+  const values = [sku, brandRow.id, typeRow?.id || null, itemName, item.grade || null, 'bag', item.description || null];
+
+  if (schemaCaps.hasStockItemsWeightPerUnitKg) { columns.push('weight_per_unit_kg'); values.push(weight); }
+  if (schemaCaps.hasStockItemsRatePerBag) { columns.push('rate_per_bag'); values.push(ratePerBag); }
+
+  const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+  const updates = [
+    'brand_id = EXCLUDED.brand_id',
+    'type_id = EXCLUDED.type_id',
+    'name = EXCLUDED.name',
+    'grade = EXCLUDED.grade',
+    'unit_of_measure = EXCLUDED.unit_of_measure',
+    'description = COALESCE(EXCLUDED.description, stock_items.description)',
+  ];
+  if (schemaCaps.hasStockItemsWeightPerUnitKg) updates.push('weight_per_unit_kg = COALESCE(EXCLUDED.weight_per_unit_kg, stock_items.weight_per_unit_kg)');
+  if (schemaCaps.hasStockItemsRatePerBag) updates.push('rate_per_bag = COALESCE(EXCLUDED.rate_per_bag, stock_items.rate_per_bag)');
+  updates.push('updated_at = NOW()');
+
+  const rows = await sql(
+    `INSERT INTO stock_items (${columns.join(', ')})
+     VALUES (${placeholders})
+     ON CONFLICT (sku) DO UPDATE SET ${updates.join(', ')}
+     RETURNING *`,
+    values
+  );
+  return rows[0];
 }
 
 async function reverseInboundShipmentStock(tx, shipmentId) {
@@ -926,13 +975,20 @@ export async function PATCH(request, context) {
             const landedCost = isBag
               ? (qtyBags > 0 ? Number((priced.effectiveLineCost / qtyBags).toFixed(2)) : 0)
               : (ordered_qty_sqm > 0 ? Number((priced.effectiveLineCost / ordered_qty_sqm).toFixed(2)) : Number(item.landedCost || item.unitPrice || 0));
+
+            let resolvedItemId = Number(item.itemId);
+            if (isBag) {
+              const masterRow = await resolveBagItemMaster(item, schemaCaps);
+              if (masterRow?.id) resolvedItemId = Number(masterRow.id);
+            }
+
             await sql(
               `INSERT INTO stock_inbound_shipment_items
                  (inbound_shipment_id, item_id, received_whole_qty, received_broken_qty, ordered_qty, unit_cost, landed_cost, cost_per_sqm, ordered_qty_sqm, total_cost, discount_amount, hsn_code, notes)
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
               [
                 id,
-                Number(item.itemId),
+                resolvedItemId,
                 isBag ? qtyBags : Number(item.wholeQty || 0),
                 isBag ? 0 : Number(item.brokenQty || 0),
                 orderedBoxes,
@@ -946,38 +1002,6 @@ export async function PATCH(request, context) {
                 item.notes || null,
               ]
             );
-
-            if (isBag) {
-              const brandRow = item.brandName ? await upsertNamedRecord({ table: 'stock_brands', value: item.brandName }) : null;
-              const typeRow = item.typeName ? await upsertNamedRecord({
-                table: 'stock_types',
-                value: item.typeName,
-                extra: schemaCaps.hasStockTypesCategory ? { category: 'bag' } : {},
-              }) : null;
-
-              const masterCols = [];
-              const masterVals = [];
-              if (brandRow?.id) { masterCols.push(`brand_id = $${masterVals.length + 1}`); masterVals.push(brandRow.id); }
-              if (typeRow?.id) { masterCols.push(`type_id = $${masterVals.length + 1}`); masterVals.push(typeRow.id); }
-              if (item.itemName) { masterCols.push(`name = $${masterVals.length + 1}`); masterVals.push(item.itemName); }
-              if (item.description !== undefined) { masterCols.push(`description = $${masterVals.length + 1}`); masterVals.push(item.description || null); }
-              if (schemaCaps.hasStockItemsWeightPerUnitKg && item.weightPerUnitKg !== undefined) {
-                masterCols.push(`weight_per_unit_kg = $${masterVals.length + 1}`);
-                masterVals.push(item.weightPerUnitKg === '' || item.weightPerUnitKg == null ? null : Number(item.weightPerUnitKg));
-              }
-              if (schemaCaps.hasStockItemsRatePerBag && item.ratePerBag !== undefined) {
-                masterCols.push(`rate_per_bag = $${masterVals.length + 1}`);
-                masterVals.push(item.ratePerBag === '' || item.ratePerBag == null ? null : Number(item.ratePerBag));
-              }
-              if (masterCols.length > 0) {
-                masterCols.push('updated_at = NOW()');
-                masterVals.push(Number(item.itemId));
-                await sql(
-                  `UPDATE stock_items SET ${masterCols.join(', ')} WHERE id = $${masterVals.length}`,
-                  masterVals
-                );
-              }
-            }
           }
 
           await sql(`UPDATE stock_inbound_shipments SET grand_total = $1, discount_amount = $2, updated_at = NOW() WHERE id = $3`, [pricing.grandTotal, pricing.shipmentDiscount, id]);
