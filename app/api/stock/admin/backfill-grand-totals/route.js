@@ -8,7 +8,7 @@ export async function POST(request) {
     await ensureDatabaseAvailable();
     const { session, appUser } = await getStockContext(request);
     const role = normalizeStockRole(appUser?.role);
-    if (!session || role !== 'admin') {
+    if (!session || (role !== 'admin' && role !== 'manager')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
