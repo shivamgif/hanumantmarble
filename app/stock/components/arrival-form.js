@@ -100,7 +100,7 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
             <Sparkles className="h-3.5 w-3.5 text-brand-primary" />
             {isCatalogItem ? tc.catalogIntelligence : tc.technicalEntry}
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             <StockFormField control={control} name={`items.${index}.brandName`} label={tc.brand} placeholder={tc.brand} disabled={isCatalogItem} list="sg-brandName" />
             <FormField
               control={control}
@@ -186,7 +186,7 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
             <StockFormField control={control} name={`items.${index}.thicknessMm`} label={`${tc.thickness} (${tc.mm})`} type="number" min="0" step="0.01" disabled={isCatalogItem} />
             <StockFormField control={control} name={`items.${index}.costPerSqm`} label={t('costPerSqm')} type="number" min="0" step="0.01" />
             <StockFormField control={control} name={`items.${index}.discountAmount`} label="Discount (₹)" type="number" placeholder="0" min="0" step="0.01" />
-            <StockFormField control={control} name={`items.${index}.description`} label={tc.description} placeholder="Notes..." className="lg:col-span-2" disabled={isCatalogItem} />
+            <StockFormField control={control} name={`items.${index}.description`} label={tc.description} placeholder="Notes..." className="sm:col-span-2 lg:col-span-3 2xl:col-span-4" disabled={isCatalogItem} />
           </div>
         </div>
       </div>
@@ -210,7 +210,7 @@ const BagArrivalItemRow = memo(function BagArrivalItemRow({ index, fieldRow, con
         )}
       </div>
       <div className="p-4 space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           <div className="sm:col-span-2 lg:col-span-1">
             <div className={FORM_LABEL_CLASS}>{tc?.productName ?? 'Product Name'}</div>
             <FormField
@@ -237,7 +237,7 @@ const BagArrivalItemRow = memo(function BagArrivalItemRow({ index, fieldRow, con
           <SuggestComboboxField control={control} name={`items.${index}.typeName`} label={tc?.type ?? 'Type'} placeholder={tc?.type ?? 'Type'} options={bagTypes} />
           <StockFormField control={control} name={`items.${index}.qtyBags`} label={tc?.qtyBags ?? 'Qty (Bags)'} type="number" placeholder="0" min="0" />
         </div>
-        <div className="grid gap-4 sm:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StockFormField control={control} name={`items.${index}.weightPerUnitKg`} label={tc?.weightPerBag ?? 'Weight per Bag (kg)'} type="number" placeholder="25" min="0" step="0.1" />
           <StockFormField control={control} name={`items.${index}.ratePerBag`} label={tc?.ratePerBag ?? 'Rate per Bag (₹)'} type="number" placeholder="0" min="0" step="0.01" />
           <StockFormField control={control} name={`items.${index}.discountAmount`} label="Discount (₹)" type="number" placeholder="0" min="0" step="0.01" />
@@ -287,7 +287,7 @@ export function BagArrivalFormContent({
         ))}
         <div className={FORM_CARD_CLASS}>
           <FormSectionTitle category="Intake Strategy" icon={FileText} title="Purchase Basics" description="Invoice and cost details for bag goods" tc={tc} />
-          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             <SuggestComboboxField control={form.control} name="supplierName" label={t?.('supplier') ?? 'Supplier'} placeholder="Supplier Name..." options={suggestions?.supplierName} />
             <StockFormField control={form.control} name="invoiceNumber" label={t?.('invoiceNo') ?? 'Invoice No.'} placeholder="INV-..." invoiceChars />
             <StockDateField control={form.control} name="invoiceDate" label={tc?.invoiceDate ?? 'Invoice Date'} placeholder="Invoice Date" />
@@ -301,7 +301,7 @@ export function BagArrivalFormContent({
         </div>
         <div className={FORM_CARD_CLASS}>
           <FormSectionTitle category="Mobility Details" icon={Truck} title={tc?.transportInvoice ?? 'Transport & Vehicle'} tc={tc} />
-          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             <SuggestComboboxField control={form.control} name="transporterName" label={tc?.transporter ?? 'Transporter'} placeholder="Transport company" options={suggestions?.transporterName} />
             <StockFormField control={form.control} name="truckLicensePlate" label={t?.('truck') ?? 'Truck'} placeholder="RJ 14 XY 0000" list="sg-truckLicensePlate" />
             <StockFormField control={form.control} name="driverName" label={t?.('driver') ?? 'Driver'} placeholder="Driver Name..." list="sg-driverName" />
@@ -456,7 +456,7 @@ export function ArrivalFormContent({
         ))}
         <div className={FORM_CARD_CLASS}>
           <FormSectionTitle category="Intake Strategy" icon={FileText} title={tc.purchaseBasics} description={tc.purchaseBasicsDesc} tc={tc} />
-          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             <SuggestComboboxField control={form.control} name="supplierName" label={t('supplier')} placeholder="Supplier Name..." options={suggestions.supplierName} />
             <StockFormField control={form.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." invoiceChars />
             <StockDateField control={form.control} name="invoiceDate" label={tc.invoiceDate} placeholder={tc.invoiceDate} />
@@ -470,7 +470,7 @@ export function ArrivalFormContent({
         </div>
         <div className={FORM_CARD_CLASS}>
           <FormSectionTitle category="Mobility Details" icon={Truck} title={tc.transportInvoice} tc={tc} />
-          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             <SuggestComboboxField control={form.control} name="transporterName" label={tc.transporter} placeholder="Transport company" options={suggestions.transporterName} />
             <StockFormField control={form.control} name="truckLicensePlate" label={t('truck')} placeholder="RJ 14 XY 0000" list="sg-truckLicensePlate" />
             <StockFormField control={form.control} name="driverName" label={t('driver')} placeholder="Driver Name..." list="sg-driverName" />

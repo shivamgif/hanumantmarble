@@ -152,7 +152,7 @@ export function DispatchesPanel({
             </div>
           </div>
           <Sheet open={dispatchSheetOpen} onOpenChange={setDispatchSheetOpen}>
-            <SheetContent side="right" className="w-full max-w-none overflow-y-auto bg-white dark:bg-slate-950 md:w-[50vw]">
+            <SheetContent side="right" className="w-full max-w-none overflow-y-auto bg-white dark:bg-slate-950 md:w-[80vw] lg:w-[70vw] xl:w-[62vw] 2xl:w-[55vw] md:max-w-[1100px]">
               <SheetHeader className="border-b border-border pb-4">
                 <SheetTitle className="text-base">{t('logNewDispatch')}</SheetTitle>
                 <SheetDescription className="text-xs">{t('logNewDispatchDesc')}</SheetDescription>

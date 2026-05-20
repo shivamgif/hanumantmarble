@@ -185,7 +185,7 @@ export function BagDispatchFormContent({
         <fieldset disabled={submitting} className="space-y-6 border-0 p-0 m-0 min-w-0">
         <div className={FORM_CARD_CLASS}>
           <FormSectionTitle category="Outbound Strategy" icon={Send} title="Bag Dispatch Basics" description="Invoice and customer details for bag goods dispatch" tc={tc} />
-          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             <StockFormField control={form.control} name="customerName" label={t?.('customer') ?? 'Customer'} placeholder="Customer Name..." autoFocus />
             <StockFormField control={form.control} name="customerPhoneNumber" label={tc?.customerPhone ?? 'Customer Phone'} placeholder="+91 9876543210" type="tel" />
             <StockFormField control={form.control} name="invoiceNumber" label={t?.('invoiceNo') ?? 'Invoice No.'} placeholder="INV-..." invoiceChars />
@@ -197,7 +197,7 @@ export function BagDispatchFormContent({
         </div>
         <div className={FORM_CARD_CLASS}>
           <FormSectionTitle category="Mobility Details" icon={Truck} title={tc?.transportAndVehicle ?? 'Transport & Vehicle'} tc={tc} />
-          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
             <StockFormField control={form.control} name="truckLicensePlate" label={t?.('truck') ?? 'Truck'} placeholder="RJ 14 XY 0000" />
             <StockFormField control={form.control} name="driverName" label={t?.('driver') ?? 'Driver'} placeholder="Driver Name..." />
           </div>
@@ -329,7 +329,7 @@ export function DispatchFormContent({
             description={tc.dispatchBasicsDesc}
             tc={tc}
           />
-          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             <StockFormField control={form.control} name="customerName" label={t('customer')} placeholder="Customer Name..." autoFocus />
             <StockFormField control={form.control} name="customerPhoneNumber" label={tc.customerPhone} placeholder="+91 9876543210" type="tel" />
             <StockFormField control={form.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." invoiceChars />
@@ -354,7 +354,7 @@ export function DispatchFormContent({
               control={form.control}
               name="salespersonUserId"
               render={() => (
-                <FormItem className="-mt-4 md:col-span-2">
+                <FormItem className="-mt-4 sm:col-span-2 lg:col-span-3">
                   <FormMessage className="text-xs" />
                 </FormItem>
               )}
@@ -365,7 +365,7 @@ export function DispatchFormContent({
         </div>
         <div className={FORM_CARD_CLASS}>
           <FormSectionTitle category="Mobility Details" icon={Truck} title={tc.transportAndVehicle} tc={tc} />
-          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
             <StockFormField control={form.control} name="truckLicensePlate" label={t('truck')} placeholder="RJ 14 XY 0000" />
             <StockFormField control={form.control} name="driverName" label={t('driver')} placeholder="Driver Name..." />
           </div>

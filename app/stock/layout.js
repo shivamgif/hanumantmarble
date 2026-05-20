@@ -21,7 +21,7 @@ import StockNotificationsSheet from '@/components/stock/layout/StockNotification
 
 const CLASSES = {
   shell: 'relative min-h-screen bg-slate-50/80 font-sans text-slate-900 dark:bg-[#0b0f1a] dark:text-slate-100',
-  sidebar: 'fixed inset-y-0 left-0 z-30 hidden h-screen w-60 border-r border-slate-200/30 bg-white lg:flex lg:flex-col dark:border-white/8 dark:bg-slate-950',
+  sidebar: 'fixed inset-y-0 left-0 z-30 hidden h-screen w-60 bg-white lg:flex lg:flex-col dark:border-white/8 dark:bg-slate-950',
 };
 
 export default function StockLayout({ children }) {
