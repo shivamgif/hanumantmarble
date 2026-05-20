@@ -1134,22 +1134,34 @@ export default function StockDashboard() {
     return () => clearTimeout(timeoutId);
   }, [highlightedShipmentKey]);
 
-  const { totalWholeStock, totalBrokenStock, totalStockUnits, pendingArrivals, pendingDispatches, riskItems } = useMemo(() => {
-    const whole = (data?.activeItems || []).reduce((sum, item) => sum + Number(item.current_whole_qty || 0), 0);
-    const broken = (data?.activeItems || []).reduce((sum, item) => sum + Number(item.current_broken_qty || 0), 0);
+  const { totalWholeStock, totalBrokenStock, totalStockUnits, pendingArrivals, pendingDispatches, riskItems, divisionBreakdown } = useMemo(() => {
+    const items = data?.activeItems || [];
+    const whole = items.reduce((sum, item) => sum + Number(item.current_whole_qty || 0), 0);
+    const broken = items.reduce((sum, item) => sum + Number(item.current_broken_qty || 0), 0);
     const total = whole + broken;
     const pending = data?.pendingArrivalCount ?? 0;
     const dispatchPending = data?.pendingDispatchCount ?? 0;
-    const risk = (data?.activeItems || []).filter((item) => Number(item.reorder_level || 0) > 0 && (Number(item.current_whole_qty || 0) + Number(item.current_broken_qty || 0)) <= Number(item.reorder_level || 0)).length;
-    return { totalWholeStock: whole, totalBrokenStock: broken, totalStockUnits: total, pendingArrivals: pending, pendingDispatches: dispatchPending, riskItems: risk };
+    const risk = items.filter((item) => Number(item.reorder_level || 0) > 0 && (Number(item.current_whole_qty || 0) + Number(item.current_broken_qty || 0)) <= Number(item.reorder_level || 0)).length;
+    // Per-division on-hand split (e.g. Ceramic, Vitrified, Eternity, Adhesive)
+    const byDivision = new Map();
+    for (const item of items) {
+      const name = item.division_name || '—';
+      const qty = Number(item.current_whole_qty || 0) + Number(item.current_broken_qty || 0);
+      const entry = byDivision.get(name) || { label: name, value: 0, isBag: item.unit_of_measure === 'bag' };
+      entry.value += qty;
+      if (item.unit_of_measure === 'bag') entry.isBag = true;
+      byDivision.set(name, entry);
+    }
+    const breakdown = Array.from(byDivision.values()).sort((a, b) => b.value - a.value);
+    return { totalWholeStock: whole, totalBrokenStock: broken, totalStockUnits: total, pendingArrivals: pending, pendingDispatches: dispatchPending, riskItems: risk, divisionBreakdown: breakdown };
   }, [data?.activeItems, data?.pendingArrivalCount, data?.pendingDispatchCount]);
 
   const stockStats = useMemo(() => [
-    { label: t('totalStock'), value: totalStockUnits, trend: totalStockUnits ? Math.round((totalWholeStock / totalStockUnits) * 100) : 0, trendLabel: t('wholeRatio'), icon: Boxes, accent: 'from-[#E07A00]/20 to-[#E07A00]/5', isNeutral: true },
+    { label: t('totalStock'), value: totalStockUnits, trend: totalStockUnits ? Math.round((totalWholeStock / totalStockUnits) * 100) : 0, trendLabel: t('wholeRatio'), icon: Boxes, accent: 'from-[#E07A00]/20 to-[#E07A00]/5', isNeutral: true, breakdown: divisionBreakdown },
     { label: t('pendingPurchases'), value: pendingArrivals, trend: pendingArrivals === 0 ? 100 : -Math.min(pendingArrivals * 10, 100), trendLabel: t('queueHealth'), icon: PackageCheck, accent: 'from-[#1A1A54]/25 to-[#1A1A54]/10', isNeutral: true },
     { label: t('pendingDispatches'), value: pendingDispatches, trend: pendingDispatches === 0 ? 100 : -Math.min(pendingDispatches * 10, 100), trendLabel: t('dispatchReadiness'), icon: BarChart3, accent: 'from-[#F59E0B]/25 to-[#F59E0B]/10', isNeutral: true },
     { label: t('reorderRisks'), value: riskItems, trend: riskItems === 0 ? 100 : -Math.min(riskItems * 12, 100), trendLabel: t('safetyScore'), icon: CircleAlert, accent: 'from-[#1A1A54]/20 to-[#E07A00]/15', isAlert: riskItems > 0 },
-  ], [totalStockUnits, totalWholeStock, pendingArrivals, pendingDispatches, riskItems, t]);
+  ], [totalStockUnits, totalWholeStock, pendingArrivals, pendingDispatches, riskItems, divisionBreakdown, t]);
 
   const stockPaginationWithPage = useMemo(() => ({ ...stockPagination, setPage: setStockPage }), [stockPagination]);
 

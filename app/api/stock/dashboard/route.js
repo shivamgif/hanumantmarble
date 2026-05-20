@@ -82,7 +82,7 @@ export async function GET(request) {
       sql(
         `SELECT COUNT(*) AS pending_arrival_count
          FROM stock_inbound_shipments s
-         WHERE s.status ILIKE '%pending%'
+         WHERE s.approval_status = 'pending'
          ${salespersonDivisionIds ? `AND s.id IN (
            SELECT DISTINCT isi.inbound_shipment_id FROM stock_inbound_shipment_items isi
            JOIN stock_items i ON i.id = isi.item_id WHERE i.division_id = ANY($1::bigint[])
@@ -92,7 +92,7 @@ export async function GET(request) {
       sql(
         `SELECT COUNT(*) AS pending_dispatch_count
          FROM stock_outbound_shipments sos
-         WHERE sos.status ILIKE '%pending%'
+         WHERE sos.approval_status = 'pending'
          ${salespersonDivisionIds ? `AND sos.id IN (
            SELECT DISTINCT soi.outbound_shipment_id FROM stock_outbound_shipment_items soi
            JOIN stock_items i ON i.id = soi.item_id WHERE i.division_id = ANY($1::bigint[])

@@ -55,6 +55,19 @@ import {
                 </div>
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mt-3">{m.trendLabel}</div>
               </div>
+              {Array.isArray(m.breakdown) && m.breakdown.length > 0 && (
+                <div className="mt-4 space-y-1.5 border-t border-slate-200/60 dark:border-white/5 pt-3">
+                  {m.breakdown.map((b) => (
+                    <div key={b.label} className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">{b.label}</span>
+                      <span className="tabular-nums text-[11px] font-black text-slate-700 dark:text-white/90">
+                        {b.value.toLocaleString()}
+                        {b.isBag && <span className="ml-1 text-[8px] font-bold text-amber-400/80 uppercase">bags</span>}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             {/* Atmospheric Background Icon */}
             <div className={`absolute -right-6 -bottom-6 w-32 h-32 sm:w-40 sm:h-40 opacity-[0.04] transition-all duration-700 pointer-events-none group-hover:scale-110 group-hover:opacity-[0.08]`}>
