@@ -785,8 +785,10 @@ export default function AdminDashboard() {
           const isBag = item.itemCategory === 'bag';
           return {
             itemId: Number(item.itemId),
-            loadedWholeQty: isBag ? toNumber(item.qtyBags) : toNumber(item.loadedWholeQty),
-            loadedBrokenQty: 0,
+            itemCategory: item.itemCategory || 'tile',
+            loadedWholeQty: isBag ? toNumber(item.qtyBags) : (item.fromBroken ? 0 : toNumber(item.loadedWholeQty)),
+            loadedBrokenQty: isBag ? 0 : (item.fromBroken ? toNumber(item.loadedBrokenQty) : 0),
+            fromBroken: Boolean(item.fromBroken),
             sellUnit: isBag ? 'bag' : (item.sellUnit || 'box'),
             ratePerUnit: item.ratePerUnit == null || item.ratePerUnit === '' ? null : toNumber(item.ratePerUnit),
             returnWholeQty: isBag

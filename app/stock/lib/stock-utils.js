@@ -31,6 +31,8 @@ export function createDispatchItemRow() {
     itemId: '',
     itemLabel: '',
     loadedWholeQty: '',
+    loadedBrokenQty: '',
+    fromBroken: false,
     sellUnit: 'box',
     ratePerUnit: '',
     notes: '',

@@ -24,6 +24,7 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
   const itemCategory = watch(`items.${index}.itemCategory`);
   const sellUnit = watch(`items.${index}.sellUnit`);
   const itemLabel = watch(`items.${index}.itemLabel`);
+  const fromBroken = watch(`items.${index}.fromBroken`);
   const isBag = itemCategory === 'bag';
 
   return (
@@ -48,66 +49,120 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
         )}
       </div>
       <div className="p-4 space-y-4">
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="lg:col-span-1">
+        <div className="grid gap-4 lg:grid-cols-3 items-start">
+          <div className={isBag ? 'lg:col-span-3' : 'lg:col-span-2'}>
             <FormField
               control={control}
-            name={`items.${index}.itemId`}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className={FORM_LABEL_CLASS}>{t('sku')} / {t('name')}</FormLabel>
-                <FormControl>
-                  <ItemSuggestCombobox
-                    value={field.value ?? ''}
-                    fallbackLabel={itemLabel}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    onItemSelect={(item) => setValue(`items.${index}.itemCategory`, item.unit_of_measure === 'bag' ? 'bag' : 'tile')}
-                    items={allItems}
-                    placeholder={t('selectItem')}
-                  />
-                </FormControl>
-                <FormMessage className="text-xs" />
-              </FormItem>
-            )}
-          />
+              name={`items.${index}.itemId`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className={FORM_LABEL_CLASS}>{t('sku')} / {t('name')}</FormLabel>
+                  <FormControl>
+                    <ItemSuggestCombobox
+                      value={field.value ?? ''}
+                      fallbackLabel={itemLabel}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      onItemSelect={(item) => setValue(`items.${index}.itemCategory`, item.unit_of_measure === 'bag' ? 'bag' : 'tile')}
+                      items={allItems}
+                      placeholder={t('selectItem')}
+                    />
+                  </FormControl>
+                  <FormMessage className="text-xs" />
+                </FormItem>
+              )}
+            />
           </div>
-          {isBag ? (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <StockFormField control={control} name={`items.${index}.qtyBags`} label={tc?.qtyBags ?? 'Qty (Bags)'} type="number" min="0" placeholder="0" />
-              <StockMoneyField control={control} name={`items.${index}.ratePerUnit`} label={tc?.ratePerBag ?? 'Rate / Bag'} />
-              <StockFormField control={control} name={`items.${index}.returnQtyBags`} label={tc?.retBags ?? 'Return Bags'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <StockFormField control={control} name={`items.${index}.loadedWholeQty`} label={sellUnit === 'piece' ? (tc?.pieces ?? 'Pieces') : (tc?.boxes ?? 'Boxes')} type="number" min="0" placeholder="0" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{tc?.sellUnit ?? 'Sell As'}</label>
-                  <div className="flex gap-1">
-                    {['box', 'piece'].map((u) => (
-                      <button
-                        key={u}
-                        type="button"
-                        onClick={() => setValue(`items.${index}.sellUnit`, u)}
-                        className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${sellUnit === u ? 'border-brand-primary bg-brand-primary/20 text-brand-primary' : 'border-white/10 text-slate-400 hover:border-white/20'}`}
-                      >
-                        {u === 'box' ? (tc?.box ?? 'Box') : (tc?.piece ?? 'Piece')}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <StockMoneyField control={control} name={`items.${index}.ratePerUnit`} label={sellUnit === 'piece' ? (tc?.ratePerPiece ?? 'Rate / Piece') : (tc?.ratePerBox ?? 'Rate / Box')} />
+          {!isBag && (
+            <label
+              className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2 cursor-pointer select-none transition-colors lg:mt-5 ${
+                fromBroken
+                  ? 'border-amber-400/60 bg-amber-100/70 dark:border-amber-500/40 dark:bg-amber-500/10'
+                  : 'border-brand-primary/30 bg-brand-primary/5 dark:border-brand-primary/30 dark:bg-brand-primary/10 hover:border-brand-primary/50'
+              }`}
+            >
+              <div className="flex flex-col">
+                <span className={`text-[10px] font-black uppercase tracking-widest ${fromBroken ? 'text-amber-700 dark:text-amber-300' : 'text-brand-primary dark:text-brand-primary'}`}>
+                  {tc?.brokenStockSale ?? 'Broken-Stock Sale'}
+                </span>
+                <span className="text-[9px] font-medium text-slate-600 dark:text-slate-400">
+                  {fromBroken
+                    ? (tc?.brokenStockSaleHintOn ?? 'Selling from broken inventory')
+                    : (tc?.brokenStockSaleHintOff ?? 'Toggle for damaged stock')}
+                </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <StockFormField control={control} name={`items.${index}.returnWholeQty`} label={tc?.retWhole ?? 'Ret. Whole'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
-                <StockFormField control={control} name={`items.${index}.returnBrokenQty`} label={tc?.retBrok ?? 'Ret. Broken'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
-              </div>
-            </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={Boolean(fromBroken)}
+                onClick={() => {
+                  const next = !fromBroken;
+                  setValue(`items.${index}.fromBroken`, next);
+                  if (next) {
+                    setValue(`items.${index}.loadedWholeQty`, '');
+                  } else {
+                    setValue(`items.${index}.loadedBrokenQty`, '');
+                  }
+                }}
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors ${
+                  fromBroken
+                    ? 'border-amber-500 bg-amber-500'
+                    : 'border-slate-300 bg-slate-200 dark:border-white/15 dark:bg-slate-700/60'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow ring-1 ring-black/5 transition-transform ${fromBroken ? 'translate-x-6' : 'translate-x-1'}`}
+                />
+              </button>
+            </label>
           )}
         </div>
+        {isBag ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <StockFormField control={control} name={`items.${index}.qtyBags`} label={tc?.qtyBags ?? 'Qty (Bags)'} type="number" min="0" placeholder="0" />
+            <StockMoneyField control={control} name={`items.${index}.ratePerUnit`} label={tc?.ratePerBag ?? 'Rate / Bag'} />
+            <StockFormField control={control} name={`items.${index}.returnQtyBags`} label={tc?.retBags ?? 'Return Bags'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                {fromBroken ? (
+                  <StockFormField
+                    control={control}
+                    name={`items.${index}.loadedBrokenQty`}
+                    label={`${tc?.brokenQtySold ?? 'Broken Qty Sold'} (${sellUnit === 'piece' ? (tc?.piece ?? 'Piece') : (tc?.box ?? 'Box')})`}
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                  />
+                ) : (
+                  <StockFormField control={control} name={`items.${index}.loadedWholeQty`} label={sellUnit === 'piece' ? (tc?.pieces ?? 'Pieces') : (tc?.boxes ?? 'Boxes')} type="number" min="0" placeholder="0" />
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{tc?.sellUnit ?? 'Sell As'}</label>
+                <div className="flex gap-1">
+                  {['box', 'piece'].map((u) => (
+                    <button
+                      key={u}
+                      type="button"
+                      onClick={() => setValue(`items.${index}.sellUnit`, u)}
+                      className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${sellUnit === u ? 'border-brand-primary bg-brand-primary/20 text-brand-primary' : 'border-white/10 text-slate-400 hover:border-white/20'}`}
+                    >
+                      {u === 'box' ? (tc?.box ?? 'Box') : (tc?.piece ?? 'Piece')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <StockMoneyField control={control} name={`items.${index}.ratePerUnit`} label={sellUnit === 'piece' ? (tc?.ratePerPiece ?? 'Rate / Piece') : (tc?.ratePerBox ?? 'Rate / Box')} />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <StockFormField control={control} name={`items.${index}.returnWholeQty`} label={tc?.retWhole ?? 'Ret. Whole'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
+              <StockFormField control={control} name={`items.${index}.returnBrokenQty`} label={tc?.retBrok ?? 'Ret. Broken'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

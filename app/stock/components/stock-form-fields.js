@@ -163,25 +163,15 @@ export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [],
   const needle = isTyping ? inputText.trim().toLowerCase() : '';
   const filtered = useMemo(() => {
     return (items || [])
-      .filter((i) => !needle || i.sku.toLowerCase().includes(needle) || i.name.toLowerCase().includes(needle) || (i.grade || '').toLowerCase().includes(needle))
+      .filter((i) => {
+        if (!needle) return true;
+        const sku = (i.sku || '').toLowerCase();
+        const name = (i.name || '').toLowerCase();
+        const grade = (i.grade || '').toLowerCase();
+        return sku.includes(needle) || name.includes(needle) || grade.includes(needle);
+      })
       .slice(0, 50);
   }, [items, needle]);
-
-  const handleChange = useCallback((e) => {
-    setInputText(e.target.value);
-    setIsTyping(true);
-    if (!open) setOpen(true);
-  }, [open]);
-
-  const handleFocus = useCallback(() => setOpen(true), []);
-
-  const handleBlur = useCallback((e) => {
-    setTimeout(() => {
-      setOpen(false);
-      setIsTyping(false);
-    }, 120);
-    onBlur?.(e);
-  }, [onBlur]);
 
   const handleSelect = useCallback((item) => {
     setIsTyping(false);
@@ -191,6 +181,40 @@ export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [],
     onItemSelect?.(item);
   }, [onChange, onItemSelect]);
 
+  const tryAutoSelect = useCallback(() => {
+    const raw = inputText.trim().toLowerCase();
+    if (!raw) return false;
+    const exact = (items || []).find((i) => (i.sku || '').toLowerCase() === raw);
+    if (exact) { handleSelect(exact); return true; }
+    if (filtered.length === 1) { handleSelect(filtered[0]); return true; }
+    return false;
+  }, [inputText, items, filtered, handleSelect]);
+
+  const handleChange = useCallback((e) => {
+    setInputText(e.target.value);
+    setIsTyping(true);
+    if (!open) setOpen(true);
+  }, [open]);
+
+  const handleFocus = useCallback(() => setOpen(true), []);
+
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      if (tryAutoSelect()) {
+        if (e.key === 'Enter') e.preventDefault();
+      }
+    }
+  }, [tryAutoSelect]);
+
+  const handleBlur = useCallback((e) => {
+    tryAutoSelect();
+    setTimeout(() => {
+      setOpen(false);
+      setIsTyping(false);
+    }, 120);
+    onBlur?.(e);
+  }, [onBlur, tryAutoSelect]);
+
   return (
     <Popover open={open && filtered.length > 0} onOpenChange={setOpen}>
       <PopoverAnchor asChild>
@@ -199,6 +223,7 @@ export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [],
           onChange={handleChange}
           onFocus={handleFocus}
           onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className={className || FORM_INPUT_CLASS}
           disabled={disabled}

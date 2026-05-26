@@ -82,7 +82,7 @@ export async function GET(request) {
            ${salespersonLabelExpr} AS salesperson,
            COUNT(*)::int AS shipments,
            COALESCE(SUM(COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)), 0)::numeric(14,2) AS quantity,
-           COALESCE(SUM((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) * COALESCE(osi.rate_per_unit, 0)), 0)::numeric(14,2) AS revenue
+           COALESCE(SUM((GREATEST(COALESCE(osi.loaded_whole_qty, 0) - COALESCE(osi.returned_whole_qty, 0), 0) + GREATEST(COALESCE(osi.loaded_broken_qty, 0) - COALESCE(osi.returned_broken_qty, 0), 0)) * COALESCE(osi.rate_per_unit, 0)), 0)::numeric(14,2) AS revenue
          FROM stock_outbound_shipments s
          LEFT JOIN stock_sales_people sp ON sp.id = s.salesperson_id
          ${salespersonUserJoin}
@@ -153,7 +153,7 @@ export async function GET(request) {
              date_trunc('month', COALESCE(s.dispatch_date, s.created_at))::date AS bucket,
              COUNT(*)::int AS dispatches,
              COALESCE(SUM(COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)), 0)::numeric(14,2) AS dispatched_units,
-             COALESCE(SUM((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) * COALESCE(osi.rate_per_unit, 0)), 0)::numeric(14,2) AS dispatched_value
+             COALESCE(SUM((GREATEST(COALESCE(osi.loaded_whole_qty, 0) - COALESCE(osi.returned_whole_qty, 0), 0) + GREATEST(COALESCE(osi.loaded_broken_qty, 0) - COALESCE(osi.returned_broken_qty, 0), 0)) * COALESCE(osi.rate_per_unit, 0)), 0)::numeric(14,2) AS dispatched_value
            FROM stock_outbound_shipments s
            LEFT JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = s.id
            WHERE COALESCE(s.dispatch_date, s.created_at)::date BETWEEN $1::date AND $2::date

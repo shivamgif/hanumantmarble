@@ -12,6 +12,7 @@ import {
 } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
+import { isPieceSale, totalPieces } from '@/lib/stock-piece-balance';
 
 function toPositiveInteger(value) {
   const parsed = Number.parseInt(value, 10);
@@ -26,7 +27,9 @@ async function resolveStockItem(item) {
 
   if (item.itemId) {
     const rows = await sql(
-      `SELECT i.id, i.sku, i.name, i.current_whole_qty, i.current_broken_qty, i.unit_of_measure, i.division_id,
+      `SELECT i.id, i.sku, i.name, i.current_whole_qty, i.current_broken_qty,
+              i.pieces_per_box, i.current_piece_remainder, i.current_broken_piece_remainder,
+              i.unit_of_measure, i.division_id,
               ${categorySelect}
        FROM stock_items i
        LEFT JOIN stock_types t ON t.id = i.type_id
@@ -43,7 +46,9 @@ async function resolveStockItem(item) {
   const sku = normalizeText(item.sku);
   if (sku) {
     const rows = await sql(
-      `SELECT i.id, i.sku, i.name, i.current_whole_qty, i.current_broken_qty, i.unit_of_measure, i.division_id,
+      `SELECT i.id, i.sku, i.name, i.current_whole_qty, i.current_broken_qty,
+              i.pieces_per_box, i.current_piece_remainder, i.current_broken_piece_remainder,
+              i.unit_of_measure, i.division_id,
               ${categorySelect}
        FROM stock_items i
        LEFT JOIN stock_types t ON t.id = i.type_id
@@ -508,18 +513,41 @@ export async function POST(request) {
       // Reject dispatch quantities that exceed current available stock.
       const availWhole = Number(stockItem.current_whole_qty || 0);
       const availBroken = Number(stockItem.current_broken_qty || 0);
+      const sellUnitRow = isBagItem ? 'bag' : (item.sellUnit || 'box');
+      const piecesPerBox = Number(stockItem.pieces_per_box || 0);
+      const pieceRemainder = Number(stockItem.current_piece_remainder || 0);
       const effectiveWhole = isBagItem ? qtyBags : loadedWholeQty;
-      if (effectiveWhole > availWhole) {
+
+      if (!isBagItem && isPieceSale(sellUnitRow, piecesPerBox)) {
+        const availPieces = totalPieces(availWhole, pieceRemainder, piecesPerBox);
+        if (effectiveWhole > availPieces) {
+          return NextResponse.json(
+            { error: `Requested qty ${effectiveWhole} pieces exceeds available ${availPieces} for ${stockItem.sku}` },
+            { status: 400 }
+          );
+        }
+      } else if (effectiveWhole > availWhole) {
         return NextResponse.json(
           { error: `Requested qty ${effectiveWhole} exceeds available ${availWhole} for ${stockItem.sku}` },
           { status: 400 }
         );
       }
-      if (loadedBrokenQty > availBroken) {
-        return NextResponse.json(
-          { error: `Requested broken qty ${loadedBrokenQty} exceeds available ${availBroken} for ${stockItem.sku}` },
-          { status: 400 }
-        );
+      if (loadedBrokenQty > 0) {
+        const brokenRemainder = Number(stockItem.current_broken_piece_remainder || 0);
+        if (!isBagItem && isPieceSale(sellUnitRow, piecesPerBox)) {
+          const availBrokenPieces = totalPieces(availBroken, brokenRemainder, piecesPerBox);
+          if (loadedBrokenQty > availBrokenPieces) {
+            return NextResponse.json(
+              { error: `Requested broken qty ${loadedBrokenQty} pieces exceeds available ${availBrokenPieces} for ${stockItem.sku}` },
+              { status: 400 }
+            );
+          }
+        } else if (loadedBrokenQty > availBroken) {
+          return NextResponse.json(
+            { error: `Requested broken qty ${loadedBrokenQty} exceeds available ${availBroken} for ${stockItem.sku}` },
+            { status: 400 }
+          );
+        }
       }
 
       resolvedItems.push({

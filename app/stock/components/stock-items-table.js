@@ -42,7 +42,9 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
                 { id: 'division', label: 'Category/Division', value: (row) => row.division_name || '' },
                 { id: 'size', label: 'Size', value: (row) => row.size_label || row.type_name || '' },
                 { id: 'whole', label: 'Whole Qty', value: (row) => row.current_whole_qty || '0' },
+                { id: 'piece_remainder', label: 'Piece Remainder', value: (row) => row.current_piece_remainder || '0' },
                 { id: 'broken', label: 'Broken Qty', value: (row) => row.current_broken_qty || '0' },
+                { id: 'broken_piece_remainder', label: 'Broken Piece Remainder', value: (row) => row.current_broken_piece_remainder || '0' },
                 { id: 'bags', label: 'Bags Qty', value: (row) => row.unit_of_measure === 'bag' ? row.current_whole_qty : '0' },
                 { id: 'reorder', label: 'Reorder Level', value: (row) => row.reorder_level || '0' },
               ];
@@ -148,7 +150,14 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
                         <span className="ml-1 text-[9px] font-bold text-amber-400/70 uppercase">bags</span>
                       </div>
                     ) : (
-                      <div className="tabular-nums text-xs font-black text-slate-900 dark:text-white">{item.current_whole_qty}</div>
+                      <div className="tabular-nums text-xs font-black text-slate-900 dark:text-white">
+                        {item.current_whole_qty}
+                        {Number(item.current_piece_remainder || 0) > 0 && (
+                          <span className="ml-1 text-[9px] font-bold text-brand-primary/80 uppercase">
+                            +{item.current_piece_remainder}pc
+                          </span>
+                        )}
+                      </div>
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -157,6 +166,11 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
                     ) : (
                       <div className={`tabular-nums text-xs font-black ${item.current_broken_qty > 0 ? 'text-amber-500' : 'text-slate-500 opacity-30'}`}>
                         {item.current_broken_qty}
+                        {Number(item.current_broken_piece_remainder || 0) > 0 && (
+                          <span className="ml-1 text-[9px] font-bold text-amber-400/80 uppercase">
+                            +{item.current_broken_piece_remainder}pc
+                          </span>
+                        )}
                       </div>
                     )}
                   </td>

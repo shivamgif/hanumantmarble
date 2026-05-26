@@ -46,3 +46,8 @@ scratch.js
 /public/workbox-*.js
 /public/workbox-*.js.map
 /public/fallback-*.js
+
+/graphify-out
+.graphifyignore
+CLAUDE.md
+.code-review-graphignore

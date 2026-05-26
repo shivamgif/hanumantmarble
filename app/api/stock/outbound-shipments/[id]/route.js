@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, generateReference, getStockContext, hasAnyStockRole, normalizeStockRole, queueNotification, recordTimelineEvent } from '@/lib/stock-workflow';
 import { sql, withTransaction } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
+import {
+  isPieceSale,
+  totalPieces,
+  computePieceDecrement,
+  computePieceIncrement,
+} from '@/lib/stock-piece-balance';
 
 async function loadShipmentWithItems(id) {
   const schemaCaps = await getStockSchemaCapabilities();
@@ -46,7 +52,7 @@ async function loadShipmentWithItems(id) {
               SUM(loaded_broken_qty) AS total_broken_qty,
               SUM(returned_whole_qty) AS total_return_whole_qty,
               SUM(returned_broken_qty) AS total_return_broken_qty,
-              COALESCE(SUM(loaded_whole_qty * rate_per_unit), 0) AS total_selling_price_excl
+              COALESCE(SUM(GREATEST(COALESCE(loaded_whole_qty, 0) - COALESCE(returned_whole_qty, 0), 0) * COALESCE(rate_per_unit, 0)), 0) AS total_selling_price_excl
        FROM stock_outbound_shipment_items
        WHERE outbound_shipment_id = $1
        GROUP BY outbound_shipment_id
@@ -226,7 +232,8 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
 
     const items = await tx(
       `SELECT soi.*, i.sku, i.name AS item_name, i.unit_of_measure,
-              i.current_whole_qty, i.current_broken_qty
+              i.current_whole_qty, i.current_broken_qty,
+              i.pieces_per_box, i.current_piece_remainder, i.current_broken_piece_remainder
        FROM stock_outbound_shipment_items soi
        JOIN stock_items i ON i.id = soi.item_id
        WHERE soi.outbound_shipment_id = $1
@@ -246,23 +253,49 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
       const brokenToIssue = toPositiveInteger(item.loaded_broken_qty);
 
       if (wholeToIssue > 0) {
-        if (Number(item.current_whole_qty || 0) < wholeToIssue) {
-          throw new Error(`Insufficient whole stock for ${item.sku}`);
-        }
+        const ppb = Number(item.pieces_per_box || 0);
+        const pieceMode = isPieceSale(item.sell_unit, ppb);
 
-        // Run the update synchronously first to ensure we get the RETURNING id
-        const wholeUpdateRows = await tx(
-          `UPDATE stock_items
-           SET current_whole_qty = current_whole_qty - $1,
-               updated_at = NOW()
-           WHERE id = $2
-             AND current_whole_qty >= $1
-           RETURNING id`,
-          [wholeToIssue, item.item_id]
-        );
-
-        if (!wholeUpdateRows[0]) {
-          throw new Error(`Insufficient whole stock for ${item.sku}. Race condition detected.`);
+        if (pieceMode) {
+          const availPieces = totalPieces(item.current_whole_qty, item.current_piece_remainder, ppb);
+          if (availPieces < wholeToIssue) {
+            throw new Error(`Insufficient stock for ${item.sku}: need ${wholeToIssue} pieces, have ${availPieces}`);
+          }
+          const { boxDelta, remainderTarget } = computePieceDecrement({
+            pieces: wholeToIssue,
+            currentWholeQty: item.current_whole_qty,
+            currentPieceRemainder: item.current_piece_remainder,
+            piecesPerBox: ppb,
+          });
+          const wholeUpdateRows = await tx(
+            `UPDATE stock_items
+             SET current_whole_qty = current_whole_qty - $1,
+                 current_piece_remainder = $2,
+                 updated_at = NOW()
+             WHERE id = $3
+               AND current_whole_qty >= $1
+             RETURNING id`,
+            [boxDelta, remainderTarget, item.item_id]
+          );
+          if (!wholeUpdateRows[0]) {
+            throw new Error(`Insufficient whole stock for ${item.sku}. Race condition detected.`);
+          }
+        } else {
+          if (Number(item.current_whole_qty || 0) < wholeToIssue) {
+            throw new Error(`Insufficient whole stock for ${item.sku}`);
+          }
+          const wholeUpdateRows = await tx(
+            `UPDATE stock_items
+             SET current_whole_qty = current_whole_qty - $1,
+                 updated_at = NOW()
+             WHERE id = $2
+               AND current_whole_qty >= $1
+             RETURNING id`,
+            [wholeToIssue, item.item_id]
+          );
+          if (!wholeUpdateRows[0]) {
+            throw new Error(`Insufficient whole stock for ${item.sku}. Race condition detected.`);
+          }
         }
 
         batchPromises.push(tx(
@@ -283,22 +316,49 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
       }
 
       if (brokenToIssue > 0) {
-        if (Number(item.current_broken_qty || 0) < brokenToIssue) {
-          throw new Error(`Insufficient broken stock for ${item.sku}`);
-        }
+        const ppbB = Number(item.pieces_per_box || 0);
+        const pieceModeB = isPieceSale(item.sell_unit, ppbB);
 
-        const brokenUpdateRows = await tx(
-          `UPDATE stock_items
-           SET current_broken_qty = current_broken_qty - $1,
-               updated_at = NOW()
-           WHERE id = $2
-             AND current_broken_qty >= $1
-           RETURNING id`,
-          [brokenToIssue, item.item_id]
-        );
-
-        if (!brokenUpdateRows[0]) {
-          throw new Error(`Insufficient broken stock for ${item.sku}. Race condition detected.`);
+        if (pieceModeB) {
+          const availPieces = totalPieces(item.current_broken_qty, item.current_broken_piece_remainder, ppbB);
+          if (availPieces < brokenToIssue) {
+            throw new Error(`Insufficient broken stock for ${item.sku}: need ${brokenToIssue} pieces, have ${availPieces}`);
+          }
+          const { boxDelta, remainderTarget } = computePieceDecrement({
+            pieces: brokenToIssue,
+            currentWholeQty: item.current_broken_qty,
+            currentPieceRemainder: item.current_broken_piece_remainder,
+            piecesPerBox: ppbB,
+          });
+          const brokenUpdateRows = await tx(
+            `UPDATE stock_items
+             SET current_broken_qty = current_broken_qty - $1,
+                 current_broken_piece_remainder = $2,
+                 updated_at = NOW()
+             WHERE id = $3
+               AND current_broken_qty >= $1
+             RETURNING id`,
+            [boxDelta, remainderTarget, item.item_id]
+          );
+          if (!brokenUpdateRows[0]) {
+            throw new Error(`Insufficient broken stock for ${item.sku}. Race condition detected.`);
+          }
+        } else {
+          if (Number(item.current_broken_qty || 0) < brokenToIssue) {
+            throw new Error(`Insufficient broken stock for ${item.sku}`);
+          }
+          const brokenUpdateRows = await tx(
+            `UPDATE stock_items
+             SET current_broken_qty = current_broken_qty - $1,
+                 updated_at = NOW()
+             WHERE id = $2
+               AND current_broken_qty >= $1
+             RETURNING id`,
+            [brokenToIssue, item.item_id]
+          );
+          if (!brokenUpdateRows[0]) {
+            throw new Error(`Insufficient broken stock for ${item.sku}. Race condition detected.`);
+          }
         }
 
         batchPromises.push(tx(
@@ -535,9 +595,10 @@ export async function PATCH(request, context) {
     const result = await withTransaction(async (tx) => {
       const schemaCaps = await getStockSchemaCapabilities();
       // Mutability guard: approved outbound shipments have already deducted stock.
-      // Editing them without a full reversal pass would silently miscount inventory.
+      // Post-approval, only return-qty edits are permitted; they credit stock back via delta.
       const existingRows = await tx(
-        `SELECT approval_status, locked_at FROM stock_outbound_shipments WHERE id = $1 FOR UPDATE`,
+        `SELECT id, approval_status, locked_at, shipment_number, invoice_number
+         FROM stock_outbound_shipments WHERE id = $1 FOR UPDATE`,
         [id]
       );
       const existing = existingRows[0];
@@ -545,9 +606,297 @@ export async function PATCH(request, context) {
         throw new Error('Shipment not found');
       }
       if (existing.approval_status === 'approved' || existing.locked_at) {
-        const err = new Error('Cannot modify an approved or locked outbound shipment');
-        err.statusCode = 409;
-        throw err;
+        if (!Array.isArray(body.items)) {
+          const err = new Error('Cannot modify an approved or locked outbound shipment');
+          err.statusCode = 409;
+          throw err;
+        }
+
+        const currentItems = await tx(
+          `SELECT soi.id, soi.item_id, soi.loaded_whole_qty, soi.loaded_broken_qty,
+                  soi.returned_whole_qty, soi.returned_broken_qty, soi.sell_unit,
+                  i.pieces_per_box, i.current_whole_qty, i.current_piece_remainder,
+                  i.current_broken_qty, i.current_broken_piece_remainder
+           FROM stock_outbound_shipment_items soi
+           JOIN stock_items i ON i.id = soi.item_id
+           WHERE soi.outbound_shipment_id = $1
+           FOR UPDATE OF soi, i`,
+          [id]
+        );
+        const byItemId = new Map(currentItems.map((row) => [Number(row.item_id), row]));
+        const submittedIds = body.items
+          .map((it) => Number(it.itemId))
+          .filter((n) => Number.isFinite(n) && n > 0);
+        const submittedSet = new Set(submittedIds);
+        if (submittedSet.size !== currentItems.length
+            || [...submittedSet].some((itemId) => !byItemId.has(itemId))) {
+          const err = new Error('Cannot add or remove items on an approved dispatch; only return quantities may be updated');
+          err.statusCode = 409;
+          throw err;
+        }
+
+        for (const it of body.items) {
+          const existingRow = byItemId.get(Number(it.itemId));
+          if (!existingRow) continue;
+
+          const loadedWhole = Number(existingRow.loaded_whole_qty || 0);
+          const loadedBroken = Number(existingRow.loaded_broken_qty || 0);
+          const isBagItem = it.itemCategory === 'bag';
+          const newWholeReturn = isBagItem
+            ? toPositiveInteger(it.returnQtyBags ?? it.returnWholeQty)
+            : toPositiveInteger(it.returnWholeQty);
+          const newBrokenReturn = isBagItem ? 0 : toPositiveInteger(it.returnBrokenQty);
+
+          // Disallow loaded-qty mutation on approved dispatches
+          if (it.loadedWholeQty != null) {
+            const submittedLoadedWhole = isBagItem
+              ? toPositiveInteger(it.qtyBags)
+              : toPositiveInteger(it.loadedWholeQty);
+            if (submittedLoadedWhole !== loadedWhole) {
+              const err = new Error('Cannot change loaded quantity on an approved dispatch');
+              err.statusCode = 409;
+              throw err;
+            }
+          }
+          if (it.loadedBrokenQty != null && !isBagItem) {
+            if (toPositiveInteger(it.loadedBrokenQty) !== loadedBroken) {
+              const err = new Error('Cannot change loaded quantity on an approved dispatch');
+              err.statusCode = 409;
+              throw err;
+            }
+          }
+
+          if (newWholeReturn > loadedWhole) {
+            const err = new Error(`Return whole qty ${newWholeReturn} exceeds loaded ${loadedWhole}`);
+            err.statusCode = 400;
+            throw err;
+          }
+          if (newBrokenReturn > loadedBroken) {
+            const err = new Error(`Return broken qty ${newBrokenReturn} exceeds loaded ${loadedBroken}`);
+            err.statusCode = 400;
+            throw err;
+          }
+
+          const oldWholeReturn = Number(existingRow.returned_whole_qty || 0);
+          const oldBrokenReturn = Number(existingRow.returned_broken_qty || 0);
+          const deltaWhole = newWholeReturn - oldWholeReturn;
+          const deltaBroken = newBrokenReturn - oldBrokenReturn;
+
+          if (deltaWhole !== 0) {
+            const ppb = Number(existingRow.pieces_per_box || 0);
+            const pieceMode = isPieceSale(existingRow.sell_unit, ppb);
+
+            if (pieceMode) {
+              // deltaWhole here is a piece-count delta. Positive = additional return (credit pieces back),
+              // negative = return reduced (re-debit pieces).
+              let boxAdj = 0;
+              let newRemainder = Number(existingRow.current_piece_remainder || 0);
+              if (deltaWhole > 0) {
+                const inc = computePieceIncrement({
+                  pieces: deltaWhole,
+                  currentWholeQty: existingRow.current_whole_qty,
+                  currentPieceRemainder: existingRow.current_piece_remainder,
+                  piecesPerBox: ppb,
+                });
+                boxAdj = inc.boxDelta;
+                newRemainder = inc.remainderTarget;
+                const rows = await tx(
+                  `UPDATE stock_items
+                   SET current_whole_qty = current_whole_qty + $1,
+                       current_piece_remainder = $2,
+                       updated_at = NOW()
+                   WHERE id = $3
+                   RETURNING id`,
+                  [boxAdj, newRemainder, existingRow.item_id]
+                );
+                if (!rows[0]) {
+                  const err = new Error(`Stock adjustment for item ${existingRow.item_id} failed`);
+                  err.statusCode = 400;
+                  throw err;
+                }
+              } else {
+                const availPieces = totalPieces(existingRow.current_whole_qty, existingRow.current_piece_remainder, ppb);
+                const needed = -deltaWhole;
+                if (availPieces < needed) {
+                  const err = new Error(`Stock adjustment for item ${existingRow.item_id} would go negative`);
+                  err.statusCode = 400;
+                  throw err;
+                }
+                const dec = computePieceDecrement({
+                  pieces: needed,
+                  currentWholeQty: existingRow.current_whole_qty,
+                  currentPieceRemainder: existingRow.current_piece_remainder,
+                  piecesPerBox: ppb,
+                });
+                boxAdj = -dec.boxDelta;
+                newRemainder = dec.remainderTarget;
+                const rows = await tx(
+                  `UPDATE stock_items
+                   SET current_whole_qty = current_whole_qty + $1,
+                       current_piece_remainder = $2,
+                       updated_at = NOW()
+                   WHERE id = $3 AND current_whole_qty + $1 >= 0
+                   RETURNING id`,
+                  [boxAdj, newRemainder, existingRow.item_id]
+                );
+                if (!rows[0]) {
+                  const err = new Error(`Stock adjustment for item ${existingRow.item_id} would go negative`);
+                  err.statusCode = 400;
+                  throw err;
+                }
+              }
+            } else {
+              const rows = await tx(
+                `UPDATE stock_items
+                 SET current_whole_qty = current_whole_qty + $1,
+                     updated_at = NOW()
+                 WHERE id = $2 AND current_whole_qty + $1 >= 0
+                 RETURNING id`,
+                [deltaWhole, existingRow.item_id]
+              );
+              if (!rows[0]) {
+                const err = new Error(`Stock adjustment for item ${existingRow.item_id} would go negative`);
+                err.statusCode = 400;
+                throw err;
+              }
+            }
+
+            await tx(
+              `INSERT INTO stock_movements (
+                movement_number, movement_type, direction, item_id, quantity, tile_condition,
+                source_type, source_id, reference_number, notes, created_by
+              ) VALUES ($1, $2, $3, $4, $5, 'whole', 'outbound_shipment', $6, $7, $8, $9)`,
+              [
+                `MOV-RET-${existing.shipment_number || id}-${existingRow.item_id}-W-${Date.now()}`,
+                deltaWhole > 0 ? 'return_in' : 'return_out',
+                deltaWhole > 0 ? 'in' : 'out',
+                existingRow.item_id,
+                Math.abs(deltaWhole),
+                id,
+                existing.invoice_number || existing.shipment_number || null,
+                `Return adjustment for dispatch ${existing.shipment_number || id}`,
+                appUser?.email || null,
+              ]
+            );
+          }
+
+          if (deltaBroken !== 0) {
+            const ppbB = Number(existingRow.pieces_per_box || 0);
+            const pieceModeB = isPieceSale(existingRow.sell_unit, ppbB);
+
+            if (pieceModeB) {
+              let boxAdj = 0;
+              let newRem = Number(existingRow.current_broken_piece_remainder || 0);
+              if (deltaBroken > 0) {
+                const inc = computePieceIncrement({
+                  pieces: deltaBroken,
+                  currentWholeQty: existingRow.current_broken_qty,
+                  currentPieceRemainder: existingRow.current_broken_piece_remainder,
+                  piecesPerBox: ppbB,
+                });
+                boxAdj = inc.boxDelta;
+                newRem = inc.remainderTarget;
+                const rows = await tx(
+                  `UPDATE stock_items
+                   SET current_broken_qty = current_broken_qty + $1,
+                       current_broken_piece_remainder = $2,
+                       updated_at = NOW()
+                   WHERE id = $3
+                   RETURNING id`,
+                  [boxAdj, newRem, existingRow.item_id]
+                );
+                if (!rows[0]) {
+                  const err = new Error(`Stock adjustment for item ${existingRow.item_id} failed`);
+                  err.statusCode = 400;
+                  throw err;
+                }
+              } else {
+                const availPieces = totalPieces(existingRow.current_broken_qty, existingRow.current_broken_piece_remainder, ppbB);
+                const needed = -deltaBroken;
+                if (availPieces < needed) {
+                  const err = new Error(`Stock adjustment for item ${existingRow.item_id} would go negative`);
+                  err.statusCode = 400;
+                  throw err;
+                }
+                const dec = computePieceDecrement({
+                  pieces: needed,
+                  currentWholeQty: existingRow.current_broken_qty,
+                  currentPieceRemainder: existingRow.current_broken_piece_remainder,
+                  piecesPerBox: ppbB,
+                });
+                boxAdj = -dec.boxDelta;
+                newRem = dec.remainderTarget;
+                const rows = await tx(
+                  `UPDATE stock_items
+                   SET current_broken_qty = current_broken_qty + $1,
+                       current_broken_piece_remainder = $2,
+                       updated_at = NOW()
+                   WHERE id = $3 AND current_broken_qty + $1 >= 0
+                   RETURNING id`,
+                  [boxAdj, newRem, existingRow.item_id]
+                );
+                if (!rows[0]) {
+                  const err = new Error(`Stock adjustment for item ${existingRow.item_id} would go negative`);
+                  err.statusCode = 400;
+                  throw err;
+                }
+              }
+            } else {
+              const rows = await tx(
+                `UPDATE stock_items
+                 SET current_broken_qty = current_broken_qty + $1,
+                     updated_at = NOW()
+                 WHERE id = $2 AND current_broken_qty + $1 >= 0
+                 RETURNING id`,
+                [deltaBroken, existingRow.item_id]
+              );
+              if (!rows[0]) {
+                const err = new Error(`Stock adjustment for item ${existingRow.item_id} would go negative`);
+                err.statusCode = 400;
+                throw err;
+              }
+            }
+            await tx(
+              `INSERT INTO stock_movements (
+                movement_number, movement_type, direction, item_id, quantity, tile_condition,
+                source_type, source_id, reference_number, notes, created_by
+              ) VALUES ($1, $2, $3, $4, $5, 'broken', 'outbound_shipment', $6, $7, $8, $9)`,
+              [
+                `MOV-RET-${existing.shipment_number || id}-${existingRow.item_id}-B-${Date.now()}`,
+                deltaBroken > 0 ? 'return_in' : 'return_out',
+                deltaBroken > 0 ? 'in' : 'out',
+                existingRow.item_id,
+                Math.abs(deltaBroken),
+                id,
+                existing.invoice_number || existing.shipment_number || null,
+                `Return adjustment for dispatch ${existing.shipment_number || id}`,
+                appUser?.email || null,
+              ]
+            );
+          }
+
+          if (deltaWhole !== 0 || deltaBroken !== 0) {
+            await tx(
+              `UPDATE stock_outbound_shipment_items
+               SET returned_whole_qty = $1,
+                   returned_broken_qty = $2,
+                   updated_at = NOW()
+               WHERE id = $3`,
+              [newWholeReturn, newBrokenReturn, existingRow.id]
+            );
+          }
+        }
+
+        const shipmentRows = await tx(
+          `SELECT * FROM stock_outbound_shipments WHERE id = $1`,
+          [id]
+        );
+        return {
+          shipment: shipmentRows[0],
+          divisionValidation: null,
+          salespersonUser: null,
+          returnOnly: true,
+        };
       }
 
       // If item lines are being (re)set, verify each line's qty does not exceed
@@ -559,22 +908,42 @@ export async function PATCH(request, context) {
           const brokenReq = toPositiveInteger(item.loadedBrokenQty);
           if (wholeReq === 0 && brokenReq === 0) continue;
           const stockRows = await tx(
-            `SELECT sku, current_whole_qty, current_broken_qty FROM stock_items WHERE id = $1`,
+            `SELECT sku, current_whole_qty, current_broken_qty, pieces_per_box,
+                    current_piece_remainder, current_broken_piece_remainder
+             FROM stock_items WHERE id = $1`,
             [item.itemId]
           );
           const stock = stockRows[0];
           if (!stock) {
             throw new Error(`Item ${item.itemId} not found`);
           }
-          if (wholeReq > Number(stock.current_whole_qty || 0)) {
+          const ppb = Number(stock.pieces_per_box || 0);
+          const pieceMode = isPieceSale(item.sellUnit, ppb);
+          if (pieceMode) {
+            const availPieces = totalPieces(stock.current_whole_qty, stock.current_piece_remainder, ppb);
+            if (wholeReq > availPieces) {
+              const err = new Error(`Requested qty ${wholeReq} pieces exceeds available ${availPieces} for ${stock.sku}`);
+              err.statusCode = 400;
+              throw err;
+            }
+          } else if (wholeReq > Number(stock.current_whole_qty || 0)) {
             const err = new Error(`Requested whole qty ${wholeReq} exceeds available ${stock.current_whole_qty} for ${stock.sku}`);
             err.statusCode = 400;
             throw err;
           }
-          if (brokenReq > Number(stock.current_broken_qty || 0)) {
-            const err = new Error(`Requested broken qty ${brokenReq} exceeds available ${stock.current_broken_qty} for ${stock.sku}`);
-            err.statusCode = 400;
-            throw err;
+          if (brokenReq > 0) {
+            if (pieceMode) {
+              const availBrokenPieces = totalPieces(stock.current_broken_qty, stock.current_broken_piece_remainder, ppb);
+              if (brokenReq > availBrokenPieces) {
+                const err = new Error(`Requested broken qty ${brokenReq} pieces exceeds available ${availBrokenPieces} for ${stock.sku}`);
+                err.statusCode = 400;
+                throw err;
+              }
+            } else if (brokenReq > Number(stock.current_broken_qty || 0)) {
+              const err = new Error(`Requested broken qty ${brokenReq} exceeds available ${stock.current_broken_qty} for ${stock.sku}`);
+              err.statusCode = 400;
+              throw err;
+            }
           }
         }
       }
