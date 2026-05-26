@@ -145,7 +145,9 @@ export async function GET(request) {
 
     const currentMonthValuePromise = appUser?.role === 'salesperson' && appUser?.id
       ? sql(
-          `SELECT COALESCE(SUM(GREATEST(COALESCE(soi.loaded_whole_qty, 0) - COALESCE(soi.returned_whole_qty, 0), 0) * COALESCE(soi.rate_per_unit, 0)), 0) AS current_month_dispatch_value
+          `SELECT COALESCE(SUM((GREATEST(COALESCE(soi.loaded_whole_qty, 0) - COALESCE(soi.returned_whole_qty, 0), 0)
+                              + GREATEST(COALESCE(soi.loaded_broken_qty, 0) - COALESCE(soi.returned_broken_qty, 0), 0))
+                              * COALESCE(soi.rate_per_unit, 0)), 0) AS current_month_dispatch_value
            FROM stock_outbound_shipments s
            JOIN stock_outbound_shipment_items soi ON soi.outbound_shipment_id = s.id
            WHERE ${schemaCaps.hasOutboundSalespersonUserId

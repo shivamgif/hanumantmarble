@@ -122,7 +122,7 @@ export async function GET(request) {
                 COALESCE(c_direct.name, c_so.name) AS customer_name,
                 sos.created_at AS dispatch_date, sos.status,
                 COALESCE(SUM(soi.loaded_whole_qty), 0) as total_whole_qty, COALESCE(SUM(soi.loaded_broken_qty), 0) as total_broken_qty,
-                COALESCE(SUM(GREATEST(COALESCE(soi.loaded_whole_qty, 0) - COALESCE(soi.returned_whole_qty, 0), 0) * COALESCE(soi.rate_per_unit, 0)), 0) as total_selling_price_excl
+                COALESCE(SUM((GREATEST(COALESCE(soi.loaded_whole_qty, 0) - COALESCE(soi.returned_whole_qty, 0), 0) + GREATEST(COALESCE(soi.loaded_broken_qty, 0) - COALESCE(soi.returned_broken_qty, 0), 0)) * COALESCE(soi.rate_per_unit, 0)), 0) as total_selling_price_excl
          FROM stock_outbound_shipments sos
          LEFT JOIN stock_outbound_shipment_items soi ON sos.id = soi.outbound_shipment_id
          LEFT JOIN stock_customers c_direct ON c_direct.id = sos.customer_id

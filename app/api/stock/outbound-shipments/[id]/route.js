@@ -52,7 +52,7 @@ async function loadShipmentWithItems(id) {
               SUM(loaded_broken_qty) AS total_broken_qty,
               SUM(returned_whole_qty) AS total_return_whole_qty,
               SUM(returned_broken_qty) AS total_return_broken_qty,
-              COALESCE(SUM(GREATEST(COALESCE(loaded_whole_qty, 0) - COALESCE(returned_whole_qty, 0), 0) * COALESCE(rate_per_unit, 0)), 0) AS total_selling_price_excl
+              COALESCE(SUM((GREATEST(COALESCE(loaded_whole_qty, 0) - COALESCE(returned_whole_qty, 0), 0) + GREATEST(COALESCE(loaded_broken_qty, 0) - COALESCE(returned_broken_qty, 0), 0)) * COALESCE(rate_per_unit, 0)), 0) AS total_selling_price_excl
        FROM stock_outbound_shipment_items
        WHERE outbound_shipment_id = $1
        GROUP BY outbound_shipment_id

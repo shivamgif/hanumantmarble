@@ -31,7 +31,7 @@ export async function GET(request) {
            TO_CHAR(DATE_TRUNC('month', s.dispatch_date), 'Mon YYYY') AS month_label,
            DATE_TRUNC('month', s.dispatch_date) AS month_start,
            COUNT(DISTINCT s.id) AS dispatch_count,
-           COALESCE(SUM(GREATEST(COALESCE(soi.loaded_whole_qty, 0) - COALESCE(soi.returned_whole_qty, 0), 0) * COALESCE(soi.rate_per_unit, 0)), 0) AS total_value
+           COALESCE(SUM((GREATEST(COALESCE(soi.loaded_whole_qty, 0) - COALESCE(soi.returned_whole_qty, 0), 0) + GREATEST(COALESCE(soi.loaded_broken_qty, 0) - COALESCE(soi.returned_broken_qty, 0), 0)) * COALESCE(soi.rate_per_unit, 0)), 0) AS total_value
          FROM stock_outbound_shipments s
          JOIN stock_outbound_shipment_items soi ON soi.outbound_shipment_id = s.id
          WHERE ${ownershipFilter}
@@ -44,7 +44,7 @@ export async function GET(request) {
       sql(
         `SELECT
            COUNT(DISTINCT s.id) AS this_month_count,
-           COALESCE(SUM(GREATEST(COALESCE(soi.loaded_whole_qty, 0) - COALESCE(soi.returned_whole_qty, 0), 0) * COALESCE(soi.rate_per_unit, 0)), 0) AS this_month_value
+           COALESCE(SUM((GREATEST(COALESCE(soi.loaded_whole_qty, 0) - COALESCE(soi.returned_whole_qty, 0), 0) + GREATEST(COALESCE(soi.loaded_broken_qty, 0) - COALESCE(soi.returned_broken_qty, 0), 0)) * COALESCE(soi.rate_per_unit, 0)), 0) AS this_month_value
          FROM stock_outbound_shipments s
          JOIN stock_outbound_shipment_items soi ON soi.outbound_shipment_id = s.id
          WHERE ${ownershipFilter}
@@ -60,7 +60,7 @@ export async function GET(request) {
            c.name AS customer_name,
            s.status,
            s.approval_status,
-           COALESCE(SUM(GREATEST(COALESCE(soi.loaded_whole_qty, 0) - COALESCE(soi.returned_whole_qty, 0), 0) * COALESCE(soi.rate_per_unit, 0)), 0) AS total_value
+           COALESCE(SUM((GREATEST(COALESCE(soi.loaded_whole_qty, 0) - COALESCE(soi.returned_whole_qty, 0), 0) + GREATEST(COALESCE(soi.loaded_broken_qty, 0) - COALESCE(soi.returned_broken_qty, 0), 0)) * COALESCE(soi.rate_per_unit, 0)), 0) AS total_value
          FROM stock_outbound_shipments s
          JOIN stock_outbound_shipment_items soi ON soi.outbound_shipment_id = s.id
          LEFT JOIN stock_customers c ON c.id = s.customer_id
@@ -74,7 +74,7 @@ export async function GET(request) {
     ]);
 
     const lastMonthRows = await sql(
-      `SELECT COALESCE(SUM(GREATEST(COALESCE(soi.loaded_whole_qty, 0) - COALESCE(soi.returned_whole_qty, 0), 0) * COALESCE(soi.rate_per_unit, 0)), 0) AS last_month_value,
+      `SELECT COALESCE(SUM((GREATEST(COALESCE(soi.loaded_whole_qty, 0) - COALESCE(soi.returned_whole_qty, 0), 0) + GREATEST(COALESCE(soi.loaded_broken_qty, 0) - COALESCE(soi.returned_broken_qty, 0), 0)) * COALESCE(soi.rate_per_unit, 0)), 0) AS last_month_value,
               COUNT(DISTINCT s.id) AS last_month_count
        FROM stock_outbound_shipments s
        JOIN stock_outbound_shipment_items soi ON soi.outbound_shipment_id = s.id
