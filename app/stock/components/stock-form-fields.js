@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { UploadCloud, ChevronRight } from 'lucide-react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { UploadCloud, ChevronRight, Search, Check, X as XIcon } from 'lucide-react';
 import {
   Form,
   FormControl,
@@ -14,7 +14,100 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { FORM_LABEL_CLASS, FORM_INPUT_CLASS } from '../lib/stock-utils';
+
+const MAX_RESULTS = 200;
+
+function useIsMobile(breakpoint = 640) {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener?.('change', update);
+    return () => mq.removeEventListener?.('change', update);
+  }, [breakpoint]);
+  return isMobile;
+}
+
+function ComboboxRow({ active, selected, onSelect, onHover, children, rowRef }) {
+  return (
+    <li>
+      <button
+        ref={rowRef}
+        type="button"
+        role="option"
+        aria-selected={selected}
+        className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors ${
+          active ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/60'
+        }`}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          onSelect();
+        }}
+        onMouseMove={onHover}
+      >
+        {selected ? <Check className="h-3.5 w-3.5 shrink-0 text-brand-primary" /> : <span className="h-3.5 w-3.5 shrink-0" />}
+        <span className="truncate">{children}</span>
+      </button>
+    </li>
+  );
+}
+
+function MobilePickerSheet({ open, onOpenChange, title, placeholder, searchValue, onSearchChange, rows, renderLabel, isSelected, onSelect }) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="bottom" className="h-[85vh] flex flex-col p-0 gap-0">
+        <div className="sticky top-0 z-10 border-b border-border bg-background px-4 pt-5 pb-3 space-y-2">
+          <SheetTitle className="text-sm font-black uppercase tracking-widest text-slate-500">{title}</SheetTitle>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              autoFocus
+              value={searchValue}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder={placeholder}
+              className="pl-9 pr-9"
+              autoComplete="off"
+            />
+            {searchValue ? (
+              <button
+                type="button"
+                onClick={() => onSearchChange('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-muted-foreground hover:bg-accent"
+                aria-label="Clear"
+              >
+                <XIcon className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto px-2 py-2">
+          {rows.length === 0 ? (
+            <div className="px-3 py-6 text-center text-sm text-muted-foreground">No matches</div>
+          ) : (
+            <ul className="space-y-0.5">
+              {rows.map((row, i) => (
+                <ComboboxRow
+                  key={row.key ?? i}
+                  active={false}
+                  selected={isSelected(row)}
+                  onSelect={() => onSelect(row)}
+                  onHover={() => {}}
+                >
+                  {renderLabel(row)}
+                </ComboboxRow>
+              ))}
+            </ul>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
 
 export function InlineNotice({ notice }) {
   if (!notice) return null;
@@ -77,35 +170,110 @@ export function InlineNotice({ notice }) {
 
 export function SuggestCombobox({ value, onChange, options = [], placeholder, className, onBlur, disabled, inputRef, ...props }) {
   const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [mobileSearch, setMobileSearch] = useState('');
+  const isMobile = useIsMobile();
+  const activeRowRef = useRef(null);
+
   const current = String(value ?? '');
-  const needle = current.trim().toLowerCase();
+  const desktopNeedle = current.trim().toLowerCase();
+  const mobileNeedle = mobileSearch.trim().toLowerCase();
+  const needle = isMobile ? mobileNeedle : desktopNeedle;
+
   const filtered = useMemo(() => [...new Set((options || [])
     .filter((opt) => opt != null && String(opt).trim() !== '')
     .map((opt) => String(opt))
     .filter((opt) => (needle ? opt.toLowerCase().includes(needle) : true)))]
-    .slice(0, 50), [options, needle]);
+    .slice(0, MAX_RESULTS), [options, needle]);
+
+  useEffect(() => { setActiveIndex(0); }, [needle, open]);
+
+  useEffect(() => {
+    if (open && activeRowRef.current) {
+      activeRowRef.current.scrollIntoView({ block: 'nearest' });
+    }
+  }, [activeIndex, open]);
+
+  const commit = useCallback((opt) => {
+    onChange(String(opt));
+    setOpen(false);
+    setMobileSearch('');
+  }, [onChange]);
 
   const handleChange = useCallback((e) => {
     onChange(e.target.value);
-    if (!open) setOpen(true);
-  }, [onChange, open]);
+    if (!open && !isMobile) setOpen(true);
+  }, [onChange, open, isMobile]);
 
-  const handleFocus = useCallback(() => setOpen(true), []);
+  const handleFocus = useCallback(() => {
+    if (isMobile) {
+      setMobileSearch('');
+      setOpen(true);
+    } else {
+      setOpen(true);
+    }
+  }, [isMobile]);
 
-  const handleBlur = useCallback((e) => {
-    setTimeout(() => setOpen(false), 120);
-    onBlur?.(e);
-  }, [onBlur]);
+  const handleKeyDown = useCallback((e) => {
+    if (!open || isMobile) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((i) => (filtered.length ? (i + 1) % filtered.length : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((i) => (filtered.length ? (i - 1 + filtered.length) % filtered.length : 0));
+    } else if (e.key === 'Enter') {
+      if (filtered.length > 0) {
+        e.preventDefault();
+        commit(filtered[activeIndex] ?? filtered[0]);
+      }
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+    }
+  }, [open, isMobile, filtered, activeIndex, commit]);
+
+  if (isMobile) {
+    return (
+      <>
+        <Input
+          ref={inputRef}
+          value={current}
+          readOnly
+          onFocus={handleFocus}
+          onClick={handleFocus}
+          onBlur={onBlur}
+          placeholder={placeholder}
+          className={className || FORM_INPUT_CLASS}
+          disabled={disabled}
+          autoComplete="off"
+          {...props}
+        />
+        <MobilePickerSheet
+          open={open}
+          onOpenChange={(v) => { setOpen(v); if (!v) setMobileSearch(''); }}
+          title={placeholder || 'Select'}
+          placeholder={placeholder || 'Search...'}
+          searchValue={mobileSearch}
+          onSearchChange={setMobileSearch}
+          rows={filtered.map((opt) => ({ key: opt, value: opt }))}
+          renderLabel={(row) => row.value}
+          isSelected={(row) => row.value === current}
+          onSelect={(row) => commit(row.value)}
+        />
+      </>
+    );
+  }
 
   return (
-    <Popover open={open && filtered.length > 0} onOpenChange={setOpen}>
+    <Popover open={open && (filtered.length > 0 || desktopNeedle.length > 0)} onOpenChange={setOpen}>
       <PopoverAnchor asChild>
         <Input
           ref={inputRef}
           value={current}
           onChange={handleChange}
           onFocus={handleFocus}
-          onBlur={handleBlur}
+          onBlur={onBlur}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className={className || FORM_INPUT_CLASS}
           disabled={disabled}
@@ -116,26 +284,31 @@ export function SuggestCombobox({ value, onChange, options = [], placeholder, cl
       <PopoverContent
         align="start"
         sideOffset={4}
-        className="w-[var(--radix-popover-trigger-width)] max-h-64 overflow-auto p-1"
+        collisionPadding={8}
+        className="min-w-[280px] w-[max(var(--radix-popover-trigger-width),320px)] max-h-[min(60vh,28rem)] p-1 overflow-hidden"
         onOpenAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={() => setOpen(false)}
       >
-        <ul className="space-y-0.5">
-          {filtered.map((opt, i) => (
-            <li key={`${opt}-${i}`}>
-              <button
-                type="button"
-                className="w-full truncate rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onChange(String(opt));
-                  setOpen(false);
-                }}
-              >
-                {String(opt)}
-              </button>
-            </li>
-          ))}
-        </ul>
+        {filtered.length === 0 ? (
+          <div className="px-3 py-4 text-center text-sm text-muted-foreground">No matches</div>
+        ) : (
+          <ScrollArea className="max-h-[min(60vh,28rem)]">
+            <ul className="space-y-0.5 pr-1" role="listbox">
+              {filtered.map((opt, i) => (
+                <ComboboxRow
+                  key={`${opt}-${i}`}
+                  rowRef={i === activeIndex ? activeRowRef : null}
+                  active={i === activeIndex}
+                  selected={opt === current}
+                  onSelect={() => commit(opt)}
+                  onHover={() => setActiveIndex(i)}
+                >
+                  {opt}
+                </ComboboxRow>
+              ))}
+            </ul>
+          </ScrollArea>
+        )}
       </PopoverContent>
     </Popover>
   );
@@ -151,8 +324,11 @@ export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [],
   const [open, setOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [mobileSearch, setMobileSearch] = useState('');
+  const isMobile = useIsMobile();
+  const activeRowRef = useRef(null);
 
-  // Sync display text when value changes externally (e.g. form reset)
   useEffect(() => {
     if (!isTyping) {
       const found = (items || []).find((i) => String(i.id) === String(value));
@@ -160,7 +336,10 @@ export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [],
     }
   }, [value, items, isTyping, fallbackLabel]);
 
-  const needle = isTyping ? inputText.trim().toLowerCase() : '';
+  const desktopNeedle = isTyping ? inputText.trim().toLowerCase() : '';
+  const mobileNeedle = mobileSearch.trim().toLowerCase();
+  const needle = isMobile ? mobileNeedle : desktopNeedle;
+
   const filtered = useMemo(() => {
     return (items || [])
       .filter((i) => {
@@ -170,13 +349,22 @@ export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [],
         const grade = (i.grade || '').toLowerCase();
         return sku.includes(needle) || name.includes(needle) || grade.includes(needle);
       })
-      .slice(0, 50);
+      .slice(0, MAX_RESULTS);
   }, [items, needle]);
+
+  useEffect(() => { setActiveIndex(0); }, [needle, open]);
+
+  useEffect(() => {
+    if (open && activeRowRef.current) {
+      activeRowRef.current.scrollIntoView({ block: 'nearest' });
+    }
+  }, [activeIndex, open]);
 
   const handleSelect = useCallback((item) => {
     setIsTyping(false);
     setInputText(itemLabel(item));
     setOpen(false);
+    setMobileSearch('');
     onChange(String(item.id));
     onItemSelect?.(item);
   }, [onChange, onItemSelect]);
@@ -186,9 +374,9 @@ export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [],
     if (!raw) return false;
     const exact = (items || []).find((i) => (i.sku || '').toLowerCase() === raw);
     if (exact) { handleSelect(exact); return true; }
-    if (filtered.length === 1) { handleSelect(filtered[0]); return true; }
+    if (filtered.length === 1 && !isMobile) { handleSelect(filtered[0]); return true; }
     return false;
-  }, [inputText, items, filtered, handleSelect]);
+  }, [inputText, items, filtered, handleSelect, isMobile]);
 
   const handleChange = useCallback((e) => {
     setInputText(e.target.value);
@@ -196,27 +384,74 @@ export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [],
     if (!open) setOpen(true);
   }, [open]);
 
-  const handleFocus = useCallback(() => setOpen(true), []);
+  const handleFocus = useCallback(() => {
+    if (isMobile) {
+      setMobileSearch('');
+      setOpen(true);
+    } else {
+      setOpen(true);
+    }
+  }, [isMobile]);
 
   const handleKeyDown = useCallback((e) => {
-    if (e.key === 'Enter' || e.key === 'Tab') {
-      if (tryAutoSelect()) {
-        if (e.key === 'Enter') e.preventDefault();
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!open) setOpen(true);
+      setActiveIndex((i) => (filtered.length ? (i + 1) % filtered.length : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((i) => (filtered.length ? (i - 1 + filtered.length) % filtered.length : 0));
+    } else if (e.key === 'Enter') {
+      if (open && filtered.length > 0) {
+        e.preventDefault();
+        handleSelect(filtered[activeIndex] ?? filtered[0]);
       }
+    } else if (e.key === 'Tab') {
+      tryAutoSelect();
+    } else if (e.key === 'Escape') {
+      setOpen(false);
     }
-  }, [tryAutoSelect]);
+  }, [open, filtered, activeIndex, handleSelect, tryAutoSelect]);
 
   const handleBlur = useCallback((e) => {
     tryAutoSelect();
-    setTimeout(() => {
-      setOpen(false);
-      setIsTyping(false);
-    }, 120);
+    setIsTyping(false);
     onBlur?.(e);
   }, [onBlur, tryAutoSelect]);
 
+  if (isMobile) {
+    return (
+      <>
+        <Input
+          value={inputText}
+          readOnly
+          onFocus={handleFocus}
+          onClick={handleFocus}
+          onBlur={onBlur}
+          placeholder={placeholder}
+          className={className || FORM_INPUT_CLASS}
+          disabled={disabled}
+          autoComplete="off"
+          {...props}
+        />
+        <MobilePickerSheet
+          open={open}
+          onOpenChange={(v) => { setOpen(v); if (!v) setMobileSearch(''); }}
+          title={placeholder || 'Select item'}
+          placeholder="Search by SKU, name, grade..."
+          searchValue={mobileSearch}
+          onSearchChange={setMobileSearch}
+          rows={filtered.map((it) => ({ key: it.id, item: it }))}
+          renderLabel={(row) => itemLabel(row.item)}
+          isSelected={(row) => String(row.item.id) === String(value)}
+          onSelect={(row) => handleSelect(row.item)}
+        />
+      </>
+    );
+  }
+
   return (
-    <Popover open={open && filtered.length > 0} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverAnchor asChild>
         <Input
           value={inputText}
@@ -234,25 +469,31 @@ export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [],
       <PopoverContent
         align="start"
         sideOffset={4}
-        className="w-[var(--radix-popover-trigger-width)] max-h-64 overflow-auto p-1"
+        collisionPadding={8}
+        className="min-w-[320px] w-[max(var(--radix-popover-trigger-width),420px)] max-h-[min(60vh,28rem)] p-1 overflow-hidden"
         onOpenAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={() => setOpen(false)}
       >
-        <ul className="space-y-0.5">
-          {filtered.map((item) => (
-            <li key={item.id}>
-              <button
-                type="button"
-                className="w-full truncate rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleSelect(item);
-                }}
-              >
-                {itemLabel(item)}
-              </button>
-            </li>
-          ))}
-        </ul>
+        {filtered.length === 0 ? (
+          <div className="px-3 py-4 text-center text-sm text-muted-foreground">No matches</div>
+        ) : (
+          <ScrollArea className="max-h-[min(60vh,28rem)]">
+            <ul className="space-y-0.5 pr-1" role="listbox">
+              {filtered.map((item, i) => (
+                <ComboboxRow
+                  key={item.id}
+                  rowRef={i === activeIndex ? activeRowRef : null}
+                  active={i === activeIndex}
+                  selected={String(item.id) === String(value)}
+                  onSelect={() => handleSelect(item)}
+                  onHover={() => setActiveIndex(i)}
+                >
+                  {itemLabel(item)}
+                </ComboboxRow>
+              ))}
+            </ul>
+          </ScrollArea>
+        )}
       </PopoverContent>
     </Popover>
   );
