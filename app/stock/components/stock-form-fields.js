@@ -57,7 +57,9 @@ function ComboboxRow({ active, selected, onSelect, onHover, children, rowRef }) 
   );
 }
 
-function MobilePickerSheet({ open, onOpenChange, title, placeholder, searchValue, onSearchChange, rows, renderLabel, isSelected, onSelect }) {
+function MobilePickerSheet({ open, onOpenChange, title, placeholder, searchValue, onSearchChange, rows, renderLabel, isSelected, onSelect, creatable = false, onCreate, hasExactMatch = false }) {
+  const trimmed = searchValue.trim();
+  const showCreate = creatable && trimmed.length > 0 && !hasExactMatch;
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="h-[85vh] flex flex-col p-0 gap-0">
@@ -86,7 +88,22 @@ function MobilePickerSheet({ open, onOpenChange, title, placeholder, searchValue
           </div>
         </div>
         <div className="flex-1 overflow-y-auto px-2 py-2">
-          {rows.length === 0 ? (
+          {showCreate ? (
+            <ul className="space-y-0.5 mb-1">
+              <li>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/20"
+                  onMouseDown={(e) => { e.preventDefault(); onCreate(trimmed); }}
+                  onClick={(e) => { e.preventDefault(); onCreate(trimmed); }}
+                >
+                  <span className="h-3.5 w-3.5 shrink-0 text-xs font-black">+</span>
+                  <span className="truncate">Use &quot;{trimmed}&quot;</span>
+                </button>
+              </li>
+            </ul>
+          ) : null}
+          {rows.length === 0 && !showCreate ? (
             <div className="px-3 py-6 text-center text-sm text-muted-foreground">No matches</div>
           ) : (
             <ul className="space-y-0.5">
@@ -207,12 +224,12 @@ export function SuggestCombobox({ value, onChange, options = [], placeholder, cl
 
   const handleFocus = useCallback(() => {
     if (isMobile) {
-      setMobileSearch('');
+      setMobileSearch(current);
       setOpen(true);
     } else {
       setOpen(true);
     }
-  }, [isMobile]);
+  }, [isMobile, current]);
 
   const handleKeyDown = useCallback((e) => {
     if (!open || isMobile) return;
@@ -252,13 +269,16 @@ export function SuggestCombobox({ value, onChange, options = [], placeholder, cl
           open={open}
           onOpenChange={(v) => { setOpen(v); if (!v) setMobileSearch(''); }}
           title={placeholder || 'Select'}
-          placeholder={placeholder || 'Search...'}
+          placeholder={placeholder || 'Search or type new...'}
           searchValue={mobileSearch}
-          onSearchChange={setMobileSearch}
+          onSearchChange={(v) => { setMobileSearch(v); onChange(v); }}
           rows={filtered.map((opt) => ({ key: opt, value: opt }))}
           renderLabel={(row) => row.value}
           isSelected={(row) => row.value === current}
           onSelect={(row) => commit(row.value)}
+          creatable
+          hasExactMatch={filtered.some((opt) => opt.toLowerCase() === mobileSearch.trim().toLowerCase())}
+          onCreate={(v) => commit(v)}
         />
       </>
     );
