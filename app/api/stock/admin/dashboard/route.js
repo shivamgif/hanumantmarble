@@ -157,6 +157,7 @@ export async function GET(request) {
     ]);
 
     return NextResponse.json({
+      viewerRole: userRole,
       pendingPurchases: pendingArrivals,
       pendingArrivals,
       pendingDispatches,

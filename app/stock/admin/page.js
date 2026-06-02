@@ -217,8 +217,9 @@ export default function AdminDashboard() {
   };
   const { user } = useAuthUser();
   const canViewAnalytics = user?.role === 'manager';
-  const canManageUsers = user?.role === 'admin' || user?.role === 'manager';
   const [data, setData] = useState(null);
+  const viewerRole = data?.viewerRole || user?.role;
+  const canManageUsers = viewerRole === 'admin' || viewerRole === 'manager';
   const [analyticsData, setAnalyticsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
