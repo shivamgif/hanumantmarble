@@ -217,6 +217,7 @@ export default function AdminDashboard() {
   };
   const { user } = useAuthUser();
   const canViewAnalytics = user?.role === 'manager';
+  const canManageUsers = user?.role === 'admin' || user?.role === 'manager';
   const [data, setData] = useState(null);
   const [analyticsData, setAnalyticsData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -2181,7 +2182,7 @@ export default function AdminDashboard() {
             insight={t('userManagementInsight')}
             showInsight={showInsights}
             topRight={
-              canViewAnalytics && (
+              canManageUsers && (
                 <button
                   type="button"
                   onClick={() => setShowUserForm((current) => !current)}
@@ -2192,7 +2193,7 @@ export default function AdminDashboard() {
               )
             }
           >
-            {canViewAnalytics && showUserForm && (
+            {canManageUsers && showUserForm && (
               <div className="mb-8 p-5 sm:p-8 rounded-3xl sm:rounded-[2rem] bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800/50 animate-scale-in">
                 <form onSubmit={handleSaveUser} className="space-y-8">
                   <div className="flex items-center gap-4 mb-6">
