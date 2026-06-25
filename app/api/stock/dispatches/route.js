@@ -62,6 +62,13 @@ export async function GET(request) {
         OR sos.driver_name_snapshot ILIKE ${sp}
         OR sos.truck_license_plate_snapshot ILIKE ${sp}
         OR c.name ILIKE ${sp}
+        OR c.phone ILIKE ${sp}
+        OR sos.id IN (
+          SELECT soi3.outbound_shipment_id
+          FROM stock_outbound_shipment_items soi3
+          JOIN stock_items i3 ON i3.id = soi3.item_id
+          WHERE i3.name ILIKE ${sp} OR i3.sku ILIKE ${sp}
+        )
       )`;
     }
 

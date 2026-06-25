@@ -67,6 +67,12 @@ export async function GET(request) {
         OR s.invoice_number ILIKE ${sp}
         OR s.origin_city ILIKE ${sp}
         OR loc.name ILIKE ${sp}
+        OR s.id IN (
+          SELECT isi3.inbound_shipment_id
+          FROM stock_inbound_shipment_items isi3
+          JOIN stock_items i3 ON i3.id = isi3.item_id
+          WHERE i3.name ILIKE ${sp} OR i3.sku ILIKE ${sp}
+        )
       )`;
     }
 
