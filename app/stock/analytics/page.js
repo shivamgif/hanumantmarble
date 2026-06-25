@@ -532,16 +532,16 @@ function DeadStockWidget({ data, months }) {
         </div>
         <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <p className="text-3xl font-black font-sans text-slate-900 dark:text-white tabular-nums leading-none">{count}</p>
+            <p className="text-2xl font-black font-sans text-slate-900 dark:text-white tabular-nums leading-none">{count}</p>
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">{t('items')}</p>
           </div>
           <div>
-            <p className="text-3xl font-black font-sans text-slate-900 dark:text-white tabular-nums leading-none">{formatCompactNumber(units)}</p>
+            <p className="text-2xl font-black font-sans text-slate-900 dark:text-white tabular-nums leading-none">{formatCompactNumber(units)}</p>
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">{t('unitsIdle')}</p>
           </div>
           {value > 0 ? (
             <div>
-              <p className="text-2xl font-black font-sans text-slate-900 dark:text-white tabular-nums leading-none">{formatCompactINR(value)}</p>
+              <p className="text-xl font-black font-sans text-slate-900 dark:text-white tabular-nums leading-none">{formatCompactINR(value)}</p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">{t('capitalIdle')}</p>
             </div>
           ) : null}
