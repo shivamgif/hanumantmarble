@@ -51,7 +51,7 @@ function ComboboxRow({ active, selected, onSelect, onHover, children, rowRef }) 
         onMouseMove={onHover}
       >
         {selected ? <Check className="h-3.5 w-3.5 shrink-0 text-brand-primary" /> : <span className="h-3.5 w-3.5 shrink-0" />}
-        <span className="truncate">{children}</span>
+        <span className="min-w-0 flex-1 truncate">{children}</span>
       </button>
     </li>
   );
@@ -340,6 +340,17 @@ function itemLabel(item) {
   return `${item.sku} - ${item.name}${grade}${bag}`;
 }
 
+// Available stock summary for picker rows — helps distinguish near-duplicate
+// SKUs (same name, different stock) at selection time. Display-only.
+function itemStockSummary(item) {
+  const whole = Number(item.current_whole_qty ?? 0);
+  const broken = Number(item.current_broken_qty ?? 0);
+  const unit = item.unit_of_measure === 'bag' ? 'bags' : 'whole';
+  const parts = [`${whole} ${unit}`];
+  if (broken > 0) parts.push(`${broken} broken`);
+  return parts.join(' · ');
+}
+
 export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [], placeholder, className, onBlur, disabled, fallbackLabel, ...props }) {
   const [open, setOpen] = useState(false);
   const [inputText, setInputText] = useState('');
@@ -462,7 +473,12 @@ export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [],
           searchValue={mobileSearch}
           onSearchChange={setMobileSearch}
           rows={filtered.map((it) => ({ key: it.id, item: it }))}
-          renderLabel={(row) => itemLabel(row.item)}
+          renderLabel={(row) => (
+            <span className="flex min-w-0 flex-col">
+              <span className="truncate">{itemLabel(row.item)}</span>
+              <span className="text-[11px] font-medium text-muted-foreground">{itemStockSummary(row.item)}</span>
+            </span>
+          )}
           isSelected={(row) => String(row.item.id) === String(value)}
           onSelect={(row) => handleSelect(row.item)}
         />
@@ -508,7 +524,10 @@ export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [],
                   onSelect={() => handleSelect(item)}
                   onHover={() => setActiveIndex(i)}
                 >
-                  {itemLabel(item)}
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate">{itemLabel(item)}</span>
+                    <span className="text-[11px] font-medium text-muted-foreground">{itemStockSummary(item)}</span>
+                  </span>
                 </ComboboxRow>
               ))}
             </ul>
