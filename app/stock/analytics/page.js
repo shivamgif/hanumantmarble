@@ -1174,7 +1174,7 @@ export default function AnalyticsDashboard() {
 
       <section className="space-y-6" id="action-band">
         <h2 className={CLASSES.sectionHead}>Action</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div className="lg:col-span-5" id="widget-reorder">
             <ReorderNowWidget items={reorderNow} months={analyticsRangeMonths} />
           </div>
@@ -1194,7 +1194,7 @@ export default function AnalyticsDashboard() {
 
       <section className="space-y-6" id="people-band">
         <h2 className={CLASSES.sectionHead}>People & Customers</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div className="lg:col-span-5" id="widget-pace">
             <SalesPaceWidget rows={salespersonGoals} />
           </div>
