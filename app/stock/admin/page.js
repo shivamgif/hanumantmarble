@@ -1342,7 +1342,7 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-12 p-4 sm:p-6 lg:p-12">
+      <div className="space-y-10 lg:space-y-12 p-4 sm:p-6 lg:p-8">
         <div className="flex flex-col gap-4">
           <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 animate-pulse rounded" />
           <div className="h-16 sm:h-20 w-full sm:w-3/4 max-w-lg bg-slate-200 dark:bg-slate-800 animate-pulse rounded-2xl sm:rounded-[2.5rem]" />
@@ -1352,7 +1352,7 @@ export default function AdminDashboard() {
             <div key={`hero-skeleton-${index}`} className="animate-pulse rounded-3xl sm:rounded-[2.5rem] bg-slate-200 dark:bg-slate-800 h-40 sm:h-48" />
           ))}
         </div>
-        <div className="grid grid-cols-1 gap-12 lg:gap-16">
+        <div className="grid grid-cols-1 gap-6">
           <div className="animate-pulse rounded-3xl sm:rounded-[2.5rem] bg-slate-200 dark:bg-slate-800 h-96" />
           <div className="animate-pulse rounded-3xl sm:rounded-[2.5rem] bg-slate-200 dark:bg-slate-800 h-96" />
         </div>
@@ -1363,7 +1363,7 @@ export default function AdminDashboard() {
   if (!data) return null;
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-12 space-y-12 lg:space-y-20 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
+    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-10 lg:space-y-12 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
       <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-10">
         <div className="space-y-4 max-w-4xl">
           <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-4">
@@ -1421,14 +1421,14 @@ export default function AdminDashboard() {
       )}
 
       {canViewAnalytics && <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {summaryTiles.map((m, i) => {
           const Icon = m.icon;
           const isPositive = m.trend >= 0;
           return (
-            <div className="glass-panel rounded-[2.5rem] p-7 lg:p-8 relative overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl group" key={m.label}>
+            <div className="glass-panel rounded-[2.5rem] p-6 relative overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl group" key={m.label}>
               <div className="relative z-10">
-                <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center justify-between mb-5">
                   <div className={`w-16 h-16 flex items-center justify-center rounded-[1.25rem] border ${m.iconAccent.split(' ')[0]} bg-opacity-20 border-opacity-20 shadow-sm transition-transform duration-500 group-hover:scale-110`}>
                     <Icon className={`h-8 w-8 ${m.iconAccent.split(' ')[1]}`} />
                   </div>
@@ -1472,13 +1472,13 @@ export default function AdminDashboard() {
         })}
       </div>
 
-      <section className="space-y-12">
+      <section className="space-y-6">
         <div className="flex items-center gap-6">
           <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">I. {t('operationalOverview')}</h2>
           <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
         </div>
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-5 lg:gap-12">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
           <AnalyticsCard
             title={t('operationalAlerts')}
             subtitle={t('criticalEventsSubtitle')}
@@ -1582,13 +1582,13 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-4">
-        <section id="approval-queue" className={`space-y-12 ${mobileSection === 'approvals' ? '' : 'hidden'}`}>
+        <section id="approval-queue" className={`space-y-6 ${mobileSection === 'approvals' ? '' : 'hidden'}`}>
           <div className="flex items-center gap-6">
             <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">II. {t('approvalQueue')}</h2>
             <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 lg:gap-12">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <AnalyticsCard
               title={t('pendingArrivals')}
               subtitle={t('inboundQueueSubtitle')}
@@ -2060,7 +2060,7 @@ export default function AdminDashboard() {
           </div>
         </section>
 
-        <section className={`space-y-12 ${mobileSection === 'changes' ? '' : 'hidden'}`}>
+        <section className={`space-y-6 ${mobileSection === 'changes' ? '' : 'hidden'}`}>
           <div className="flex items-center gap-6">
             <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">III. {t('changes')}</h2>
             <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
@@ -2171,7 +2171,7 @@ export default function AdminDashboard() {
           </AnalyticsCard>
         </section>
 
-        <section id="users-contacts" className={`space-y-12 ${mobileSection === 'users' ? '' : 'hidden'}`}>
+        <section id="users-contacts" className={`space-y-6 ${mobileSection === 'users' ? '' : 'hidden'}`}>
           <div className="flex items-center gap-6">
             <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">IV. {t('users')}</h2>
             <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />

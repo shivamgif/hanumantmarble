@@ -1171,7 +1171,7 @@ export default function StockDashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-12 p-4 sm:p-6 lg:p-12 animate-pulse">
+      <div className="space-y-10 lg:space-y-12 p-4 sm:p-6 lg:p-8 animate-pulse">
         <div className="flex flex-col gap-4">
           <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 rounded" />
           <div className="h-16 sm:h-20 w-full sm:w-3/4 max-w-lg bg-slate-200 dark:bg-slate-800 rounded-2xl sm:rounded-[2.5rem]" />
@@ -1189,7 +1189,7 @@ export default function StockDashboard() {
   if (!data) return null;
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-12 space-y-10 lg:space-y-16 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
+    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-10 lg:space-y-12 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
       <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-10">
         <div className="space-y-4 max-w-4xl">
           <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-4">

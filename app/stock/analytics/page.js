@@ -209,11 +209,11 @@ function StockHealthScorecard({ data, stockRisk, approvalOps }) {
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       {metrics.map((m) => (
-        <div className="glass-panel rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-7 lg:p-8 relative overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl group" key={m.label}>
+        <div className="glass-panel rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-6 relative overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl group" key={m.label}>
           <div className="relative z-10">
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-5">
               <div className={`w-16 h-16 flex items-center justify-center rounded-[1.25rem] border ${m.bg} ${m.border} shadow-sm transition-transform duration-500 group-hover:scale-110`}>
                 <m.icon className={`h-8 w-8 ${m.color}`} />
               </div>
@@ -932,7 +932,7 @@ export default function AnalyticsDashboard() {
 
   if (loading)
     return (
-      <div className="space-y-12 p-4 sm:p-6 lg:p-12">
+      <div className="mx-auto max-w-[1600px] space-y-10 lg:space-y-12 p-4 sm:p-6 lg:p-8">
         <div className="flex flex-col gap-4">
           <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 animate-pulse rounded" />
           <div className="h-16 sm:h-20 w-full sm:w-3/4 max-w-lg bg-slate-200 dark:bg-slate-800 animate-pulse rounded-2xl sm:rounded-[2.5rem]" />
@@ -942,7 +942,7 @@ export default function AnalyticsDashboard() {
             <div key={`hero-skeleton-${index}`} className="animate-pulse rounded-3xl sm:rounded-[2.5rem] bg-slate-200 dark:bg-slate-800 h-40 sm:h-48" />
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="animate-pulse rounded-3xl sm:rounded-[2.5rem] bg-slate-200 dark:bg-slate-800 h-80 sm:h-96" />
           <div className="animate-pulse rounded-3xl sm:rounded-[2.5rem] bg-slate-200 dark:bg-slate-800 h-80 sm:h-96" />
         </div>
@@ -967,7 +967,7 @@ export default function AnalyticsDashboard() {
     const countChange = lastMonth.count > 0 ? Math.round(((thisMonth.count - lastMonth.count) / lastMonth.count) * 100) : null;
 
     return (
-      <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-12 space-y-12 lg:space-y-20 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
+      <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-10 lg:space-y-12 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
         <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-10">
           <div className="space-y-4 max-w-4xl">
             <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-4">
@@ -1116,7 +1116,7 @@ export default function AnalyticsDashboard() {
       : 0;
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-12 space-y-12 lg:space-y-20 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
+    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-10 lg:space-y-12 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
       <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
         <div className="space-y-2">
           <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
@@ -1222,7 +1222,7 @@ export default function AnalyticsDashboard() {
         </div>
       </section>
 
-      <section className="space-y-8">
+      <section className="space-y-6">
         <h2 className={CLASSES.sectionHead}>{t('riskInventory')}</h2>
         <AnalyticsCard
           title={t('riskInventory')}
