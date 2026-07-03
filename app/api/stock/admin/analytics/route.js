@@ -114,6 +114,7 @@ export async function GET(request) {
       customerConcentrationRows,
       activityFeedRows,
       abcItemRows,
+      monthlyProfitRows,
     ] = await Promise.all([
       sql(
         `WITH periods AS (
@@ -679,6 +680,31 @@ export async function GET(request) {
          LIMIT 50`,
         [startDate, endDate]
       ),
+      // Monthly Profit: revenue minus estimated COGS (current landed/purchase cost per item)
+      sql(
+        `WITH periods AS (
+           SELECT generate_series(date_trunc('month', $1::date), date_trunc('month', $2::date), interval '1 month')::date AS bucket
+         ), sales AS (
+           SELECT
+             date_trunc('month', COALESCE(o.dispatch_date, o.created_at))::date AS bucket,
+             SUM((GREATEST(COALESCE(osi.loaded_whole_qty,0) - COALESCE(osi.returned_whole_qty,0), 0) + GREATEST(COALESCE(osi.loaded_broken_qty,0) - COALESCE(osi.returned_broken_qty,0), 0)) * COALESCE(osi.rate_per_unit,0)) AS revenue,
+             SUM((GREATEST(COALESCE(osi.loaded_whole_qty,0) - COALESCE(osi.returned_whole_qty,0), 0) + GREATEST(COALESCE(osi.loaded_broken_qty,0) - COALESCE(osi.returned_broken_qty,0), 0)) * COALESCE(NULLIF(i.landed_cost,0), NULLIF(i.purchase_price,0), 0)) AS cost
+           FROM stock_outbound_shipments o
+           JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = o.id
+           JOIN stock_items i ON i.id = osi.item_id
+           WHERE COALESCE(o.dispatch_date, o.created_at)::date BETWEEN $1::date AND $2::date
+           GROUP BY bucket
+         )
+         SELECT
+           p.bucket,
+           COALESCE(s.revenue, 0)::numeric(14,2) AS revenue,
+           COALESCE(s.cost, 0)::numeric(14,2) AS cost,
+           (COALESCE(s.revenue, 0) - COALESCE(s.cost, 0))::numeric(14,2) AS profit
+         FROM periods p
+         LEFT JOIN sales s ON s.bucket = p.bucket
+         ORDER BY p.bucket ASC`,
+        [startDate, endDate]
+      ),
     ]);
 
     const purchaseFunnel = {
@@ -773,6 +799,7 @@ export async function GET(request) {
       customerConcentration: customerConcentrationRows,
       activityFeed: activityFeedRows,
       abcItems: abcItemRows,
+      monthlyProfit: monthlyProfitRows,
     };
 
     cacheSet(cacheKey, payload);

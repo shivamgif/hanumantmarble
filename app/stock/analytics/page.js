@@ -8,6 +8,8 @@ import {
   Area,
   BarChart,
   Bar,
+  LineChart,
+  Line,
   PieChart,
   Pie,
   Cell,
@@ -86,6 +88,9 @@ const INDUSTRIAL_COLORS = [
   '#0891B2',
 ];
 
+// Line-series palette: same hues minus brand navy, which is invisible on dark surfaces (1.1:1 contrast)
+const SERIES_COLORS = ['#E07A00', '#2563EB', '#059669', '#DC2626', '#7C3AED'];
+
 function formatMonthLabel(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
@@ -131,12 +136,12 @@ function TrendCapsule({ value, isPositive }) {
 function AnalyticsCard({ title, subtitle, topRight, contextBar, children, className = '' }) {
   return (
     <div className={`${CLASSES.card} ${className}`}>
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-start justify-between gap-3 mb-4">
         <div className="min-w-0">
           <h3 className={CLASSES.title}>{title}</h3>
           {subtitle ? <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-bold tracking-tight leading-relaxed">{subtitle}</p> : null}
         </div>
-        <div className="shrink-0">{topRight}</div>
+        <div className="shrink-0 max-w-full min-w-0">{topRight}</div>
       </div>
       {contextBar ? (
         <div className="mb-4 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800/50">
@@ -396,7 +401,7 @@ function MonthlyCostVolumeChart({ dispatchTrend, costTrend }) {
       title={t('businessFlow')}
       subtitle={t('inboundOutboundMatch')}
       topRight={
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-2">
           <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] shadow-sm bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-800">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]" /> {t('inbound')}
           </div>
@@ -418,6 +423,131 @@ function MonthlyCostVolumeChart({ dispatchTrend, costTrend }) {
             <Bar dataKey="outbound" name={t('outbound')} fill="#10B981" radius={[6, 6, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
+      </div>
+    </AnalyticsCard>
+  );
+}
+
+function MonthlyProfitChart({ data }) {
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+
+  const chartData = (data || []).map((d) => ({
+    month: formatMonthLabel(d.bucket || d.month),
+    revenue: Number(d.revenue || 0),
+    profit: Number(d.profit || 0),
+  }));
+
+  if (chartData.length === 0)
+    return (
+      <AnalyticsCard title={t('profitPerMonth')} subtitle={t('noData')}>
+        <div className="h-64 flex items-center justify-center">—</div>
+      </AnalyticsCard>
+    );
+
+  const latest = chartData[chartData.length - 1];
+  const marginPct = latest.revenue > 0 ? (latest.profit / latest.revenue) * 100 : 0;
+  const contextBar = `${latest.month}: ${formatCompactINR(latest.profit)} ${t('profit')} · ${marginPct.toFixed(1)}% ${t('margin')}`;
+
+  return (
+    <AnalyticsCard
+      title={t('profitPerMonth')}
+      subtitle={t('profitSubtitle')}
+      contextBar={contextBar}
+      topRight={
+        <div className="flex flex-wrap gap-2">
+          <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] shadow-sm bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-800">
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-600" /> {t('revenue')}
+          </div>
+          <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] shadow-sm bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-800">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" /> {t('profit')}
+          </div>
+        </div>
+      }
+    >
+      <div className="h-[280px] bg-slate-50/20 dark:bg-slate-900/40 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-4">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
+          <BarChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }} barGap={4}>
+            <CartesianGrid strokeDasharray="4 6" className="stroke-slate-200 dark:stroke-slate-800/60" vertical={false} />
+            <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactINR} width={56} />
+            <RechartsTooltip content={<ChartTooltip formatter={(v) => formatCompactINR(v)} />} cursor={{ fill: 'rgba(148,163,184,0.08)' }} />
+            <Bar dataKey="revenue" name={t('revenue')} fill="#2563EB" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="profit" name={t('profit')} fill="#059669" radius={[6, 6, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </AnalyticsCard>
+  );
+}
+
+function SalespersonTrendChart({ trend }) {
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+
+  const { chartData, people } = useMemo(() => {
+    const totals = {};
+    (trend || []).forEach((r) => {
+      totals[r.salesperson] = (totals[r.salesperson] || 0) + Number(r.total_revenue || 0);
+    });
+    const people = Object.entries(totals)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name]) => name);
+    const byMonth = {};
+    (trend || []).forEach((r) => {
+      const k = r.bucket || r.month;
+      if (!k) return;
+      if (!byMonth[k]) {
+        byMonth[k] = { month: k };
+        people.forEach((p) => { byMonth[k][p] = 0; });
+      }
+      if (people.includes(r.salesperson)) byMonth[k][r.salesperson] = Number(r.total_revenue || 0);
+    });
+    const chartData = Object.values(byMonth)
+      .sort((a, b) => (a.month < b.month ? -1 : 1))
+      .map((d) => ({ ...d, month: formatMonthLabel(d.month) }));
+    return { chartData, people };
+  }, [trend]);
+
+  if (chartData.length === 0)
+    return (
+      <AnalyticsCard title={t('salespersonMonthly')} subtitle={t('noData')}>
+        <div className="h-64 flex items-center justify-center">—</div>
+      </AnalyticsCard>
+    );
+
+  return (
+    <AnalyticsCard title={t('salespersonMonthly')} subtitle={t('salespersonMonthlySubtitle')}>
+      <div className="h-[280px] bg-slate-50/20 dark:bg-slate-900/40 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-4">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
+          <LineChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="4 6" className="stroke-slate-200 dark:stroke-slate-800/60" vertical={false} />
+            <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactINR} width={56} />
+            <RechartsTooltip content={<ChartTooltip formatter={(v) => formatCompactINR(v)} />} />
+            {people.map((p, i) => (
+              <Line
+                key={p}
+                type="monotone"
+                dataKey={p}
+                name={p}
+                stroke={SERIES_COLORS[i % SERIES_COLORS.length]}
+                strokeWidth={2}
+                dot={{ r: 3, fill: SERIES_COLORS[i % SERIES_COLORS.length] }}
+                activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3 px-1">
+        {people.map((p, i) => (
+          <span key={p} className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 dark:text-slate-300 min-w-0">
+            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: SERIES_COLORS[i % SERIES_COLORS.length] }} />
+            <span className="truncate max-w-[10rem]">{p}</span>
+          </span>
+        ))}
       </div>
     </AnalyticsCard>
   );
@@ -530,7 +660,7 @@ function DeadStockWidget({ data, months }) {
         <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-slate-100 dark:bg-slate-800 shrink-0">
           <Archive className="h-7 w-7 text-slate-500" />
         </div>
-        <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <p className="text-2xl font-black font-sans text-slate-900 dark:text-white tabular-nums leading-none">{count}</p>
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">{t('items')}</p>
@@ -1094,6 +1224,8 @@ export default function AnalyticsDashboard() {
   const dispatchTrend = adminAnalytics?.dispatchPerformance?.trend || [];
   const costTrend = adminAnalytics?.costAndPayment?.trend || [];
   const salespersonRanking = adminAnalytics?.salespersonPerformance?.ranking || [];
+  const salespersonTrend = adminAnalytics?.salespersonPerformance?.trend || [];
+  const monthlyProfit = adminAnalytics?.monthlyProfit || [];
   const inventoryKpis = adminAnalytics?.inventoryHealth?.kpis || {};
   const dispatchKpis = adminAnalytics?.dispatchPerformance?.kpis || {};
   const purchaseKpis = adminAnalytics?.purchasePerformance?.kpis || {};
@@ -1175,13 +1307,13 @@ export default function AnalyticsDashboard() {
       <section className="space-y-6" id="action-band">
         <h2 className={CLASSES.sectionHead}>Action</h2>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-5" id="widget-reorder">
+          <div className="lg:col-span-5 min-w-0" id="widget-reorder">
             <ReorderNowWidget items={reorderNow} months={analyticsRangeMonths} />
           </div>
-          <div className="lg:col-span-3" id="widget-deadstock">
+          <div className="lg:col-span-3 min-w-0" id="widget-deadstock">
             <DeadStockWidget data={deadStock} months={analyticsRangeMonths} />
           </div>
-          <div className="lg:col-span-4" id="widget-pending">
+          <div className="lg:col-span-4 min-w-0" id="widget-pending">
             <PendingQueueWidget
               items={pendingQueue}
               onApprove={handlePendingApprove}
@@ -1195,13 +1327,13 @@ export default function AnalyticsDashboard() {
       <section className="space-y-6" id="people-band">
         <h2 className={CLASSES.sectionHead}>People & Customers</h2>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-5" id="widget-pace">
+          <div className="lg:col-span-5 min-w-0" id="widget-pace">
             <SalesPaceWidget rows={salespersonGoals} />
           </div>
-          <div className="lg:col-span-4">
+          <div className="lg:col-span-4 min-w-0">
             <CustomerConcentrationWidget rows={customerConcentration} />
           </div>
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3 min-w-0">
             <ActivityFeedWidget events={activityFeed} />
           </div>
         </div>
@@ -1209,12 +1341,14 @@ export default function AnalyticsDashboard() {
 
       <section className="space-y-6">
         <h2 className={CLASSES.sectionHead}>Trends</h2>
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-          <div className="xl:col-span-8 space-y-6">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+          <div className="xl:col-span-8 min-w-0 space-y-6">
             <SalesRevenueChart data={dispatchTrend} />
+            <MonthlyProfitChart data={monthlyProfit} />
+            <SalespersonTrendChart trend={salespersonTrend} />
             <MonthlyCostVolumeChart dispatchTrend={dispatchTrend} costTrend={costTrend} />
           </div>
-          <div className="xl:col-span-4 space-y-6">
+          <div className="xl:col-span-4 min-w-0 space-y-6">
             <TopDivisionsChart data={divisionPerformance} />
             <AbcItemsWidget items={abcItems} />
             <Leaderboard ranking={salespersonRanking} months={analyticsRangeMonths} />
