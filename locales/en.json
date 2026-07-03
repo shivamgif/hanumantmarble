@@ -594,7 +594,21 @@
       "approvalsWaiting": "approvals waiting",
       "salespeopleBehindPace": "salespeople behind pace",
       "approve": "Approve",
-      "reject": "Reject"
+      "reject": "Reject",
+      "tabOverview": "Overview",
+      "tabSales": "Sales & Revenue",
+      "tabInventory": "Inventory & Risk",
+      "tabTeam": "Team",
+      "dayLabel": "Day",
+      "ofLabel": "of",
+      "expectedPace": "expected pace",
+      "dispatchesShort": "disp.",
+      "itemsEqual80": "items = 80% revenue",
+      "rank": "Rank",
+      "unknown": "Unknown",
+      "rejectReasonPrompt": "Reason for rejection (optional):",
+      "rejectedFromAnalytics": "Rejected from analytics",
+      "downloadTrendsCsv": "Download monthly trends CSV"
     },
     "preview": {
       "invoiceNoLabel": "Invoice No",

@@ -593,7 +593,21 @@
       "approvalsWaiting": "अनुमोदन प्रतीक्षित",
       "salespeopleBehindPace": "विक्रेता गति से पीछे",
       "approve": "अनुमोदित",
-      "reject": "अस्वीकार"
+      "reject": "अस्वीकार",
+      "tabOverview": "अवलोकन",
+      "tabSales": "बिक्री और राजस्व",
+      "tabInventory": "इन्वेंटरी और जोखिम",
+      "tabTeam": "टीम",
+      "dayLabel": "दिन",
+      "ofLabel": "में से",
+      "expectedPace": "अपेक्षित गति",
+      "dispatchesShort": "प्रेषण",
+      "itemsEqual80": "आइटम = 80% राजस्व",
+      "rank": "रैंक",
+      "unknown": "अज्ञात",
+      "rejectReasonPrompt": "अस्वीकृति का कारण (वैकल्पिक):",
+      "rejectedFromAnalytics": "एनालिटिक्स से अस्वीकृत",
+      "downloadTrendsCsv": "मासिक ट्रेंड CSV डाउनलोड करें"
     },
     "preview": {
       "invoiceNoLabel": "इनवॉइस संख्या",
