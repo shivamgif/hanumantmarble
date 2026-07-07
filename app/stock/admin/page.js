@@ -1495,34 +1495,27 @@ export default function AdminDashboard() {
       </section>
       </>}
 
-      <div className="rounded-[1.75rem] border border-slate-200/60 bg-slate-100/30 p-1.5 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/30">
-        <div className="flex items-center gap-1">
-          {[{ id: 'approvals', label: t('approvals') }, { id: 'changes', label: t('changes') }, { id: 'users', label: t('users') }].map((tab) => {
-            const isActive = mobileSection === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setMobileSection(tab.id)}
-                className={`flex-1 px-3 sm:px-6 py-3 text-[10px] sm:text-xs font-black uppercase tracking-widest rounded-2xl transition-all duration-500 ${isActive
-                  ? 'bg-white dark:bg-slate-800 text-brand-primary shadow-xl scale-[1.02] orange-glow'
-                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                  }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
+      <div className="flex items-center overflow-x-auto no-scrollbar bg-slate-100 dark:bg-slate-900/40 p-1 rounded-xl border border-slate-200 dark:border-white/5 w-full sm:w-fit">
+        {[{ id: 'approvals', label: t('approvals') }, { id: 'changes', label: t('changes') }, { id: 'users', label: t('users') }].map((tab) => {
+          const isActive = mobileSection === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setMobileSection(tab.id)}
+              className={`px-4 sm:px-6 py-2.5 text-xs font-black uppercase tracking-widest rounded-lg whitespace-nowrap transition-all flex-1 sm:flex-none ${isActive
+                ? 'bg-white dark:bg-slate-800 text-brand-primary shadow-sm'
+                : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                }`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-1 gap-4">
         <section id="approval-queue" className={`space-y-6 ${mobileSection === 'approvals' ? '' : 'hidden'}`}>
-          <div className="flex items-center gap-6">
-            <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400 whitespace-nowrap">{t('approvalQueue')}</h2>
-            <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
-          </div>
-
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <AnalyticsCard
               title={t('pendingArrivals')}
@@ -1996,11 +1989,6 @@ export default function AdminDashboard() {
         </section>
 
         <section className={`space-y-6 ${mobileSection === 'changes' ? '' : 'hidden'}`}>
-          <div className="flex items-center gap-6">
-            <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400 whitespace-nowrap">{t('changes')}</h2>
-            <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
-          </div>
-
           <AnalyticsCard
             title={t('changeRequests')}
             subtitle={t('changeRequestsSubtitle')}
@@ -2107,11 +2095,6 @@ export default function AdminDashboard() {
         </section>
 
         <section id="users-contacts" className={`space-y-6 ${mobileSection === 'users' ? '' : 'hidden'}`}>
-          <div className="flex items-center gap-6">
-            <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400 whitespace-nowrap">{t('users')}</h2>
-            <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
-          </div>
-
           <AnalyticsCard
             title={t('usersSalespersons')}
             subtitle={t('userManagementSubtitle')}
