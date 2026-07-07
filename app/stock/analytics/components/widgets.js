@@ -30,7 +30,7 @@ import {
   formatCompactNumber,
   formatCompactINR,
   formatHours,
-} from './shared';
+} from '../../components/dashboard-ui';
 
 export function StockHealthScorecard({ data, stockRisk, approvalOps }) {
   const { language } = useLanguage();

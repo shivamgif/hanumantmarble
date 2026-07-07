@@ -37,8 +37,6 @@ import {
   Activity,
   ArrowLeft,
   FileText,
-  TrendingUp,
-  TrendingDown,
   ShieldCheck,
   AlertCircle,
   Package,
@@ -47,9 +45,7 @@ import {
   Pencil
 } from 'lucide-react';
 
-function formatCompactNumber(value) {
-  return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(Number(value || 0));
-}
+import { AnalyticsCard, CLASSES, formatCompactNumber } from '@/app/stock/components/dashboard-ui';
 
 function formatDateTime(value) {
   if (!value) {
@@ -75,63 +71,6 @@ const FORM_LABEL_CLASS = 'block text-[11px] font-semibold uppercase tracking-[0.
 const FORM_INPUT_CLASS = 'mt-1';
 const FORM_SELECT_CLASS = 'mt-1';
 const FORM_PANEL_CLASS = 'rounded-2xl border border-border/80 bg-background/80 p-4';
-
-const CLASSES = {
-  heroGrid: 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 lg:gap-6',
-  card: 'glass-panel rounded-3xl sm:rounded-[2rem] p-4 sm:p-6 lg:p-8 transition-all duration-500 hover:shadow-xl group/card bg-white/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800/60',
-  title: 'text-[10px] font-black uppercase tracking-[0.25em] text-slate-600 dark:text-slate-400 group-hover/card:text-brand-primary transition-colors',
-  value: 'mt-2 text-3xl font-extrabold text-slate-900 dark:text-slate-100 font-sans tracking-tight',
-  grid: 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
-  mobileScroll: 'flex overflow-x-auto no-scrollbar gap-2 pb-2 snap-x snap-mandatory overscroll-x-contain',
-  avatar: 'h-10 w-10 rounded-2xl bg-slate-100 dark:bg-slate-800 flex shrink-0 items-center justify-center text-slate-600 dark:text-slate-300 font-black text-xs border border-slate-200 dark:border-slate-700 shadow-sm',
-  actionButton: 'active:scale-95 transition-all duration-200',
-};
-
-function AnalyticsCard({ title, subtitle, topRight, contextBar, insight, showInsight, children, className = '' }) {
-  return (
-    <div className={`${CLASSES.card} ${className}`}>
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8">
-        <div>
-          <h3 className={CLASSES.title}>{title}</h3>
-          {subtitle && <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 font-bold tracking-tight leading-relaxed uppercase opacity-70">{subtitle}</p>}
-        </div>
-        <div className="shrink-0">
-          {topRight}
-        </div>
-      </div>
-      {showInsight && insight && (
-        <div className="mb-8 p-5 rounded-2xl bg-brand-primary/5 border border-brand-primary/10 animate-scale-in">
-          <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 font-bold">
-            <span className="font-black text-brand-primary uppercase mr-2 text-[9px] tracking-[0.2em] border-b-2 border-brand-primary/20 pb-0.5">Logic:</span>
-            {insight}
-          </p>
-        </div>
-      )}
-      {contextBar && (
-        <div className="mb-8 px-4 py-3 rounded-2xl bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800/50">
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-black italic tracking-tight uppercase opacity-60">{contextBar}</p>
-        </div>
-      )}
-      <div className="relative w-full overflow-hidden">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function TrendCapsule({ value, isPositive }) {
-  return (
-    <span
-      className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black ${isPositive
-        ? 'text-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20'
-        : 'text-rose-700 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400 border border-rose-100 dark:border-rose-500/20'
-        }`}
-    >
-      {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-      {Math.abs(value).toFixed(1)}%
-    </span>
-  );
-}
 
 function getInitials(name, email) {
   const source = (name || email || '').trim();
@@ -1363,44 +1302,40 @@ export default function AdminDashboard() {
   if (!data) return null;
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-10 lg:space-y-12 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
-      <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-10">
-        <div className="space-y-4 max-w-4xl">
-          <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-4">
+    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
+      <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+        <div className="space-y-2">
+          <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
             <span className="text-slate-400">Stock</span>
             <ChevronRight className="h-3 w-3 opacity-50" />
             <span className="text-slate-900 dark:text-white">{t('adminTitle')}</span>
-
           </nav>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-6">
-            <h1 className="text-5xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter leading-[0.9]">
-              <><span className="text-brand-primary"> {t('adminTitle').split(' ')[0]}</span><br className="sm:hidden" /> {t('adminTitle').split(' ')[1] || 'Hub'}</>
+          <div className="flex flex-wrap items-center gap-4">
+            <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+              <span className="text-brand-primary">{t('adminTitle').split(' ')[0]}</span> {t('adminTitle').split(' ')[1] || 'Hub'}
             </h1>
-            <div className="flex items-center self-start sm:self-center gap-3 px-5 py-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest border border-emerald-500/20 shadow-sm whitespace-nowrap">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest border border-emerald-500/20 whitespace-nowrap">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               {t('operationalCore')}
             </div>
           </div>
-          <p className="text-lg text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-3xl">
-            {t('governanceIdentified')} <span className="font-black text-slate-900 dark:text-white underline decoration-brand-primary/30 decoration-8 underline-offset-4">{pendingReviews} {t('pendingArrivals')}</span> {t('requiringOversight')} <span className="font-black text-emerald-600">{t('activeStatus')}</span>.
-          </p>
         </div>
 
-        <div className="flex flex-row justify-between sm:flex-row items-stretch sm:items-center gap-4">
-            <button
-              onClick={() => setShowInsights(!showInsights)}
-              className={`flex items-center justify-center p-4 rounded-[1.5rem] bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/5 hover:shadow-xl transition-all active:scale-95 group ${showInsights ? 'text-brand-primary' : 'text-slate-400'}`}
-              title={t('toggleInsights')}
-            >
-              <Activity className="h-6 w-6" />
-            </button>
-            <button
-              onClick={() => refreshDashboard()}
-              className="flex items-center justify-center gap-3 px-8 py-4 rounded-[1.5rem] bg-brand-primary text-white text-xs font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-lg active:scale-95 hover:shadow-brand-primary/20"
-            >
-              <FileText className="h-5 w-5" />
-              {t('syncLogs')}
-            </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowInsights(!showInsights)}
+            className={`flex items-center justify-center p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/5 hover:shadow-md transition-all active:scale-95 ${showInsights ? 'text-brand-primary' : 'text-slate-400'}`}
+            title={t('toggleInsights')}
+          >
+            <Activity className="h-5 w-5" />
+          </button>
+          <button
+            onClick={() => refreshDashboard()}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-primary text-white text-xs font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-sm active:scale-95"
+          >
+            <FileText className="h-4 w-4" />
+            {t('syncLogs')}
+          </button>
         </div>
       </header>
 
@@ -1474,7 +1409,7 @@ export default function AdminDashboard() {
 
       <section className="space-y-6">
         <div className="flex items-center gap-6">
-          <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">I. {t('operationalOverview')}</h2>
+          <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400 whitespace-nowrap">{t('operationalOverview')}</h2>
           <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
         </div>
 
@@ -1584,7 +1519,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 gap-4">
         <section id="approval-queue" className={`space-y-6 ${mobileSection === 'approvals' ? '' : 'hidden'}`}>
           <div className="flex items-center gap-6">
-            <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">II. {t('approvalQueue')}</h2>
+            <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400 whitespace-nowrap">{t('approvalQueue')}</h2>
             <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
           </div>
 
@@ -2062,7 +1997,7 @@ export default function AdminDashboard() {
 
         <section className={`space-y-6 ${mobileSection === 'changes' ? '' : 'hidden'}`}>
           <div className="flex items-center gap-6">
-            <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">III. {t('changes')}</h2>
+            <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400 whitespace-nowrap">{t('changes')}</h2>
             <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
           </div>
 
@@ -2173,7 +2108,7 @@ export default function AdminDashboard() {
 
         <section id="users-contacts" className={`space-y-6 ${mobileSection === 'users' ? '' : 'hidden'}`}>
           <div className="flex items-center gap-6">
-            <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 whitespace-nowrap">IV. {t('users')}</h2>
+            <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400 whitespace-nowrap">{t('users')}</h2>
             <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
           </div>
 

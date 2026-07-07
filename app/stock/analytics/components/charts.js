@@ -28,7 +28,7 @@ import {
   formatMonthLabel,
   formatCompactNumber,
   formatCompactINR,
-} from './shared';
+} from '../../components/dashboard-ui';
 
 export function SalesRevenueChart({ data }) {
   const { language } = useLanguage();

@@ -1189,26 +1189,23 @@ export default function StockDashboard() {
   if (!data) return null;
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-10 lg:space-y-12 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
-      <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-10">
-        <div className="space-y-4 max-w-4xl">
-          <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-4">
+    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
+      <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+        <div className="space-y-2">
+          <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
             <span className="text-slate-400">{t('inventory')}</span>
             <ChevronRight className="h-3 w-3 opacity-50" />
-            <span className="text-slate-900 dark:text-white uppercase tracking-[0.3em]">{t('operationalNode')}</span>
+            <span className="text-slate-900 dark:text-white">{t('operationalNode')}</span>
           </nav>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-6">
-            <h1 className="text-5xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter leading-[0.9]">
-              {language === 'hi' ? t('stockControl') : <><span className="text-brand-primary">Stock</span><br className="sm:hidden" /> Control</>}
+          <div className="flex flex-wrap items-center gap-4">
+            <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+              {language === 'hi' ? t('stockControl') : <><span className="text-brand-primary">Stock</span> Control</>}
             </h1>
-            <div className="flex items-center self-start sm:self-center gap-3 px-5 py-2 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 text-[10px] font-black uppercase tracking-widest border border-orange-500/20 shadow-sm whitespace-nowrap">
-              <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse" />
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 text-[10px] font-black uppercase tracking-widest border border-orange-500/20 whitespace-nowrap">
+              <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
               {t('realTimeFlow')}
             </div>
           </div>
-          <p className="text-lg text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-3xl">
-            {t('stockSubtitle')}
-          </p>
         </div>
       </header>
 
@@ -1248,25 +1245,23 @@ export default function StockDashboard() {
         );
       })()}
 
-      <div className="rounded-[1.75rem] border border-slate-200/60 bg-slate-100/30 p-1.5 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/30">
-        <div className="flex items-center gap-1">
-          {tableViewTabs.map((tab) => {
-            const isActive = activeTableView === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTableView(tab.id)}
-                className={`flex-1 px-3 sm:px-6 py-3 text-[10px] sm:text-xs font-black uppercase tracking-widest rounded-2xl transition-all duration-500 ${isActive
-                  ? 'bg-white dark:bg-slate-800 text-brand-primary shadow-xl scale-[1.02] orange-glow'
-                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                  }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
+      <div className="flex items-center overflow-x-auto no-scrollbar bg-slate-100 dark:bg-slate-900/40 p-1 rounded-xl border border-slate-200 dark:border-white/5 w-full sm:w-fit">
+        {tableViewTabs.map((tab) => {
+          const isActive = activeTableView === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTableView(tab.id)}
+              className={`px-4 sm:px-6 py-2.5 text-xs font-black uppercase tracking-widest rounded-lg whitespace-nowrap transition-all flex-1 sm:flex-none ${isActive
+                ? 'bg-white dark:bg-slate-800 text-brand-primary shadow-sm'
+                : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                }`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {activeTableView === 'items' && (

@@ -102,7 +102,7 @@ export function TrendCapsule({ value, isPositive }) {
   );
 }
 
-export function AnalyticsCard({ title, subtitle, topRight, contextBar, children, className = '' }) {
+export function AnalyticsCard({ title, subtitle, topRight, contextBar, insight, showInsight, children, className = '' }) {
   return (
     <div className={`${CLASSES.card} ${className}`}>
       <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-start justify-between gap-3 mb-4">
@@ -112,6 +112,14 @@ export function AnalyticsCard({ title, subtitle, topRight, contextBar, children,
         </div>
         <div className="shrink-0 max-w-full min-w-0">{topRight}</div>
       </div>
+      {showInsight && insight ? (
+        <div className="mb-4 px-3 py-2 rounded-xl bg-brand-primary/5 border border-brand-primary/10 animate-scale-in">
+          <p className="text-[10px] leading-relaxed text-slate-600 dark:text-slate-300 font-bold">
+            <span className="font-black text-brand-primary uppercase mr-2 text-[9px] tracking-[0.2em]">Logic:</span>
+            {insight}
+          </p>
+        </div>
+      ) : null}
       {contextBar ? (
         <div className="mb-4 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800/50">
           <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold tracking-tight">{contextBar}</p>

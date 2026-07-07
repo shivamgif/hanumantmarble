@@ -7,7 +7,7 @@ import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Download } from 'lucide-react';
-import { CLASSES, paceAdjustedTarget } from './components/shared';
+import { CLASSES, paceAdjustedTarget } from '../components/dashboard-ui';
 import {
   SalesRevenueChart,
   TopDivisionsChart,
