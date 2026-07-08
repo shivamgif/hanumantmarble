@@ -21,7 +21,7 @@ export default function StockNotificationsSheet({
 }) {
   return (
     <Sheet open={notificationOpen} onOpenChange={setNotificationOpen}>
-      <SheetContent side="right" className="w-full max-w-none overflow-y-auto md:w-[480px] p-0 glass-panel border-l border-white/5 shadow-2xl">
+      <SheetContent side="right" className="w-full max-w-none overflow-y-auto md:w-[480px] p-0 glass-panel border-y-0 border-r-0 shadow-none">
         <div className="p-8 space-y-8">
           <SheetHeader className="text-left space-y-4">
             <div className="flex items-center gap-3">
@@ -104,9 +104,9 @@ export default function StockNotificationsSheet({
                     key={notification.id}
                     href={notification.actionHref || '/stock'}
                     onClick={() => handleNotificationNavigate(notification)}
-                    className={`block w-full rounded-2xl border p-5 text-left transition-all duration-300 hover:scale-[1.01] ${
-                      notification.is_read 
-                        ? 'border-slate-100 bg-white/40 dark:border-white/5 dark:bg-slate-900/40' 
+                    className={`block w-full rounded-2xl border p-5 text-left transition-[box-shadow] duration-200 hover:shadow-card focus-ring ${
+                      notification.is_read
+                        ? 'border-border/60 bg-card/40'
                         : 'border-brand-primary/20 bg-brand-primary/5 ring-1 ring-brand-primary/10'
                     }`}
                   >

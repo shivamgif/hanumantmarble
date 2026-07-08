@@ -132,7 +132,7 @@ function SearchDropdown({ query, onSelect, activeIndex, setActiveIndex }) {
 
   if (results.length === 0) {
     return (
-      <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[320px] rounded-2xl border border-slate-200/60 bg-white/95 p-4 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-slate-900/95">
+      <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[320px] rounded-2xl border border-border bg-popover p-4 shadow-card-hover">
         <p className="text-center text-xs text-slate-400 dark:text-slate-500">No commands found for &ldquo;{query}&rdquo;</p>
       </div>
     );
@@ -140,7 +140,7 @@ function SearchDropdown({ query, onSelect, activeIndex, setActiveIndex }) {
 
   return (
     <div
-      className="absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[320px] overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-slate-900/95"
+      className="absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[320px] overflow-hidden rounded-2xl border border-border bg-popover shadow-card-hover"
       role="listbox"
       aria-label="Search suggestions"
     >
@@ -287,7 +287,7 @@ function SearchBox({ dashboardSearchRef, runDashboardSearch, placeholder }) {
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={handleKeyDown}
-        className="h-11 w-44 lg:w-56 xl:w-80 rounded-2xl border border-slate-100 bg-white pl-11 pr-9 text-sm font-bold text-slate-900 outline-none transition-all duration-300 focus:border-brand-primary/30 focus:ring-4 focus:ring-brand-primary/5 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-brand-primary/30"
+        className="h-11 w-44 lg:w-56 xl:w-80 rounded-xl border border-border bg-card pl-11 pr-9 text-sm font-bold text-foreground outline-none transition-all duration-200 focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10"
       />
       {query && (
         <button
@@ -333,7 +333,7 @@ export default function StockTopbar({
 }) {
 
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-200/30 bg-white/60 backdrop-blur-2xl dark:border-white/5 dark:bg-slate-950/60">
+    <header className="sticky top-0 z-20 border-b border-border/60 bg-background/60 backdrop-blur-2xl">
       <div className="mx-auto w-full max-w-[1600px]">
         {/* Desktop bar */}
         <div className="hidden h-20 items-center justify-between gap-4 xl:gap-10 px-8 lg:flex">
@@ -376,7 +376,7 @@ export default function StockTopbar({
               ].map((group) => (
                 <div
                   key={group.id}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border ${group.bg} backdrop-blur-md transition-all duration-300 hover:scale-[1.02] shadow-sm`}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border ${group.bg}`}
                 >
                   <span className={`text-[9px] font-black uppercase tracking-wider ${group.color} opacity-80`}>
                     {group.label}
@@ -423,7 +423,7 @@ export default function StockTopbar({
                   onClick={btn.onClick}
                   aria-label={btn.ariaLabel}
                   title={btn.ariaLabel}
-                  className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-100 bg-white text-slate-500 shadow-sm transition-all active:scale-90 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
+                  className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-card text-slate-500 shadow-card transition-all active:scale-90 dark:text-slate-400 focus-ring"
                 >
                   {btn.icon}
                   {btn.badge != null && (
@@ -436,7 +436,7 @@ export default function StockTopbar({
             </div>
           </div>
 
-          <nav className="flex items-center gap-1.5 overflow-x-auto border-t border-slate-100/50 px-4 py-3 dark:border-white/5 scrollbar-none" aria-label={t('mobileNav')}>
+          <nav className="flex items-center gap-1.5 overflow-x-auto border-t border-border/60 px-4 py-3 scrollbar-none" aria-label={t('mobileNav')}>
             {navigationItems.map((item) => {
               const active = isActiveRoute(item.href);
               let mobileLabel;
@@ -448,9 +448,9 @@ export default function StockTopbar({
                 <Link
                   key={`mobile-top-${item.href}`}
                   href={item.href}
-                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[10px] font-black uppercase tracking-widest transition-all duration-300 active:scale-95 ${
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[10px] font-black uppercase tracking-widest transition-colors duration-200 active:scale-95 focus-ring ${
                     active
-                      ? 'bg-white dark:bg-slate-800 text-brand-primary shadow-lg orange-glow'
+                      ? 'bg-brand-primary/10 text-brand-primary'
                       : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                   }`}
                 >

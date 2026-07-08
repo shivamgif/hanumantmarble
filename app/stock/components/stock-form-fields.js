@@ -154,9 +154,9 @@ export function InlineNotice({ notice }) {
         className="sr-only"
         onChange={(event) => onChange(event.target.files?.[0] || null)}
       />
-      <div className="glass-panel group rounded-2xl border border-white/5 bg-primary/5 p-3.5 sm:p-4 transition-all duration-300 hover:bg-primary/10 hover:shadow-lg active:scale-[0.98] min-w-0">
+      <div className="glass-panel group rounded-2xl bg-primary/5 p-3.5 sm:p-4 transition-colors duration-200 hover:bg-primary/10 active:scale-[0.98] min-w-0">
         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-          <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-slate-800 text-primary shadow-sm group-hover:scale-110 transition-transform duration-500">
+          <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-slate-800 text-primary shadow-card">
             <UploadCloud className="h-5 w-5 sm:h-6 sm:w-6" />
           </div>
           <div className="min-w-0 flex-1">

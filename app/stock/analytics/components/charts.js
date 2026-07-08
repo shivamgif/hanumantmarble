@@ -22,7 +22,8 @@ import {
   AnalyticsCard,
   ChartTooltip,
   TrendCapsule,
-  BRAND_PRIMARY,
+  EmptyState,
+  CHART_ORANGE,
   INDUSTRIAL_COLORS,
   SERIES_COLORS,
   formatMonthLabel,
@@ -37,7 +38,7 @@ export function SalesRevenueChart({ data }) {
   if (!data || data.length === 0)
     return (
       <AnalyticsCard title={t('salesVolume')} subtitle={t('noData')}>
-        <div className="h-64 flex items-center justify-center">—</div>
+        <div className="h-64 flex items-center justify-center"><EmptyState label={t('noData')} className="w-full max-w-xs border-none bg-transparent" /></div>
       </AnalyticsCard>
     );
 
@@ -64,20 +65,20 @@ export function SalesRevenueChart({ data }) {
       contextBar={peakLabel}
       topRight={<TrendCapsule value={trend} isPositive={isPositive} />}
     >
-      <div className="h-72 lg:h-80 bg-slate-50/30 dark:bg-slate-900/40 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4">
+      <div className="h-72 lg:h-80 rounded-xl border border-border/60 bg-muted/20 p-4">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
           <AreaChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="salesArea" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor={BRAND_PRIMARY} stopOpacity={0.3} />
-                <stop offset="100%" stopColor={BRAND_PRIMARY} stopOpacity={0.01} />
+                <stop offset="0%" stopColor={CHART_ORANGE} stopOpacity={0.25} />
+                <stop offset="100%" stopColor={CHART_ORANGE} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="4 4" className="stroke-slate-100 dark:stroke-slate-800/40" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200/80 dark:stroke-slate-800" />
             <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactNumber} width={40} />
             <RechartsTooltip content={<ChartTooltip formatter={(v) => `${formatCompactNumber(v)} ${t('units')}`} />} />
-            <Area type="monotone" dataKey="total" name={t('units')} stroke={BRAND_PRIMARY} strokeWidth={3} fill="url(#salesArea)" dot={{ fill: BRAND_PRIMARY, r: 4 }} activeDot={{ r: 7, stroke: 'white', strokeWidth: 3 }} />
+            <Area type="monotone" dataKey="total" name={t('units')} stroke={CHART_ORANGE} strokeWidth={2} fill="url(#salesArea)" dot={false} activeDot={{ r: 6, stroke: 'var(--card)', strokeWidth: 2 }} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -92,7 +93,7 @@ export function TopDivisionsChart({ data }) {
   if (!data || data.length === 0)
     return (
       <AnalyticsCard title={t('topSellingDivisions')} subtitle={t('noData')}>
-        <div className="h-64 flex items-center justify-center">—</div>
+        <div className="h-64 flex items-center justify-center"><EmptyState label={t('noData')} className="w-full max-w-xs border-none bg-transparent" /></div>
       </AnalyticsCard>
     );
 
@@ -168,7 +169,7 @@ export function MonthlyCostVolumeChart({ dispatchTrend, costTrend }) {
   if (!chartData || chartData.length === 0)
     return (
       <AnalyticsCard title={t('flowAnalysis')} subtitle={t('noData')}>
-        <div className="h-64 flex items-center justify-center">—</div>
+        <div className="h-64 flex items-center justify-center"><EmptyState label={t('noData')} className="w-full max-w-xs border-none bg-transparent" /></div>
       </AnalyticsCard>
     );
 
@@ -178,24 +179,24 @@ export function MonthlyCostVolumeChart({ dispatchTrend, costTrend }) {
       subtitle={t('inboundOutboundMatch')}
       topRight={
         <div className="flex flex-wrap gap-2">
-          <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] shadow-sm bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-800">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]" /> {t('inbound')}
+          <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] bg-card px-3 py-1.5 rounded-full border border-border">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> {t('inbound')}
           </div>
-          <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] shadow-sm bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-800">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" /> {t('outbound')}
+          <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] bg-card px-3 py-1.5 rounded-full border border-border">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> {t('outbound')}
           </div>
         </div>
       }
     >
-      <div className="h-[280px] bg-slate-50/20 dark:bg-slate-900/40 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-4">
+      <div className="h-[280px] rounded-xl border border-border/60 bg-muted/20 p-4">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
           <BarChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }} barGap={4}>
-            <CartesianGrid strokeDasharray="4 6" className="stroke-slate-200 dark:stroke-slate-800/60" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200/80 dark:stroke-slate-800" />
             <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactNumber} width={40} />
             <RechartsTooltip content={<ChartTooltip formatter={(v) => `${formatCompactNumber(v)} sqm`} />} cursor={{ fill: 'rgba(148,163,184,0.08)' }} />
-            <Bar dataKey="inbound" name={t('inbound')} fill="#F43F5E" radius={[6, 6, 0, 0]} />
-            <Bar dataKey="outbound" name={t('outbound')} fill="#10B981" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="inbound" name={t('inbound')} fill="#F43F5E" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="outbound" name={t('outbound')} fill="#10B981" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -216,7 +217,7 @@ export function MonthlyProfitChart({ data }) {
   if (chartData.length === 0)
     return (
       <AnalyticsCard title={t('profitPerMonth')} subtitle={t('noData')}>
-        <div className="h-64 flex items-center justify-center">—</div>
+        <div className="h-64 flex items-center justify-center"><EmptyState label={t('noData')} className="w-full max-w-xs border-none bg-transparent" /></div>
       </AnalyticsCard>
     );
 
@@ -231,24 +232,24 @@ export function MonthlyProfitChart({ data }) {
       contextBar={contextBar}
       topRight={
         <div className="flex flex-wrap gap-2">
-          <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] shadow-sm bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] bg-card px-3 py-1.5 rounded-full border border-border">
             <span className="w-2.5 h-2.5 rounded-full bg-blue-600" /> {t('revenue')}
           </div>
-          <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] shadow-sm bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] bg-card px-3 py-1.5 rounded-full border border-border">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" /> {t('profit')}
           </div>
         </div>
       }
     >
-      <div className="h-[280px] bg-slate-50/20 dark:bg-slate-900/40 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-4">
+      <div className="h-[280px] rounded-xl border border-border/60 bg-muted/20 p-4">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
           <BarChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }} barGap={4}>
-            <CartesianGrid strokeDasharray="4 6" className="stroke-slate-200 dark:stroke-slate-800/60" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200/80 dark:stroke-slate-800" />
             <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactINR} width={56} />
             <RechartsTooltip content={<ChartTooltip formatter={(v) => formatCompactINR(v)} />} cursor={{ fill: 'rgba(148,163,184,0.08)' }} />
-            <Bar dataKey="revenue" name={t('revenue')} fill="#2563EB" radius={[6, 6, 0, 0]} />
-            <Bar dataKey="profit" name={t('profit')} fill="#059669" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="revenue" name={t('revenue')} fill="#2563EB" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="profit" name={t('profit')} fill="#059669" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -288,16 +289,16 @@ export function SalespersonTrendChart({ trend }) {
   if (chartData.length === 0)
     return (
       <AnalyticsCard title={t('salespersonMonthly')} subtitle={t('noData')}>
-        <div className="h-64 flex items-center justify-center">—</div>
+        <div className="h-64 flex items-center justify-center"><EmptyState label={t('noData')} className="w-full max-w-xs border-none bg-transparent" /></div>
       </AnalyticsCard>
     );
 
   return (
     <AnalyticsCard title={t('salespersonMonthly')} subtitle={t('salespersonMonthlySubtitle')}>
-      <div className="h-[280px] bg-slate-50/20 dark:bg-slate-900/40 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-4">
+      <div className="h-[280px] rounded-xl border border-border/60 bg-muted/20 p-4">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
           <LineChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="4 6" className="stroke-slate-200 dark:stroke-slate-800/60" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200/80 dark:stroke-slate-800" />
             <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactINR} width={56} />
             <RechartsTooltip content={<ChartTooltip formatter={(v) => formatCompactINR(v)} />} />
@@ -309,8 +310,8 @@ export function SalespersonTrendChart({ trend }) {
                 name={p}
                 stroke={SERIES_COLORS[i % SERIES_COLORS.length]}
                 strokeWidth={2}
-                dot={{ r: 3, fill: SERIES_COLORS[i % SERIES_COLORS.length] }}
-                activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
+                dot={false}
+                activeDot={{ r: 6, stroke: 'var(--card)', strokeWidth: 2 }}
               />
             ))}
           </LineChart>
@@ -334,7 +335,7 @@ export function AbcItemsWidget({ items }) {
   if (!items || items.length === 0) {
     return (
       <AnalyticsCard title={t('abcItems')} subtitle={t('abcSubtitle')}>
-        <p className="text-xs text-slate-400 font-bold py-6 text-center">{t('noData')}</p>
+        <EmptyState label={t('noData')} />
       </AnalyticsCard>
     );
   }
@@ -355,11 +356,11 @@ export function AbcItemsWidget({ items }) {
       <div className="h-44">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
           <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-100 dark:stroke-slate-800/40" />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200/80 dark:stroke-slate-800" />
             <XAxis dataKey="rank" tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactNumber} width={36} />
             <RechartsTooltip content={<ChartTooltip formatter={(v, e) => e.dataKey === 'cumulative' ? `${v}%` : formatCompactINR(v)} labelFormatter={(l) => `${t('rank')} ${l}`} />} cursor={{ fill: 'rgba(148,163,184,0.08)' }} />
-            <Bar dataKey="revenue" name={t('revenue')} fill={BRAND_PRIMARY} radius={[4, 4, 0, 0]} />
+            <Bar dataKey="revenue" name={t('revenue')} fill={CHART_ORANGE} radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

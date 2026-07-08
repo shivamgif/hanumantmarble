@@ -78,7 +78,7 @@ function ActionFooter({ record, kind, userRole, actionLoading, onApprove, onReje
 
 function renderDocumentPreview(document, tc) {
   if (!document?.file_url) {
-    return <div className="glass-panel rounded-2xl border border-white/5 bg-white/5 p-6 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">{tc.noPreview}</div>;
+    return <div className="glass-panel rounded-2xl p-6 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">{tc.noPreview}</div>;
   }
 
   if (document.mime_type?.startsWith('image/')) {
@@ -423,7 +423,7 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
           children: (
             <div className="grid gap-6 xl:grid-cols-2">
               {previewState.documents.map((document) => (
-                <section key={document.id} className="glass-panel overflow-hidden rounded-2xl border border-white/5 shadow-xl transition-all duration-300 hover:shadow-2xl">
+                <section key={document.id} className="glass-panel overflow-hidden rounded-2xl transition-[box-shadow] duration-200 hover:shadow-card-hover">
                   <div className="border-b border-white/5 bg-slate-900/40 px-5 py-4">
                     <nav className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 mb-1">
                       <span>{tc.intelligenceCase}</span>

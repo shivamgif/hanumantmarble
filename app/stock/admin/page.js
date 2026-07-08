@@ -1361,10 +1361,10 @@ export default function AdminDashboard() {
           const Icon = m.icon;
           const isPositive = m.trend >= 0;
           return (
-            <div className="glass-panel rounded-[2.5rem] p-6 relative overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl group" key={m.label}>
+            <div className="glass-panel rounded-2xl p-6 relative overflow-hidden transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group" key={m.label}>
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-5">
-                  <div className={`w-16 h-16 flex items-center justify-center rounded-[1.25rem] border ${m.iconAccent.split(' ')[0]} bg-opacity-20 border-opacity-20 shadow-sm transition-transform duration-500 group-hover:scale-110`}>
+                  <div className={`w-16 h-16 flex items-center justify-center rounded-xl border ${m.iconAccent.split(' ')[0]} bg-opacity-20 border-opacity-20`}>
                     <Icon className={`h-8 w-8 ${m.iconAccent.split(' ')[1]}`} />
                   </div>
                   <div className="flex flex-col items-end">
@@ -1432,7 +1432,7 @@ export default function AdminDashboard() {
                   <Link
                     key={alert.title}
                     href={alert.href}
-                    className={`block rounded-2xl border px-5 py-4 transition-all hover:scale-[1.02] hover:shadow-lg ${alert.level === 'critical'
+                    className={`block rounded-2xl border px-5 py-4 transition-[box-shadow] duration-200 hover:shadow-card-hover focus-ring ${alert.level === 'critical'
                       ? 'border-rose-200 bg-rose-50/50 text-rose-800 dark:border-rose-500/20 dark:bg-rose-500/5 dark:text-rose-400'
                       : alert.level === 'warning'
                         ? 'border-amber-200 bg-amber-50/50 text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/5 dark:text-amber-400'

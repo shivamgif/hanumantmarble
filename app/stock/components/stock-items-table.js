@@ -16,8 +16,8 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
 
   return (
     <div className="stock-tab-panel space-y-6" key="stock-panel-items">
-      <div id="current-stock" className="glass-panel overflow-hidden rounded-3xl border border-slate-200/60 dark:border-white/5 shadow-2xl transition-all duration-500">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/60 bg-slate-50/40 dark:bg-slate-900/40 px-6 py-5">
+      <div id="current-stock" className="glass-panel overflow-hidden rounded-2xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 bg-muted/40 px-6 py-5">
           <div className="space-y-1.5">
             <nav className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-slate-400">
               <span>{tc.inventoryHub}</span>
@@ -50,7 +50,7 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
               ];
               exportToCSV(`Inventory_Export_${dateStr}.csv`, pagination.allRows, columns);
             }}
-            className="flex items-center gap-2 rounded-full border border-slate-200/60 bg-white px-4 py-2 text-[11px] font-black uppercase tracking-widest text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:scale-105 active:scale-95 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-[11px] font-black uppercase tracking-widest text-slate-700 shadow-card transition-all hover:bg-muted/50 active:scale-95 dark:text-slate-300 focus-ring"
             title="Export Inventory to CSV"
           >
             <Download className="h-4 w-4" />
@@ -73,8 +73,8 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
 
         <div className="overflow-x-auto overflow-y-auto max-h-[60vh] no-scrollbar">
           <table className="w-full text-left whitespace-nowrap border-collapse">
-            <thead className="sticky top-0 z-20 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xl">
-              <tr className="border-b border-slate-200/60 dark:border-white/5">
+            <thead className="sticky top-0 z-20 bg-muted/90 backdrop-blur-sm">
+              <tr className="border-b border-border/60">
                 {[
                   { id: 'sku', label: t('sku') },
                   { id: 'name', label: t('name') },
@@ -87,7 +87,7 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
                     <button
                       type="button"
                       onClick={() => toggleSort(col.id)}
-                      className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 hover:text-brand-primary transition-all duration-300 flex items-center gap-2 group/th"
+                      className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-brand-primary transition-colors duration-150 flex items-center gap-2 group/th focus-ring rounded"
                     >
                       {col.label}
                       {sort.key === col.id ? (
@@ -106,7 +106,7 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
               {pagination.rows.map((item) => (
                 <tr
                   key={item.id}
-                  className="group/row cursor-pointer transition-all duration-300 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 odd:bg-white even:bg-slate-50/70 dark:odd:bg-slate-900 dark:even:bg-slate-900/70"
+                  className="group/row cursor-pointer transition-colors duration-150 hover:bg-muted/50 odd:bg-white even:bg-slate-50/70 dark:odd:bg-slate-900 dark:even:bg-slate-900/70"
                   onClick={() => openPreview(item)}
                   tabIndex={0}
                   role="button"

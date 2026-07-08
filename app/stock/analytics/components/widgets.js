@@ -20,10 +20,12 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import {
   AnalyticsCard,
   ChartTooltip,
   CsvExportButton,
+  EmptyState,
   INDUSTRIAL_COLORS,
   paceAdjustedTarget,
   formatRelativeTime,
@@ -88,10 +90,10 @@ export function StockHealthScorecard({ data, stockRisk, approvalOps }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       {metrics.map((m) => (
-        <div className="glass-panel rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-6 relative overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl group" key={m.label}>
+        <div className="glass-panel rounded-2xl p-5 sm:p-6 relative overflow-hidden transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group" key={m.label}>
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-5">
-              <div className={`w-16 h-16 flex items-center justify-center rounded-[1.25rem] border ${m.bg} ${m.border} shadow-sm transition-transform duration-500 group-hover:scale-110`}>
+              <div className={`w-16 h-16 flex items-center justify-center rounded-xl border ${m.bg} ${m.border}`}>
                 <m.icon className={`h-8 w-8 ${m.color}`} />
               </div>
             </div>
@@ -101,7 +103,7 @@ export function StockHealthScorecard({ data, stockRisk, approvalOps }) {
               <div className="text-xs font-medium text-slate-400 mt-3">{m.subValue}</div>
             </div>
           </div>
-          <div className={`absolute -right-6 -bottom-6 w-40 h-40 opacity-[0.04] transition-all duration-700 pointer-events-none group-hover:scale-110 group-hover:opacity-[0.08]`}>
+          <div className={`absolute -right-6 -bottom-6 w-40 h-40 opacity-[0.04] transition-opacity duration-200 pointer-events-none group-hover:opacity-[0.08]`}>
             <m.icon className="w-full h-full" />
           </div>
         </div>
@@ -147,7 +149,7 @@ export function HeroCallouts({ stockedOut, approvalsWaiting, oldestPendingHours,
           key={p.label}
           type="button"
           onClick={() => onNavigate?.(p.tab, p.target)}
-          className={`flex items-center gap-2.5 px-4 py-2.5 rounded-2xl border text-xs font-black uppercase tracking-widest transition-all hover:scale-[1.02] ${p.tone}`}
+          className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-xs font-black uppercase tracking-widest transition-shadow duration-200 hover:shadow-card focus-ring ${p.tone}`}
         >
           <p.icon className="h-4 w-4" />
           <span className="tabular-nums text-base">{p.value}</span>
@@ -217,7 +219,7 @@ export function ReorderNowWidget({ items, months }) {
       topRight={items.length > 0 ? <CsvExportButton type="reorder" months={months} label={t('exportCsv')} /> : null}
     >
       {items.length === 0 ? (
-        <p className="text-xs text-slate-400 font-bold py-6 text-center">{t('noData')}</p>
+        <EmptyState label={t('noData')} />
       ) : (
         <div className="space-y-1.5">
           {items.map((item) => {
@@ -290,7 +292,7 @@ export function PendingQueueWidget({ items, onApprove, onReject, actionLoading }
   return (
     <AnalyticsCard title={t('pendingQueueTitle')} subtitle={t('pendingQueueSubtitle')}>
       {items.length === 0 ? (
-        <p className="text-xs text-slate-400 font-bold py-6 text-center">{t('noData')}</p>
+        <EmptyState label={t('noData')} />
       ) : (
         <div className="space-y-1.5">
           {items.map((item) => {
@@ -305,24 +307,32 @@ export function PendingQueueWidget({ items, onApprove, onReject, actionLoading }
                 </div>
                 <span className={`shrink-0 text-[10px] font-black px-2 py-1 rounded-lg tabular-nums ${ageColor}`}>{formatHours(hrs)}</span>
                 <div className="flex gap-1 shrink-0">
-                  <button
-                    type="button"
-                    disabled={isLoading || !onApprove}
-                    onClick={() => onApprove?.(item)}
-                    className="p-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition-all disabled:opacity-50"
-                    title={t('approve')}
-                  >
-                    {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isLoading || !onReject}
-                    onClick={() => onReject?.(item)}
-                    className="p-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white transition-all disabled:opacity-50"
-                    title={t('reject')}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        disabled={isLoading || !onApprove}
+                        onClick={() => onApprove?.(item)}
+                        className="p-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition-all disabled:opacity-50 focus-ring"
+                      >
+                        {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t('approve')}</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        disabled={isLoading || !onReject}
+                        onClick={() => onReject?.(item)}
+                        className="p-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white transition-all disabled:opacity-50 focus-ring"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t('reject')}</TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
             );
@@ -339,7 +349,7 @@ export function SalesPaceWidget({ rows }) {
   if (!rows || rows.length === 0) {
     return (
       <AnalyticsCard title={t('salesPace')} subtitle={t('salesPaceSubtitle')}>
-        <p className="text-xs text-slate-400 font-bold py-6 text-center">{t('noData')}</p>
+        <EmptyState label={t('noData')} />
       </AnalyticsCard>
     );
   }
@@ -398,7 +408,7 @@ export function CustomerConcentrationWidget({ rows }) {
   if (!rows || rows.length === 0) {
     return (
       <AnalyticsCard title={t('topCustomers')} subtitle={t('concentrationSubtitle')}>
-        <p className="text-xs text-slate-400 font-bold py-6 text-center">{t('noData')}</p>
+        <EmptyState label={t('noData')} />
       </AnalyticsCard>
     );
   }
@@ -445,7 +455,7 @@ export function ActivityFeedWidget({ events }) {
   if (!events || events.length === 0) {
     return (
       <AnalyticsCard title={t('activityFeed')} subtitle={t('activityFeedSubtitle')}>
-        <p className="text-xs text-slate-400 font-bold py-6 text-center">{t('noData')}</p>
+        <EmptyState label={t('noData')} />
       </AnalyticsCard>
     );
   }
@@ -483,38 +493,38 @@ export function RiskInventoryTable({ divisionRisk, months }) {
       subtitle={t('divisionsNeedingAttention')}
       topRight={<CsvExportButton type="risk" months={months} label={t('exportCsv')} />}
     >
-      <div className="hidden md:block overflow-x-auto rounded-[2rem] border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
+      <div className="hidden md:block overflow-x-auto rounded-xl border border-border/60">
         <table className="w-full text-left text-sm min-w-[600px]">
           <thead>
-            <tr className="border-b border-slate-100 dark:border-slate-800">
-              <th className="px-8 py-6 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">{t('divisionName')}</th>
-              <th className="px-8 py-6 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 text-right">{t('available')}</th>
-              <th className="px-8 py-6 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 text-right">{t('lowStock')}</th>
-              <th className="px-8 py-6 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 text-right">{t('status')}</th>
+            <tr className="border-b border-border/60">
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('divisionName')}</th>
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('available')}</th>
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('lowStock')}</th>
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('status')}</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-50 dark:divide-slate-800/30">
+          <tbody className="divide-y divide-border/40">
             {divisionRisk.slice(0, 8).map((d) => {
               const healthy = (d.total_items || 0) - (d.at_risk || 0);
               const riskRatio = (d.at_risk || 0) / (d.total_items || 1);
               const isCritical = riskRatio > 0.4;
 
               return (
-                <tr key={d.division} className="group hover:bg-slate-100/50 dark:hover:bg-slate-800/20 transition-colors">
-                  <td className="px-8 py-6">
+                <tr key={d.division} className="group hover:bg-muted/50 transition-colors">
+                  <td className="px-5 py-4">
                     <p className="font-bold text-slate-900 dark:text-slate-100 text-xs">{d.division}</p>
                     {d.critical_items_list && (
                       <p className="text-[10px] text-slate-500 mt-1 max-w-[200px] truncate" title={d.critical_items_list}>⚠️ {d.critical_items_list}</p>
                     )}
                   </td>
-                  <td className="px-8 py-6 text-right font-sans text-emerald-600 dark:text-emerald-400 font-black text-xs">{formatCompactNumber(healthy)}</td>
-                  <td className="px-8 py-6 text-right font-sans text-amber-600 dark:text-amber-400 font-black text-xs">{formatCompactNumber(d.at_risk)}</td>
-                  <td className="px-8 py-6 text-right">
+                  <td className="px-5 py-4 text-right font-sans text-emerald-600 dark:text-emerald-400 font-black text-xs">{formatCompactNumber(healthy)}</td>
+                  <td className="px-5 py-4 text-right font-sans text-amber-600 dark:text-amber-400 font-black text-xs">{formatCompactNumber(d.at_risk)}</td>
+                  <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-3 text-[10px] font-black uppercase tracking-widest">
                       <span className={isCritical ? 'text-rose-500' : 'text-emerald-500'}>
                         {isCritical ? t('actionRequired') : t('stable')}
                       </span>
-                      <span className={`inline-block w-2.5 h-2.5 rounded-full ring-4 ${isCritical ? 'bg-rose-500 ring-rose-500/10 animate-pulse' : 'bg-emerald-500 ring-emerald-500/10'}`} />
+                      <span className={`inline-block w-2.5 h-2.5 rounded-full ring-4 ${isCritical ? 'bg-rose-500 ring-rose-500/10' : 'bg-emerald-500 ring-emerald-500/10'}`} />
                     </div>
                   </td>
                 </tr>
@@ -533,7 +543,7 @@ export function RiskInventoryTable({ divisionRisk, months }) {
           return (
             <div
               key={`risk-mob-${d.division}`}
-              className="p-5 rounded-2xl border border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-slate-900/10 space-y-4"
+              className="p-5 rounded-2xl border border-border/60 bg-muted/20 space-y-4"
             >
               <div className="flex justify-between items-start">
                 <div>
@@ -544,10 +554,10 @@ export function RiskInventoryTable({ divisionRisk, months }) {
                 </div>
                 <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
                   <span className={isCritical ? 'text-rose-500' : 'text-emerald-500'}>{isCritical ? t('critical') : t('stable')}</span>
-                  <span className={`w-2 h-2 rounded-full ${isCritical ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`} />
+                  <span className={`w-2 h-2 rounded-full ${isCritical ? 'bg-rose-500' : 'bg-emerald-500'}`} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100 dark:border-white/5">
+              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border/60">
                 <div>
                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('available')}</p>
                   <p className="text-xs font-black text-emerald-600">{formatCompactNumber(healthy)}</p>

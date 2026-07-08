@@ -15,6 +15,7 @@ import { useStockAccess } from '@/hooks/useStockAccess';
 import { useStockNotifications } from '@/hooks/useStockNotifications';
 import { useStockShortcuts } from '@/hooks/useStockShortcuts';
 
+import { TooltipProvider } from '@/components/ui/tooltip';
 import StockSidebar from '@/components/stock/layout/StockSidebar';
 import StockTopbar from '@/components/stock/layout/StockTopbar';
 import StockNotificationsSheet from '@/components/stock/layout/StockNotificationsSheet';
@@ -227,6 +228,7 @@ export default function StockLayout({ children }) {
   }
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div className={CLASSES.shell}>
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -left-24 top-16 h-72 w-72 rounded-full bg-[#E07A00]/10 blur-3xl" />
@@ -276,7 +278,7 @@ export default function StockLayout({ children }) {
         </main>
 
         <footer className="mx-auto mb-8 w-full max-w-[1600px] px-3 sm:px-8 lg:px-12">
-          <div className="rounded-3xl sm:rounded-[2rem] border border-slate-100 bg-white/40 px-5 py-4 sm:px-8 sm:py-5 text-center text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 dark:border-white/5 dark:bg-slate-950/40 dark:text-slate-600 shadow-sm backdrop-blur-md">
+          <div className="rounded-2xl border border-border/60 bg-card/60 px-5 py-4 sm:px-8 sm:py-5 text-center text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-600 shadow-card">
             <p className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
               <span className="text-brand-primary opacity-60">Operational Protocol</span>
               <span className="hidden sm:inline opacity-20">•</span>
@@ -306,5 +308,6 @@ export default function StockLayout({ children }) {
         handleNotificationNavigate={notificationsState.handleNotificationNavigate}
       />
     </div>
+    </TooltipProvider>
   );
 }

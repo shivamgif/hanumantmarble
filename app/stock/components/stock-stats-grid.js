@@ -45,10 +45,10 @@ function HeroCard({ stat: m, t, className = '' }) {
   const hasBreakdown = Array.isArray(m.breakdown) && m.breakdown.length > 0;
 
   return (
-    <div className={`glass-panel rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-8 relative overflow-hidden transition-all duration-500 hover:shadow-2xl group ${className}`}>
+    <div className={`glass-panel rounded-2xl p-6 sm:p-8 relative overflow-hidden transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group ${className}`}>
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-8">
-          <div className={`w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center rounded-2xl sm:rounded-[1.25rem] border ${tone.bg} ${tone.border} shadow-sm transition-transform duration-500 group-hover:scale-110`}>
+          <div className={`w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center rounded-xl border ${tone.bg} ${tone.border}`}>
             <Icon className={`h-7 w-7 sm:h-8 sm:w-8 ${tone.color}`} />
           </div>
           <div className="flex flex-col items-end">
@@ -80,7 +80,7 @@ function HeroCard({ stat: m, t, className = '' }) {
           </div>
         )}
       </div>
-      <div className="absolute -right-6 -bottom-6 w-32 h-32 sm:w-40 sm:h-40 opacity-[0.04] transition-all duration-700 pointer-events-none group-hover:scale-110 group-hover:opacity-[0.08]">
+      <div className="absolute -right-6 -bottom-6 w-32 h-32 sm:w-40 sm:h-40 opacity-[0.04] transition-opacity duration-200 pointer-events-none group-hover:opacity-[0.08]">
         <Icon className="w-full h-full" />
       </div>
     </div>
@@ -93,8 +93,8 @@ function CompactCard({ stat: m, t }) {
   const tone = getTone(m.label);
 
   return (
-    <div className="glass-panel rounded-2xl p-4 sm:p-5 flex items-center gap-4 transition-all duration-300 hover:scale-[1.01] hover:shadow-lg group">
-      <div className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border ${tone.bg} ${tone.border} shadow-sm transition-transform duration-300 group-hover:scale-110`}>
+    <div className="glass-panel rounded-2xl p-4 sm:p-5 flex items-center gap-4 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group">
+      <div className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border ${tone.bg} ${tone.border}`}>
         <Icon className={`h-5 w-5 ${tone.color}`} />
       </div>
       <div className="min-w-0 flex-1">

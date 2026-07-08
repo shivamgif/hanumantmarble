@@ -7,6 +7,7 @@ import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Download } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { CLASSES, paceAdjustedTarget } from '../components/dashboard-ui';
 import {
   SalesRevenueChart,
@@ -153,21 +154,21 @@ export default function AnalyticsDashboard() {
     return (
       <div className="mx-auto max-w-[1600px] space-y-10 lg:space-y-12 p-4 sm:p-6 lg:p-8">
         <div className="flex flex-col gap-4">
-          <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 animate-pulse rounded" />
-          <div className="h-16 sm:h-20 w-full sm:w-3/4 max-w-lg bg-slate-200 dark:bg-slate-800 animate-pulse rounded-2xl sm:rounded-[2.5rem]" />
+          <Skeleton className="h-4 w-32 rounded" />
+          <Skeleton className="h-16 sm:h-20 w-full sm:w-3/4 max-w-lg rounded-2xl" />
         </div>
         <div className={CLASSES.heroGrid}>
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={`hero-skeleton-${index}`} className="animate-pulse rounded-3xl sm:rounded-[2.5rem] bg-slate-200 dark:bg-slate-800 h-40 sm:h-48" />
+            <Skeleton key={`hero-skeleton-${index}`} className="rounded-2xl h-40 sm:h-48" />
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="animate-pulse rounded-3xl sm:rounded-[2.5rem] bg-slate-200 dark:bg-slate-800 h-80 sm:h-96" />
-          <div className="animate-pulse rounded-3xl sm:rounded-[2.5rem] bg-slate-200 dark:bg-slate-800 h-80 sm:h-96" />
+          <Skeleton className="rounded-2xl h-80 sm:h-96" />
+          <Skeleton className="rounded-2xl h-80 sm:h-96" />
         </div>
       </div>
     );
-  if (error) return <div className="p-8 text-rose-500 font-bold bg-rose-50 rounded-3xl border border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40">{error}</div>;
+  if (error) return <div className="p-8 text-rose-500 font-bold bg-rose-50 rounded-2xl border border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40">{error}</div>;
 
   if (isSalesperson) {
     const monthlyTrend = salespersonAnalytics?.monthlyTrend || [];
@@ -205,7 +206,7 @@ export default function AnalyticsDashboard() {
 
         <div className={CLASSES.heroGrid}>
           {goal > 0 && (
-            <div className="p-6 rounded-3xl sm:rounded-[2.5rem] border border-slate-200/60 dark:border-slate-800/60 bg-white dark:bg-slate-900/50 shadow-sm space-y-4 col-span-full lg:col-span-2">
+            <div className="p-6 rounded-2xl border border-border bg-card shadow-card space-y-4 col-span-full lg:col-span-2">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Monthly Sales Goal</p>
@@ -219,7 +220,7 @@ export default function AnalyticsDashboard() {
               </div>
             </div>
           )}
-          <div className="p-6 rounded-3xl sm:rounded-[2.5rem] border border-slate-200/60 dark:border-slate-800/60 bg-white dark:bg-slate-900/50 shadow-sm space-y-2">
+          <div className="p-6 rounded-2xl border border-border bg-card shadow-card space-y-2">
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">This Month Dispatches</p>
             <p className="text-4xl font-black text-slate-900 dark:text-white">{thisMonth.count}</p>
             {countChange !== null && (
@@ -228,7 +229,7 @@ export default function AnalyticsDashboard() {
               </p>
             )}
           </div>
-          <div className="p-6 rounded-3xl sm:rounded-[2.5rem] border border-slate-200/60 dark:border-slate-800/60 bg-white dark:bg-slate-900/50 shadow-sm space-y-2">
+          <div className="p-6 rounded-2xl border border-border bg-card shadow-card space-y-2">
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">This Month Value</p>
             <p className="text-4xl font-black text-slate-900 dark:text-white">{fmt(thisMonth.value)}</p>
             {lastMonth.value > 0 && (
@@ -245,7 +246,7 @@ export default function AnalyticsDashboard() {
               <h2 className="text-sm font-bold text-slate-500 whitespace-nowrap">Dispatch Value Trend</h2>
               <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
             </div>
-            <div className="p-6 rounded-3xl sm:rounded-[2.5rem] border border-slate-200/60 dark:border-slate-800/60 bg-white dark:bg-slate-900/50 shadow-sm">
+            <div className="p-6 rounded-2xl border border-border bg-card shadow-card">
               <div className="space-y-4">
                 {monthlyTrend.map((row) => {
                   const maxVal = Math.max(...monthlyTrend.map((r) => r.totalValue), 1);
@@ -272,12 +273,12 @@ export default function AnalyticsDashboard() {
               <h2 className="text-sm font-bold text-slate-500 whitespace-nowrap">Recent Dispatches</h2>
               <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
             </div>
-            <div className="rounded-3xl sm:rounded-[2.5rem] border border-slate-200/60 dark:border-slate-800/60 bg-white dark:bg-slate-900/50 shadow-sm overflow-hidden">
+            <div className="rounded-2xl border border-border bg-card shadow-card overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-slate-100 dark:border-slate-800">
-                      <th className="text-left p-4 font-black uppercase tracking-widest text-slate-400 text-[9px]">Shipment</th>
+                    <tr className="border-b border-border/60">
+                      <th className="text-left p-4 font-black uppercase tracking-widest text-muted-foreground text-[9px]">Shipment</th>
                       <th className="text-left p-4 font-black uppercase tracking-widest text-slate-400 text-[9px]">Date</th>
                       <th className="text-left p-4 font-black uppercase tracking-widest text-slate-400 text-[9px]">Customer</th>
                       <th className="text-left p-4 font-black uppercase tracking-widest text-slate-400 text-[9px]">Status</th>
@@ -286,7 +287,7 @@ export default function AnalyticsDashboard() {
                   </thead>
                   <tbody>
                     {recentDispatches.map((d) => (
-                      <tr key={d.id} className="border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
+                      <tr key={d.id} className="border-b border-border/40 hover:bg-muted/50 transition-colors">
                         <td className="p-4 font-bold text-slate-900 dark:text-slate-100">{d.shipmentNumber || `#${d.id}`}</td>
                         <td className="p-4 text-slate-500">{d.dispatchDate ? new Date(d.dispatchDate).toLocaleDateString('en-IN') : '—'}</td>
                         <td className="p-4 text-slate-700 dark:text-slate-300">{d.customerName || '—'}</td>
@@ -340,7 +341,7 @@ export default function AnalyticsDashboard() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center bg-slate-100 dark:bg-slate-900/40 p-1 rounded-xl border border-slate-200 dark:border-white/5">
+          <div className="flex items-center bg-muted p-1 rounded-xl border border-border/60">
             {[3, 6, 12].map((m) => (
               <button
                 key={m}
@@ -357,7 +358,7 @@ export default function AnalyticsDashboard() {
           <a
             href={`/api/stock/admin/analytics/export?type=trends&months=${analyticsRangeMonths}`}
             download
-            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:text-brand-primary text-xs font-black uppercase tracking-widest transition-all"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border shadow-card text-slate-600 dark:text-slate-300 hover:text-brand-primary hover:border-brand-primary/40 text-xs font-black uppercase tracking-widest transition-all focus-ring"
             title={t('downloadTrendsCsv')}
           >
             <Download className="h-4 w-4" />
@@ -374,8 +375,8 @@ export default function AnalyticsDashboard() {
         onNavigate={jumpTo}
       />
 
-      <div className="sticky top-0 z-20 -mx-4 px-4 py-2 sm:mx-0 sm:px-0 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-md">
-        <div className="flex items-center overflow-x-auto no-scrollbar bg-slate-100 dark:bg-slate-900/40 p-1 rounded-xl border border-slate-200 dark:border-white/5 w-full sm:w-fit">
+      <div className="sticky top-0 z-20 -mx-4 px-4 py-2 sm:mx-0 sm:px-0 bg-background/80 backdrop-blur-md">
+        <div className="flex items-center overflow-x-auto no-scrollbar bg-muted p-1 rounded-xl border border-border/60 w-full sm:w-fit">
           {TABS.map((tab) => (
             <button
               key={tab.id}

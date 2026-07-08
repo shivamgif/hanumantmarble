@@ -395,6 +395,7 @@
     "admin": {
       "loading": "Loading admin dashboard...",
       "adminTitle": "Admin Hub",
+      "approveShipment": "Approve Shipment",
       "pending": "Pending",
       "approvals": "Approvals",
       "focus": "Focus",

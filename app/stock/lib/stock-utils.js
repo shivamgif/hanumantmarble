@@ -358,45 +358,45 @@ export function getSortedRows(rows, sortState, accessors) {
 }
 
 export const FORM_LABEL_CLASS = 'block text-[10px] font-black uppercase tracking-[0.2em] text-foreground/40 mb-1.5';
-export const FORM_INPUT_CLASS = 'w-full rounded-xl border border-border/60 bg-background/50 px-3.5 py-2.5 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10 backdrop-blur-sm';
-export const FORM_CARD_CLASS = 'glass-panel rounded-2xl p-4 sm:p-5 border border-white/5 shadow-xl transition-all duration-300';
+export const FORM_INPUT_CLASS = 'w-full rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10';
+export const FORM_CARD_CLASS = 'glass-panel rounded-2xl p-4 sm:p-5 transition-[box-shadow,border-color] duration-200';
 
 export const CLASSES = {
   contentWrap: 'mx-auto w-full max-w-[1600px] space-y-4 sm:space-y-6',
-  topCard: 'glass-panel rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 bg-white/80 dark:bg-slate-900/80',
-  interactiveCard: 'glass-panel rounded-2xl sm:rounded-3xl transition-all duration-300 hover:shadow-lg bg-white/80 dark:bg-slate-900/80',
-  card: 'glass-panel rounded-3xl sm:rounded-[2rem] p-4 sm:p-6 lg:p-8 transition-all duration-500 hover:shadow-xl group/card bg-white/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800/60',
-  cardCompact: 'glass-panel rounded-2xl sm:rounded-3xl p-3 sm:p-4 lg:p-6 transition-all duration-300 hover:shadow-md group/card bg-white/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800/60',
+  topCard: 'glass-panel rounded-2xl p-4 sm:p-6 lg:p-8',
+  interactiveCard: 'glass-panel rounded-2xl transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover',
+  card: 'glass-panel rounded-2xl p-4 sm:p-6 lg:p-8 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group/card',
+  cardCompact: 'glass-panel rounded-2xl p-3 sm:p-4 lg:p-6 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group/card',
   title: 'text-[10px] font-black uppercase tracking-[0.25em] text-slate-600 dark:text-slate-400 group-hover/card:text-brand-primary transition-colors',
   grid: 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
   heroGrid: 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 lg:gap-6',
   statGrid: 'grid grid-cols-2 gap-3 lg:grid-cols-4',
-  statCard: 'min-w-0 glass-panel rounded-2xl p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md sm:p-5 bg-white/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800/60',
+  statCard: 'min-w-0 glass-panel rounded-2xl p-4 sm:p-5 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover',
   statLabel: 'text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400',
   statValue: 'mt-1.5 text-2xl font-black text-slate-900 sm:text-3xl dark:text-slate-100 leading-none tracking-tighter',
-  iconButton: 'h-8 w-8 rounded-lg hover:bg-slate-100 transition-colors active:scale-95 dark:hover:bg-slate-800',
+  iconButton: 'h-8 w-8 rounded-lg hover:bg-slate-100 transition-colors active:scale-95 dark:hover:bg-slate-800 focus-ring',
   mobileScroll: 'flex overflow-x-auto no-scrollbar gap-2 pb-2 snap-x snap-mandatory overscroll-x-contain',
 };
 
 export const INVOICE_CLASSES = {
-  surface: 'glass-panel rounded-2xl sm:rounded-3xl border border-slate-200/60 dark:border-slate-800/60 bg-white/80 dark:bg-slate-900/80 shadow-2xl overflow-hidden',
-  commandCard: 'glass-panel rounded-2xl border border-slate-200/60 dark:border-slate-800/60 bg-white/50 dark:bg-slate-900/50 p-5 m-4 shadow-xl backdrop-blur-md',
+  surface: 'glass-panel rounded-2xl overflow-hidden',
+  commandCard: 'glass-panel rounded-2xl p-5 m-4',
   supplierTitle: 'text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tighter',
   supplierMeta: 'mt-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400 opacity-70',
-  logisticsGrid: 'grid grid-cols-2 overflow-hidden rounded-2xl border border-slate-200/60 dark:border-slate-800/60 shadow-inner',
-  logisticsCell: 'border-b border-r border-slate-200/60 dark:border-slate-800/60 bg-white/50 p-4 last:border-r-0 dark:bg-slate-900/40',
+  logisticsGrid: 'grid grid-cols-2 overflow-hidden rounded-2xl border border-border/60',
+  logisticsCell: 'border-b border-r border-border/60 bg-card p-4 last:border-r-0',
   logisticsLabel: 'flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-brand-primary opacity-80',
   logisticsValue: 'mt-2 text-sm font-black tracking-tight text-slate-900 dark:text-slate-100',
-  subBar: 'flex flex-wrap gap-6 rounded-xl bg-slate-100 dark:bg-slate-900 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 shadow-lg',
-  tableWrap: 'overflow-hidden rounded-2xl border border-slate-200/60 dark:border-slate-800/60 shadow-xl max-h-[60vh] overflow-y-auto no-scrollbar',
-  tableHead: 'bg-slate-100/90 dark:bg-slate-900/90 text-slate-700 dark:text-slate-100 text-[9px] font-black uppercase tracking-[0.25em] sticky top-0 z-20 backdrop-blur-md',
+  subBar: 'flex flex-wrap gap-6 rounded-xl bg-muted px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300',
+  tableWrap: 'overflow-hidden rounded-2xl border border-border/60 max-h-[60vh] overflow-y-auto no-scrollbar',
+  tableHead: 'bg-muted/90 text-slate-700 dark:text-slate-100 text-[9px] font-black uppercase tracking-[0.25em] sticky top-0 z-20 backdrop-blur-sm',
   tableHeadCell: 'px-5 py-4',
-  tableRow: 'border-b border-slate-200/60 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-300',
+  tableRow: 'border-b border-border hover:bg-muted/50 transition-colors duration-150',
   tableCell: 'px-5 py-4 text-sm font-medium text-slate-700 dark:text-slate-200',
   monoCell: 'font-mono text-sm font-bold text-slate-800 dark:text-slate-100',
   mobileGrid: 'space-y-4',
-  mobileCard: 'glass-panel rounded-2xl border border-slate-200/60 dark:border-slate-800/60 bg-white/80 dark:bg-slate-900/80 p-5 shadow-lg relative overflow-hidden group',
-  mobileCardHeader: 'absolute top-0 right-0 rounded-bl-xl bg-slate-100 dark:bg-slate-900 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-100 shadow-xl',
+  mobileCard: 'glass-panel rounded-2xl p-5 relative overflow-hidden group',
+  mobileCardHeader: 'absolute top-0 right-0 rounded-bl-xl bg-muted px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-100',
   mobileKey: 'text-[9px] font-black uppercase tracking-[0.15em] text-slate-600 dark:text-slate-400',
   mobileValue: 'mt-1 text-[11px] font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight',
 };

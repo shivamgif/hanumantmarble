@@ -394,6 +394,7 @@
     "admin": {
       "loading": "लोड हो रहा है...",
       "adminTitle": "अधिकारी हब",
+      "approveShipment": "शिपमेंट अनुमोदित करें",
       "pending": "लंबित",
       "approvals": "अनुमोदन",
       "focus": "ध्यान केंद्रित करें",

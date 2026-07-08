@@ -136,8 +136,8 @@ export function DispatchesPanel({
           {t('newDispatch')}
         </button>
       </div>
-      <section id="dispatches" className="flex h-full flex-col overflow-hidden scroll-mt-6 glass-panel rounded-2xl sm:rounded-3xl border border-slate-200/60 dark:border-white/5 shadow-2xl transition-all duration-500">
-        <div className="flex items-start justify-between p-4 sm:p-5 border-b border-slate-200/60 bg-slate-50/40 dark:bg-slate-900/40 px-6 py-5">
+      <section id="dispatches" className="flex h-full flex-col overflow-hidden scroll-mt-6 glass-panel rounded-2xl">
+        <div className="flex items-start justify-between p-4 sm:p-5 border-b border-border/60 bg-muted/40 px-6 py-5">
           <div className="space-y-1.5">
             <nav className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-slate-400">
               <span>{tc.inventoryHub}</span>
@@ -199,7 +199,7 @@ export function DispatchesPanel({
           {dispatchPagination.rows.map((d) => {
             const expanded = dispatchExpandedId === d.id;
             return (
-              <article key={`dispatch-mobile-${d.id}`} className="glass-panel rounded-2xl border border-white/5 p-4 shadow-sm">
+              <article key={`dispatch-mobile-${d.id}`} className="glass-panel rounded-2xl p-4">
                 <div className="flex items-start justify-between gap-2">
                   <button
                     type="button"

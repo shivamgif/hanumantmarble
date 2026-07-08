@@ -28,7 +28,7 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
   const isBag = itemCategory === 'bag';
 
   return (
-    <div key={fieldRow.id} className="glass-panel rounded-2xl border border-white/5 shadow-xl transition-all duration-500 overflow-hidden group/item">
+    <div key={fieldRow.id} className="glass-panel rounded-2xl overflow-hidden group/item">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 bg-slate-900/40 px-4 py-2.5">
         <div className="flex items-center gap-2">
           <span className={`h-1.5 w-1.5 rounded-full animate-pulse ${isBag ? 'bg-amber-400' : 'bg-brand-primary'}`} />
@@ -172,7 +172,7 @@ const BagDispatchItemRow = memo(function BagDispatchItemRow({ index, fieldRow, c
   const canEditReturns = ['admin', 'manager'].includes(userRole);
 
   return (
-    <div key={fieldRow.id} className="glass-panel rounded-2xl border border-white/5 shadow-xl transition-all duration-500 overflow-hidden">
+    <div key={fieldRow.id} className="glass-panel rounded-2xl overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 bg-slate-900/40 px-4 py-2.5">
         <div className="flex items-center gap-2">
           <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
@@ -312,7 +312,7 @@ export function BagDispatchFormContent({
         <button
           type="submit"
           disabled={submitting}
-          className="mt-6 w-full rounded-2xl bg-amber-500 px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-amber-500/20 transition-all hover:brightness-110 hover:scale-[1.01] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-6 w-full rounded-2xl bg-amber-500 px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-amber-500/20 transition-all hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
         >
           <span className="inline-flex items-center justify-center gap-3">
             <Package className="h-5 w-5" />
@@ -486,7 +486,7 @@ export function DispatchFormContent({
         <button
           type="submit"
           disabled={submitting}
-          className="mt-6 w-full rounded-2xl bg-brand-primary px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-brand-primary/20 transition-all hover:brightness-110 hover:scale-[1.01] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-6 w-full rounded-2xl bg-brand-primary px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-brand-primary/20 transition-all hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
         >
           <span className="inline-flex items-center justify-center gap-3">
             <Send className="h-5 w-5" />

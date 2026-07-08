@@ -1,11 +1,13 @@
 'use client';
-import { TrendingUp, TrendingDown, Download } from 'lucide-react';
+import { TrendingUp, TrendingDown, Download, Inbox } from 'lucide-react';
 
 export const BRAND_PRIMARY = '#E07A00';
 export const BRAND_SECONDARY = '#1A1A54';
+// Chart-mark orange: brand #E07A00 fails contrast on chart surfaces (2.94:1 light, too light on dark)
+export const CHART_ORANGE = '#C96E00';
 
 export const INDUSTRIAL_COLORS = [
-  '#E07A00',
+  '#C96E00',
   '#1A1A54',
   '#059669',
   '#DC2626',
@@ -16,11 +18,11 @@ export const INDUSTRIAL_COLORS = [
 ];
 
 // Line-series palette: same hues minus brand navy, which is invisible on dark surfaces (1.1:1 contrast)
-export const SERIES_COLORS = ['#E07A00', '#2563EB', '#059669', '#DC2626', '#7C3AED'];
+export const SERIES_COLORS = ['#C96E00', '#2563EB', '#059669', '#DC2626', '#7C3AED'];
 
 export const CLASSES = {
   heroGrid: 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 lg:gap-6',
-  card: 'rounded-2xl p-5 sm:p-6 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800',
+  card: 'rounded-2xl p-5 sm:p-6 bg-card border border-border shadow-card transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover',
   title: 'text-[10px] font-black uppercase tracking-[0.25em] text-slate-600 dark:text-slate-400',
   value: 'mt-2 text-3xl font-extrabold text-slate-900 dark:text-slate-100 font-sans tracking-tight',
   grid: 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
@@ -79,7 +81,7 @@ export function CsvExportButton({ type, months, label }) {
   return (
     <a
       href={href}
-      className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-brand-primary hover:border-brand-primary/40 transition-all"
+      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest bg-card border border-border shadow-card text-slate-600 dark:text-slate-300 hover:text-brand-primary hover:border-brand-primary/40 transition-all focus-ring"
       download
     >
       <Download className="h-3.5 w-3.5" />
@@ -121,7 +123,7 @@ export function AnalyticsCard({ title, subtitle, topRight, contextBar, insight, 
         </div>
       ) : null}
       {contextBar ? (
-        <div className="mb-4 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800/50">
+        <div className="mb-4 px-3 py-2 rounded-xl bg-muted/50 border border-border/60">
           <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold tracking-tight">{contextBar}</p>
         </div>
       ) : null}
@@ -133,15 +135,28 @@ export function AnalyticsCard({ title, subtitle, topRight, contextBar, insight, 
 export function ChartTooltip({ active, payload, label, formatter, labelFormatter }) {
   if (!active || !payload || !payload.length) return null;
   return (
-    <div className="rounded-2xl bg-slate-900/95 backdrop-blur-md dark:bg-slate-800/95 text-white p-3 shadow-2xl border border-white/10">
-      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">
+    <div className="rounded-lg border border-border bg-popover text-popover-foreground px-3 py-2 shadow-md">
+      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">
         {labelFormatter ? labelFormatter(label) : label}
       </p>
       {payload.map((entry, i) => (
-        <p key={i} className="text-sm font-black font-sans tracking-tight" style={{ color: entry.color || entry.stroke || entry.fill }}>
+        <p key={i} className="flex items-center gap-2 text-sm font-black font-sans tracking-tight text-foreground tabular-nums">
+          <span
+            className="h-2 w-2 shrink-0 rounded-full"
+            style={{ backgroundColor: entry.color || entry.stroke || entry.fill }}
+          />
           {entry.name}: {formatter ? formatter(entry.value, entry) : entry.value}
         </p>
       ))}
+    </div>
+  );
+}
+
+export function EmptyState({ label, icon: Icon = Inbox, className = '' }) {
+  return (
+    <div className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-border bg-muted/30 py-3 text-center ${className}`}>
+      <Icon className="h-4 w-4 text-slate-400" />
+      <p className="text-xs font-bold text-slate-400">{label}</p>
     </div>
   );
 }
