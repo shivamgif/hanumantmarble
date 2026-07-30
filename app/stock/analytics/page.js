@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getTranslation } from '@/lib/translations';
 import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
+import { getRoleFlags } from '@/lib/stock-roles.mjs';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Download } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -50,9 +51,13 @@ export default function AnalyticsDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const isManager = accessRole === 'manager';
+  const roleFlags = getRoleFlags(accessRole);
+  // admin, manager and read_only_admin all see the company-wide analytics; only the
+  // first two get the approve/reject actions inside it.
+  const canViewAllAnalytics = roleFlags.canViewAllAnalytics;
+  const canApprove = roleFlags.canApprove;
   const isSalesperson = accessRole === 'salesperson';
-  const isAuthorized = isManager || isSalesperson;
+  const isAuthorized = canViewAllAnalytics || isSalesperson;
 
   useEffect(() => {
     if (!accessLoading && hasResolvedAccessOnce && !isAuthorized) {
@@ -65,7 +70,7 @@ export default function AnalyticsDashboard() {
     async function loadData() {
       setLoading(true);
       try {
-        if (isManager) {
+        if (canViewAllAnalytics) {
           const response = await fetch(`/api/stock/admin/analytics?months=${analyticsRangeMonths}`, { cache: 'no-store' });
           const json = await response.json();
           if (!response.ok) throw new Error(json.error || 'Failed to load analytics');
@@ -86,18 +91,18 @@ export default function AnalyticsDashboard() {
     return () => {
       mounted = false;
     };
-  }, [user, analyticsRangeMonths, isManager, isSalesperson, isAuthorized]);
+  }, [user, analyticsRangeMonths, canViewAllAnalytics, isSalesperson, isAuthorized]);
 
   const [pendingActionLoading, setPendingActionLoading] = useState(null);
 
   const refetchAnalytics = useCallback(async () => {
-    if (!isManager) return;
+    if (!canViewAllAnalytics) return;
     try {
       const response = await fetch(`/api/stock/admin/analytics?months=${analyticsRangeMonths}&fresh=1`, { cache: 'no-store' });
       const json = await response.json();
       if (response.ok) setAdminAnalytics(json);
     } catch {}
-  }, [analyticsRangeMonths, isManager]);
+  }, [analyticsRangeMonths, canViewAllAnalytics]);
 
   const handlePendingApprove = useCallback(async (item) => {
     setPendingActionLoading(String(item.id));
@@ -403,8 +408,8 @@ export default function AnalyticsDashboard() {
             <div className="lg:col-span-5 min-w-0" id="widget-pending">
               <PendingQueueWidget
                 items={pendingQueue}
-                onApprove={handlePendingApprove}
-                onReject={handlePendingReject}
+                onApprove={canApprove ? handlePendingApprove : undefined}
+                onReject={canApprove ? handlePendingReject : undefined}
                 actionLoading={pendingActionLoading}
               />
             </div>

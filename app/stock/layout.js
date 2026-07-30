@@ -11,6 +11,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import BrandedLoginPage from '@/components/BrandedLoginPage';
 
+import { getRoleFlags } from '@/lib/stock-roles.mjs';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { useStockNotifications } from '@/hooks/useStockNotifications';
 import { useStockShortcuts } from '@/hooks/useStockShortcuts';
@@ -91,7 +92,7 @@ export default function StockLayout({ children }) {
   if (accessRole === 'admin' || accessRole === 'manager') {
     navigationItems.push({ href: '/stock/admin', label: t('adminDashboard'), icon: Users });
   }
-  if (accessRole === 'manager' || accessRole === 'salesperson') {
+  if (getRoleFlags(accessRole).canViewAllAnalytics || accessRole === 'salesperson') {
     navigationItems.push({ href: '/stock/analytics', label: t('analytics'), icon: BarChart2 });
   }
 

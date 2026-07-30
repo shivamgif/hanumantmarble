@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth-server';
 import { ordersDB } from '@/lib/db/orders';
+import { isAdmin } from '@/lib/admin-config';
 
 // GET /api/orders/[id] - Get a specific order
 export async function GET(request, { params }) {
@@ -25,7 +26,7 @@ export async function GET(request, { params }) {
     }
 
     // Ensure user can only access their own orders
-    if (order.userEmail !== session.user.email) {
+    if (order.userEmail !== session.user.email && !isAdmin(session.user.email)) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
@@ -67,14 +68,20 @@ export async function PATCH(request, { params }) {
       );
     }
 
-    // For now, allow users to cancel their own orders
-    if (status === 'cancelled' && order.userEmail === session.user.email) {
+    // Customers may only cancel their own order — nothing else.
+    if (order.userEmail === session.user.email && !isAdmin(session.user.email)) {
+      if (status !== 'cancelled') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+
       const updatedOrder = await ordersDB.update(id, { status, paymentStatus: 'refunded' });
       return NextResponse.json({ order: updatedOrder });
     }
 
-    // Other updates would require admin permissions
-    // TODO: Implement admin role check
+    // Every other field (tracking, payment status, arbitrary status) is admin-only.
+    if (!isAdmin(session.user.email)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const updates = {};
     if (status) updates.status = status;

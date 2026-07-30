@@ -49,7 +49,8 @@ export async function GET(request) {
     return NextResponse.json({ documents: [], message: 'Database not configured yet.' }, { status: 503 });
   }
 
-  if (!hasAnyStockRole(appUser, ['admin', 'manager', 'stock_maintainer', 'salesperson'])) {
+  // read_only_admin may list and download documents, but not upload (POST below).
+  if (!hasAnyStockRole(appUser, ['admin', 'manager', 'stock_maintainer', 'salesperson', 'read_only_admin'])) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

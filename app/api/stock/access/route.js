@@ -108,7 +108,9 @@ export async function GET(request) {
     }
 
     if (isSuperAdmin) {
-      const roleFlags = getRoleFlags('admin');
+      // 'manager', not 'admin': manager is the only role that can manage users, so an
+      // admin bootstrap account could never create the first real account.
+      const roleFlags = getRoleFlags('manager');
       let rows = [];
 
       try {

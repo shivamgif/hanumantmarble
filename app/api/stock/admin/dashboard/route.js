@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getStockContext, normalizeStockRole } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getRoleFlags, getStockContext, normalizeStockRole } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 
 function isMissingExternalAuthColumnError(error) {
@@ -153,7 +153,9 @@ export async function GET(request) {
          ORDER BY s.created_at DESC`,
         []
       ),
-      fetchDashboardUsers(),
+      // Roster carries emails, salaries and sales goals — only the role that manages
+      // users gets it. Everyone else on this page sees approvals only.
+      getRoleFlags(userRole).canManageUsers ? fetchDashboardUsers() : [],
     ]);
 
     return NextResponse.json({

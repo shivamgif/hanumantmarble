@@ -31,8 +31,8 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Database not configured yet.' }, { status: 503 });
   }
 
-  if (!hasAnyStockRole(appUser, ['admin'])) {
-    return NextResponse.json({ error: 'Forbidden: only admins can reset passwords' }, { status: 403 });
+  if (!hasAnyStockRole(appUser, ['manager'])) {
+    return NextResponse.json({ error: 'Forbidden: only managers can reset passwords' }, { status: 403 });
   }
 
   const body = await request.json();

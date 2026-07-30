@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getStockContext, normalizeStockRole } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 
@@ -52,9 +52,7 @@ function rangeFromParams(searchParams) {
 
 export async function GET(request) {
   const { session, appUser } = await getStockContext(request);
-  const userRole = normalizeStockRole(appUser?.role);
-
-  if (!session || userRole !== 'manager') {
+  if (!session || !hasAnyStockRole(appUser, ['admin', 'manager', 'read_only_admin'])) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

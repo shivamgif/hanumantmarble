@@ -19,6 +19,7 @@ import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { usePageSize } from '@/hooks/usePageSize';
 import { validateStockPassword } from '@/lib/password-policy';
+import { getRoleFlags } from '@/lib/stock-roles.mjs';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -155,10 +156,11 @@ export default function AdminDashboard() {
     qtyBags: td('qtyBags'), returnQtyBags: td('returnQtyBags'), weightPerBag: td('weightPerBag'),
   };
   const { user } = useAuthUser();
-  const canViewAnalytics = user?.role === 'manager';
   const [data, setData] = useState(null);
   const viewerRole = data?.viewerRole || user?.role;
-  const canManageUsers = viewerRole === 'admin' || viewerRole === 'manager';
+  const viewerFlags = getRoleFlags(viewerRole);
+  const canViewAnalytics = viewerFlags.canViewAllAnalytics;
+  const canManageUsers = viewerFlags.canManageUsers;
   const [analyticsData, setAnalyticsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -2154,6 +2156,7 @@ export default function AdminDashboard() {
                         <SelectContent>
                           <SelectItem value="stock_maintainer">{language === 'hi' ? 'स्टॉक मेंटेनर' : 'Stock Maintainer'}</SelectItem>
                           <SelectItem value="salesperson">{language === 'hi' ? 'सेल्सपर्शन' : 'Salesperson'}</SelectItem>
+                          <SelectItem value="read_only_admin">{language === 'hi' ? 'केवल-पढ़ने वाला एडमिन' : 'Read-Only Admin'}</SelectItem>
                           <SelectItem value="manager">{language === 'hi' ? 'मैनेजर' : 'Manager'}</SelectItem>
                           <SelectItem value="admin">{language === 'hi' ? 'सिस्टम एडमिन' : 'System Admin'}</SelectItem>
                         </SelectContent>
@@ -2342,7 +2345,7 @@ export default function AdminDashboard() {
                       u.role === 'manager' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
                         'bg-slate-500/10 text-slate-600 border-slate-500/20'
                       }`}>
-                      {u.role.split('_').pop()}
+                      {u.role.replace(/_/g, ' ')}
                     </span>
                   </div>
                   <div className="flex items-center justify-between pt-2">
@@ -2530,6 +2533,7 @@ export default function AdminDashboard() {
                                 <SelectContent>
                                   <SelectItem value="stock_maintainer">Stock Maintainer</SelectItem>
                                   <SelectItem value="salesperson">Salesperson</SelectItem>
+                                  <SelectItem value="read_only_admin">Read-Only Admin</SelectItem>
                                   <SelectItem value="manager">Manager</SelectItem>
                                   <SelectItem value="admin">Admin</SelectItem>
                                 </SelectContent>

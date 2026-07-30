@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 
-const STOCK_NOTIFICATION_ROLES = ['admin', 'manager', 'stock_maintainer', 'salesperson'];
+const STOCK_NOTIFICATION_ROLES = ['admin', 'manager', 'stock_maintainer', 'salesperson', 'read_only_admin'];
 
 function buildNotificationActionHref(notification) {
   const sourceTable = String(notification.source_table || '');

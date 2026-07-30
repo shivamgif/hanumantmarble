@@ -11,6 +11,7 @@ import { getTranslation } from '@/lib/translations';
 import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
 import { usePageSize } from '@/hooks/usePageSize';
 import { useStockAccess } from '@/hooks/useStockAccess';
+import { getRoleFlags } from '@/lib/stock-roles.mjs';
 import { arrivalFormSchema, dispatchFormSchema } from '@/lib/forms/stock-forms';
 import { useStockFormStore } from '@/lib/stores/stock-form-store';
 import {
@@ -269,7 +270,7 @@ export default function StockDashboard() {
   const dispatchItemsFieldArray = useFieldArray({ control: dispatchForm.control, name: 'items' });
   const arrivalItems = useWatch({ control: arrivalForm.control, name: 'items' }) || [];
 
-  const canCreateArrival = accessRole !== 'salesperson';
+  const canCreateArrival = !getRoleFlags(accessRole).isReadOnly;
 
   const refreshDashboard = useCallback(async () => {
     const json = await fetchDashboardData();

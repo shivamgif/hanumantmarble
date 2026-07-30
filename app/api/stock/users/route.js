@@ -187,7 +187,7 @@ export async function GET(request) {
     return NextResponse.json({ users: [], message: 'Database not configured yet.' }, { status: 503 });
   }
 
-  if (!hasAnyStockRole(appUser, ['admin', 'manager'])) {
+  if (!hasAnyStockRole(appUser, ['manager'])) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -226,7 +226,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Database not configured yet.' }, { status: 503 });
   }
 
-  if (!hasAnyStockRole(appUser, ['admin', 'manager'])) {
+  if (!hasAnyStockRole(appUser, ['manager'])) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -440,7 +440,7 @@ export async function PATCH(request) {
     return NextResponse.json({ error: 'Database not configured yet.' }, { status: 503 });
   }
 
-  if (!hasAnyStockRole(appUser, ['admin', 'manager'])) {
+  if (!hasAnyStockRole(appUser, ['manager'])) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -544,7 +544,7 @@ export async function DELETE(request) {
     return NextResponse.json({ error: 'Database not configured yet.' }, { status: 503 });
   }
 
-  if (!hasAnyStockRole(appUser, ['admin', 'manager'])) {
+  if (!hasAnyStockRole(appUser, ['manager'])) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

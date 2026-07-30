@@ -78,7 +78,7 @@ async function seedStockDatabase() {
           END;
 
           UPDATE stock_app_users
-          SET can_manage_users = CASE WHEN role IN ('admin', 'manager') THEN TRUE ELSE FALSE END,
+          SET can_manage_users = CASE WHEN role = 'manager' THEN TRUE ELSE FALSE END,
               can_approve_changes = CASE WHEN role IN ('admin', 'manager') THEN TRUE ELSE FALSE END,
               can_view_dashboard = COALESCE(can_view_dashboard, TRUE);
 

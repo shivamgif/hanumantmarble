@@ -41,17 +41,18 @@ async function migrateSalespersonRole() {
           WHEN role = 'admin' THEN 'admin'
           WHEN role IN ('manager', 'stock_approver') THEN 'manager'
           WHEN role IN ('salesperson', 'sales_person', 'sales') THEN 'salesperson'
+          WHEN role IN ('read_only_admin', 'readonly_admin', 'auditor') THEN 'read_only_admin'
           ELSE 'stock_maintainer'
         END;
 
         UPDATE stock_app_users
-        SET can_manage_users = CASE WHEN role IN ('admin', 'manager') THEN TRUE ELSE FALSE END,
+        SET can_manage_users = CASE WHEN role = 'manager' THEN TRUE ELSE FALSE END,
             can_approve_changes = CASE WHEN role IN ('admin', 'manager') THEN TRUE ELSE FALSE END,
             can_view_dashboard = COALESCE(can_view_dashboard, TRUE);
 
         ALTER TABLE stock_app_users
         ADD CONSTRAINT stock_app_users_role_check
-        CHECK (role IN ('admin', 'manager', 'stock_maintainer', 'salesperson'));
+        CHECK (role IN ('admin', 'manager', 'stock_maintainer', 'salesperson', 'read_only_admin'));
       END $$;
     `;
 

@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "db:migrate-notification-read-columns": "node scripts/migrate-notification-read-columns.js",
-    "db:migrate-salesperson-role": "node scripts/migrate-salesperson-role.mjs",
+    "db:migrate-salesperson-role": "node --env-file-if-exists=.env.local scripts/migrate-salesperson-role.mjs",
     "db:migrate-department-columns": "node scripts/migrate-department-columns.mjs",
     "db:migrate-purchase-capabilities": "node scripts/migrate-purchase-capabilities.mjs",
     "db:migrate-external-auth-identity": "node scripts/migrate-external-auth-identity.mjs",
