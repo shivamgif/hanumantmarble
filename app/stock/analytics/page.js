@@ -22,6 +22,7 @@ import {
   StockHealthScorecard,
   HeroCallouts,
   Leaderboard,
+  SalespersonSpotlight,
   ReorderNowWidget,
   DeadStockWidget,
   PendingQueueWidget,
@@ -48,6 +49,9 @@ export default function AnalyticsDashboard() {
   const [salespersonAnalytics, setSalespersonAnalytics] = useState(null);
   const [analyticsRangeMonths, setAnalyticsRangeMonths] = useState(6);
   const [activeTab, setActiveTab] = useState('overview');
+  // null = spotlight falls back to the top performer; lifted here so the
+  // leaderboard rows can drive the selection too.
+  const [selectedSalesperson, setSelectedSalesperson] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -450,11 +454,26 @@ export default function AnalyticsDashboard() {
 
       {activeTab === 'team' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div className="lg:col-span-12 min-w-0">
+            <SalespersonSpotlight
+              trend={salespersonTrend}
+              ranking={salespersonRanking}
+              goals={salespersonGoals}
+              selected={selectedSalesperson}
+              onSelect={setSelectedSalesperson}
+              months={analyticsRangeMonths}
+            />
+          </div>
           <div className="lg:col-span-8 min-w-0">
             <SalespersonTrendChart trend={salespersonTrend} />
           </div>
           <div className="lg:col-span-4 min-w-0">
-            <Leaderboard ranking={salespersonRanking} months={analyticsRangeMonths} />
+            <Leaderboard
+              ranking={salespersonRanking}
+              months={analyticsRangeMonths}
+              onSelect={setSelectedSalesperson}
+              selected={selectedSalesperson}
+            />
           </div>
           <div className="lg:col-span-7 min-w-0" id="widget-pace">
             <SalesPaceWidget rows={salespersonGoals} />

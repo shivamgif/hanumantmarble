@@ -11,8 +11,9 @@ const Layout = ({ children }) => {
   const isStockRoute = pathname?.startsWith('/stock');
 
   if (isStockRoute) {
+    // stock-scope mutes the color tokens for /stock only — see styles/globals.css
     return (
-      <div className="flex flex-col min-h-screen">
+      <div className="stock-scope flex flex-col min-h-screen">
         <main className="flex-grow" role="main">
           {children}
         </main>

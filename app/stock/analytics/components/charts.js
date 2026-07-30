@@ -78,7 +78,7 @@ export function SalesRevenueChart({ data }) {
             <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactNumber} width={40} />
             <RechartsTooltip content={<ChartTooltip formatter={(v) => `${formatCompactNumber(v)} ${t('units')}`} />} />
-            <Area type="monotone" dataKey="total" name={t('units')} stroke={CHART_ORANGE} strokeWidth={2} fill="url(#salesArea)" dot={false} activeDot={{ r: 6, stroke: 'var(--card)', strokeWidth: 2 }} />
+            <Area type="monotone" dataKey="total" name={t('units')} stroke={CHART_ORANGE} strokeWidth={2} fill="url(#salesArea)" dot={false} activeDot={{ r: 6, stroke: 'rgb(var(--card))', strokeWidth: 2 }} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -311,7 +311,7 @@ export function SalespersonTrendChart({ trend }) {
                 stroke={SERIES_COLORS[i % SERIES_COLORS.length]}
                 strokeWidth={2}
                 dot={false}
-                activeDot={{ r: 6, stroke: 'var(--card)', strokeWidth: 2 }}
+                activeDot={{ r: 6, stroke: 'rgb(var(--card))', strokeWidth: 2 }}
               />
             ))}
           </LineChart>

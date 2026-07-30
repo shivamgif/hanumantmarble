@@ -1,9 +1,15 @@
 'use client';
+import { useMemo } from 'react';
 import {
   ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
   Tooltip as RechartsTooltip,
 } from 'recharts';
 import {
@@ -26,13 +32,17 @@ import {
   ChartTooltip,
   CsvExportButton,
   EmptyState,
+  TrendCapsule,
+  CHART_ORANGE,
   INDUSTRIAL_COLORS,
   paceAdjustedTarget,
   formatRelativeTime,
+  formatMonthLabel,
   formatCompactNumber,
   formatCompactINR,
   formatHours,
 } from '../../components/dashboard-ui';
+import { deriveSpotlight } from '../lib/spotlight.mjs';
 
 export function StockHealthScorecard({ data, stockRisk, approvalOps }) {
   const { language } = useLanguage();
@@ -161,11 +171,145 @@ export function HeroCallouts({ stockedOut, approvalsWaiting, oldestPendingHours,
   );
 }
 
-function LeaderboardRow({ row, i, maxVal }) {
-  const growthRatio = row.growth_ratio != null ? Number(row.growth_ratio) : null;
+// Individual salesperson view. Derived entirely from the payload the Team tab
+// already has: salespersonTrend carries every salesperson x month row (no LIMIT),
+// so no extra fetch is needed to scope down to one person.
+export function SalespersonSpotlight({ trend, ranking, goals, selected, onSelect, months }) {
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+
+  const { roster, active, series, totals, rank, outOf, rankRow, goalRow } = useMemo(
+    () => deriveSpotlight(trend, ranking, goals, selected),
+    [trend, ranking, goals, selected]
+  );
+
+  if (roster.length === 0) {
+    return (
+      <AnalyticsCard title={t('spotlightTitle')} subtitle={t('spotlightSubtitle')}>
+        <EmptyState label={t('noData')} />
+      </AnalyticsCard>
+    );
+  }
+
+  const growthRatio = rankRow?.growth_ratio != null ? Number(rankRow.growth_ratio) : null;
+  const consistency = rankRow?.consistency_score != null ? Number(rankRow.consistency_score) : null;
+  const goal = Number(goalRow?.goal || 0);
+  const goalActual = Number(goalRow?.actual || 0);
+  const goalPct = goal > 0 ? (goalActual / goal) * 100 : 0;
+  const expected = paceAdjustedTarget(goal);
+  const expectedPct = goal > 0 ? (expected / goal) * 100 : 0;
+  const behindPace = goalActual < expected;
+
+  const stats = [
+    { label: t('revenue'), value: formatCompactINR(totals.revenue) },
+    { label: t('units'), value: formatCompactNumber(totals.qty) },
+    { label: t('dispatchesShort'), value: formatCompactNumber(totals.shipments) },
+    { label: t('consistencyScore'), value: consistency != null ? Math.round(consistency) : '—' },
+  ];
 
   return (
-    <div className="flex items-center gap-3 py-2.5 border-b border-slate-100 dark:border-slate-800/40 last:border-b-0">
+    <AnalyticsCard
+      title={t('spotlightTitle')}
+      subtitle={t('spotlightSubtitle')}
+      contextBar={`${months}M · ${rank != null ? `${t('rank')} ${rank} ${t('ofLabel')} ${outOf}` : t('noData')}`}
+      topRight={
+        <label className="flex items-center gap-2">
+          <span className="sr-only">{t('selectSalesperson')}</span>
+          <select
+            value={active || ''}
+            onChange={(e) => onSelect?.(e.target.value)}
+            className="max-w-[14rem] rounded-lg border border-border bg-card px-3 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus-ring"
+          >
+            {roster.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+        </label>
+      }
+    >
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <p className="text-lg font-black tracking-tight text-slate-900 dark:text-white truncate">{active}</p>
+        {growthRatio != null ? <TrendCapsule value={growthRatio * 100} isPositive={growthRatio >= 0} /> : null}
+        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t('growthVsLastPeriod')}</span>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        {stats.map((s) => (
+          <div key={s.label} className="rounded-xl border border-border/60 bg-muted/30 px-3 py-2.5">
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{s.label}</p>
+            <p className="mt-1 text-lg font-black font-sans tracking-tight text-slate-900 dark:text-slate-100 tabular-nums">{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {goal > 0 ? (
+        <div className="space-y-1 mb-4">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">{t('salesPace')}</span>
+            <span className={`text-xs font-black tabular-nums ${behindPace ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+              {Math.round(goalPct)}%{behindPace ? ` · ${t('behindPace')}` : ''}
+            </span>
+          </div>
+          <div className="relative h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div
+              className={`absolute top-0 left-0 h-full rounded-full ${behindPace ? 'bg-rose-500' : 'bg-emerald-500'}`}
+              style={{ width: `${Math.min(100, goalPct)}%` }}
+            />
+            <div
+              className="absolute top-0 h-full w-0.5 bg-slate-900 dark:bg-slate-100 opacity-60"
+              style={{ left: `${Math.min(100, expectedPct)}%` }}
+              title={`${t('expectedPace')} ${Math.round(expectedPct)}%`}
+            />
+          </div>
+          <p className="text-[10px] font-bold text-slate-400 tabular-nums">
+            {formatCompactINR(goalActual)} / {formatCompactINR(goal)} · {t('expectedPace')} {formatCompactINR(expected)}
+          </p>
+        </div>
+      ) : (
+        <p className="mb-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">{t('noGoal')}</p>
+      )}
+
+      {series.length === 0 ? (
+        <EmptyState label={t('noData')} />
+      ) : (
+        <div className="h-[220px] rounded-xl border border-border/60 bg-muted/20 p-4">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
+            <LineChart data={series} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200/80 dark:stroke-slate-800" />
+              <XAxis dataKey="bucket" tickFormatter={formatMonthLabel} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactINR} width={56} />
+              <RechartsTooltip content={<ChartTooltip formatter={(v) => formatCompactINR(v)} labelFormatter={formatMonthLabel} />} />
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                name={t('revenue')}
+                stroke={CHART_ORANGE}
+                strokeWidth={2}
+                dot={{ r: 3, fill: CHART_ORANGE, strokeWidth: 0 }}
+                activeDot={{ r: 6, stroke: 'rgb(var(--card))', strokeWidth: 2 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </AnalyticsCard>
+  );
+}
+
+function LeaderboardRow({ row, i, maxVal, onSelect, isSelected }) {
+  const growthRatio = row.growth_ratio != null ? Number(row.growth_ratio) : null;
+  const name = row.salesperson || row.name;
+  // Row is a button only when the parent wired a handler, same as PendingQueueWidget.
+  const Wrapper = onSelect ? 'button' : 'div';
+  const interactiveProps = onSelect
+    ? { type: 'button', onClick: () => onSelect(name) }
+    : {};
+
+  return (
+    <Wrapper
+      {...interactiveProps}
+      className={`flex w-full items-center gap-3 py-2.5 border-b border-slate-100 dark:border-slate-800/40 last:border-b-0 ${onSelect ? 'text-left cursor-pointer focus-ring' : ''} ${isSelected ? 'bg-brand-primary/5 ring-1 ring-brand-primary/40 rounded-lg px-2 -mx-2 border-b-transparent' : ''}`}
+    >
       <span className="w-6 text-xs font-black text-slate-400 text-right tabular-nums">{i + 1}.</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-3 mb-1">
@@ -186,11 +330,11 @@ function LeaderboardRow({ row, i, maxVal }) {
           />
         </div>
       </div>
-    </div>
+    </Wrapper>
   );
 }
 
-export function Leaderboard({ ranking, months }) {
+export function Leaderboard({ ranking, months, onSelect, selected }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   const maxRev = Math.max(...ranking.map(r => Number(r.revenue || 0)), 1);
@@ -202,7 +346,14 @@ export function Leaderboard({ ranking, months }) {
     >
       <div>
         {ranking.slice(0, 8).map((row, i) => (
-          <LeaderboardRow key={row.name || row.salesperson} row={row} i={i} maxVal={maxRev} />
+          <LeaderboardRow
+            key={row.name || row.salesperson}
+            row={row}
+            i={i}
+            maxVal={maxRev}
+            onSelect={onSelect}
+            isSelected={selected != null && selected === (row.salesperson || row.name)}
+          />
         ))}
       </div>
     </AnalyticsCard>

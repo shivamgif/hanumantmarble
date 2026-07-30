@@ -411,7 +411,7 @@ export async function GET(request) {
            )::numeric(10,2) AS consistency_score
          FROM ranked
          ORDER BY quantity DESC
-         LIMIT 8`,
+         LIMIT 50`,
         [startDate, endDate]
       ),
       sql(
