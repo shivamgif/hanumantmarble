@@ -25,7 +25,7 @@ export async function GET(request) {
       ? `(s.salesperson_user_id = $1 OR (s.salesperson_user_id IS NULL AND s.submitted_by_user_id = $1))`
       : `s.submitted_by_user_id = $1`;
 
-    const [monthlyRows, currentMonthRows, recentRows] = await Promise.all([
+    const [monthlyRows, currentMonthRows, recentRows, activeDayRows] = await Promise.all([
       sql(
         `SELECT
            TO_CHAR(DATE_TRUNC('month', s.dispatch_date), 'Mon YYYY') AS month_label,
@@ -43,6 +43,7 @@ export async function GET(request) {
       ),
       sql(
         `SELECT
+           TO_CHAR((NOW() AT TIME ZONE 'Asia/Kolkata')::date, 'YYYY-MM-DD') AS today,
            COUNT(DISTINCT s.id) AS this_month_count,
            COALESCE(SUM((GREATEST(COALESCE(soi.loaded_whole_qty, 0) - COALESCE(soi.returned_whole_qty, 0), 0) + GREATEST(COALESCE(soi.loaded_broken_qty, 0) - COALESCE(soi.returned_broken_qty, 0), 0)) * COALESCE(soi.rate_per_unit, 0)), 0) AS this_month_value
          FROM stock_outbound_shipments s
@@ -71,6 +72,19 @@ export async function GET(request) {
          LIMIT 10`,
         [appUser.id]
       ),
+      // Days with at least one dispatch, for the sales streak. No items join -
+      // one dispatch makes the day active regardless of value. dispatch_date is
+      // a bare TIMESTAMP holding UTC, so shift it to IST before taking the date
+      // or evening dispatches land on tomorrow.
+      sql(
+        `SELECT DISTINCT TO_CHAR((s.dispatch_date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date, 'YYYY-MM-DD') AS day
+         FROM stock_outbound_shipments s
+         WHERE ${ownershipFilter}
+           AND s.status != 'cancelled'
+           AND s.dispatch_date >= NOW() - INTERVAL '120 days'
+         ORDER BY day ASC`,
+        [appUser.id]
+      ),
     ]);
 
     const lastMonthRows = await sql(
@@ -85,6 +99,8 @@ export async function GET(request) {
     );
 
     return NextResponse.json({
+      activeDays: activeDayRows.map((r) => r.day),
+      today: currentMonthRows[0]?.today ?? null,
       monthlyTrend: monthlyRows.map((r) => ({
         month: r.month_label,
         dispatchCount: Number(r.dispatch_count),

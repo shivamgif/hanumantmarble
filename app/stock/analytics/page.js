@@ -27,6 +27,7 @@ import {
   DeadStockWidget,
   PendingQueueWidget,
   SalesPaceWidget,
+  MyPerformanceHero,
   CustomerConcentrationWidget,
   ActivityFeedWidget,
   RiskInventoryTable,
@@ -185,69 +186,34 @@ export default function AnalyticsDashboard() {
     const lastMonth = salespersonAnalytics?.lastMonth || { count: 0, value: 0 };
     const recentDispatches = salespersonAnalytics?.recentDispatches || [];
     const goal = Number(accessUser?.monthly_sales_goal ?? 0);
-    const pct = goal > 0 ? Math.round((thisMonth.value / goal) * 100) : 0;
-    const achieved = goal > 0 && thisMonth.value >= goal;
-    const now = new Date();
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const daysLeft = daysInMonth - now.getDate();
-    const atRisk = !achieved && pct < 50 && daysLeft < 10;
-    const barColor = achieved ? 'bg-yellow-400' : atRisk ? 'bg-amber-500' : 'bg-brand-primary';
     const fmt = (v) => `₹${Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
-    const countChange = lastMonth.count > 0 ? Math.round(((thisMonth.count - lastMonth.count) / lastMonth.count) * 100) : null;
+    const bestMonthValue = Math.max(...monthlyTrend.map((r) => r.totalValue), 0);
 
     return (
-      <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-10 lg:space-y-12 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
-        <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-10">
-          <div className="space-y-4 max-w-4xl">
-            <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-4">
+      <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
+        <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
               <Link href="/stock" className="hover:text-brand-primary transition-colors">Dashboard</Link>
               <ChevronRight className="h-3 w-3 opacity-50" />
               <span className="text-slate-900 dark:text-white">My Analytics</span>
             </nav>
-            <h1 className="text-5xl sm:text-7xl font-black text-slate-900 dark:text-white tracking-tighter leading-[0.9]">
-              <span className="text-brand-primary">My</span><br className="sm:hidden" /> Performance
+            <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+              <span className="text-brand-primary">My</span> Performance
             </h1>
-            <p className="text-lg text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-3xl">
-              Your personal dispatch activity and sales progress for the last 6 months.
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-3xl">
+              Your dispatch activity, streak and goal progress for the last 6 months.
             </p>
           </div>
         </header>
 
-        <div className={CLASSES.heroGrid}>
-          {goal > 0 && (
-            <div className="p-6 rounded-2xl border border-border bg-card shadow-card space-y-4 col-span-full lg:col-span-2">
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Monthly Sales Goal</p>
-                  <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mt-0.5">{fmt(thisMonth.value)} / {fmt(goal)} — {pct}%</p>
-                </div>
-                {achieved && <span className="text-xs font-black text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30 px-3 py-1 rounded-full">Goal Achieved!</span>}
-                {atRisk && <span className="text-xs font-black text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-3 py-1 rounded-full">{daysLeft}d left</span>}
-              </div>
-              <div className="h-4 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${Math.min(pct, 100)}%` }} />
-              </div>
-            </div>
-          )}
-          <div className="p-6 rounded-2xl border border-border bg-card shadow-card space-y-2">
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">This Month Dispatches</p>
-            <p className="text-4xl font-black text-slate-900 dark:text-white">{thisMonth.count}</p>
-            {countChange !== null && (
-              <p className={`text-xs font-bold ${countChange >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                {countChange >= 0 ? '+' : ''}{countChange}% vs last month
-              </p>
-            )}
-          </div>
-          <div className="p-6 rounded-2xl border border-border bg-card shadow-card space-y-2">
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">This Month Value</p>
-            <p className="text-4xl font-black text-slate-900 dark:text-white">{fmt(thisMonth.value)}</p>
-            {lastMonth.value > 0 && (
-              <p className={`text-xs font-bold ${thisMonth.value >= lastMonth.value ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                vs {fmt(lastMonth.value)} last month
-              </p>
-            )}
-          </div>
-        </div>
+        <MyPerformanceHero
+          thisMonth={thisMonth}
+          lastMonth={lastMonth}
+          goal={goal}
+          activeDays={salespersonAnalytics?.activeDays}
+          today={salespersonAnalytics?.today}
+        />
 
         {monthlyTrend.length > 0 && (
           <section className="space-y-6">
@@ -255,19 +221,23 @@ export default function AnalyticsDashboard() {
               <h2 className="text-sm font-bold text-slate-500 whitespace-nowrap">Dispatch Value Trend</h2>
               <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
             </div>
-            <div className="p-6 rounded-2xl border border-border bg-card shadow-card">
+            <div className="glass-panel rounded-2xl p-6 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover">
               <div className="space-y-4">
                 {monthlyTrend.map((row) => {
-                  const maxVal = Math.max(...monthlyTrend.map((r) => r.totalValue), 1);
-                  const barPct = Math.round((row.totalValue / maxVal) * 100);
+                  const barPct = Math.round((row.totalValue / Math.max(bestMonthValue, 1)) * 100);
+                  const isBest = bestMonthValue > 0 && row.totalValue === bestMonthValue;
+                  const hitGoal = goal > 0 && row.totalValue >= goal;
+                  // Best month wins the crown colour; any other goal month stays green.
+                  const barColor = isBest ? 'bg-yellow-400' : hitGoal ? 'bg-emerald-500' : 'bg-brand-primary';
                   return (
                     <div key={row.month} className="flex items-center gap-4">
                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 w-16 shrink-0">{row.month}</span>
                       <div className="flex-1 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                        <div className="h-full rounded-xl bg-brand-primary transition-all duration-700" style={{ width: `${barPct}%` }} />
+                        <div className={`h-full rounded-xl transition-all duration-700 ${barColor}`} style={{ width: `${barPct}%` }} />
                       </div>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 w-28 text-right shrink-0">{fmt(row.totalValue)}</span>
-                      <span className="text-[10px] text-slate-400 w-16 shrink-0">{row.dispatchCount} orders</span>
+                      <span className="w-6 shrink-0 text-center text-sm" aria-hidden="true">{isBest ? '🏆' : hitGoal ? '✅' : ''}</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 w-28 text-right shrink-0 tabular-nums">{fmt(row.totalValue)}</span>
+                      <span className="text-[10px] text-slate-400 w-16 shrink-0 tabular-nums">{row.dispatchCount} orders</span>
                     </div>
                   );
                 })}
@@ -282,7 +252,7 @@ export default function AnalyticsDashboard() {
               <h2 className="text-sm font-bold text-slate-500 whitespace-nowrap">Recent Dispatches</h2>
               <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
             </div>
-            <div className="rounded-2xl border border-border bg-card shadow-card overflow-hidden">
+            <div className="glass-panel rounded-2xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>

@@ -1,5 +1,5 @@
 'use client';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ResponsiveContainer,
   PieChart,
@@ -23,6 +23,10 @@ import {
   Archive,
   Check,
   Loader2,
+  Target,
+  Flame,
+  Truck,
+  Wallet,
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
@@ -43,6 +47,212 @@ import {
   formatHours,
 } from '../../components/dashboard-ui';
 import { deriveSpotlight } from '../lib/spotlight.mjs';
+import { deriveStreak, streakTier, goalTier } from '../lib/streak.mjs';
+
+// Bars animate from 0 on mount so the hero visibly "fills in" - purely cosmetic,
+// so it degrades to the final width if the effect never runs.
+function useGrowth(pct) {
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setWidth(pct));
+    return () => cancelAnimationFrame(id);
+  }, [pct]);
+  return width;
+}
+
+const MILESTONES = [
+  { at: 25, emoji: '🌱' },
+  { at: 50, emoji: '⚡' },
+  { at: 75, emoji: '🚀' },
+  { at: 100, emoji: '🏆' },
+];
+
+// The salesperson's own hero row. Same card recipe as StockHealthScorecard and
+// the dashboard HeroCard (glass-panel + tinted icon tile + watermark), with the
+// goal and streak carrying the colour ladder.
+export function MyPerformanceHero({ thisMonth, lastMonth, goal, activeDays, today }) {
+  const streak = useMemo(() => deriveStreak(activeDays, today), [activeDays, today]);
+  const tier = streakTier(streak.current);
+
+  // `today` is the IST date from the API; fall back to the browser's own date so
+  // the card still renders while the payload is in flight.
+  const [year, month, dayOfMonth] = (today || new Date().toISOString().slice(0, 10)).split('-').map(Number);
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const daysLeft = daysInMonth - dayOfMonth;
+
+  const target = Number(goal || 0);
+  const value = Number(thisMonth?.value || 0);
+  const pct = target > 0 ? (value / target) * 100 : 0;
+  const expectedPct = (dayOfMonth / daysInMonth) * 100;
+  const standing = goalTier(pct, expectedPct);
+  const remaining = Math.max(0, target - value);
+  const perDayNeeded = daysLeft > 0 ? remaining / daysLeft : remaining;
+
+  const goalWidth = useGrowth(Math.min(100, Math.round(pct)));
+
+  const countChange = Number(lastMonth?.count || 0) > 0
+    ? ((Number(thisMonth?.count || 0) - lastMonth.count) / lastMonth.count) * 100
+    : null;
+  const valueChange = Number(lastMonth?.value || 0) > 0
+    ? ((value - lastMonth.value) / lastMonth.value) * 100
+    : null;
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 items-start">
+      {target > 0 ? (
+        <div className="glass-panel rounded-2xl p-6 sm:p-8 relative overflow-hidden transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group lg:col-span-2">
+          <div className="relative z-10">
+            <div className="flex items-center justify-between gap-3 mb-8">
+              <div className={`w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center rounded-xl border ${standing.bg} ${standing.border}`}>
+                <Target className={`h-7 w-7 sm:h-8 sm:w-8 ${standing.color}`} />
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Monthly Goal</span>
+                <span className={`flex items-center gap-1.5 text-[10px] font-black px-3 py-1 rounded-full ${standing.color} ${standing.bg} border ${standing.border}`}>
+                  <span aria-hidden="true">{standing.emoji}</span>
+                  {standing.label}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.15em]">This Month vs Goal</div>
+              <div className="flex flex-wrap items-baseline gap-3">
+                <span className="text-3xl sm:text-4xl lg:text-5xl font-black font-sans tracking-tighter text-slate-900 dark:text-white leading-none tabular-nums">
+                  {formatCompactINR(value)}
+                </span>
+                <span className="text-sm font-black text-slate-400 tabular-nums">/ {formatCompactINR(target)}</span>
+                <span className={`text-sm font-black tabular-nums ${standing.color}`}>{Math.round(pct)}%</span>
+              </div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight pt-1">
+                {remaining > 0
+                  ? `${formatCompactINR(remaining)} to go · ${daysLeft} days left · ${formatCompactINR(perDayNeeded)}/day`
+                  : `Goal cleared with ${daysLeft} days to spare`}
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-2">
+              <div className="relative h-4 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-[width] duration-1000 ease-out ${standing.bar}`}
+                  style={{ width: `${goalWidth}%` }}
+                />
+                {/* Where they should be by today - the bar is only "behind" relative to this. */}
+                <div
+                  className="absolute top-0 h-full w-0.5 bg-slate-900 dark:bg-slate-100 opacity-60"
+                  style={{ left: `${Math.min(100, expectedPct)}%` }}
+                  title={`Pace target: ${Math.round(expectedPct)}%`}
+                />
+              </div>
+              <div className="flex justify-between">
+                {MILESTONES.map((m) => {
+                  const hit = pct >= m.at;
+                  return (
+                    <span
+                      key={m.at}
+                      className={`flex items-center gap-1 text-[10px] font-black tabular-nums transition-opacity duration-500 ${hit ? 'opacity-100 text-slate-700 dark:text-slate-200' : 'opacity-30 text-slate-400 grayscale'}`}
+                    >
+                      <span aria-hidden="true">{m.emoji}</span>
+                      {m.at}%
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          <div className="absolute -right-6 -bottom-6 w-32 h-32 sm:w-40 sm:h-40 opacity-[0.04] transition-opacity duration-200 pointer-events-none group-hover:opacity-[0.08]">
+            <Target className="w-full h-full" />
+          </div>
+        </div>
+      ) : (
+        <StreakCard streak={streak} tier={tier} className="lg:col-span-2" wide />
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4 sm:gap-5">
+        {target > 0 ? <StreakCard streak={streak} tier={tier} /> : null}
+        <MiniStat
+          icon={Truck}
+          label="Dispatches"
+          value={Number(thisMonth?.count || 0).toLocaleString('en-IN')}
+          sub={`${streak.activeThisMonth} active days this month`}
+          change={countChange}
+        />
+        <MiniStat
+          icon={Wallet}
+          label="Dispatch Value"
+          value={formatCompactINR(value)}
+          sub={lastMonth?.value > 0 ? `vs ${formatCompactINR(lastMonth.value)} last month` : 'No last-month baseline'}
+          change={valueChange}
+        />
+      </div>
+    </div>
+  );
+}
+
+function StreakCard({ streak, tier, className = '', wide = false }) {
+  return (
+    <div className={`glass-panel rounded-2xl p-5 sm:p-6 relative overflow-hidden transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group ${className}`}>
+      <div className="relative z-10">
+        <div className="flex items-center gap-4">
+          <div className={`w-14 h-14 shrink-0 flex items-center justify-center rounded-xl border text-2xl ${tier.bg} ${tier.border} ${tier.glow ? 'animate-pulse-glow' : ''}`}>
+            <span aria-hidden="true">{tier.emoji}</span>
+          </div>
+          <div className="min-w-0">
+            <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Sales Streak</div>
+            <div className="flex items-baseline gap-1.5">
+              <span className={`text-3xl ${wide ? 'sm:text-4xl lg:text-5xl' : ''} font-black font-sans tracking-tighter leading-none tabular-nums ${tier.color}`}>
+                {streak.current}
+              </span>
+              <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                {streak.current === 1 ? 'day' : 'days'}
+              </span>
+            </div>
+            <div className={`text-[9px] font-black uppercase tracking-[0.15em] mt-1 ${tier.color}`}>{tier.label}</div>
+          </div>
+        </div>
+
+        {/* Last 7 days, oldest first - a dispatch today keeps the run alive. */}
+        <div className="mt-4 flex items-center justify-between gap-1.5">
+          {streak.last7.map((d, i) => (
+            <span
+              key={d.date}
+              title={d.date}
+              className={`h-2 flex-1 rounded-full transition-colors duration-300 ${d.active ? tier.bar : 'bg-slate-200 dark:bg-slate-700'} ${i === 6 && !d.active ? 'opacity-60 ring-1 ring-inset ring-slate-300 dark:ring-slate-600' : ''}`}
+            />
+          ))}
+        </div>
+        <div className="mt-2 text-[9px] font-bold uppercase tracking-tight text-slate-400">
+          Best run {streak.best} {streak.best === 1 ? 'day' : 'days'}
+          {streak.current > 0 && streak.current >= streak.best ? ' · personal record 🏅' : ''}
+          {streak.current === 0 ? ' · dispatch today to start one' : ''}
+        </div>
+      </div>
+      <div className="absolute -right-6 -bottom-6 w-32 h-32 opacity-[0.04] transition-opacity duration-200 pointer-events-none group-hover:opacity-[0.08]">
+        <Flame className="w-full h-full" />
+      </div>
+    </div>
+  );
+}
+
+function MiniStat({ icon: Icon, label, value, sub, change }) {
+  return (
+    <div className="glass-panel rounded-2xl p-4 sm:p-5 flex items-center gap-4 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover">
+      <div className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border bg-brand-primary/10 border-brand-primary/20">
+        <Icon className="h-5 w-5 text-brand-primary" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400 truncate">{label}</div>
+        <div className="text-2xl font-black font-sans tracking-tighter text-slate-900 dark:text-white leading-none mt-0.5 tabular-nums">{value}</div>
+        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-tight mt-1 truncate">{sub}</div>
+      </div>
+      {change === null || change === undefined ? null : (
+        <div className="shrink-0">
+          <TrendCapsule value={change} isPositive={change >= 0} />
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function StockHealthScorecard({ data, stockRisk, approvalOps }) {
   const { language } = useLanguage();
