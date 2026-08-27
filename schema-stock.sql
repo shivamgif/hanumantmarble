@@ -861,3 +861,60 @@ SELECT
   (SELECT COUNT(*) FROM stock_change_requests WHERE status = 'pending') AS pending_change_requests,
   (SELECT COUNT(*) FROM stock_inbound_shipments WHERE approval_status = 'pending') AS pending_inbound_reviews,
   (SELECT COUNT(*) FROM stock_outbound_shipments WHERE approval_status = 'pending') AS pending_outbound_reviews;
+
+-- ====== STONE ITEM SUPPORT (additive) ======
+-- Natural stone (Kota, sandstone, granite) is bought and sold by TOTAL SQUARE
+-- FEET. Each delivery has a fixed slab size but the size differs between
+-- deliveries, so a "piece" is not a stable unit for the item and quantity must
+-- be fractional. current_whole_qty is INTEGER, so stone gets its own NUMERIC
+-- column rather than widening a column 68 call sites already read as an int.
+-- See scripts/migrate-stone-support.mjs and lib/stock-sqft.js.
+
+ALTER TABLE stock_types DROP CONSTRAINT IF EXISTS stock_types_category_check;
+ALTER TABLE stock_types
+  ADD CONSTRAINT stock_types_category_check
+  CHECK (category IN ('tile', 'bag', 'stone'));
+
+ALTER TABLE IF EXISTS stock_items
+  ADD COLUMN IF NOT EXISTS current_sqft NUMERIC(14, 3) NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS rate_per_sqft NUMERIC(12, 2);
+
+ALTER TABLE stock_items DROP CONSTRAINT IF EXISTS stock_items_sqft_nonnegative;
+ALTER TABLE stock_items
+  ADD CONSTRAINT stock_items_sqft_nonnegative CHECK (current_sqft >= 0);
+
+-- Kept separate from received_whole_qty / loaded_whole_qty so existing aggregate
+-- queries that sum those columns keep returning piece counts and add 0 for
+-- stone rows instead of mixing units.
+-- Slab size is recorded on every delivery but differs between deliveries, so it
+-- is a per-consignment snapshot on the line, not a stock_sizes link on the item.
+ALTER TABLE IF EXISTS stock_inbound_shipment_items
+  ADD COLUMN IF NOT EXISTS received_qty_sqft NUMERIC(14, 3) NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS cost_per_sqft NUMERIC(12, 2),
+  ADD COLUMN IF NOT EXISTS slab_size_label TEXT;
+
+ALTER TABLE IF EXISTS stock_outbound_shipment_items
+  ADD COLUMN IF NOT EXISTS qty_sqft NUMERIC(14, 3) NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS returned_qty_sqft NUMERIC(14, 3) NOT NULL DEFAULT 0;
+
+ALTER TABLE IF EXISTS stock_inventory_lots
+  ADD COLUMN IF NOT EXISTS quantity_sqft NUMERIC(14, 3) NOT NULL DEFAULT 0;
+
+ALTER TABLE IF EXISTS stock_movements
+  ADD COLUMN IF NOT EXISTS quantity_sqft NUMERIC(14, 3) NOT NULL DEFAULT 0;
+
+-- Stone is its own division, but every salesperson may sell it (same
+-- arrangement as Adhesive). The grant itself lives in the migration script.
+INSERT INTO stock_divisions (name, description)
+VALUES ('Stone', 'Natural stone (Kota, sandstone, granite) traded by square foot')
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO stock_types (name, category, description) VALUES
+  ('Kota Stone', 'stone', 'Kota limestone slabs, traded by square foot'),
+  ('Sandstone',  'stone', 'Sandstone slabs, traded by square foot'),
+  ('Granite',    'stone', 'Granite slabs, traded by square foot'),
+  ('Slate',      'stone', 'Slate slabs, traded by square foot')
+ON CONFLICT (name) DO UPDATE SET category = EXCLUDED.category, description = EXCLUDED.description;
+
+CREATE INDEX IF NOT EXISTS idx_stock_items_current_sqft ON stock_items(current_sqft);
+

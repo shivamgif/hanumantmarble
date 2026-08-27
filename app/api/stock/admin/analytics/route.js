@@ -339,7 +339,7 @@ export async function GET(request) {
              date_trunc('month', COALESCE(s.dispatch_date, s.created_at))::date AS bucket,
              ${salespersonLabelExpr} AS salesperson,
              COALESCE(SUM(COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)), 0) AS total_qty,
-             COALESCE(SUM((GREATEST(COALESCE(osi.loaded_whole_qty, 0) - COALESCE(osi.returned_whole_qty, 0), 0) + GREATEST(COALESCE(osi.loaded_broken_qty, 0) - COALESCE(osi.returned_broken_qty, 0), 0)) * COALESCE(osi.rate_per_unit, 0)), 0) AS total_revenue
+             COALESCE(SUM((GREATEST((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) - (COALESCE(osi.returned_whole_qty, 0) + COALESCE(osi.returned_broken_qty, 0)), 0)) * COALESCE(osi.rate_per_unit, 0)), 0) AS total_revenue
            FROM stock_outbound_shipments s
            LEFT JOIN stock_sales_people sp ON sp.id = s.salesperson_id
            ${salespersonUserJoin}
@@ -365,7 +365,7 @@ export async function GET(request) {
              ${salespersonLabelExpr} AS salesperson,
              COUNT(*)::int AS shipment_count,
              COALESCE(SUM(COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)), 0)::numeric(14,2) AS total_qty,
-             COALESCE(SUM((GREATEST(COALESCE(osi.loaded_whole_qty, 0) - COALESCE(osi.returned_whole_qty, 0), 0) + GREATEST(COALESCE(osi.loaded_broken_qty, 0) - COALESCE(osi.returned_broken_qty, 0), 0)) * COALESCE(osi.rate_per_unit, 0)), 0)::numeric(14,2) AS total_revenue
+             COALESCE(SUM((GREATEST((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) - (COALESCE(osi.returned_whole_qty, 0) + COALESCE(osi.returned_broken_qty, 0)), 0)) * COALESCE(osi.rate_per_unit, 0)), 0)::numeric(14,2) AS total_revenue
            FROM stock_outbound_shipments s
            LEFT JOIN stock_sales_people sp ON sp.id = s.salesperson_id
            ${salespersonUserJoin}
@@ -419,7 +419,7 @@ export async function GET(request) {
            SELECT
              COALESCE(d.name, 'Uncategorized') AS division,
              i.name AS item_name,
-             COALESCE(SUM((GREATEST(COALESCE(osi.loaded_whole_qty, 0) - COALESCE(osi.returned_whole_qty, 0), 0) + GREATEST(COALESCE(osi.loaded_broken_qty, 0) - COALESCE(osi.returned_broken_qty, 0), 0)) * COALESCE(osi.rate_per_unit, 0)), 0) AS revenue
+             COALESCE(SUM((GREATEST((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) - (COALESCE(osi.returned_whole_qty, 0) + COALESCE(osi.returned_broken_qty, 0)), 0)) * COALESCE(osi.rate_per_unit, 0)), 0) AS revenue
            FROM stock_outbound_shipments s
            JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = s.id
            JOIN stock_items i ON i.id = osi.item_id
@@ -440,7 +440,7 @@ export async function GET(request) {
              COALESCE(d.name, 'Uncategorized') AS division,
              COUNT(DISTINCT s.id)::int AS shipment_count,
              COALESCE(SUM(COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)), 0)::numeric(14,2) AS total_qty,
-             COALESCE(SUM((GREATEST(COALESCE(osi.loaded_whole_qty, 0) - COALESCE(osi.returned_whole_qty, 0), 0) + GREATEST(COALESCE(osi.loaded_broken_qty, 0) - COALESCE(osi.returned_broken_qty, 0), 0)) * COALESCE(osi.rate_per_unit, 0)), 0)::numeric(14,2) AS total_revenue
+             COALESCE(SUM((GREATEST((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) - (COALESCE(osi.returned_whole_qty, 0) + COALESCE(osi.returned_broken_qty, 0)), 0)) * COALESCE(osi.rate_per_unit, 0)), 0)::numeric(14,2) AS total_revenue
            FROM stock_outbound_shipments s
            JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = s.id
            JOIN stock_items i ON i.id = osi.item_id
@@ -574,7 +574,7 @@ export async function GET(request) {
         `WITH actual AS (
            SELECT
              o.salesperson_user_id AS uid,
-             COALESCE(SUM((GREATEST(COALESCE(osi.loaded_whole_qty,0) - COALESCE(osi.returned_whole_qty,0), 0) + GREATEST(COALESCE(osi.loaded_broken_qty,0) - COALESCE(osi.returned_broken_qty,0), 0)) * COALESCE(osi.rate_per_unit,0)), 0) AS rev,
+             COALESCE(SUM((GREATEST((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) - (COALESCE(osi.returned_whole_qty, 0) + COALESCE(osi.returned_broken_qty, 0)), 0)) * COALESCE(osi.rate_per_unit,0)), 0) AS rev,
              COUNT(DISTINCT o.id) AS shipments
            FROM stock_outbound_shipments o
            LEFT JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = o.id
@@ -601,7 +601,7 @@ export async function GET(request) {
            SELECT
              c.id,
              c.name,
-             COALESCE(SUM((GREATEST(COALESCE(osi.loaded_whole_qty,0) - COALESCE(osi.returned_whole_qty,0), 0) + GREATEST(COALESCE(osi.loaded_broken_qty,0) - COALESCE(osi.returned_broken_qty,0), 0)) * COALESCE(osi.rate_per_unit,0)), 0) AS revenue,
+             COALESCE(SUM((GREATEST((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) - (COALESCE(osi.returned_whole_qty, 0) + COALESCE(osi.returned_broken_qty, 0)), 0)) * COALESCE(osi.rate_per_unit,0)), 0) AS revenue,
              COUNT(DISTINCT o.id)::int AS shipments
            FROM stock_outbound_shipments o
            JOIN stock_customers c ON c.id = o.customer_id
@@ -646,13 +646,13 @@ export async function GET(request) {
              i.id,
              i.name,
              i.sku,
-             SUM((GREATEST(COALESCE(osi.loaded_whole_qty,0) - COALESCE(osi.returned_whole_qty,0), 0) + GREATEST(COALESCE(osi.loaded_broken_qty,0) - COALESCE(osi.returned_broken_qty,0), 0)) * COALESCE(osi.rate_per_unit,0)) AS revenue
+             SUM((GREATEST((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) - (COALESCE(osi.returned_whole_qty, 0) + COALESCE(osi.returned_broken_qty, 0)), 0)) * COALESCE(osi.rate_per_unit,0)) AS revenue
            FROM stock_outbound_shipment_items osi
            JOIN stock_outbound_shipments o ON o.id = osi.outbound_shipment_id
            JOIN stock_items i ON i.id = osi.item_id
            WHERE COALESCE(o.dispatch_date, o.created_at)::date BETWEEN $1::date AND $2::date
            GROUP BY i.id, i.name, i.sku
-           HAVING SUM((GREATEST(COALESCE(osi.loaded_whole_qty,0) - COALESCE(osi.returned_whole_qty,0), 0) + GREATEST(COALESCE(osi.loaded_broken_qty,0) - COALESCE(osi.returned_broken_qty,0), 0)) * COALESCE(osi.rate_per_unit,0)) > 0
+           HAVING SUM((GREATEST((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) - (COALESCE(osi.returned_whole_qty, 0) + COALESCE(osi.returned_broken_qty, 0)), 0)) * COALESCE(osi.rate_per_unit,0)) > 0
          ), ranked AS (
            SELECT
              id,
@@ -685,8 +685,8 @@ export async function GET(request) {
          ), sales AS (
            SELECT
              date_trunc('month', COALESCE(o.dispatch_date, o.created_at))::date AS bucket,
-             SUM((GREATEST(COALESCE(osi.loaded_whole_qty,0) - COALESCE(osi.returned_whole_qty,0), 0) + GREATEST(COALESCE(osi.loaded_broken_qty,0) - COALESCE(osi.returned_broken_qty,0), 0)) * COALESCE(osi.rate_per_unit,0)) AS revenue,
-             SUM((GREATEST(COALESCE(osi.loaded_whole_qty,0) - COALESCE(osi.returned_whole_qty,0), 0) + GREATEST(COALESCE(osi.loaded_broken_qty,0) - COALESCE(osi.returned_broken_qty,0), 0)) * COALESCE(NULLIF(i.landed_cost,0), NULLIF(i.purchase_price,0), 0)) AS cost
+             SUM((GREATEST((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) - (COALESCE(osi.returned_whole_qty, 0) + COALESCE(osi.returned_broken_qty, 0)), 0)) * COALESCE(osi.rate_per_unit,0)) AS revenue,
+             SUM((GREATEST((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) - (COALESCE(osi.returned_whole_qty, 0) + COALESCE(osi.returned_broken_qty, 0)), 0)) * COALESCE(NULLIF(i.landed_cost,0), NULLIF(i.purchase_price,0), 0)) AS cost
            FROM stock_outbound_shipments o
            JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = o.id
            JOIN stock_items i ON i.id = osi.item_id

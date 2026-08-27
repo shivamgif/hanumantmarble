@@ -3,15 +3,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Download, ChevronRight, PackageCheck, Plus, Search, Package, Boxes } from 'lucide-react';
+import { Download, ChevronRight, PackageCheck, Plus, Search, Package, Boxes, Layers } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
-import { bagArrivalFormSchema } from '@/lib/forms/stock-forms';
-import { ArrivalFormContent, BagArrivalFormContent } from './arrival-form';
-import { createBagArrivalItemRow, createInitialBagArrivalDraft, formatDateTime, getGeneratedByRoleLabel, getStatusVariant, CLASSES, FORM_INPUT_CLASS, toNumber, trimText, fetchShipmentDetails, invalidateShipmentCache, exportToCSV, EXPORT_PERIOD_PRESETS, filterRowsByPeriod } from '../lib/stock-utils';
+import { bagArrivalFormSchema, stoneArrivalFormSchema } from '@/lib/forms/stock-forms';
+import { ArrivalFormContent, BagArrivalFormContent, StoneArrivalFormContent } from './arrival-form';
+import { createStoneArrivalItemRow, createInitialStoneArrivalDraft, createBagArrivalItemRow, createInitialBagArrivalDraft, formatDateTime, getGeneratedByRoleLabel, getStatusVariant, CLASSES, FORM_INPUT_CLASS, toNumber, trimText, fetchShipmentDetails, invalidateShipmentCache, exportToCSV, EXPORT_PERIOD_PRESETS, filterRowsByPeriod } from '../lib/stock-utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -166,6 +166,101 @@ export function PurchasesPanel({
       bagArrivalForm.setValue(`items.${index}.itemId`, '', { shouldDirty: true });
     }
   }, [bagArrivalForm, activeItems]);
+
+  // ---- Stone purchases (traded by total sqft) ----
+  const [stoneNotice, setStoneNotice] = useState(null);
+  const [stoneSubmitting, setStoneSubmitting] = useState(false);
+  const [stoneAttachments, setStoneAttachments] = useState({});
+  const setStoneAttachment = useCallback((key, file) => setStoneAttachments((prev) => ({ ...prev, [key]: file })), []);
+
+  const stoneArrivalForm = useForm({
+    resolver: zodResolver(stoneArrivalFormSchema),
+    defaultValues: createInitialStoneArrivalDraft(),
+  });
+  const stoneArrivalItemsFieldArray = useFieldArray({ control: stoneArrivalForm.control, name: 'items' });
+
+  const handleStoneArrivalItemNameChange = useCallback((index, value) => {
+    stoneArrivalForm.setValue(`items.${index}.itemName`, value, { shouldDirty: true, shouldValidate: true });
+    const stoneItems = (activeItems || []).filter((i) => i.unit_of_measure === 'sqft');
+    const matched = stoneItems.find((i) => (i.name || '').toLowerCase() === String(value || '').toLowerCase());
+    if (matched) {
+      const current = stoneArrivalForm.getValues(`items.${index}`);
+      stoneArrivalForm.setValue(`items.${index}`, {
+        ...current,
+        itemId: String(matched.id),
+        brandName: matched.brand_name || current.brandName,
+        typeName: matched.type_name || current.typeName,
+        ratePerSqft: matched.rate_per_sqft != null ? String(matched.rate_per_sqft) : current.ratePerSqft,
+        // Slab size differs every delivery — prefill the last one as a hint only.
+        sizeLabel: matched.last_slab_size_label || current.sizeLabel,
+        hsnCode: matched.hsn_code || current.hsnCode,
+        description: matched.description || current.description,
+      }, { shouldDirty: true, shouldValidate: true });
+    } else {
+      stoneArrivalForm.setValue(`items.${index}.itemId`, '', { shouldDirty: true });
+    }
+  }, [stoneArrivalForm, activeItems]);
+
+  const handleStoneArrivalSubmit = useCallback(async (values) => {
+    setStoneNotice(null);
+    setStoneSubmitting(true);
+    try {
+      const items = values.items.map((item) => ({
+        ...item,
+        itemCategory: 'stone',
+        qtySqft: toNumber(item.qtySqft),
+        ratePerSqft: toNumber(item.ratePerSqft),
+        thicknessMm: item.thicknessMm === '' ? null : toNumber(item.thicknessMm),
+        itemName: trimText(item.itemName),
+        brandName: trimText(item.brandName),
+        typeName: trimText(item.typeName),
+        sizeLabel: trimText(item.sizeLabel),
+        hsnCode: trimText(item.hsnCode),
+        description: trimText(item.description),
+        discountAmount: item.discountAmount === '' ? 0 : toNumber(item.discountAmount),
+        notes: trimText(item.notes),
+      }));
+
+      const payload = {
+        ...values,
+        items,
+        transportCost: values.transportCost === '' ? 0 : toNumber(values.transportCost),
+        laborCost: values.laborCost === '' ? 0 : toNumber(values.laborCost),
+        handlingCostPercent: values.handlingCostPercent === '' ? 0 : toNumber(values.handlingCostPercent),
+        fuelCostPercent: values.fuelCostPercent === '' ? 0 : toNumber(values.fuelCostPercent),
+        // Stone is taxed at 5%.
+        gstPercent: values.gstPercent === '' ? 5 : toNumber(values.gstPercent),
+        freightWeightKg: values.freightWeightKg === '' ? null : toNumber(values.freightWeightKg),
+        discountAmount: values.discountAmount === '' ? 0 : toNumber(values.discountAmount),
+      };
+
+      const response = await fetch('/api/stock/inbound-shipments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || 'Failed to submit stone purchase');
+      if (json.shipment?.id) invalidateShipmentCache('arrival', json.shipment.id);
+      if (onRefreshData) await onRefreshData();
+      const msg = `Stone purchase ${json.shipment?.shipment_number} submitted.`;
+      setStoneNotice({ type: 'success', message: msg });
+      if (onToast) onToast({ type: 'success', message: msg });
+
+      setStoneAttachments({});
+      stoneArrivalForm.reset(createInitialStoneArrivalDraft());
+      setArrivalSheetOpen(false);
+    } catch (err) {
+      setStoneNotice({ type: 'error', message: err.message });
+      if (onToast) onToast({ type: 'error', message: err.message });
+    } finally {
+      setStoneSubmitting(false);
+    }
+  }, [stoneArrivalForm, setArrivalSheetOpen, onRefreshData, onToast]);
+
+  const handleStoneArrivalInvalid = useCallback(() => {
+    setStoneNotice({ type: 'error', message: 'Please fix the highlighted errors.' });
+  }, []);
 
   const handleBagArrivalSubmit = useCallback(async (values) => {
     setBagNotice(null);
@@ -328,7 +423,7 @@ export function PurchasesPanel({
               </span>
             </div>
           </div>
-          <Sheet open={arrivalSheetOpen} onOpenChange={(open) => { setArrivalSheetOpen(open); if (!open) { if (setEditingBagArrivalId) setEditingBagArrivalId(null); bagArrivalForm.reset(createInitialBagArrivalDraft()); setPurchaseType('tile'); setBagNotice(null); } }}>
+          <Sheet open={arrivalSheetOpen} onOpenChange={(open) => { setArrivalSheetOpen(open); if (!open) { if (setEditingBagArrivalId) setEditingBagArrivalId(null); bagArrivalForm.reset(createInitialBagArrivalDraft()); stoneArrivalForm.reset(createInitialStoneArrivalDraft()); setPurchaseType('tile'); setBagNotice(null); setStoneNotice(null); } }}>
 
             <SheetContent side="right" className="w-full max-w-none overflow-y-auto bg-white dark:bg-slate-950 md:w-[80vw] lg:w-[70vw] xl:w-[62vw] 2xl:w-[55vw] md:max-w-[1100px]">
               <SheetHeader className="border-b border-border pb-4">
@@ -355,6 +450,14 @@ export function PurchasesPanel({
                       <Package className="h-3 w-3" />
                       Bags
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => { setPurchaseType('stone'); stoneArrivalForm.reset(createInitialStoneArrivalDraft()); }}
+                      className={`inline-flex items-center gap-1.5 px-10 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors ${purchaseType === 'stone' ? 'bg-sky-500 text-white shadow' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    >
+                      <Layers className="h-3 w-3" />
+                      Stone
+                    </button>
                   </div>
               </SheetHeader>
               {purchaseType === 'tile' ? (
@@ -376,6 +479,23 @@ export function PurchasesPanel({
                   t={t}
                   tc={tc}
                   language={language}
+                />
+              ) : purchaseType === 'stone' ? (
+                <StoneArrivalFormContent
+                  form={stoneArrivalForm}
+                  itemsFieldArray={stoneArrivalItemsFieldArray}
+                  attachments={stoneAttachments}
+                  setAttachment={setStoneAttachment}
+                  onSubmit={handleStoneArrivalSubmit}
+                  onInvalid={handleStoneArrivalInvalid}
+                  submitting={stoneSubmitting}
+                  notice={stoneNotice}
+                  suggestions={suggestions}
+                  activeItems={activeItems}
+                  onItemNameChange={handleStoneArrivalItemNameChange}
+                  onAddItem={() => stoneArrivalItemsFieldArray.append(createStoneArrivalItemRow())}
+                  t={t}
+                  tc={tc}
                 />
               ) : (
                 <BagArrivalFormContent

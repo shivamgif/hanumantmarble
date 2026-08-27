@@ -134,8 +134,9 @@ async function resolveAndEnforceDivisions(body) {
     names = body.division ? [body.division] : [];
   }
 
-  // Always include Adhesive
-  names = ['Adhesive', ...names];
+  // Always include Adhesive and Stone — both are their own division, but every
+  // salesperson is allowed to sell them.
+  names = ['Adhesive', 'Stone', ...names];
 
   return resolveDivisionIds(names);
 }

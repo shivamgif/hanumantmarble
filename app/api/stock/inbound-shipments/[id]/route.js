@@ -4,6 +4,7 @@ import { sql, withTransaction } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { computeInboundTotals } from '@/lib/stock-pricing';
 import { recomputeInboundShipmentTotals } from '@/lib/stock-inbound-recompute';
+import { toPositiveSqft, sqftLineTotal } from '@/lib/stock-sqft';
 
 function computeSqmValues(item, size) {
   const widthMm = size?.width_mm;
@@ -144,8 +145,10 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
       throw new Error('Shipment not found');
     }
 
+    const receiveCaps = await getStockSchemaCapabilities();
     const itemRows = await tx(
       `SELECT isi.*, i.sku, i.name AS item_name, b.name AS brand_name, i.current_whole_qty, i.current_broken_qty,
+              ${receiveCaps.hasStoneSqft ? 'i.current_sqft' : '0 AS current_sqft'},
               COALESCE(d.name, 'Adhesive') AS department
        FROM stock_inbound_shipment_items isi
        JOIN stock_items i ON i.id = isi.item_id
@@ -163,6 +166,59 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
     const batchPromises = [];
 
     for (const item of itemRows) {
+      // Stone arrives as total sqft (fractional) and leaves received_whole_qty
+      // at 0, so the whole/broken branches below no-op for it.
+      const receivedSqft = receiveCaps.hasStoneSqft ? toPositiveSqft(item.received_qty_sqft) : 0;
+      if (receivedSqft > 0) {
+        batchPromises.push(tx(
+          `UPDATE stock_items
+           SET current_sqft = current_sqft + $1,
+               updated_at = NOW()
+           WHERE id = $2`,
+          [receivedSqft, item.item_id]
+        ));
+
+        batchPromises.push(tx(
+          `INSERT INTO stock_inventory_lots (
+            lot_number, item_id, location_id, source_type, source_table, source_id,
+            tile_condition, quantity_received, quantity_available, quantity_reserved,
+            quantity_sqft,
+            unit_cost, landed_cost, received_at, qc_status, notes, created_by
+          ) VALUES ($1,$2,$3,'purchase','stock_inbound_shipments',$4,'whole',0,0,0,$5,$6,$7,NOW(),'passed',$8,$9)`,
+          [
+            `LOT-${shipment.shipment_number}-${item.id}-S`,
+            item.item_id,
+            null,
+            shipment.id,
+            receivedSqft,
+            item.cost_per_sqft ?? item.unit_cost,
+            item.landed_cost,
+            `Approved from shipment ${shipment.shipment_number}`,
+            session.user.email,
+          ]
+        ));
+
+        batchPromises.push(tx(
+          `INSERT INTO stock_movements (
+            movement_number, movement_type, direction, item_id, inventory_lot_id,
+            quantity, quantity_sqft, tile_condition, unit_cost, labour_cost, transport_cost,
+            source_type, source_id, reference_number, notes, created_by
+          ) VALUES ($1,'purchase_receive','in',$2,NULL,0,$3,'whole',$4,$5,$6,'inbound_shipment',$7,$8,$9,$10)`,
+          [
+            `MOV-${shipment.shipment_number}-${item.id}-S`,
+            item.item_id,
+            receivedSqft,
+            item.cost_per_sqft ?? item.unit_cost,
+            shipment.unloading_labour_cost || 0,
+            shipment.delivery_cost || 0,
+            shipment.id,
+            shipment.invoice_number || shipment.shipment_number,
+            `Inbound stone (sqft) approved for shipment ${shipment.shipment_number}`,
+            session.user.email,
+          ]
+        ));
+      }
+
       if (item.received_whole_qty > 0) {
         batchPromises.push(tx(
           `UPDATE stock_items

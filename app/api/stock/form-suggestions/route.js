@@ -42,6 +42,8 @@ export async function GET(request) {
       paymentModes,
       bagTypes,
       bagItems,
+      stoneTypes,
+      stoneItems,
       salespersons,
     ] = await Promise.allSettled([
       sql('SELECT DISTINCT name FROM stock_suppliers WHERE name IS NOT NULL ORDER BY name', []),
@@ -70,6 +72,12 @@ export async function GET(request) {
         : Promise.resolve([]),
       schemaCaps.hasStockTypesCategory
         ? sql(`SELECT DISTINCT i.name AS bag_item_name FROM stock_items i JOIN stock_types t ON t.id = i.type_id WHERE t.category = 'bag' AND i.is_active = true ORDER BY i.name`, [])
+        : Promise.resolve([]),
+      schemaCaps.hasStockTypesCategory
+        ? sql(`SELECT name AS stone_type FROM stock_types WHERE category = 'stone' AND is_active = true ORDER BY name`, [])
+        : Promise.resolve([]),
+      schemaCaps.hasStockTypesCategory
+        ? sql(`SELECT DISTINCT i.name AS stone_item_name FROM stock_items i JOIN stock_types t ON t.id = i.type_id WHERE t.category = 'stone' AND i.is_active = true ORDER BY i.name`, [])
         : Promise.resolve([]),
       sql(
         `SELECT
@@ -106,6 +114,8 @@ export async function GET(request) {
         paymentMode: pick(paymentModes, 'payment_mode'),
         bagType: pick(bagTypes, 'bag_type'),
         bagItemName: pick(bagItems, 'bag_item_name'),
+        stoneType: pick(stoneTypes, 'stone_type'),
+        stoneItemName: pick(stoneItems, 'stone_item_name'),
         salespersonName: pick(salespersons, 'salesperson_name'),
         salespersons: salespersons?.status === 'fulfilled'
           ? salespersons.value.map((row) => ({

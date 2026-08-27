@@ -46,6 +46,8 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
                 { id: 'broken', label: 'Broken Qty', value: (row) => row.current_broken_qty || '0' },
                 { id: 'broken_piece_remainder', label: 'Broken Piece Remainder', value: (row) => row.current_broken_piece_remainder || '0' },
                 { id: 'bags', label: 'Bags Qty', value: (row) => row.unit_of_measure === 'bag' ? row.current_whole_qty : '0' },
+                { id: 'sqft', label: 'Sqft Left', value: (row) => row.unit_of_measure === 'sqft' ? Number(row.current_sqft || 0) : '0' },
+                { id: 'slab_size', label: 'Last Slab Size', value: (row) => row.last_slab_size_label || '' },
                 { id: 'reorder', label: 'Reorder Level', value: (row) => row.reorder_level || '0' },
               ];
               exportToCSV(`Inventory_Export_${dateStr}.csv`, pagination.allRows, columns);
@@ -139,6 +141,14 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
                       <div className="text-xs font-bold text-slate-400">
                         {item.weight_per_unit_kg ? `${item.weight_per_unit_kg} kg/bag` : item.type_name || '—'}
                       </div>
+                    ) : item.unit_of_measure === 'sqft' ? (
+                      // Slab size varies per delivery, so label it as the last one received.
+                      <div className="text-xs font-bold text-slate-400">
+                        {item.last_slab_size_label || item.type_name || '—'}
+                        {item.last_slab_size_label && (
+                          <span className="ml-1 text-[9px] font-bold text-slate-500/70 uppercase">last</span>
+                        )}
+                      </div>
                     ) : (
                       <div className="text-xs font-bold text-slate-400">{item.size_label}</div>
                     )}
@@ -148,6 +158,11 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
                       <div className="tabular-nums text-xs font-black text-amber-500">
                         {item.current_whole_qty}
                         <span className="ml-1 text-[9px] font-bold text-amber-400/70 uppercase">bags</span>
+                      </div>
+                    ) : item.unit_of_measure === 'sqft' ? (
+                      <div className="tabular-nums text-xs font-black text-sky-500">
+                        {Number(item.current_sqft || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                        <span className="ml-1 text-[9px] font-bold text-sky-400/70 uppercase">sqft</span>
                       </div>
                     ) : (
                       <div className="tabular-nums text-xs font-black text-slate-900 dark:text-white">
@@ -161,7 +176,7 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {item.unit_of_measure === 'bag' ? (
+                    {item.unit_of_measure === 'bag' || item.unit_of_measure === 'sqft' ? (
                       <div className="tabular-nums text-xs text-slate-400 opacity-30">—</div>
                     ) : (
                       <div className={`tabular-nums text-xs font-black ${item.current_broken_qty > 0 ? 'text-amber-500' : 'text-slate-500 opacity-30'}`}>

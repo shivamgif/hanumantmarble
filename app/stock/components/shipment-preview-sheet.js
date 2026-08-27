@@ -133,6 +133,7 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
 
   const stockSections = useMemo(() => {
     const isBagItem = previewState.record?.unit_of_measure === 'bag';
+    const isStoneItem = previewState.record?.unit_of_measure === 'sqft';
     return previewState.kind === 'stock'
     ? [
       {
@@ -147,10 +148,17 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
                 label: isBagItem ? tc.weightPerBag : tc.size,
                 value: isBagItem
                   ? (previewState.record?.weight_per_unit_kg ? `${previewState.record.weight_per_unit_kg} kg/bag` : previewState.record?.type_name || '—')
+                  : isStoneItem
+                  ? (previewState.record?.last_slab_size_label || previewState.record?.type_name || '—')
                   : previewState.record?.size_label,
               },
-              { label: isBagItem ? tc.qtyBags : tc.wholeQty, value: previewState.record?.current_whole_qty },
-              ...(!isBagItem ? [{ label: tc.brokenQty, value: previewState.record?.current_broken_qty }] : []),
+              {
+                label: isBagItem ? tc.qtyBags : isStoneItem ? (tc.sqftLeft ?? 'Sqft Left') : tc.wholeQty,
+                value: isStoneItem
+                  ? Number(previewState.record?.current_sqft || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })
+                  : previewState.record?.current_whole_qty,
+              },
+              ...(!isBagItem && !isStoneItem ? [{ label: tc.brokenQty, value: previewState.record?.current_broken_qty }] : []),
               { label: tc.reorderLevel, value: previewState.record?.reorder_level },
             ]}
           />

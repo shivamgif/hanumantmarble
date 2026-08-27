@@ -40,6 +40,8 @@ export function createDispatchItemRow() {
     returnBrokenQty: '',
     qtyBags: '',
     returnQtyBags: '',
+    qtySqft: '',
+    returnQtySqft: '',
   };
 }
 
@@ -135,6 +137,57 @@ export function createInitialBagDispatchDraft() {
     items: [createBagDispatchItemRow()],
   };
 }
+
+export function createStoneArrivalItemRow() {
+  return {
+    itemCategory: 'stone',
+    itemId: '',
+    itemName: '',
+    brandName: '',
+    typeName: '',
+    sizeLabel: '',
+    qtySqft: '',
+    ratePerSqft: '',
+    thicknessMm: '',
+    hsnCode: '',
+    description: '',
+    discountAmount: '',
+    notes: '',
+  };
+}
+
+
+export function createInitialStoneArrivalDraft() {
+  const now = new Date();
+  const dateStr = now.toISOString().split('T')[0];
+
+  return {
+    supplierName: '',
+    truckLicensePlate: '',
+    driverName: '',
+    invoiceNumber: '',
+    invoiceDate: dateStr,
+    originCity: '',
+    destinationWarehouseName: '',
+    paymentStatus: 'unpaid',
+    paidAmount: '',
+    paymentDate: '',
+    paymentReference: '',
+    paymentMode: '',
+    transporterName: '',
+    transportCost: '',
+    laborCost: '',
+    handlingCostPercent: '0',
+    fuelCostPercent: '0',
+    // Stone is taxed at 5%, tiles at 18%.
+    gstPercent: '5.0',
+    freightWeightKg: '',
+    discountAmount: '',
+    notes: '',
+    items: [createStoneArrivalItemRow()],
+  };
+}
+
 
 export function createInitialArrivalDraft() {
   const now = new Date();

@@ -8,6 +8,7 @@ import {
   computePieceDecrement,
   computePieceIncrement,
 } from '@/lib/stock-piece-balance';
+import { toSqft, toPositiveSqft, assertSqftAvailable } from '@/lib/stock-sqft';
 
 async function loadShipmentWithItems(id) {
   const schemaCaps = await getStockSchemaCapabilities();
@@ -52,7 +53,7 @@ async function loadShipmentWithItems(id) {
               SUM(loaded_broken_qty) AS total_broken_qty,
               SUM(returned_whole_qty) AS total_return_whole_qty,
               SUM(returned_broken_qty) AS total_return_broken_qty,
-              COALESCE(SUM((GREATEST(COALESCE(loaded_whole_qty, 0) - COALESCE(returned_whole_qty, 0), 0) + GREATEST(COALESCE(loaded_broken_qty, 0) - COALESCE(returned_broken_qty, 0), 0)) * COALESCE(rate_per_unit, 0)), 0) AS total_selling_price_excl
+              COALESCE(SUM((GREATEST((COALESCE(loaded_whole_qty, 0) + COALESCE(loaded_broken_qty, 0)) - (COALESCE(returned_whole_qty, 0) + COALESCE(returned_broken_qty, 0)), 0)) * COALESCE(rate_per_unit, 0)), 0) AS total_selling_price_excl
        FROM stock_outbound_shipment_items
        WHERE outbound_shipment_id = $1
        GROUP BY outbound_shipment_id
@@ -230,9 +231,11 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
       throw new Error('Shipment not found');
     }
 
+    const issueCaps = await getStockSchemaCapabilities();
     const items = await tx(
       `SELECT soi.*, i.sku, i.name AS item_name, i.unit_of_measure,
               i.current_whole_qty, i.current_broken_qty,
+              ${issueCaps.hasStoneSqft ? 'i.current_sqft' : '0 AS current_sqft'},
               i.pieces_per_box, i.current_piece_remainder, i.current_broken_piece_remainder
        FROM stock_outbound_shipment_items soi
        JOIN stock_items i ON i.id = soi.item_id
@@ -251,6 +254,29 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
     for (const item of items) {
       const wholeToIssue = toPositiveInteger(item.loaded_whole_qty);
       const brokenToIssue = toPositiveInteger(item.loaded_broken_qty);
+      // Stone rows carry their quantity in qty_sqft and leave loaded_whole_qty
+      // at 0, so the piece/box branches below no-op for them.
+      const sqftToIssue = issueCaps.hasStoneSqft ? toPositiveSqft(item.qty_sqft) : 0;
+
+      if (sqftToIssue > 0) {
+        assertSqftAvailable({
+          requested: sqftToIssue,
+          available: item.current_sqft,
+          sku: item.sku,
+        });
+        const sqftUpdateRows = await tx(
+          `UPDATE stock_items
+             SET current_sqft = current_sqft - $1,
+                 updated_at = NOW()
+           WHERE id = $2
+             AND current_sqft >= $1
+           RETURNING id`,
+          [sqftToIssue, item.item_id]
+        );
+        if (!sqftUpdateRows[0]) {
+          throw new Error(`Insufficient stock for ${item.sku}. Race condition detected.`);
+        }
+      }
 
       if (wholeToIssue > 0) {
         const ppb = Number(item.pieces_per_box || 0);
@@ -612,9 +638,11 @@ export async function PATCH(request, context) {
           throw err;
         }
 
+        const editCaps = await getStockSchemaCapabilities();
         const currentItems = await tx(
           `SELECT soi.id, soi.item_id, soi.loaded_whole_qty, soi.loaded_broken_qty,
                   soi.returned_whole_qty, soi.returned_broken_qty, soi.sell_unit,
+                  ${editCaps.hasStoneSqft ? 'soi.qty_sqft, soi.returned_qty_sqft, i.current_sqft' : '0 AS qty_sqft, 0 AS returned_qty_sqft, 0 AS current_sqft'},
                   i.pieces_per_box, i.current_whole_qty, i.current_piece_remainder,
                   i.current_broken_qty, i.current_broken_piece_remainder
            FROM stock_outbound_shipment_items soi
@@ -635,6 +663,11 @@ export async function PATCH(request, context) {
           throw err;
         }
 
+        // A return lowers what the bill is worth. If it was already settled, the
+        // difference is now owed back to the customer, so the bill stops being
+        // "paid" until someone confirms the refund with the existing Mark Paid.
+        let creditedBack = false;
+
         for (const it of body.items) {
           const existingRow = byItemId.get(Number(it.itemId));
           if (!existingRow) continue;
@@ -642,6 +675,47 @@ export async function PATCH(request, context) {
           const loadedWhole = Number(existingRow.loaded_whole_qty || 0);
           const loadedBroken = Number(existingRow.loaded_broken_qty || 0);
           const isBagItem = it.itemCategory === 'bag';
+          const isStoneItem = editCaps.hasStoneSqft
+            && (it.itemCategory === 'stone' || toSqft(existingRow.qty_sqft) > 0);
+
+          // Stone returns are fractional sqft and move current_sqft, not the
+          // integer box/piece columns. Handled here, then `continue` — the
+          // piece/box delta logic below does not apply.
+          if (isStoneItem) {
+            const loadedSqft = toSqft(existingRow.qty_sqft);
+            const newSqftReturn = toPositiveSqft(it.returnQtySqft ?? it.returnWholeQty);
+            if (newSqftReturn > loadedSqft) {
+              const err = new Error(`Return qty ${newSqftReturn} sqft exceeds loaded ${loadedSqft} sqft`);
+              err.statusCode = 400;
+              throw err;
+            }
+            const deltaSqft = toSqft(newSqftReturn - toSqft(existingRow.returned_qty_sqft));
+            if (deltaSqft > 0) creditedBack = true;
+            if (deltaSqft !== 0) {
+              const rows = await tx(
+                `UPDATE stock_items
+                   SET current_sqft = current_sqft + $1,
+                       updated_at = NOW()
+                 WHERE id = $2
+                   AND current_sqft + $1 >= 0
+                 RETURNING id`,
+                [deltaSqft, existingRow.item_id]
+              );
+              if (!rows[0]) {
+                const err = new Error(`Stock adjustment for item ${existingRow.item_id} would go negative`);
+                err.statusCode = 400;
+                throw err;
+              }
+            }
+            await tx(
+              `UPDATE stock_outbound_shipment_items
+                 SET returned_qty_sqft = $1, updated_at = NOW()
+               WHERE id = $2`,
+              [newSqftReturn, existingRow.id]
+            );
+            continue;
+          }
+
           const newWholeReturn = isBagItem
             ? toPositiveInteger(it.returnQtyBags ?? it.returnWholeQty)
             : toPositiveInteger(it.returnWholeQty);
@@ -671,8 +745,12 @@ export async function PATCH(request, context) {
             err.statusCode = 400;
             throw err;
           }
-          if (newBrokenReturn > loadedBroken) {
-            const err = new Error(`Return broken qty ${newBrokenReturn} exceeds loaded ${loadedBroken}`);
+          // A tile loaded whole can come back broken (damaged in transit), so the
+          // broken return is capped against the whole+broken total, not against
+          // loaded_broken alone. Only the reverse is impossible: broken tiles
+          // cannot come back whole, which the newWholeReturn cap above still blocks.
+          if (newWholeReturn + newBrokenReturn > loadedWhole + loadedBroken) {
+            const err = new Error(`Return qty ${newWholeReturn + newBrokenReturn} exceeds loaded ${loadedWhole + loadedBroken}`);
             err.statusCode = 400;
             throw err;
           }
@@ -681,6 +759,7 @@ export async function PATCH(request, context) {
           const oldBrokenReturn = Number(existingRow.returned_broken_qty || 0);
           const deltaWhole = newWholeReturn - oldWholeReturn;
           const deltaBroken = newBrokenReturn - oldBrokenReturn;
+          if (deltaWhole > 0 || deltaBroken > 0) creditedBack = true;
 
           if (deltaWhole !== 0) {
             const ppb = Number(existingRow.pieces_per_box || 0);
@@ -885,6 +964,15 @@ export async function PATCH(request, context) {
               [newWholeReturn, newBrokenReturn, existingRow.id]
             );
           }
+        }
+
+        if (creditedBack) {
+          await tx(
+            `UPDATE stock_outbound_shipments
+               SET payment_status = 'partial', updated_at = NOW()
+             WHERE id = $1 AND payment_status = 'paid'`,
+            [id]
+          );
         }
 
         const shipmentRows = await tx(

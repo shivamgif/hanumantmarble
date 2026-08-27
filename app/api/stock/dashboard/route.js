@@ -31,6 +31,21 @@ export async function GET(request) {
     const ratePerBagSelect = schemaCaps.hasStockItemsRatePerBag
       ? 'i.rate_per_bag'
       : 'NULL::numeric AS rate_per_bag';
+    // Stone stock lives in current_sqft, not current_whole_qty — without these
+    // the stock screen would report 0 for every stone item.
+    const sqftSelect = schemaCaps.hasStoneSqft
+      ? `i.current_sqft,
+           i.rate_per_sqft,
+           (SELECT isi.slab_size_label FROM stock_inbound_shipment_items isi
+              WHERE isi.item_id = i.id AND isi.slab_size_label IS NOT NULL
+              ORDER BY isi.id DESC LIMIT 1) AS last_slab_size_label`
+      : `0::numeric AS current_sqft,
+           NULL::numeric AS rate_per_sqft,
+           NULL::text AS last_slab_size_label`;
+    // Lowest-stock-first must rank stone by sqft, not by an always-zero box count.
+    const stockLevelOrder = schemaCaps.hasStoneSqft
+      ? 'COALESCE(i.current_whole_qty, 0) + COALESCE(i.current_broken_qty, 0) + COALESCE(i.current_sqft, 0)'
+      : 'COALESCE(i.current_whole_qty, 0) + COALESCE(i.current_broken_qty, 0)';
 
     const pick = (result, col) => {
       const rows = result?.status === 'fulfilled' ? result.value : [];
@@ -58,6 +73,7 @@ export async function GET(request) {
            i.unit_of_measure,
            ${weightPerUnitSelect},
            ${ratePerBagSelect},
+           ${sqftSelect},
            b.name AS brand_name,
            t.name AS type_name,
            d.name AS division_name,
@@ -78,7 +94,7 @@ export async function GET(request) {
          LEFT JOIN stock_sizes s ON s.id = i.size_id
          WHERE i.is_active = true
          ${salespersonDivisionIds ? 'AND i.division_id = ANY($1::bigint[])' : ''}
-         ORDER BY COALESCE(i.current_whole_qty, 0) + COALESCE(i.current_broken_qty, 0) ASC, i.name ASC`,
+         ORDER BY ${stockLevelOrder} ASC, i.name ASC`,
         salespersonDivisionIds ? [salespersonDivisionIds] : []
       ),
       sql(
@@ -145,8 +161,7 @@ export async function GET(request) {
 
     const currentMonthValuePromise = appUser?.role === 'salesperson' && appUser?.id
       ? sql(
-          `SELECT COALESCE(SUM((GREATEST(COALESCE(soi.loaded_whole_qty, 0) - COALESCE(soi.returned_whole_qty, 0), 0)
-                              + GREATEST(COALESCE(soi.loaded_broken_qty, 0) - COALESCE(soi.returned_broken_qty, 0), 0))
+          `SELECT COALESCE(SUM((GREATEST((COALESCE(soi.loaded_whole_qty, 0) + COALESCE(soi.loaded_broken_qty, 0)) - (COALESCE(soi.returned_whole_qty, 0) + COALESCE(soi.returned_broken_qty, 0)), 0))
                               * COALESCE(soi.rate_per_unit, 0)), 0) AS current_month_dispatch_value
            FROM stock_outbound_shipments s
            JOIN stock_outbound_shipment_items soi ON soi.outbound_shipment_id = s.id

@@ -18,7 +18,8 @@
     "db:migrate-bag-support": "node scripts/migrate-bag-support.mjs",
     "db:migrate-salesperson-salary": "node scripts/migrate-salesperson-salary.mjs",
     "db:migrate-salesperson-multi-division": "node scripts/migrate-salesperson-multi-division.mjs",
-    "db:fix-bag-item-divisions": "node scripts/fix-bag-item-divisions.mjs"
+    "db:fix-bag-item-divisions": "node scripts/fix-bag-item-divisions.mjs",
+    "db:migrate-stone-support": "node --env-file-if-exists=.env.local scripts/migrate-stone-support.mjs"
   },
   "dependencies": {
     "@better-auth/infra": "^0.2.3",

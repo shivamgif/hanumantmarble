@@ -26,15 +26,20 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
   const itemLabel = watch(`items.${index}.itemLabel`);
   const fromBroken = watch(`items.${index}.fromBroken`);
   const isBag = itemCategory === 'bag';
+  // Stone is dispatched by total sqft — no boxes, pieces or broken bucket.
+  const isStone = itemCategory === 'stone';
 
   return (
     <div key={fieldRow.id} className="glass-panel rounded-2xl overflow-hidden group/item">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 bg-slate-900/40 px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className={`h-1.5 w-1.5 rounded-full animate-pulse ${isBag ? 'bg-amber-400' : 'bg-brand-primary'}`} />
+          <span className={`h-1.5 w-1.5 rounded-full animate-pulse ${isBag ? 'bg-amber-400' : isStone ? 'bg-sky-400' : 'bg-brand-primary'}`} />
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-100">{tc?.itemLabel ?? 'Item'} {index + 1}</span>
           {isBag && (
             <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-amber-400">Bag</span>
+          )}
+          {isStone && (
+            <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-sky-400">Stone</span>
           )}
         </div>
         {totalItems > 1 && (
@@ -50,7 +55,7 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
       </div>
       <div className="p-4 space-y-4">
         <div className="grid gap-4 lg:grid-cols-3 items-start">
-          <div className={isBag ? 'lg:col-span-3' : 'lg:col-span-2'}>
+          <div className={isBag || isStone ? 'lg:col-span-3' : 'lg:col-span-2'}>
             <FormField
               control={control}
               name={`items.${index}.itemId`}
@@ -63,7 +68,7 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
                       fallbackLabel={itemLabel}
                       onChange={field.onChange}
                       onBlur={field.onBlur}
-                      onItemSelect={(item) => setValue(`items.${index}.itemCategory`, item.unit_of_measure === 'bag' ? 'bag' : 'tile')}
+                      onItemSelect={(item) => setValue(`items.${index}.itemCategory`, item.unit_of_measure === 'bag' ? 'bag' : item.unit_of_measure === 'sqft' ? 'stone' : 'tile')}
                       items={allItems}
                       placeholder={t('selectItem')}
                     />
@@ -117,7 +122,13 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
             </label>
           )}
         </div>
-        {isBag ? (
+        {isStone ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <StockFormField control={control} name={`items.${index}.qtySqft`} label={tc?.qtySqft ?? 'Qty (Sqft)'} type="number" min="0" step="0.001" placeholder="0" />
+            <StockMoneyField control={control} name={`items.${index}.ratePerUnit`} label={tc?.ratePerSqft ?? 'Rate / Sqft'} />
+            <StockFormField control={control} name={`items.${index}.returnQtySqft`} label={tc?.retSqft ?? 'Return Sqft'} type="number" min="0" step="0.001" placeholder="0" disabled={!canEditReturns} />
+          </div>
+        ) : isBag ? (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <StockFormField control={control} name={`items.${index}.qtyBags`} label={tc?.qtyBags ?? 'Qty (Bags)'} type="number" min="0" placeholder="0" />
             <StockMoneyField control={control} name={`items.${index}.ratePerUnit`} label={tc?.ratePerBag ?? 'Rate / Bag'} />

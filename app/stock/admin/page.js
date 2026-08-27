@@ -1212,7 +1212,9 @@ export default function AdminDashboard() {
     : language === 'hi' ? 'उच्च मात्रा वाले दिन की पहचान करने के लिए पर्याप्त गतिविधि इतिहास की प्रतीक्षा की जा रही है।' : 'Waiting for enough movement history to identify a high-volume day.';
 
   const lowStockCount = (analyticsData?.activeItems || []).filter((item) => {
-    const available = Number(item.current_whole_qty || 0) + Number(item.current_broken_qty || 0);
+    const available = item.unit_of_measure === 'sqft'
+      ? Number(item.current_sqft || 0)
+      : Number(item.current_whole_qty || 0) + Number(item.current_broken_qty || 0);
     const reorder = Number(item.reorder_level || 0);
     return reorder > 0 && available <= reorder;
   }).length;

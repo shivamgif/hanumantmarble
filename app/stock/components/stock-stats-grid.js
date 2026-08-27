@@ -74,6 +74,7 @@ function HeroCard({ stat: m, t, className = '' }) {
                 <span className="tabular-nums text-[11px] font-black text-slate-700 dark:text-white/90">
                   {b.value.toLocaleString()}
                   {b.isBag && <span className="ml-1 text-[8px] font-bold text-amber-400/80 uppercase">bags</span>}
+                  {b.isSqft && <span className="ml-1 text-[8px] font-bold text-sky-400/80 uppercase">sqft</span>}
                 </span>
               </div>
             ))}

@@ -13,6 +13,7 @@ import {
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { computeInboundTotals } from '@/lib/stock-pricing';
+import { toPositiveSqft, sqftLineTotal } from '@/lib/stock-sqft';
 
 function generateSku({ brandName, typeName, sizeLabel, itemName, grade }) {
   const parts = [itemName,grade, typeName, sizeLabel, brandName]
@@ -77,6 +78,7 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
   }
 
   const isBagItem = item.itemCategory === 'bag';
+  const isStoneItem = item.itemCategory === 'stone';
   const schemaCaps = await getStockSchemaCapabilities();
 
   const brand = await upsertNamedRecord({ table: 'stock_brands', value: item.brandName });
@@ -84,14 +86,16 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
   // Upsert the type and capture its id so we can link type_id on stock_items
   const typeRow = await upsertNamedRecord({
     table: 'stock_types',
-    value: item.typeName || (isBagItem ? 'Adhesive' : 'Tile'),
-    extra: schemaCaps.hasStockTypesCategory ? (isBagItem ? { category: 'bag' } : { category: 'tile' }) : {},
+    value: item.typeName || (isBagItem ? 'Adhesive' : isStoneItem ? 'Kota Stone' : 'Tile'),
+    extra: schemaCaps.hasStockTypesCategory
+      ? { category: isBagItem ? 'bag' : isStoneItem ? 'stone' : 'tile' }
+      : {},
   });
 
   let sizeRow = null;
   let division = null;
 
-  if (!isBagItem) {
+  if (!isBagItem && !isStoneItem) {
     sizeRow = await upsertNamedRecord({
       table: 'stock_sizes',
       column: 'label',
@@ -105,7 +109,9 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
     });
   }
 
-  const divisionValue = item.divisionName || item.division || item.department || (isBagItem ? null : item.brandName);
+  const divisionValue = isStoneItem
+    ? 'Stone'
+    : (item.divisionName || item.division || item.department || (isBagItem ? null : item.brandName));
   if (divisionValue) {
     division = await upsertNamedRecord({
       table: 'stock_divisions',
@@ -138,8 +144,8 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
     normalizeText(item.itemName),
     item.finish || null,
     item.grade || null,
-    isBagItem ? 'bag' : (item.unitOfMeasure || 'box'),
-    isBagItem ? null : (item.piecesPerBox || null),
+    isBagItem ? 'bag' : isStoneItem ? 'sqft' : (item.unitOfMeasure || 'box'),
+    (isBagItem || isStoneItem) ? null : (item.piecesPerBox || null),
     item.thicknessMm || null,
   ];
 
@@ -151,6 +157,11 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
   if (schemaCaps.hasStockItemsRatePerBag) {
     columns.push('rate_per_bag');
     values.push(isBagItem ? (item.ratePerBag || null) : null);
+  }
+
+  if (schemaCaps.hasStoneSqft) {
+    columns.push('rate_per_sqft');
+    values.push(isStoneItem ? (item.ratePerSqft || null) : null);
   }
 
   columns.push(
@@ -191,6 +202,10 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
 
   if (schemaCaps.hasStockItemsRatePerBag) {
     updates.push('rate_per_bag = COALESCE(EXCLUDED.rate_per_bag, stock_items.rate_per_bag)');
+  }
+
+  if (schemaCaps.hasStoneSqft) {
+    updates.push('rate_per_sqft = COALESCE(EXCLUDED.rate_per_sqft, stock_items.rate_per_sqft)');
   }
 
   updates.push(
@@ -500,13 +515,16 @@ export async function POST(request) {
     );
 
     const shipment = shipmentRows[0];
+    const schemaCaps = await getStockSchemaCapabilities();
     const insertedItems = [];
     const itemDivisionIds = [];
     const preparedItems = [];
 
     for (const row of items) {
       const isBagRow = row.itemCategory === 'bag';
-      const orderedBoxes = isBagRow ? Number(row.qtyBags || 0) : Number(row.orderedBoxes || 0);
+      const isStoneRow = row.itemCategory === 'stone';
+      const qtySqft = isStoneRow ? toPositiveSqft(row.qtySqft) : 0;
+      const orderedBoxes = isBagRow ? Number(row.qtyBags || 0) : isStoneRow ? 0 : Number(row.orderedBoxes || 0);
       const item = await upsertItemMaster(row, orderedBoxes);
       if (item.division_id) itemDivisionIds.push(item.division_id);
 
@@ -515,7 +533,11 @@ export async function POST(request) {
       let ordered_qty_sqm = null;
       let total_cost = 0;
 
-      if (!isBagRow) {
+      if (isStoneRow) {
+        // Stone: total cost = total sqft x rate per sqft. No sqm derivation —
+        // slab size varies per consignment, so sqft is entered directly.
+        total_cost = sqftLineTotal(qtySqft, row.ratePerSqft);
+      } else if (!isBagRow) {
         const sizeRow = item.size_id
           ? (await sql(`SELECT label, width_mm, length_mm FROM stock_sizes WHERE id = $1 LIMIT 1`, [item.size_id]))[0]
           : null;
@@ -544,6 +566,8 @@ export async function POST(request) {
         row,
         item,
         isBagRow,
+        isStoneRow,
+        qtySqft,
         orderedBoxes,
         whole_qty_sqm,
         broken_qty_sqm,
@@ -566,8 +590,10 @@ export async function POST(request) {
     });
 
     for (const priced of pricing.lines) {
-      const { row, item, isBagRow, orderedBoxes, whole_qty_sqm, broken_qty_sqm, ordered_qty_sqm, total_cost } = priced;
-      const landed_cost = isBagRow
+      const { row, item, isBagRow, isStoneRow, qtySqft, orderedBoxes, whole_qty_sqm, broken_qty_sqm, ordered_qty_sqm, total_cost } = priced;
+      const landed_cost = isStoneRow
+        ? (qtySqft > 0 ? Number((priced.effectiveLineCost / qtySqft).toFixed(2)) : 0)
+        : isBagRow
         ? (orderedBoxes > 0 ? Number((priced.effectiveLineCost / orderedBoxes).toFixed(2)) : 0)
         : (ordered_qty_sqm > 0 ? Number((priced.effectiveLineCost / ordered_qty_sqm).toFixed(2)) : Number(row.landedCost || row.unitPrice || 0));
       const insertResult = await sql(
@@ -590,7 +616,8 @@ export async function POST(request) {
           total_cost,
           discount_amount,
           notes
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+          ${schemaCaps.hasStoneSqft ? ',received_qty_sqft,cost_per_sqft,slab_size_label' : ''}
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18${schemaCaps.hasStoneSqft ? ',$19,$20,$21' : ''})
         RETURNING *`,
         [
           shipment.id,
@@ -599,7 +626,9 @@ export async function POST(request) {
           isBagRow ? orderedBoxes : Number(row.wholeQty || 0),
           isBagRow ? 0 : Number(row.brokenQty || 0),
           Number(row.rejectedQty || 0),
-          isBagRow ? (row.ratePerBag != null ? Number(row.ratePerBag) : 0) : Number(row.unitPrice || 0),
+          isStoneRow
+            ? Number(row.ratePerSqft || 0)
+            : isBagRow ? (row.ratePerBag != null ? Number(row.ratePerBag) : 0) : Number(row.unitPrice || 0),
           landed_cost,
           normalizeText(row.hsnCode) || null,
           whole_qty_sqm,
@@ -611,6 +640,14 @@ export async function POST(request) {
           total_cost,
           priced.lineDiscount,
           row.notes || null,
+          ...(schemaCaps.hasStoneSqft
+            ? [
+                qtySqft,
+                isStoneRow ? Number(row.ratePerSqft || 0) : null,
+                // Slab size differs every delivery — snapshot it on the line.
+                isStoneRow ? (normalizeText(row.sizeLabel) || null) : null,
+              ]
+            : []),
         ]
       );
       insertedItems.push(insertResult[0]);

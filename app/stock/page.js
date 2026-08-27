@@ -880,18 +880,22 @@ export default function StockDashboard() {
         notes: shipment.notes || '',
         items: items.map((item) => {
           const isBag = item.unit_of_measure === 'bag';
+          // Stone carries its quantity in qty_sqft, not loaded_whole_qty.
+          const isStone = item.unit_of_measure === 'sqft';
           return {
             itemId: String(item.item_id),
             itemLabel: item.sku ? `${item.sku} - ${item.item_name}` : (item.item_name || ''),
-            itemCategory: isBag ? 'bag' : 'tile',
-            loadedWholeQty: isBag ? '' : String(item.loaded_whole_qty ?? 0),
+            itemCategory: isBag ? 'bag' : isStone ? 'stone' : 'tile',
+            loadedWholeQty: isBag || isStone ? '' : String(item.loaded_whole_qty ?? 0),
             qtyBags: isBag ? String(item.loaded_whole_qty ?? 0) : '',
-            sellUnit: isBag ? 'bag' : (item.sell_unit || 'box'),
+            qtySqft: isStone ? String(item.qty_sqft ?? 0) : '',
+            returnQtySqft: isStone ? (item.returned_qty_sqft != null ? String(item.returned_qty_sqft) : '') : '',
+            sellUnit: isBag ? 'bag' : isStone ? 'sqft' : (item.sell_unit || 'box'),
             ratePerUnit: item.rate_per_unit != null
               ? String(item.rate_per_unit)
               : (item.rate_per_box != null ? String(item.rate_per_box) : (item.rate_per_bag != null ? String(item.rate_per_bag) : '')),
-            returnWholeQty: isBag ? '' : (item.returned_whole_qty != null ? String(item.returned_whole_qty) : ''),
-            returnBrokenQty: isBag ? '' : (item.returned_broken_qty != null ? String(item.returned_broken_qty) : ''),
+            returnWholeQty: isBag || isStone ? '' : (item.returned_whole_qty != null ? String(item.returned_whole_qty) : ''),
+            returnBrokenQty: isBag || isStone ? '' : (item.returned_broken_qty != null ? String(item.returned_broken_qty) : ''),
             returnQtyBags: isBag ? (item.returned_whole_qty != null ? String(item.returned_whole_qty) : '') : '',
             notes: item.notes || '',
           };
@@ -914,19 +918,23 @@ export default function StockDashboard() {
       const items = values.items
         .map((item) => {
           const isBag = item.itemCategory === 'bag';
+          const isStone = item.itemCategory === 'stone';
+          const flat = isBag || isStone;
           return {
             itemId: trimText(item.itemId),
             itemCategory: item.itemCategory || 'tile',
             isBag,
-            loadedWholeQty: isBag ? 0 : (item.fromBroken ? 0 : toNumber(item.loadedWholeQty)),
-            loadedBrokenQty: isBag ? 0 : (item.fromBroken ? toNumber(item.loadedBrokenQty) : 0),
+            loadedWholeQty: flat ? 0 : (item.fromBroken ? 0 : toNumber(item.loadedWholeQty)),
+            loadedBrokenQty: flat ? 0 : (item.fromBroken ? toNumber(item.loadedBrokenQty) : 0),
             fromBroken: Boolean(item.fromBroken),
             qtyBags: isBag ? toNumber(item.qtyBags) : 0,
-            sellUnit: isBag ? 'bag' : (item.sellUnit || 'box'),
+            qtySqft: isStone ? toNumber(item.qtySqft) : 0,
+            sellUnit: isBag ? 'bag' : isStone ? 'sqft' : (item.sellUnit || 'box'),
             ratePerUnit: item.ratePerUnit == null || item.ratePerUnit === '' ? null : toNumber(item.ratePerUnit),
-            returnWholeQty: isBag ? null : (item.returnWholeQty === '' ? null : toNumber(item.returnWholeQty)),
-            returnBrokenQty: isBag ? null : (item.returnBrokenQty === '' ? null : toNumber(item.returnBrokenQty)),
+            returnWholeQty: flat ? null : (item.returnWholeQty === '' ? null : toNumber(item.returnWholeQty)),
+            returnBrokenQty: flat ? null : (item.returnBrokenQty === '' ? null : toNumber(item.returnBrokenQty)),
             returnQtyBags: isBag ? (item.returnQtyBags === '' ? 0 : toNumber(item.returnQtyBags)) : 0,
+            returnQtySqft: isStone ? (item.returnQtySqft === '' ? 0 : toNumber(item.returnQtySqft)) : 0,
             notes: trimText(item.notes),
           };
         })
@@ -955,11 +963,13 @@ export default function StockDashboard() {
           loadedBrokenQty: item.loadedBrokenQty,
           fromBroken: item.fromBroken,
           qtyBags: item.qtyBags,
+          qtySqft: item.qtySqft,
           sellUnit: item.sellUnit,
           ratePerUnit: item.ratePerUnit,
           returnWholeQty: item.returnWholeQty,
           returnBrokenQty: item.returnBrokenQty,
           returnQtyBags: item.returnQtyBags,
+          returnQtySqft: item.returnQtySqft,
           notes: item.notes || undefined,
         })),
       };
@@ -1032,14 +1042,18 @@ export default function StockDashboard() {
     (data?.activeItems || []).filter((item) => {
       const query = normalizeSearchValue(stockSearch);
       if (!query) return true;
-      return [item.sku, item.name, item.size_label, item.current_whole_qty, item.current_broken_qty, item.reorder_level].some((value) => matchesQuery(value, query));
+      return [item.sku, item.name, item.size_label, item.last_slab_size_label, item.current_whole_qty, item.current_sqft, item.current_broken_qty, item.reorder_level].some((value) => matchesQuery(value, query));
     }),
     stockSort,
     {
       sku: (item) => item.sku || '',
       name: (item) => item.name || '',
       size: (item) => item.size_label || '',
-      whole: (item) => Number(item.current_whole_qty || 0),
+      // Stone rows carry their quantity in current_sqft, so sorting by the
+      // quantity column must fall back to it or every stone row sorts as 0.
+      whole: (item) => item.unit_of_measure === 'sqft'
+        ? Number(item.current_sqft || 0)
+        : Number(item.current_whole_qty || 0),
       broken: (item) => Number(item.current_broken_qty || 0),
       reorder: (item) => Number(item.reorder_level || 0),
     }
@@ -1146,15 +1160,25 @@ export default function StockDashboard() {
     const total = whole + broken;
     const pending = data?.pendingArrivalCount ?? 0;
     const dispatchPending = data?.pendingDispatchCount ?? 0;
-    const risk = items.filter((item) => Number(item.reorder_level || 0) > 0 && (Number(item.current_whole_qty || 0) + Number(item.current_broken_qty || 0)) <= Number(item.reorder_level || 0)).length;
-    // Per-division on-hand split (e.g. Ceramic, Vitrified, Eternity, Adhesive)
+    // Stone is stocked in sqft, so its on-hand level is current_sqft — using the
+    // box columns would report every stone item as 0 and never flag a reorder.
+    const onHand = (item) => item.unit_of_measure === 'sqft'
+      ? Number(item.current_sqft || 0)
+      : Number(item.current_whole_qty || 0) + Number(item.current_broken_qty || 0);
+    const risk = items.filter((item) => Number(item.reorder_level || 0) > 0 && onHand(item) <= Number(item.reorder_level || 0)).length;
+    // Per-division on-hand split (e.g. Ceramic, Vitrified, Eternity, Adhesive, Stone)
     const byDivision = new Map();
     for (const item of items) {
       const name = item.division_name || '—';
-      const qty = Number(item.current_whole_qty || 0) + Number(item.current_broken_qty || 0);
-      const entry = byDivision.get(name) || { label: name, value: 0, isBag: item.unit_of_measure === 'bag' };
-      entry.value += qty;
+      const entry = byDivision.get(name) || {
+        label: name,
+        value: 0,
+        isBag: item.unit_of_measure === 'bag',
+        isSqft: item.unit_of_measure === 'sqft',
+      };
+      entry.value += onHand(item);
       if (item.unit_of_measure === 'bag') entry.isBag = true;
+      if (item.unit_of_measure === 'sqft') entry.isSqft = true;
       byDivision.set(name, entry);
     }
     const breakdown = Array.from(byDivision.values()).sort((a, b) => b.value - a.value);

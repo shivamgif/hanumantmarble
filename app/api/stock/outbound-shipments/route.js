@@ -13,6 +13,7 @@ import {
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { isPieceSale, totalPieces } from '@/lib/stock-piece-balance';
+import { toSqft, toPositiveSqft } from '@/lib/stock-sqft';
 
 function toPositiveInteger(value) {
   const parsed = Number.parseInt(value, 10);
@@ -24,12 +25,16 @@ async function resolveStockItem(item) {
   const categorySelect = schemaCaps.hasStockTypesCategory
     ? "COALESCE(t.category, 'tile') AS item_category"
     : "'tile' AS item_category";
+  const sqftSelect = schemaCaps.hasStoneSqft
+    ? 'i.current_sqft'
+    : '0 AS current_sqft';
 
   if (item.itemId) {
     const rows = await sql(
       `SELECT i.id, i.sku, i.name, i.current_whole_qty, i.current_broken_qty,
               i.pieces_per_box, i.current_piece_remainder, i.current_broken_piece_remainder,
               i.unit_of_measure, i.division_id,
+              ${sqftSelect},
               ${categorySelect}
        FROM stock_items i
        LEFT JOIN stock_types t ON t.id = i.type_id
@@ -49,6 +54,7 @@ async function resolveStockItem(item) {
       `SELECT i.id, i.sku, i.name, i.current_whole_qty, i.current_broken_qty,
               i.pieces_per_box, i.current_piece_remainder, i.current_broken_piece_remainder,
               i.unit_of_measure, i.division_id,
+              ${sqftSelect},
               ${categorySelect}
        FROM stock_items i
        LEFT JOIN stock_types t ON t.id = i.type_id
@@ -494,15 +500,19 @@ export async function POST(request) {
     for (const item of items) {
       const stockItem = await resolveStockItem(item);
       const isBagItem = stockItem.item_category === 'bag' || item.itemCategory === 'bag';
-      const loadedWholeQty = isBagItem ? 0 : toPositiveInteger(item.loadedWholeQty ?? item.wholeQty);
-      const loadedBrokenQty = isBagItem ? 0 : toPositiveInteger(item.loadedBrokenQty ?? item.brokenQty);
+      const isStoneItem = stockItem.item_category === 'stone' || item.itemCategory === 'stone';
+      const nonPieceItem = isBagItem || isStoneItem;
+      const loadedWholeQty = nonPieceItem ? 0 : toPositiveInteger(item.loadedWholeQty ?? item.wholeQty);
+      const loadedBrokenQty = nonPieceItem ? 0 : toPositiveInteger(item.loadedBrokenQty ?? item.brokenQty);
       const qtyBags = isBagItem ? toPositiveInteger(item.qtyBags ?? item.loadedWholeQty) : 0;
+      // Stone is sold by total sqft and is fractional — see lib/stock-sqft.js
+      const qtySqft = isStoneItem ? toPositiveSqft(item.qtySqft ?? item.loadedWholeQty) : 0;
       const deliveredWholeQty = toPositiveInteger(item.deliveredWholeQty);
       const deliveredBrokenQty = toPositiveInteger(item.deliveredBrokenQty);
       const returnedWholeQty = toPositiveInteger(item.returnedWholeQty);
       const returnedBrokenQty = toPositiveInteger(item.returnedBrokenQty);
 
-      if (!isBagItem && loadedWholeQty === 0 && loadedBrokenQty === 0) {
+      if (!nonPieceItem && loadedWholeQty === 0 && loadedBrokenQty === 0) {
         return NextResponse.json({ error: 'Each outbound item row needs whole or broken quantity' }, { status: 400 });
       }
 
@@ -510,15 +520,27 @@ export async function POST(request) {
         return NextResponse.json({ error: 'Each bag item row needs a quantity in bags' }, { status: 400 });
       }
 
+      if (isStoneItem && qtySqft === 0) {
+        return NextResponse.json({ error: 'Each stone item row needs a quantity in sqft' }, { status: 400 });
+      }
+
       // Reject dispatch quantities that exceed current available stock.
       const availWhole = Number(stockItem.current_whole_qty || 0);
       const availBroken = Number(stockItem.current_broken_qty || 0);
-      const sellUnitRow = isBagItem ? 'bag' : (item.sellUnit || 'box');
+      const sellUnitRow = isBagItem ? 'bag' : isStoneItem ? 'sqft' : (item.sellUnit || 'box');
       const piecesPerBox = Number(stockItem.pieces_per_box || 0);
       const pieceRemainder = Number(stockItem.current_piece_remainder || 0);
       const effectiveWhole = isBagItem ? qtyBags : loadedWholeQty;
 
-      if (!isBagItem && isPieceSale(sellUnitRow, piecesPerBox)) {
+      if (isStoneItem) {
+        const availSqft = toSqft(stockItem.current_sqft);
+        if (qtySqft > availSqft) {
+          return NextResponse.json(
+            { error: `Requested qty ${qtySqft} sqft exceeds available ${availSqft} sqft for ${stockItem.sku}` },
+            { status: 400 }
+          );
+        }
+      } else if (!isBagItem && isPieceSale(sellUnitRow, piecesPerBox)) {
         const availPieces = totalPieces(availWhole, pieceRemainder, piecesPerBox);
         if (effectiveWhole > availPieces) {
           return NextResponse.json(
@@ -534,7 +556,7 @@ export async function POST(request) {
       }
       if (loadedBrokenQty > 0) {
         const brokenRemainder = Number(stockItem.current_broken_piece_remainder || 0);
-        if (!isBagItem && isPieceSale(sellUnitRow, piecesPerBox)) {
+        if (!nonPieceItem && isPieceSale(sellUnitRow, piecesPerBox)) {
           const availBrokenPieces = totalPieces(availBroken, brokenRemainder, piecesPerBox);
           if (loadedBrokenQty > availBrokenPieces) {
             return NextResponse.json(
@@ -553,13 +575,15 @@ export async function POST(request) {
       resolvedItems.push({
         item: stockItem,
         isBagItem,
+        isStoneItem,
+        qtySqft,
         loadedWholeQty: isBagItem ? qtyBags : loadedWholeQty,
         loadedBrokenQty,
         deliveredWholeQty,
         deliveredBrokenQty,
         returnedWholeQty,
         returnedBrokenQty,
-        sellUnit: isBagItem ? 'bag' : (item.sellUnit || 'box'),
+        sellUnit: sellUnitRow,
         ratePerUnit: item.ratePerUnit != null && item.ratePerUnit !== '' ? Number(item.ratePerUnit) : null,
         notes: normalizeText(item.notes) || null,
       });
@@ -654,7 +678,8 @@ export async function POST(request) {
           sell_unit,
           rate_per_unit,
           notes
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+          ${schemaCaps.hasStoneSqft ? ',qty_sqft' : ''}
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11${schemaCaps.hasStoneSqft ? ',$12' : ''})`,
         [
           shipment.id,
           row.item.id,
@@ -667,6 +692,7 @@ export async function POST(request) {
           row.sellUnit,
           row.ratePerUnit,
           row.notes,
+          ...(schemaCaps.hasStoneSqft ? [row.qtySqft] : []),
         ]
       );
     }

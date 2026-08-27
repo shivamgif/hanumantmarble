@@ -336,13 +336,21 @@ export function SuggestCombobox({ value, onChange, options = [], placeholder, cl
 
 function itemLabel(item) {
   const grade = item.grade ? ` · ${item.grade}` : '';
-  const bag = item.unit_of_measure === 'bag' ? ' (Bag)' : '';
+  const bag = item.unit_of_measure === 'bag' ? ' (Bag)'
+    : item.unit_of_measure === 'sqft' ? ' (Stone)' : '';
   return `${item.sku} - ${item.name}${grade}${bag}`;
 }
 
 // Available stock summary for picker rows — helps distinguish near-duplicate
 // SKUs (same name, different stock) at selection time. Display-only.
 function itemStockSummary(item) {
+  // Stone is stocked in sqft; reading the box columns would tell a salesperson
+  // "0 whole" for an item that has thousands of sqft on hand.
+  if (item.unit_of_measure === 'sqft') {
+    const sqft = Number(item.current_sqft ?? 0);
+    const size = item.last_slab_size_label ? ` · last ${item.last_slab_size_label}` : '';
+    return `${sqft.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sqft${size}`;
+  }
   const whole = Number(item.current_whole_qty ?? 0);
   const broken = Number(item.current_broken_qty ?? 0);
   const unit = item.unit_of_measure === 'bag' ? 'bags' : 'whole';
