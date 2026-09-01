@@ -45,6 +45,37 @@ export function createDispatchItemRow() {
   };
 }
 
+// Volume of one shipment line, in the unit that line is actually stocked in.
+// Stone keeps its quantity in received_qty_sqft / qty_sqft, so reading the
+// integer whole-qty columns reports 0 for a real delivery.
+export function formatLineVolume(item) {
+  const uom = item?.unit_of_measure;
+  if (uom === 'sqft') {
+    const sqft = Number(item.received_qty_sqft ?? item.qty_sqft ?? 0);
+    return `${sqft.toLocaleString('en-IN', { maximumFractionDigits: 3 })} sqft`;
+  }
+  const qty = Number(item?.loaded_whole_qty ?? item?.received_whole_qty ?? 0);
+  return uom === 'bag' ? `${qty} bags` : `${qty} U`;
+}
+
+// Net volume across a shipment, grouped by unit. Never sums sqft with box
+// counts — a mixed total would be a meaningless number.
+export function formatShipmentVolume(items) {
+  const totals = new Map();
+  for (const item of items || []) {
+    const uom = item?.unit_of_measure;
+    const key = uom === 'sqft' ? 'sqft' : uom === 'bag' ? 'Bags' : 'Whole Units';
+    const value = uom === 'sqft'
+      ? Number(item.received_qty_sqft ?? item.qty_sqft ?? 0)
+      : Number(item.loaded_whole_qty ?? item.received_whole_qty ?? 0);
+    totals.set(key, (totals.get(key) || 0) + value);
+  }
+  const parts = [...totals]
+    .filter(([, value]) => value > 0)
+    .map(([unit, value]) => `${value.toLocaleString('en-IN', { maximumFractionDigits: 3 })} ${unit}`);
+  return parts.length ? parts.join(' · ') : '0 Whole Units';
+}
+
 export function createDispatchBagItemRow() {
   return {
     itemCategory: 'bag',

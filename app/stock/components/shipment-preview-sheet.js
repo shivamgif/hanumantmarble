@@ -114,6 +114,14 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
     () => (previewState.items || []).reduce((sum, item) => sum + Number(item.discount_amount || 0), 0),
     [previewState.items]
   );
+  // Stone shipments carry no whole/broken counts, so the header must total the
+  // sqft columns or it reports 0 for a real delivery.
+  const stoneSqftTotal = useMemo(
+    () => (previewState.items || [])
+      .filter((item) => item.unit_of_measure === 'sqft')
+      .reduce((sum, item) => sum + Number(item.received_qty_sqft ?? item.qty_sqft ?? 0), 0),
+    [previewState.items]
+  );
 
   const inboundMetaItems = useMemo(() => [
     { label: tc.status, value: previewState.record?.status },
@@ -124,10 +132,14 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
     { label: tc.paymentStatus, value: previewState.record?.payment_status },
     ...(lineDiscountTotal > 0 ? [{ label: tc.lineDiscount || 'Line Discounts', value: `₹${lineDiscountTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}` }] : []),
     ...(Number(previewState.record?.discount_amount || 0) > 0 ? [{ label: tc.shipmentDiscount || 'Shipment Discount', value: `₹${Number(previewState.record.discount_amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}` }] : []),
-    { label: tc.totalWhole, value: previewState.record?.total_whole_qty },
-    { label: tc.totalBroken, value: previewState.record?.total_broken_qty },
+    ...(stoneSqftTotal > 0
+      ? [{ label: tc.qtySqft ?? 'Total Sqft', value: stoneSqftTotal.toLocaleString('en-IN', { maximumFractionDigits: 3 }) }]
+      : [
+          { label: tc.totalWhole, value: previewState.record?.total_whole_qty },
+          { label: tc.totalBroken, value: previewState.record?.total_broken_qty },
+        ]),
     { label: tc.notes, value: previewState.record?.notes },
-  ], [previewState.record, tc, lineDiscountTotal]);
+  ], [previewState.record, tc, lineDiscountTotal, stoneSqftTotal]);
 
   const hasTechnicalSubBar = Boolean(previewState.record?.eway_bill_number || previewState.record?.irn_number);
 
@@ -269,10 +281,14 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
                   { label: tc.approval, value: previewState.record?.approval_status },
                   { label: tc.salesperson, value: previewState.record?.salesperson_name },
                   { label: tc.driver, value: previewState.record?.driver_name },
-                  { label: tc.totalWhole, value: previewState.record?.total_whole_qty },
-                  { label: tc.totalBroken, value: previewState.record?.total_broken_qty },
-                  { label: tc.returnWhole, value: previewState.record?.total_return_whole_qty },
-                  { label: tc.returnBroken, value: previewState.record?.total_return_broken_qty },
+                  ...(stoneSqftTotal > 0
+                    ? [{ label: tc.qtySqft ?? 'Total Sqft', value: stoneSqftTotal.toLocaleString('en-IN', { maximumFractionDigits: 3 }) }]
+                    : [
+                        { label: tc.totalWhole, value: previewState.record?.total_whole_qty },
+                        { label: tc.totalBroken, value: previewState.record?.total_broken_qty },
+                        { label: tc.returnWhole, value: previewState.record?.total_return_whole_qty },
+                        { label: tc.returnBroken, value: previewState.record?.total_return_broken_qty },
+                      ]),
                   ...(canViewPricing && Number(previewState.record?.total_selling_price_excl || 0) > 0 ? [
                     {
                       label: tc.totalSellingExcl ?? 'Total (excl. GST)',
@@ -312,11 +328,36 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
                         <div className={INVOICE_CLASSES.mobileValue}>{item.item_name || '—'} {item.finish ? `(${item.finish})` : ''}</div>
                       </div>
                       <div>
-                        <div className={INVOICE_CLASSES.mobileKey}>{item.unit_of_measure === 'bag' ? (tc.weightPerBag || 'Weight') : tc.size}</div>
-                        <div className={INVOICE_CLASSES.mobileValue}>{item.unit_of_measure === 'bag' ? (item.weight_per_unit_kg ? `${item.weight_per_unit_kg} kg` : (item.type_name || '—')) : (item.size_label || '—')}</div>
+                        <div className={INVOICE_CLASSES.mobileKey}>{item.unit_of_measure === 'bag' ? (tc.weightPerBag || 'Weight') : item.unit_of_measure === 'sqft' ? (tc.slabSize ?? 'Slab Size') : tc.size}</div>
+                        <div className={INVOICE_CLASSES.mobileValue}>{item.unit_of_measure === 'bag' ? (item.weight_per_unit_kg ? `${item.weight_per_unit_kg} kg` : (item.type_name || '—')) : item.unit_of_measure === 'sqft' ? (item.slab_size_label || item.type_name || '—') : (item.size_label || '—')}</div>
                       </div>
                       {isInboundPreview ? (
-                        item.unit_of_measure === 'bag' ? (
+                        item.unit_of_measure === 'sqft' ? (
+                          <>
+                            <div>
+                              <div className={INVOICE_CLASSES.mobileKey}>{tc.hsn}</div>
+                              <div className={INVOICE_CLASSES.mobileValue}>{item.hsn_code || '—'}</div>
+                            </div>
+                            <div>
+                              <div className={INVOICE_CLASSES.mobileKey}>{tc.qtySqft ?? 'Total Sqft'}</div>
+                              <div className={INVOICE_CLASSES.mobileValue}>
+                                {Number(item.received_qty_sqft ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 3 })}
+                              </div>
+                            </div>
+                            {canViewPricing && item.cost_per_sqft != null ? (
+                              <>
+                                <div>
+                                  <div className={INVOICE_CLASSES.mobileKey}>{tc.ratePerSqft ?? 'Rate / Sqft'}</div>
+                                  <div className={INVOICE_CLASSES.mobileValue}>₹{Number(item.cost_per_sqft).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
+                                </div>
+                                <div>
+                                  <div className={INVOICE_CLASSES.mobileKey}>{tc.lineTotal ?? 'Line Total'}</div>
+                                  <div className={INVOICE_CLASSES.mobileValue}>₹{Number(item.total_cost ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
+                                </div>
+                              </>
+                            ) : null}
+                          </>
+                        ) : item.unit_of_measure === 'bag' ? (
                           <>
                             <div>
                               <div className={INVOICE_CLASSES.mobileKey}>{tc.hsn}</div>
@@ -357,6 +398,33 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
                             </div>
                           </>
                         )
+                      ) : item.unit_of_measure === 'sqft' ? (
+                        <>
+                          <div>
+                            <div className={INVOICE_CLASSES.mobileKey}>{tc.qtySqft ?? 'Sqft'}</div>
+                            <div className={INVOICE_CLASSES.mobileValue}>
+                              {Number(item.qty_sqft ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 3 })}
+                            </div>
+                          </div>
+                          {canViewPricing && item.rate_per_unit != null ? (
+                            <>
+                              <div>
+                                <div className={INVOICE_CLASSES.mobileKey}>{tc.ratePerSqft ?? 'Rate / Sqft'}</div>
+                                <div className={INVOICE_CLASSES.mobileValue}>₹{Number(item.rate_per_unit).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
+                              </div>
+                              <div>
+                                <div className={INVOICE_CLASSES.mobileKey}>{tc.lineTotal ?? 'Line Total'}</div>
+                                <div className={INVOICE_CLASSES.mobileValue}>₹{(Number(item.qty_sqft ?? 0) * Number(item.rate_per_unit)).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
+                              </div>
+                            </>
+                          ) : null}
+                          <div>
+                            <div className={INVOICE_CLASSES.mobileKey}>{tc.returnQtySqft ?? 'Return Sqft'}</div>
+                            <div className={INVOICE_CLASSES.mobileValue}>
+                              {Number(item.returned_qty_sqft ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 3 })}
+                            </div>
+                          </div>
+                        </>
                       ) : item.unit_of_measure === 'bag' ? (
                         <>
                           <div>

@@ -92,6 +92,8 @@ export async function GET(request) {
          COALESCE(SUM(CASE WHEN i.unit_of_measure != 'bag' THEN soi.loaded_whole_qty ELSE 0 END), 0) AS total_whole_qty,
          COALESCE(SUM(CASE WHEN i.unit_of_measure != 'bag' THEN soi.loaded_broken_qty ELSE 0 END), 0) AS total_broken_qty,
          COALESCE(SUM(CASE WHEN i.unit_of_measure = 'bag' THEN soi.loaded_whole_qty ELSE 0 END), 0) AS total_bag_qty,
+         COALESCE(SUM(CASE WHEN i.unit_of_measure = 'sqft' THEN soi.qty_sqft ELSE 0 END), 0) AS total_sqft_qty,
+         COALESCE(SUM(CASE WHEN i.unit_of_measure = 'sqft' THEN soi.returned_qty_sqft ELSE 0 END), 0) AS total_return_sqft_qty,
          COALESCE(SUM(CASE WHEN i.unit_of_measure != 'bag' THEN soi.loaded_whole_qty ELSE 0 END), 0)
            + COALESCE(SUM(CASE WHEN i.unit_of_measure != 'bag' THEN soi.loaded_broken_qty ELSE 0 END), 0) AS total_tile_qty,
          COALESCE(SUM(soi.returned_whole_qty), 0) AS total_return_whole_qty,

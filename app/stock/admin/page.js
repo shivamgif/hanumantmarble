@@ -10,7 +10,7 @@ import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { arrivalFormSchema, bagArrivalFormSchema, dispatchFormSchema } from '@/lib/forms/stock-forms';
 import { useStockFormStore } from '@/lib/stores/stock-form-store';
-import { createArrivalItemRow, createBagArrivalItemRow, createDispatchItemRow, createInitialArrivalDraft, createInitialBagArrivalDraft, createInitialDispatchDraft, toNumber, trimText, parseSizeLabelDimensions } from '@/app/stock/lib/stock-utils';
+import { createArrivalItemRow, createBagArrivalItemRow, createDispatchItemRow, createInitialArrivalDraft, createInitialBagArrivalDraft, createInitialDispatchDraft, formatLineVolume, formatShipmentVolume, toNumber, trimText, parseSizeLabelDimensions } from '@/app/stock/lib/stock-utils';
 import { ArrivalFormContent, BagArrivalFormContent } from '@/app/stock/components/arrival-form';
 import { DispatchFormContent } from '@/app/stock/components/dispatch-form';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -1263,7 +1263,9 @@ export default function AdminDashboard() {
       id: `arrival-${shipment.id}`,
       kind: 'arrival',
       title: `${language === 'hi' ? 'आगमन' : 'Arrival'} ${shipment.shipment_number}`,
-      subtitle: `${Number(shipment.total_whole_qty || 0)} whole + ${Number(shipment.total_broken_qty || 0)} broken`,
+      subtitle: Number(shipment.total_sqft_qty || 0) > 0
+        ? `${Number(shipment.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sqft`
+        : `${Number(shipment.total_whole_qty || 0)} whole + ${Number(shipment.total_broken_qty || 0)} broken`,
       by: shipment.generated_by || '—',
       at: shipment.arrival_date || shipment.created_at,
       status: shipment.approval_status || shipment.status,
@@ -1273,7 +1275,9 @@ export default function AdminDashboard() {
       id: `dispatch-${shipment.id}`,
       kind: 'dispatch',
       title: `${language === 'hi' ? 'डिस्पैच' : 'Dispatch'} ${shipment.shipment_number}`,
-      subtitle: `${Number(shipment.total_whole_qty || 0)} whole + ${Number(shipment.total_broken_qty || 0)} broken`,
+      subtitle: Number(shipment.total_sqft_qty || 0) > 0
+        ? `${Number(shipment.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sqft`
+        : `${Number(shipment.total_whole_qty || 0)} whole + ${Number(shipment.total_broken_qty || 0)} broken`,
       by: shipment.generated_by || '—',
       at: shipment.dispatch_date || shipment.created_at,
       status: shipment.approval_status || shipment.status,
@@ -1561,6 +1565,7 @@ export default function AdminDashboard() {
                         <td className="px-4 py-3">
                           <div className="flex flex-col gap-1">
                             {Number(item.total_bag_qty) > 0 && <span className="text-amber-600 dark:text-amber-400 font-black text-xs font-sans">{item.total_bag_qty} <span className="text-[9px] uppercase tracking-widest">Bags</span></span>}
+                            {Number(item.total_sqft_qty) > 0 && <span className="text-sky-600 dark:text-sky-400 font-black text-xs font-sans">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-[9px] uppercase tracking-widest">Sqft</span></span>}
                             {Number(item.total_whole_qty) > 0 && <span className="text-slate-900 dark:text-slate-100 font-black text-xs font-sans">{item.total_whole_qty} <span className="text-[9px] text-slate-400 uppercase tracking-widest">Whole</span></span>}
                             {Number(item.total_broken_qty) > 0 && <span className="text-rose-500 font-black text-xs font-sans">{item.total_broken_qty} <span className="text-[9px] text-rose-400 uppercase tracking-widest">Broken</span></span>}
                           </div>
@@ -1640,6 +1645,7 @@ export default function AdminDashboard() {
                       <div className="text-right">
                         <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Quantities</p>
                         {Number(item.total_bag_qty) > 0 && <p className="text-xs font-black text-amber-600 dark:text-amber-400">{item.total_bag_qty} Bags</p>}
+                        {Number(item.total_sqft_qty) > 0 && <p className="text-xs font-black text-sky-600 dark:text-sky-400">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} Sqft</p>}
                         {Number(item.total_whole_qty) > 0 && <p className="text-xs font-black text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>}
                         {Number(item.total_broken_qty) > 0 && <p className="text-xs font-black text-rose-500">{item.total_broken_qty} Broken</p>}
                       </div>
@@ -1736,7 +1742,9 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex flex-col gap-1">
-                              <span className="text-slate-900 dark:text-slate-100 font-black text-xs font-sans">{item.total_whole_qty} <span className="text-[9px] text-slate-400 uppercase tracking-widest">Whole</span></span>
+                              {Number(item.total_sqft_qty || 0) > 0
+                                ? <span className="text-sky-600 dark:text-sky-400 font-black text-xs font-sans">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-[9px] uppercase tracking-widest">Sqft</span></span>
+                                : <span className="text-slate-900 dark:text-slate-100 font-black text-xs font-sans">{item.total_whole_qty} <span className="text-[9px] text-slate-400 uppercase tracking-widest">Whole</span></span>}
                               {Number(item.total_broken_qty) > 0 && <span className="text-rose-500 font-black text-xs font-sans">{item.total_broken_qty} <span className="text-[9px] text-rose-400 uppercase tracking-widest">Broken</span></span>}
                             </div>
                           </td>
@@ -1784,7 +1792,9 @@ export default function AdminDashboard() {
                         <div className="text-right">
                           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Source & Quantities</p>
                           <p className="text-xs font-bold text-slate-700 dark:text-slate-300 max-w-[120px] truncate mb-1">{item.supplier_name || '—'}</p>
-                          <p className="text-xs font-black text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>
+                          {Number(item.total_sqft_qty || 0) > 0
+                          ? <p className="text-xs font-black text-sky-600 dark:text-sky-400">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} Sqft</p>
+                          : <p className="text-xs font-black text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>}
                         </div>
                       </div>
                       <div className="flex gap-2 pt-2">
@@ -1855,7 +1865,9 @@ export default function AdminDashboard() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-col gap-1">
-                            <span className="text-slate-900 dark:text-slate-100 font-black text-xs font-sans">{item.total_whole_qty} <span className="text-[9px] text-slate-400 uppercase tracking-widest">Whole</span></span>
+                            {Number(item.total_sqft_qty || 0) > 0
+                                ? <span className="text-sky-600 dark:text-sky-400 font-black text-xs font-sans">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-[9px] uppercase tracking-widest">Sqft</span></span>
+                                : <span className="text-slate-900 dark:text-slate-100 font-black text-xs font-sans">{item.total_whole_qty} <span className="text-[9px] text-slate-400 uppercase tracking-widest">Whole</span></span>}
                             {Number(item.total_broken_qty) > 0 && <span className="text-rose-500 font-black text-xs font-sans">{item.total_broken_qty} <span className="text-[9px] text-rose-400 uppercase tracking-widest">Broken</span></span>}
                           </div>
                         </td>
@@ -1933,7 +1945,9 @@ export default function AdminDashboard() {
                       </div>
                       <div className="text-right">
                         <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Quantities</p>
-                        <p className="text-xs font-black text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>
+                        {Number(item.total_sqft_qty || 0) > 0
+                          ? <p className="text-xs font-black text-sky-600 dark:text-sky-400">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} Sqft</p>
+                          : <p className="text-xs font-black text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>}
                         {Number(item.total_broken_qty) > 0 && <p className="text-xs font-black text-rose-500">{item.total_broken_qty} Broken</p>}
                       </div>
                     </div>
@@ -2715,7 +2729,7 @@ export default function AdminDashboard() {
                         { label: 'Fleet ID', value: previewState.record?.truck_license_plate },
                         { label: 'Operator', value: previewState.record?.driver_name },
                         { label: 'Approval State', value: previewState.record?.status || previewState.record?.approval_status },
-                        { label: 'Net Volume', value: `${previewState.record?.total_whole_qty} Whole Units` },
+                        { label: 'Net Volume', value: formatShipmentVolume(previewState.items) },
                       ].map((item) => (
                         <div key={item.label} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/50">
                           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{item.label}</p>
@@ -2747,7 +2761,7 @@ export default function AdminDashboard() {
                                   <td className="px-4 py-3 font-black text-brand-primary">{item.sku}</td>
                                   <td className="px-4 py-3 font-bold text-slate-700 dark:text-slate-300">{item.item_name}</td>
                                   <td className="px-4 py-3 text-right font-black text-slate-900 dark:text-white">
-                                    {item.loaded_whole_qty ?? item.received_whole_qty ?? 0} U
+                                    {formatLineVolume(item)}
                                   </td>
                                 </tr>
                               ))}

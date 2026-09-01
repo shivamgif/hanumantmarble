@@ -173,7 +173,12 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
     'description'
   );
   values.push(
-    Math.round(Number(orderedBoxes) * 0.5) || 0,
+    // Stone passes orderedBoxes = 0 (its quantity is sqft), so the box-based
+    // default would leave reorder_level at 0 — and the low-stock filter requires
+    // > 0, which would make stone permanently invisible to reorder alerts.
+    isStoneItem
+      ? (Math.round(Number(item.qtySqft || 0) * 0.5) || 0)
+      : (Math.round(Number(orderedBoxes) * 0.5) || 0),
     item.safetyStock || 0,
     item.purchasePrice || null,
     item.landedCost || null,
@@ -242,13 +247,18 @@ export async function GET(request) {
   }
 
   try {
+    const listCaps = await getStockSchemaCapabilities();
     const shipments = await sql(
       `SELECT s.*,
               l.name AS destination_warehouse_name,
               (SELECT COALESCE(SUM(isi.ordered_qty), 0)
                FROM stock_inbound_shipment_items isi
                JOIN stock_items si ON si.id = isi.item_id
-               WHERE isi.inbound_shipment_id = s.id AND si.unit_of_measure = 'bag') AS total_bag_qty
+               WHERE isi.inbound_shipment_id = s.id AND si.unit_of_measure = 'bag') AS total_bag_qty,
+              ${listCaps.hasStoneSqft ? `(SELECT COALESCE(SUM(isi.received_qty_sqft), 0)
+               FROM stock_inbound_shipment_items isi
+               JOIN stock_items si ON si.id = isi.item_id
+               WHERE isi.inbound_shipment_id = s.id AND si.unit_of_measure = 'sqft')` : '0'} AS total_sqft_qty
        FROM stock_inbound_shipments s
        LEFT JOIN stock_locations l ON l.id = s.destination_location_id
        ORDER BY s.created_at DESC

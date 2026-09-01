@@ -378,6 +378,7 @@ export function PurchasesPanel({
                     { id: 'paidAmount', label: 'Paid Amount', value: (row) => row.paid_amount != null ? row.paid_amount : '' },
                     { id: 'products', label: 'Products', value: (row) => row.product_names || row.product_skus || '' },
                     { id: 'totalBags', label: 'Total Bags', value: (row) => row.total_bag_qty || '0' },
+                    { id: 'totalSqft', label: 'Total Sqft', value: (row) => row.total_sqft_qty ? Number(row.total_sqft_qty).toFixed(3) : '0' },
                     { id: 'wholeTiles', label: 'Whole Tiles', value: (row) => row.total_whole_qty || '0' },
                     { id: 'brokenTiles', label: 'Broken Tiles', value: (row) => row.total_broken_qty || '0' },
                     { id: 'totalSqm', label: 'Total SQM', value: (row) => row.total_qty_sqm ? Number(row.total_qty_sqm).toFixed(3) : '0' },
@@ -559,12 +560,17 @@ export function PurchasesPanel({
                   <Badge variant={getStatusVariant(a.status)}>{a.status}</Badge>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-600 dark:text-slate-300">
+                  {Number(a.total_sqft_qty || 0) > 0 && (
+                    <span className="text-sky-500 font-black" title={`${Number(a.total_sqft_qty)} Sqft`}>
+                      {Number(a.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-[10px] uppercase text-sky-400/70">Sqft</span>
+                    </span>
+                  )}
                   {Number(a.total_bag_qty || 0) > 0 && (
                     <span className="text-amber-500 font-black" title={`${Number(a.total_bag_qty)} Bags`}>
                       {Number(a.total_bag_qty)} <span className="text-[10px] uppercase text-amber-400/70">Bags</span>
                     </span>
                   )}
-                  {((Number(a.total_whole_qty || 0) > 0 || Number(a.total_broken_qty || 0) > 0) || Number(a.total_bag_qty || 0) === 0) && (
+                  {((Number(a.total_whole_qty || 0) > 0 || Number(a.total_broken_qty || 0) > 0) || (Number(a.total_bag_qty || 0) === 0 && Number(a.total_sqft_qty || 0) === 0)) && (
                     <span title={`${Number(a.total_whole_qty || 0)} Whole and ${Number(a.total_broken_qty || 0)} Broken Tiles`}>
                       {Number(a.total_whole_qty || 0)} <span className="text-[10px] uppercase text-slate-400 mr-1">Whole</span>
                       {Number(a.total_broken_qty || 0)} <span className="text-[10px] uppercase text-slate-400">Broken</span>
@@ -712,12 +718,17 @@ export function PurchasesPanel({
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex flex-col items-end gap-0.5">
+                      {Number(a.total_sqft_qty || 0) > 0 && (
+                        <div className="text-xs font-black text-sky-500 tabular-nums" title={`${Number(a.total_sqft_qty)} Sqft`}>
+                          {Number(a.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-[9px] font-bold text-sky-400/70 uppercase">Sqft</span>
+                        </div>
+                      )}
                       {Number(a.total_bag_qty || 0) > 0 && (
                         <div className="text-xs font-black text-amber-500 tabular-nums" title={`${Number(a.total_bag_qty)} Bags`}>
                           {Number(a.total_bag_qty)} <span className="text-[9px] font-bold text-amber-400/70 uppercase">Bags</span>
                         </div>
                       )}
-                      {((Number(a.total_whole_qty || 0) > 0 || Number(a.total_broken_qty || 0) > 0) || Number(a.total_bag_qty || 0) === 0) && (
+                      {((Number(a.total_whole_qty || 0) > 0 || Number(a.total_broken_qty || 0) > 0) || (Number(a.total_bag_qty || 0) === 0 && Number(a.total_sqft_qty || 0) === 0)) && (
                         <div className="text-xs font-black text-slate-900 dark:text-white tabular-nums" title={`${Number(a.total_whole_qty || 0)} Whole and ${Number(a.total_broken_qty || 0)} Broken Tiles`}>
                           {Number(a.total_whole_qty || 0)} <span className="text-[9px] font-bold text-slate-400 mr-1 uppercase">Whole</span>
                           <span className="opacity-50 mx-0.5">/</span> {Number(a.total_broken_qty || 0)} <span className="text-[9px] font-bold text-slate-400 uppercase">Broken</span>

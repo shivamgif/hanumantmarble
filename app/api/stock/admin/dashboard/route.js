@@ -108,6 +108,12 @@ export async function GET(request) {
              JOIN stock_items si ON si.id = isi.item_id
              WHERE isi.inbound_shipment_id = s.id AND si.unit_of_measure = 'bag'
            ), 0) AS total_bag_qty,
+           COALESCE((
+             SELECT SUM(isi.received_qty_sqft)
+             FROM stock_inbound_shipment_items isi
+             JOIN stock_items si ON si.id = isi.item_id
+             WHERE isi.inbound_shipment_id = s.id AND si.unit_of_measure = 'sqft'
+           ), 0) AS total_sqft_qty,
            s.created_at,
            COALESCE(u.name, u.email, s.created_by) AS maintainer_name
          FROM stock_inbound_shipments s
@@ -122,6 +128,7 @@ export async function GET(request) {
                 COALESCE(c_direct.name, c_so.name) AS customer_name,
                 sos.created_at AS dispatch_date, sos.status,
                 COALESCE(SUM(soi.loaded_whole_qty), 0) as total_whole_qty, COALESCE(SUM(soi.loaded_broken_qty), 0) as total_broken_qty,
+                COALESCE(SUM(soi.qty_sqft), 0) as total_sqft_qty,
                 COALESCE(SUM((GREATEST((COALESCE(soi.loaded_whole_qty, 0) + COALESCE(soi.loaded_broken_qty, 0)) - (COALESCE(soi.returned_whole_qty, 0) + COALESCE(soi.returned_broken_qty, 0)), 0)) * COALESCE(soi.rate_per_unit, 0)), 0) as total_selling_price_excl
          FROM stock_outbound_shipments sos
          LEFT JOIN stock_outbound_shipment_items soi ON sos.id = soi.outbound_shipment_id
