@@ -918,3 +918,45 @@ ON CONFLICT (name) DO UPDATE SET category = EXCLUDED.category, description = EXC
 
 CREATE INDEX IF NOT EXISTS idx_stock_items_current_sqft ON stock_items(current_sqft);
 
+-- ====== SHOWROOM DISPLAY STOCK (additive) ======
+-- Stock physically moved to the showroom for display. It is still owned and
+-- still sellable (pull it back to the warehouse first), but it is NOT in the
+-- warehouse, so it gets its own counters instead of inflating current_*.
+-- One second location, not a location dimension — stock_inventory_lots.location_id
+-- stays unused. Material stuck down as flooring is decremented out of
+-- showroom_* and lives on only as a stock_movements row.
+-- See scripts/migrations/2026-09-01-showroom-stock.sql and /api/stock/movements.
+
+-- Showroom stock carries a STATE: on a cassette (sellable, pull it back to the
+-- warehouse to sell) or installed as flooring (not sellable). showroom_* is the
+-- TOTAL physically at the showroom; showroom_installed_* is the stuck-down
+-- subset, so sellable = showroom_* - showroom_installed_*. The state is
+-- re-classifiable both ways — see scripts/migrations/2026-09-02-showroom-installed.sql.
+ALTER TABLE IF EXISTS stock_items
+  ADD COLUMN IF NOT EXISTS showroom_whole_qty           INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS showroom_sqft                NUMERIC(14, 3) NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS showroom_installed_whole_qty INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS showroom_installed_sqft      NUMERIC(14, 3) NOT NULL DEFAULT 0;
+
+ALTER TABLE stock_items DROP CONSTRAINT IF EXISTS stock_items_showroom_nonnegative;
+ALTER TABLE stock_items
+  ADD CONSTRAINT stock_items_showroom_nonnegative CHECK (
+    showroom_whole_qty >= 0 AND showroom_sqft >= 0
+  );
+
+ALTER TABLE stock_items DROP CONSTRAINT IF EXISTS stock_items_showroom_installed_valid;
+ALTER TABLE stock_items
+  ADD CONSTRAINT stock_items_showroom_installed_valid CHECK (
+    showroom_installed_whole_qty >= 0 AND
+    showroom_installed_sqft >= 0 AND
+    showroom_installed_whole_qty <= showroom_whole_qty AND
+    showroom_installed_sqft <= showroom_sqft
+  );
+
+INSERT INTO stock_locations (name, location_type)
+VALUES ('Showroom', 'showroom')
+ON CONFLICT (name) DO UPDATE SET location_type = 'showroom', updated_at = NOW();
+
+CREATE INDEX IF NOT EXISTS idx_stock_movements_location_created
+  ON stock_movements(location_id, created_at DESC);
+

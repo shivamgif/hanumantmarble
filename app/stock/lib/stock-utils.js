@@ -136,6 +136,7 @@ export function createInitialBagArrivalDraft() {
     paymentReference: '',
     paymentMode: '',
     transporterName: '',
+    transporterUnknown: false,
     transportCost: '',
     laborCost: '',
     handlingCostPercent: '0',
@@ -206,6 +207,7 @@ export function createInitialStoneArrivalDraft() {
     paymentReference: '',
     paymentMode: '',
     transporterName: '',
+    transporterUnknown: false,
     transportCost: '',
     laborCost: '',
     handlingCostPercent: '0',
@@ -239,6 +241,7 @@ export function createInitialArrivalDraft() {
     paymentReference: '',
     paymentMode: '',
     transporterName: '',
+    transporterUnknown: false,
     transportCost: '',
     laborCost: '',
     handlingCostPercent: '1.0',
@@ -346,6 +349,35 @@ export function getGeneratedByRoleLabel(role) {
   if (normalized === 'salesperson') return 'Salesperson';
   if (normalized === 'stock_maintainer') return 'Maintainer';
   return 'Legacy';
+}
+
+// ====== SHOWROOM MOVEMENTS ======
+// Shared by the item preview sheet's Showroom section and the Showroom tab so
+// both render the same labels and the same unit-aware quantity.
+// Keys must match SHOWROOM_MOVES in lib/stock-showroom.js.
+export const SHOWROOM_ACTIONS = {
+  to_cassette: { label: 'Sent to showroom, on a cassette', short: 'To cassette', tone: 'text-violet-500' },
+  to_installed: { label: 'Sent to showroom, installed as flooring', short: 'To installed', tone: 'text-amber-500' },
+  to_warehouse: { label: 'Back to warehouse', short: 'To warehouse', tone: 'text-emerald-500' },
+  reclassify_installed: { label: 'Re-marked as installed', short: 'Now installed', tone: 'text-amber-500' },
+  reclassify_cassette: { label: 'Re-marked as on a cassette', short: 'Now on cassette', tone: 'text-violet-500' },
+};
+
+// Both showroom moves are movement_type 'transfer_out', so the state cannot be
+// recovered from it — the route writes the move key into source_type instead.
+export function showroomActionOf(movement) {
+  const key = String(movement?.source_type || '').replace(/^showroom_/, '');
+  return SHOWROOM_ACTIONS[key] ? key : null;
+}
+
+// Stone quantity rides on quantity_sqft; everything else on quantity. NUMERIC
+// arrives from pg as a string, so coerce before formatting.
+export function formatShowroomQty(movement) {
+  if (movement?.unit_of_measure === 'sqft') {
+    return `${Number(movement.quantity_sqft || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sqft`;
+  }
+  const unit = movement?.unit_of_measure === 'bag' ? 'bags' : 'box';
+  return `${Number(movement?.quantity || 0)} ${unit}`;
 }
 
 export function getStatusVariant(status) {

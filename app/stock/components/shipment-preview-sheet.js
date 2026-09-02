@@ -6,6 +6,8 @@ import EntryPreviewSheet, { PreviewKeyValueGrid } from '@/components/ui/entry-pr
 import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
 import { formatDateTime, INVOICE_CLASSES } from '../lib/stock-utils';
+import { ShowroomSection } from './showroom-section';
+import { showroomSplit } from '@/lib/stock-showroom';
 
 const COMPACT_ITEMS_THRESHOLD = 2;
 
@@ -105,8 +107,17 @@ function renderDocumentPreview(document, tc) {
   );
 }
 
-export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPagination, setPreviewItemsPage, tc, userRole, pageSize, setPageSize, onApprove, onReject, onRequestChanges, onMarkPaid, onMarkDelivered, actionLoading }) {
+export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPagination, setPreviewItemsPage, tc, userRole, pageSize, setPageSize, onApprove, onReject, onRequestChanges, onMarkPaid, onMarkDelivered, actionLoading, onShowroomChanged }) {
   const isInboundPreview = previewState.kind === 'arrival';
+  // A shipment with none of the three was logged with no transport paperwork at
+  // all (see refineTransporter in lib/forms/stock-forms.js) — say so, rather
+  // than rendering three bare dashes that look like a bug.
+  const transportNotRecorded = isInboundPreview
+    && !previewState.record?.transporter_name
+    && !previewState.record?.truck_license_plate
+    && !previewState.record?.truck_number
+    && !previewState.record?.driver_name;
+  const notRecorded = transportNotRecorded ? 'Not recorded' : '—';
   const canViewPricing = ['admin', 'manager'].includes(userRole);
   const totalItems = previewState.items?.length || 0;
   const isCompactItems = totalItems > 0 && totalItems <= COMPACT_ITEMS_THRESHOLD;
@@ -126,7 +137,7 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
   const inboundMetaItems = useMemo(() => [
     { label: tc.status, value: previewState.record?.status },
     { label: tc.approval, value: previewState.record?.approval_status },
-    { label: tc.driver, value: previewState.record?.driver_name },
+    { label: tc.driver, value: previewState.record?.driver_name || notRecorded },
     { label: tc.originCity, value: previewState.record?.origin_city },
     { label: tc.destinationWarehouse, value: previewState.record?.destination_warehouse_name },
     { label: tc.paymentStatus, value: previewState.record?.payment_status },
@@ -139,7 +150,7 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
           { label: tc.totalBroken, value: previewState.record?.total_broken_qty },
         ]),
     { label: tc.notes, value: previewState.record?.notes },
-  ], [previewState.record, tc, lineDiscountTotal, stoneSqftTotal]);
+  ], [previewState.record, tc, lineDiscountTotal, stoneSqftTotal, notRecorded]);
 
   const hasTechnicalSubBar = Boolean(previewState.record?.eway_bill_number || previewState.record?.irn_number);
 
@@ -171,8 +182,26 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
                   : previewState.record?.current_whole_qty,
               },
               ...(!isBagItem && !isStoneItem ? [{ label: tc.brokenQty, value: previewState.record?.current_broken_qty }] : []),
+              {
+                label: tc.atShowroom ?? 'At Showroom',
+                value: (() => {
+                  const { total, cassette, installed } = showroomSplit(previewState.record);
+                  const n = (v) => v.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+                  return installed > 0 ? `${n(total)} (${n(cassette)} on cassette, ${n(installed)} installed)` : n(total);
+                })(),
+              },
               { label: tc.reorderLevel, value: previewState.record?.reorder_level },
             ]}
+          />
+        ),
+      },
+      {
+        title: tc.showroom ?? 'Showroom',
+        children: (
+          <ShowroomSection
+            item={previewState.record}
+            userRole={userRole}
+            onChanged={onShowroomChanged}
           />
         ),
       },
@@ -212,11 +241,11 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
                   </div>
                   <div className={INVOICE_CLASSES.logisticsCell}>
                     <div className={INVOICE_CLASSES.logisticsLabel}><Truck className="h-2.5 w-2.5" />{tc.vehicleNo}</div>
-                    <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.truck_license_plate || previewState.record?.truck_number || '—'}</div>
+                    <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.truck_license_plate || previewState.record?.truck_number || notRecorded}</div>
                   </div>
                   <div className={INVOICE_CLASSES.logisticsCell}>
                     <div className={INVOICE_CLASSES.logisticsLabel}><Truck className="h-2.5 w-2.5" />{tc.transporter}</div>
-                    <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.transporter_name || '—'}</div>
+                    <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.transporter_name || notRecorded}</div>
                   </div>
                 </div>
               </div>
@@ -265,7 +294,7 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
                   </div>
                    <div className={INVOICE_CLASSES.logisticsCell}>
                     <div className={INVOICE_CLASSES.logisticsLabel}><Truck className="h-2.5 w-2.5" />{tc.vehicleNo}</div>
-                    <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.truck_license_plate || previewState.record?.truck_number || '—'}</div>
+                    <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.truck_license_plate || previewState.record?.truck_number || notRecorded}</div>
                   </div>
                   <div className={INVOICE_CLASSES.logisticsCell}>
                     <div className={INVOICE_CLASSES.logisticsLabel}><Hash className="h-2.5 w-2.5" />GATEPASS</div>
@@ -280,7 +309,7 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
                   { label: tc.status, value: previewState.record?.status },
                   { label: tc.approval, value: previewState.record?.approval_status },
                   { label: tc.salesperson, value: previewState.record?.salesperson_name },
-                  { label: tc.driver, value: previewState.record?.driver_name },
+                  { label: tc.driver, value: previewState.record?.driver_name || notRecorded },
                   ...(stoneSqftTotal > 0
                     ? [{ label: tc.qtySqft ?? 'Total Sqft', value: stoneSqftTotal.toLocaleString('en-IN', { maximumFractionDigits: 3 }) }]
                     : [
@@ -517,7 +546,7 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
         }
         : null,
     ];
-  }, [previewState, tc, isInboundPreview, previewItemPagination, setPreviewItemsPage, inboundMetaItems, pageSize, setPageSize, isCompactItems, totalItems, canViewPricing]);
+  }, [previewState, tc, isInboundPreview, previewItemPagination, setPreviewItemsPage, inboundMetaItems, pageSize, setPageSize, isCompactItems, totalItems, canViewPricing, userRole, onShowroomChanged]);
 
   const handleOpenChange = useCallback((open) => { if (!open) closePreview(); }, [closePreview]);
 

@@ -390,7 +390,11 @@
       "paginationOf": "of",
       "paginationPrevious": "Previous",
       "paginationNext": "Next",
-      "paginationPage": "Page"
+      "paginationPage": "Page",
+      "showroom": "Showroom",
+      "atShowroom": "At Showroom",
+      "showroomMovements": "Showroom Movements",
+      "noTransporterDetails": "No transporter details"
     },
     "admin": {
       "loading": "Loading admin dashboard...",

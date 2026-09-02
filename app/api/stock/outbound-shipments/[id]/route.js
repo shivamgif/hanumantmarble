@@ -9,6 +9,7 @@ import {
   computePieceIncrement,
 } from '@/lib/stock-piece-balance';
 import { toSqft, toPositiveSqft, assertSqftAvailable } from '@/lib/stock-sqft';
+import { showroomHint } from '@/lib/stock-showroom';
 
 async function loadShipmentWithItems(id) {
   const schemaCaps = await getStockSchemaCapabilities();
@@ -990,14 +991,16 @@ export async function PATCH(request, context) {
       // If item lines are being (re)set, verify each line's qty does not exceed
       // the current available stock for that item. Server-side authoritative check.
       if (body.items && Array.isArray(body.items)) {
+        const checkCaps = await getStockSchemaCapabilities();
         for (const item of body.items) {
           if (!item.itemId) continue;
           const wholeReq = toPositiveInteger(item.loadedWholeQty);
           const brokenReq = toPositiveInteger(item.loadedBrokenQty);
           if (wholeReq === 0 && brokenReq === 0) continue;
           const stockRows = await tx(
-            `SELECT sku, current_whole_qty, current_broken_qty, pieces_per_box,
+            `SELECT sku, unit_of_measure, current_whole_qty, current_broken_qty, pieces_per_box,
                     current_piece_remainder, current_broken_piece_remainder
+                    ${checkCaps.hasShowroomInstalled ? ', showroom_whole_qty, showroom_sqft, showroom_installed_whole_qty, showroom_installed_sqft' : ''}
              FROM stock_items WHERE id = $1`,
             [item.itemId]
           );
@@ -1010,12 +1013,12 @@ export async function PATCH(request, context) {
           if (pieceMode) {
             const availPieces = totalPieces(stock.current_whole_qty, stock.current_piece_remainder, ppb);
             if (wholeReq > availPieces) {
-              const err = new Error(`Requested qty ${wholeReq} pieces exceeds available ${availPieces} for ${stock.sku}`);
+              const err = new Error(`Requested qty ${wholeReq} pieces exceeds available ${availPieces} for ${stock.sku}${showroomHint(stock)}`);
               err.statusCode = 400;
               throw err;
             }
           } else if (wholeReq > Number(stock.current_whole_qty || 0)) {
-            const err = new Error(`Requested whole qty ${wholeReq} exceeds available ${stock.current_whole_qty} for ${stock.sku}`);
+            const err = new Error(`Requested whole qty ${wholeReq} exceeds available ${stock.current_whole_qty} for ${stock.sku}${showroomHint(stock)}`);
             err.statusCode = 400;
             throw err;
           }
@@ -1023,12 +1026,12 @@ export async function PATCH(request, context) {
             if (pieceMode) {
               const availBrokenPieces = totalPieces(stock.current_broken_qty, stock.current_broken_piece_remainder, ppb);
               if (brokenReq > availBrokenPieces) {
-                const err = new Error(`Requested broken qty ${brokenReq} pieces exceeds available ${availBrokenPieces} for ${stock.sku}`);
+                const err = new Error(`Requested broken qty ${brokenReq} pieces exceeds available ${availBrokenPieces} for ${stock.sku}${showroomHint(stock)}`);
                 err.statusCode = 400;
                 throw err;
               }
             } else if (brokenReq > Number(stock.current_broken_qty || 0)) {
-              const err = new Error(`Requested broken qty ${brokenReq} exceeds available ${stock.current_broken_qty} for ${stock.sku}`);
+              const err = new Error(`Requested broken qty ${brokenReq} exceeds available ${stock.current_broken_qty} for ${stock.sku}${showroomHint(stock)}`);
               err.statusCode = 400;
               throw err;
             }

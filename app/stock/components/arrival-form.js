@@ -18,6 +18,78 @@ import {
 } from './stock-form-fields';
 import { FORM_CARD_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS, parseSizeLabelSqm, round3, toNumber } from '../lib/stock-utils';
 
+// Transporter, truck and driver, plus the escape hatch for the rare delivery
+// that shows up with no transport paperwork at all. Shared by the tile form and
+// the flat-rate (bag/stone) form so all three enforce the same rule — see
+// refineTransporter in lib/forms/stock-forms.js, which requires a note instead.
+function TransporterFields({ form, suggestions, t, tc }) {
+  const unknown = form.watch('transporterUnknown');
+
+  return (
+    <>
+      <SuggestComboboxField
+        control={form.control}
+        name="transporterName"
+        label={tc?.transporter ?? 'Transporter'}
+        placeholder={unknown ? 'Not recorded' : 'Transport company'}
+        options={suggestions?.transporterName}
+        disabled={unknown}
+      />
+      <StockFormField
+        control={form.control}
+        name="truckLicensePlate"
+        label={t?.('truck') ?? 'Truck'}
+        placeholder={unknown ? 'Not recorded' : 'RJ 14 XY 0000'}
+        list="sg-truckLicensePlate"
+        disabled={unknown}
+      />
+      <StockFormField
+        control={form.control}
+        name="driverName"
+        label={t?.('driver') ?? 'Driver'}
+        placeholder={unknown ? 'Not recorded' : 'Driver Name...'}
+        list="sg-driverName"
+        disabled={unknown}
+      />
+      <FormField
+        control={form.control}
+        name="transporterUnknown"
+        render={({ field }) => (
+          <FormItem className="flex items-start gap-2.5 sm:col-span-2 lg:col-span-3">
+            <FormControl>
+              <input
+                type="checkbox"
+                checked={Boolean(field.value)}
+                onChange={(event) => {
+                  field.onChange(event.target.checked);
+                  if (event.target.checked) {
+                    // Clear rather than keep-and-ignore, so what is stored
+                    // matches what the form says was unavailable.
+                    form.setValue('transporterName', '', { shouldValidate: true });
+                    form.setValue('truckLicensePlate', '', { shouldValidate: true });
+                    form.setValue('driverName', '', { shouldValidate: true });
+                  }
+                }}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-brand-primary"
+              />
+            </FormControl>
+            <div className="space-y-0.5">
+              <FormLabel className="text-xs font-black uppercase tracking-widest text-foreground/70 cursor-pointer">
+                {tc?.noTransporterDetails ?? 'No transporter details'}
+              </FormLabel>
+              <p className="text-[11px] font-medium text-muted-foreground">
+                {unknown
+                  ? 'Explain in the notes below why they are unavailable.'
+                  : 'Tick this if the delivery arrived with no transport paperwork at all.'}
+              </p>
+            </div>
+          </FormItem>
+        )}
+      />
+    </>
+  );
+}
+
 // Bag and stone arrivals are the same form: a quantity x a unit rate, with no
 // size/box math. Only the accent, labels and the per-item fields differ, so they
 // share one component driven by this config rather than two near-copies.
@@ -369,9 +441,7 @@ export function FlatRateArrivalFormContent({
         <div className={FORM_CARD_CLASS}>
           <FormSectionTitle category="Mobility Details" icon={Truck} title={tc?.transportInvoice ?? 'Transport & Vehicle'} tc={tc} />
           <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            <SuggestComboboxField control={form.control} name="transporterName" label={tc?.transporter ?? 'Transporter'} placeholder="Transport company" options={suggestions?.transporterName} />
-            <StockFormField control={form.control} name="truckLicensePlate" label={t?.('truck') ?? 'Truck'} placeholder="RJ 14 XY 0000" list="sg-truckLicensePlate" />
-            <StockFormField control={form.control} name="driverName" label={t?.('driver') ?? 'Driver'} placeholder="Driver Name..." list="sg-driverName" />
+            <TransporterFields form={form} suggestions={suggestions} t={t} tc={tc} />
             <SuggestComboboxField control={form.control} name="originCity" label={tc?.originCity ?? 'Origin City'} placeholder="Source city" options={suggestions?.originCity} />
             <SuggestComboboxField control={form.control} name="destinationWarehouseName" label={tc?.destinationWarehouse ?? 'Destination Warehouse'} placeholder="Warehouse name" options={suggestions?.destinationWarehouseName} />
             <StockMoneyField control={form.control} name="transportCost" label={t?.('transportCost') ?? 'Transport Cost'} hint={tc?.amountInInr} />
@@ -548,9 +618,7 @@ export function ArrivalFormContent({
         <div className={FORM_CARD_CLASS}>
           <FormSectionTitle category="Mobility Details" icon={Truck} title={tc.transportInvoice} tc={tc} />
           <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            <SuggestComboboxField control={form.control} name="transporterName" label={tc.transporter} placeholder="Transport company" options={suggestions.transporterName} />
-            <StockFormField control={form.control} name="truckLicensePlate" label={t('truck')} placeholder="RJ 14 XY 0000" list="sg-truckLicensePlate" />
-            <StockFormField control={form.control} name="driverName" label={t('driver')} placeholder="Driver Name..." list="sg-driverName" />
+            <TransporterFields form={form} suggestions={suggestions} t={t} tc={tc} />
             <SuggestComboboxField control={form.control} name="originCity" label={tc.originCity} placeholder="Source city" options={suggestions.originCity} />
             <SuggestComboboxField control={form.control} name="destinationWarehouseName" label={tc.destinationWarehouse} placeholder="Warehouse name" options={suggestions.destinationWarehouseName} />
             <StockMoneyField control={form.control} name="transportCost" label={t('transportCost')} hint={tc.amountInInr} />

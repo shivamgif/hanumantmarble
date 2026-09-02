@@ -14,6 +14,7 @@ import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { isPieceSale, totalPieces } from '@/lib/stock-piece-balance';
 import { toSqft, toPositiveSqft } from '@/lib/stock-sqft';
+import { showroomHint } from '@/lib/stock-showroom';
 
 function toPositiveInteger(value) {
   const parsed = Number.parseInt(value, 10);
@@ -28,6 +29,11 @@ async function resolveStockItem(item) {
   const sqftSelect = schemaCaps.hasStoneSqft
     ? 'i.current_sqft'
     : '0 AS current_sqft';
+  // Not part of availability — only used to tell the user their stock is at the
+  // showroom rather than missing. See lib/stock-showroom.js.
+  const showroomSelect = schemaCaps.hasShowroomInstalled
+    ? 'i.showroom_whole_qty, i.showroom_sqft, i.showroom_installed_whole_qty, i.showroom_installed_sqft'
+    : '0 AS showroom_whole_qty, 0::numeric AS showroom_sqft, 0 AS showroom_installed_whole_qty, 0::numeric AS showroom_installed_sqft';
 
   if (item.itemId) {
     const rows = await sql(
@@ -35,6 +41,7 @@ async function resolveStockItem(item) {
               i.pieces_per_box, i.current_piece_remainder, i.current_broken_piece_remainder,
               i.unit_of_measure, i.division_id,
               ${sqftSelect},
+              ${showroomSelect},
               ${categorySelect}
        FROM stock_items i
        LEFT JOIN stock_types t ON t.id = i.type_id
@@ -55,6 +62,7 @@ async function resolveStockItem(item) {
               i.pieces_per_box, i.current_piece_remainder, i.current_broken_piece_remainder,
               i.unit_of_measure, i.division_id,
               ${sqftSelect},
+              ${showroomSelect},
               ${categorySelect}
        FROM stock_items i
        LEFT JOIN stock_types t ON t.id = i.type_id
@@ -536,7 +544,7 @@ export async function POST(request) {
         const availSqft = toSqft(stockItem.current_sqft);
         if (qtySqft > availSqft) {
           return NextResponse.json(
-            { error: `Requested qty ${qtySqft} sqft exceeds available ${availSqft} sqft for ${stockItem.sku}` },
+            { error: `Requested qty ${qtySqft} sqft exceeds available ${availSqft} sqft for ${stockItem.sku}${showroomHint(stockItem)}` },
             { status: 400 }
           );
         }
@@ -544,13 +552,13 @@ export async function POST(request) {
         const availPieces = totalPieces(availWhole, pieceRemainder, piecesPerBox);
         if (effectiveWhole > availPieces) {
           return NextResponse.json(
-            { error: `Requested qty ${effectiveWhole} pieces exceeds available ${availPieces} for ${stockItem.sku}` },
+            { error: `Requested qty ${effectiveWhole} pieces exceeds available ${availPieces} for ${stockItem.sku}${showroomHint(stockItem)}` },
             { status: 400 }
           );
         }
       } else if (effectiveWhole > availWhole) {
         return NextResponse.json(
-          { error: `Requested qty ${effectiveWhole} exceeds available ${availWhole} for ${stockItem.sku}` },
+          { error: `Requested qty ${effectiveWhole} exceeds available ${availWhole} for ${stockItem.sku}${showroomHint(stockItem)}` },
           { status: 400 }
         );
       }
@@ -560,13 +568,13 @@ export async function POST(request) {
           const availBrokenPieces = totalPieces(availBroken, brokenRemainder, piecesPerBox);
           if (loadedBrokenQty > availBrokenPieces) {
             return NextResponse.json(
-              { error: `Requested broken qty ${loadedBrokenQty} pieces exceeds available ${availBrokenPieces} for ${stockItem.sku}` },
+              { error: `Requested broken qty ${loadedBrokenQty} pieces exceeds available ${availBrokenPieces} for ${stockItem.sku}${showroomHint(stockItem)}` },
               { status: 400 }
             );
           }
         } else if (loadedBrokenQty > availBroken) {
           return NextResponse.json(
-            { error: `Requested broken qty ${loadedBrokenQty} exceeds available ${availBroken} for ${stockItem.sku}` },
+            { error: `Requested broken qty ${loadedBrokenQty} exceeds available ${availBroken} for ${stockItem.sku}${showroomHint(stockItem)}` },
             { status: 400 }
           );
         }

@@ -5,6 +5,7 @@ import { Download, Boxes, ChevronRight, ChevronUp, ChevronDown, Package, Search 
 import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
 import { FORM_INPUT_CLASS, FORM_LABEL_CLASS, exportToCSV } from '../lib/stock-utils';
+import { showroomSplit } from '@/lib/stock-showroom';
 
 export function StockItemsTable({ pagination, sort, setSort, search, setSearch, openPreview, t, tc, pageSize, setPageSize }) {
   const toggleSort = useCallback((key) => {
@@ -47,6 +48,9 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
                 { id: 'broken_piece_remainder', label: 'Broken Piece Remainder', value: (row) => row.current_broken_piece_remainder || '0' },
                 { id: 'bags', label: 'Bags Qty', value: (row) => row.unit_of_measure === 'bag' ? row.current_whole_qty : '0' },
                 { id: 'sqft', label: 'Sqft Left', value: (row) => row.unit_of_measure === 'sqft' ? Number(row.current_sqft || 0) : '0' },
+                { id: 'showroom', label: 'At Showroom', value: (row) => showroomSplit(row).total },
+                { id: 'showroom_cassette', label: 'Showroom On Cassette', value: (row) => showroomSplit(row).cassette },
+                { id: 'showroom_installed', label: 'Showroom Installed', value: (row) => showroomSplit(row).installed },
                 { id: 'slab_size', label: 'Last Slab Size', value: (row) => row.last_slab_size_label || '' },
                 { id: 'reorder', label: 'Reorder Level', value: (row) => row.reorder_level || '0' },
               ];
@@ -83,6 +87,7 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
                   { id: 'size', label: t('size') },
                   { id: 'whole', label: t('whole'), align: 'right' },
                   { id: 'broken', label: t('broken'), align: 'right' },
+                  { id: 'showroom', label: tc.atShowroom ?? 'At Showroom', align: 'right' },
                   { id: 'reorder', label: t('reorder'), align: 'right' },
                 ].map((col) => (
                   <th key={col.id} className={`px-4 py-3 ${col.align === 'right' ? 'text-right' : ''}`}>
@@ -190,6 +195,29 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
+                    {(() => {
+                      // Stock physically at the showroom: display pieces, cassette
+                      // slabs. Owned and sellable, but not in the warehouse count.
+                      const { total, cassette, installed, unit } = showroomSplit(item);
+                      if (!total) {
+                        return <div className="tabular-nums text-xs text-slate-400 opacity-30">—</div>;
+                      }
+                      const fmt = (n) => n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+                      return (
+                        <div className="tabular-nums text-xs font-black text-violet-500">
+                          {fmt(total)}
+                          <span className="ml-1 text-[9px] font-bold text-violet-400/70 uppercase">{unit}</span>
+                          {/* Installed stock is physically there but not sellable. */}
+                          {installed > 0 && (
+                            <div className="text-[9px] font-bold uppercase text-amber-500/90">
+                              {fmt(installed)} installed{cassette > 0 ? ` · ${fmt(cassette)} on cassette` : ''}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </td>
+                  <td className="px-4 py-3 text-right">
                     <div className="tabular-nums text-[10px] font-bold text-slate-500 opacity-60 group-hover/row:opacity-90 transition-opacity">
                       {item.reorder_level}
                     </div>
@@ -198,7 +226,7 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
               ))}
               {pagination.total === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-24 text-center">
+                  <td colSpan="7" className="px-6 py-24 text-center">
                     <div className="flex flex-col items-center justify-center gap-4">
                       <div className="h-16 w-16 rounded-3xl bg-slate-100 dark:bg-slate-900/50 flex items-center justify-center border border-slate-200 dark:border-white/5 animate-pulse">
                         <Boxes className="h-8 w-8 text-slate-400" />

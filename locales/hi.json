@@ -389,7 +389,11 @@
       "paginationOf": "का",
       "paginationPrevious": "पिछला",
       "paginationNext": "अगला",
-      "paginationPage": "पेज"
+      "paginationPage": "पेज",
+      "showroom": "शोरूम",
+      "atShowroom": "शोरूम में",
+      "showroomMovements": "शोरूम मूवमेंट",
+      "noTransporterDetails": "ट्रांसपोर्टर विवरण उपलब्ध नहीं"
     },
     "admin": {
       "loading": "लोड हो रहा है...",

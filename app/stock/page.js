@@ -43,6 +43,8 @@ import { StockItemsTable } from './components/stock-items-table';
 import { PurchasesPanel } from './components/purchases-panel';
 import { DispatchesPanel } from './components/dispatches-panel';
 import { ShipmentPreviewSheet } from './components/shipment-preview-sheet';
+import { ShowroomPanel } from './components/showroom-panel';
+import { showroomSplit } from '@/lib/stock-showroom';
 import { StockToast } from './components/stock-toast';
 
 export default function StockDashboard() {
@@ -163,6 +165,10 @@ export default function StockDashboard() {
     paginationPrevious: t('paginationPrevious'),
     paginationNext: t('paginationNext'),
     paginationPage: t('paginationPage'),
+    showroom: t('showroom'),
+    atShowroom: t('atShowroom'),
+    showroomMovements: t('showroomMovements'),
+    noTransporterDetails: t('noTransporterDetails'),
     size: t('size'),
     name: t('name'),
     salesperson: t('salesperson'),
@@ -223,6 +229,7 @@ export default function StockDashboard() {
   const [arrivalFetching, setArrivalFetching] = useState(false);
   const [debouncedArrivalSearch, setDebouncedArrivalSearch] = useState('');
   const [arrivalRefreshKey, setArrivalRefreshKey] = useState(0);
+  const [showroomRefreshKey, setShowroomRefreshKey] = useState(0);
   const [dispatches, setDispatches] = useState([]);
   const [dispatchTotal, setDispatchTotal] = useState(0);
   const [dispatchFetching, setDispatchFetching] = useState(false);
@@ -279,8 +286,20 @@ export default function StockDashboard() {
     if (json.suggestions) setSuggestions(json.suggestions);
     setArrivalRefreshKey((k) => k + 1);
     setDispatchRefreshKey((k) => k + 1);
+    setShowroomRefreshKey((k) => k + 1);
     return json;
   }, []);
+
+  // A showroom move changes stock_items counters, so refetch and re-sync the
+  // open preview — its record is a snapshot taken when the row was clicked.
+  const handleShowroomChanged = useCallback(async () => {
+    const json = await refreshDashboard();
+    setPreviewState((current) => {
+      if (current.kind !== 'stock' || !current.record?.id) return current;
+      const fresh = (json?.activeItems || []).find((item) => item.id === current.record.id);
+      return fresh ? { ...current, record: fresh } : current;
+    });
+  }, [refreshDashboard]);
 
   useEffect(() => {
     let mounted = true;
@@ -799,6 +818,7 @@ export default function StockDashboard() {
         paymentReference: s.payment_reference || '',
         paymentMode: s.payment_mode || '',
         transporterName: s.transporter_name || '',
+        transporterUnknown: !(s.transporter_name || s.truck_license_plate || s.driver_name),
         transportCost: s.delivery_cost ?? '',
         laborCost: s.unloading_labour_cost ?? '',
         handlingCostPercent: s.handling_cost_percent != null ? String(s.handling_cost_percent) : '1.0',
@@ -1032,6 +1052,7 @@ export default function StockDashboard() {
     { id: 'dispatches', label: t('dispatches') },
     { id: 'purchases', label: t('purchases') },
     { id: 'items', label: t('currentStock') },
+    { id: 'showroom', label: tc.showroom ?? 'Showroom' },
   ];
 
   // arrival rows come from server — no client-side filtering or sorting needed
@@ -1042,7 +1063,7 @@ export default function StockDashboard() {
     (data?.activeItems || []).filter((item) => {
       const query = normalizeSearchValue(stockSearch);
       if (!query) return true;
-      return [item.sku, item.name, item.size_label, item.last_slab_size_label, item.current_whole_qty, item.current_sqft, item.current_broken_qty, item.reorder_level].some((value) => matchesQuery(value, query));
+      return [item.sku, item.name, item.size_label, item.last_slab_size_label, item.current_whole_qty, item.current_sqft, item.current_broken_qty, item.showroom_whole_qty, item.showroom_sqft, item.reorder_level].some((value) => matchesQuery(value, query));
     }),
     stockSort,
     {
@@ -1055,6 +1076,8 @@ export default function StockDashboard() {
         ? Number(item.current_sqft || 0)
         : Number(item.current_whole_qty || 0),
       broken: (item) => Number(item.current_broken_qty || 0),
+      // Same stone fallback as `whole` — showroom stone qty lives in sqft.
+      showroom: (item) => showroomSplit(item).total,
       reorder: (item) => Number(item.reorder_level || 0),
     }
   ), [data?.activeItems, stockSearch, stockSort]);
@@ -1307,6 +1330,15 @@ export default function StockDashboard() {
         </div>
       )}
 
+      {activeTableView === 'showroom' && (
+        <ShowroomPanel
+          tc={tc}
+          pageSize={pageSize}
+          setPageSize={setPageSize}
+          refreshKey={showroomRefreshKey}
+        />
+      )}
+
       {activeTableView === 'purchases' && (
         <PurchasesPanel
           arrivalForm={arrivalForm}
@@ -1405,6 +1437,7 @@ export default function StockDashboard() {
         onReject={onRejectShipment}
         onRequestChanges={onRequestShipmentChanges}
         onMarkPaid={onMarkShipmentPaid}
+        onShowroomChanged={handleShowroomChanged}
       />
 
       <StockToast toast={toast} onDismiss={() => setToast(null)} />

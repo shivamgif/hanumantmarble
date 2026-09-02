@@ -42,6 +42,16 @@ export async function GET(request) {
       : `0::numeric AS current_sqft,
            NULL::numeric AS rate_per_sqft,
            NULL::text AS last_slab_size_label`;
+    // Stock physically at the showroom, held out of the warehouse counters.
+    const showroomSelect = schemaCaps.hasShowroomInstalled
+      ? `i.showroom_whole_qty,
+           i.showroom_sqft,
+           i.showroom_installed_whole_qty,
+           i.showroom_installed_sqft`
+      : `0 AS showroom_whole_qty,
+           0::numeric AS showroom_sqft,
+           0 AS showroom_installed_whole_qty,
+           0::numeric AS showroom_installed_sqft`;
     // Lowest-stock-first must rank stone by sqft, not by an always-zero box count.
     const stockLevelOrder = schemaCaps.hasStoneSqft
       ? 'COALESCE(i.current_whole_qty, 0) + COALESCE(i.current_broken_qty, 0) + COALESCE(i.current_sqft, 0)'
@@ -74,6 +84,7 @@ export async function GET(request) {
            ${weightPerUnitSelect},
            ${ratePerBagSelect},
            ${sqftSelect},
+           ${showroomSelect},
            b.name AS brand_name,
            t.name AS type_name,
            d.name AS division_name,
