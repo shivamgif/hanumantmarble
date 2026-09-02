@@ -21,9 +21,25 @@
 
 BEGIN;
 
+-- Self-sufficient: folds in the 2026-09-01 columns so this file can be applied
+-- to a database that never saw that migration (production, a fresh Neon branch)
+-- without an ordering trap. Running 09-01 first is still fine — everything here
+-- is IF NOT EXISTS / ON CONFLICT and safe to re-run.
 ALTER TABLE IF EXISTS stock_items
+  ADD COLUMN IF NOT EXISTS showroom_whole_qty           INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS showroom_sqft                NUMERIC(14, 3) NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS showroom_installed_whole_qty INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS showroom_installed_sqft      NUMERIC(14, 3) NOT NULL DEFAULT 0;
+
+-- The single showroom location every movement row points at. DO UPDATE rather
+-- than DO NOTHING because inbound-shipments/route.js auto-creates locations
+-- hardcoded to 'warehouse', so a row named Showroom may exist with the wrong type.
+INSERT INTO stock_locations (name, location_type)
+VALUES ('Showroom', 'showroom')
+ON CONFLICT (name) DO UPDATE SET location_type = 'showroom', updated_at = NOW();
+
+CREATE INDEX IF NOT EXISTS idx_stock_movements_location_created
+  ON stock_movements(location_id, created_at DESC);
 
 -- Guard the subset relationship in the database, not just in the route: an
 -- installed count above the showroom total would silently produce negative
