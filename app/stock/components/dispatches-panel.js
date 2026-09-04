@@ -1,14 +1,15 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { Download, ChevronRight, PackageCheck, Plus, Search, Send } from 'lucide-react';
+import { BarChart3, Download, ChevronRight, PackageCheck, Plus, Search, Send } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
 import { DispatchFormContent } from './dispatch-form';
-import { formatDateTime, getGeneratedByRoleLabel, getStatusVariant, CLASSES, FORM_INPUT_CLASS, exportToCSV, EXPORT_PERIOD_PRESETS, filterRowsByPeriod, invalidateShipmentCache } from '../lib/stock-utils';
+import { ProductSalesReport } from './product-sales-report';
+import { formatDateTime, getGeneratedByRoleLabel, getStatusVariant, CLASSES, FORM_INPUT_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS, PILL_ROW_CLASS, exportToCSV, EXPORT_PERIOD_PRESETS, filterRowsByPeriod, invalidateShipmentCache } from '../lib/stock-utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,6 +56,7 @@ export function DispatchesPanel({
   const canCreateDispatch = ['admin', 'manager', 'stock_maintainer'].includes(userRole);
   const [markingPaidId, setMarkingPaidId] = useState(null);
   const [confirmPaidId, setConfirmPaidId] = useState(null);
+  const [salesReportOpen, setSalesReportOpen] = useState(false);
 
   async function handleMarkAsPaid(id) {
     setConfirmPaidId(null);
@@ -82,12 +84,12 @@ export function DispatchesPanel({
 
   return (
     <div className="stock-tab-panel" key="stock-panel-dispatches">
-      <div className="mb-6 flex items-center justify-end gap-3">
+      <div className={PILL_ROW_CLASS}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex items-center gap-2 rounded-full border border-slate-200/60 bg-white px-4 py-2 text-[11px] font-black uppercase tracking-widest text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:scale-105 active:scale-95 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+              className={PILL_BUTTON_CLASS}
               title="Export Dispatches to CSV"
             >
               <Download className="h-4 w-4" />
@@ -128,10 +130,19 @@ export function DispatchesPanel({
         </DropdownMenu>
         <button
           type="button"
+          onClick={() => setSalesReportOpen(true)}
+          title="Monthly quantity sold per product, broken down by customer"
+          className={PILL_BUTTON_CLASS}
+        >
+          <BarChart3 className="h-4 w-4" />
+          Sales<span className="hidden sm:inline"> by Product</span>
+        </button>
+        <button
+          type="button"
           onClick={onNewDispatch}
           disabled={!canCreateDispatch || dispatchSubmitting}
           title={!canCreateDispatch ? 'Your role cannot log new dispatches' : dispatchSubmitting ? 'Submission in progress...' : undefined}
-          className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-[11px] font-black uppercase tracking-widest text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+          className={PILL_PRIMARY_BUTTON_CLASS}
         >
           <Plus className="h-4 w-4" />
           {t('newDispatch')}
@@ -468,6 +479,8 @@ export function DispatchesPanel({
           />
         </div>
       </section>
+
+      <ProductSalesReport open={salesReportOpen} onOpenChange={setSalesReportOpen} />
 
       <AlertDialog open={!!confirmPaidId} onOpenChange={(open) => { if (!open) setConfirmPaidId(null); }}>
         <AlertDialogContent>

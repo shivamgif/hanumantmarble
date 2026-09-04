@@ -11,7 +11,7 @@ import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
 import { bagArrivalFormSchema, stoneArrivalFormSchema } from '@/lib/forms/stock-forms';
 import { ArrivalFormContent, BagArrivalFormContent, StoneArrivalFormContent } from './arrival-form';
-import { createStoneArrivalItemRow, createInitialStoneArrivalDraft, createBagArrivalItemRow, createInitialBagArrivalDraft, formatDateTime, getGeneratedByRoleLabel, getStatusVariant, CLASSES, FORM_INPUT_CLASS, toNumber, trimText, fetchShipmentDetails, invalidateShipmentCache, exportToCSV, EXPORT_PERIOD_PRESETS, filterRowsByPeriod } from '../lib/stock-utils';
+import { createStoneArrivalItemRow, createInitialStoneArrivalDraft, createBagArrivalItemRow, createInitialBagArrivalDraft, formatDateTime, getGeneratedByRoleLabel, getStatusVariant, CLASSES, FORM_INPUT_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS, PILL_ROW_CLASS, toNumber, trimText, fetchShipmentDetails, invalidateShipmentCache, exportToCSV, EXPORT_PERIOD_PRESETS, filterRowsByPeriod } from '../lib/stock-utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -351,12 +351,12 @@ export function PurchasesPanel({
 
   return (
     <div className="stock-tab-panel" key="stock-panel-purchases">
-      <div className="mb-6 flex items-center justify-end gap-3">
+      <div className={PILL_ROW_CLASS}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex items-center gap-2 rounded-full border border-slate-200/60 bg-white px-4 py-2 text-[11px] font-black uppercase tracking-widest text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:scale-105 active:scale-95 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+              className={PILL_BUTTON_CLASS}
               title="Export Purchases to CSV"
             >
               <Download className="h-4 w-4" />
@@ -401,7 +401,7 @@ export function PurchasesPanel({
         <button
           type="button"
           onClick={onNewArrival || (() => setArrivalSheetOpen(true))}
-          className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-[11px] font-black uppercase tracking-widest text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+          className={PILL_PRIMARY_BUTTON_CLASS}
           disabled={!canCreateArrival}
           title={!canCreateArrival ? tc.insufficientNewPurchase : undefined}
         >

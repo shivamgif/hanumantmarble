@@ -8,7 +8,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  FORM_INPUT_CLASS, formatDateTime, exportToCSV, EXPORT_PERIOD_PRESETS, filterRowsByPeriod,
+  FORM_INPUT_CLASS, PILL_BUTTON_CLASS, PILL_ROW_CLASS, formatDateTime, exportToCSV, EXPORT_PERIOD_PRESETS, filterRowsByPeriod,
   normalizeSearchValue, matchesQuery, SHOWROOM_ACTIONS, showroomActionOf, formatShowroomQty,
 } from '../lib/stock-utils';
 
@@ -56,12 +56,12 @@ export function ShowroomPanel({ tc, pageSize, setPageSize, refreshKey }) {
 
   return (
     <div className="stock-tab-panel" key="stock-panel-showroom">
-      <div className="mb-6 flex items-center justify-end gap-3">
+      <div className={PILL_ROW_CLASS}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex items-center gap-2 rounded-full border border-slate-200/60 bg-white px-4 py-2 text-[11px] font-black uppercase tracking-widest text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:scale-105 active:scale-95 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+              className={PILL_BUTTON_CLASS}
               title="Export Showroom Movements to CSV"
             >
               <Download className="h-4 w-4" />
