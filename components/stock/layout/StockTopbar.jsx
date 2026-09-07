@@ -439,10 +439,6 @@ export default function StockTopbar({
           <nav className="flex items-center gap-1.5 overflow-x-auto border-t border-border/60 px-4 py-3 scrollbar-none" aria-label={t('mobileNav')}>
             {navigationItems.map((item) => {
               const active = isActiveRoute(item.href);
-              let mobileLabel;
-              if (item.href === '/stock/admin') mobileLabel = t('adminDashboard');
-              else if (item.href === '/stock/analytics') mobileLabel = t('analytics');
-              else mobileLabel = t('dashboard');
 
               return (
                 <Link
@@ -455,7 +451,10 @@ export default function StockTopbar({
                   }`}
                 >
                   <item.icon className="h-3 w-3" />
-                  <span>{mobileLabel}</span>
+                  {/* The label the layout already resolved. Deriving it from
+                      href here instead meant any new nav entry silently fell
+                      through to "Dashboard". */}
+                  <span>{item.label}</span>
                 </Link>
               );
             })}
