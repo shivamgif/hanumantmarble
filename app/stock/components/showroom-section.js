@@ -75,6 +75,10 @@ export function ShowroomSection({ item, userRole, onChanged }) {
   const isStone = item?.unit_of_measure === 'sqft';
   const split = useMemo(() => showroomSplit(item), [item]);
 
+  // Which showroom this move is for, plus this item's balance at each. With one
+  // showroom the picker hides itself and everything behaves exactly as before.
+  const [branches, setBranches] = useState([]);
+  const [locationId, setLocationId] = useState('');
   const [openAction, setOpenAction] = useState(null);
   const [qty, setQty] = useState('');
   const [notes, setNotes] = useState('');
@@ -103,6 +107,28 @@ export function ShowroomSection({ item, userRole, onChanged }) {
 
   useEffect(() => { loadHistory(); }, [loadHistory]);
 
+  const loadBranches = useCallback(async () => {
+    if (!itemId) return;
+    try {
+      const response = await fetch(`/api/stock/movements/showrooms?itemId=${itemId}`, { cache: 'no-store' });
+      const json = await response.json();
+      if (!response.ok) return;
+      setBranches(json.showrooms || []);
+      // Default to the branch that already holds this item, so the common case
+      // (move it back, or mark it installed) needs no thought. Otherwise the
+      // first showroom.
+      setLocationId((current) => {
+        if (current) return current;
+        const holding = (json.showrooms || []).find((b) => b.total > 0);
+        return String(holding?.id ?? json.showrooms?.[0]?.id ?? '');
+      });
+    } catch {
+      setBranches([]);
+    }
+  }, [itemId]);
+
+  useEffect(() => { loadBranches(); }, [loadBranches]);
+
   const reset = useCallback(() => {
     setOpenAction(null);
     setQty('');
@@ -118,21 +144,21 @@ export function ShowroomSection({ item, userRole, onChanged }) {
       const response = await fetch('/api/stock/movements', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemId, action: openAction, state, qty, notes }),
+        body: JSON.stringify({ itemId, action: openAction, state, qty, notes, locationId: locationId || undefined }),
       });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || 'Failed to record the move.');
       reset();
       // The stock counters just changed, so the cached item list is stale.
       invalidateShipmentCache();
-      await loadHistory();
+      await Promise.all([loadHistory(), loadBranches()]);
       onChanged?.();
     } catch (submitError) {
       setError(submitError.message);
     } finally {
       setSubmitting(false);
     }
-  }, [itemId, openAction, state, qty, notes, reset, loadHistory, onChanged]);
+  }, [itemId, openAction, state, qty, notes, locationId, reset, loadHistory, loadBranches, onChanged]);
 
   const onSubmitClick = useCallback(() => {
     // Marking stock installed takes it out of sale until someone re-marks it,
@@ -190,6 +216,29 @@ export function ShowroomSection({ item, userRole, onChanged }) {
 
           {openAction && (
             <div className="rounded-2xl border border-border/60 bg-muted/40 p-4 space-y-4">
+              {/* Only worth asking when there is more than one showroom. With a
+                  single branch this stays hidden and the request omits
+                  locationId, which the API resolves to that one showroom. */}
+              {branches.length > 1 && (
+                <div>
+                  <label className={FORM_LABEL_CLASS} htmlFor="showroom-branch">Showroom</label>
+                  <select
+                    id="showroom-branch"
+                    value={locationId}
+                    onChange={(event) => setLocationId(event.target.value)}
+                    className={FORM_INPUT_CLASS}
+                  >
+                    {branches.map((branch) => (
+                      <option key={branch.id} value={branch.id}>
+                        {branch.name}
+                        {branch.total > 0
+                          ? ` — ${branch.cassette} on cassette${branch.installed > 0 ? `, ${branch.installed} installed` : ''}`
+                          : ' — nothing on display'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label className={FORM_LABEL_CLASS} htmlFor="showroom-qty">

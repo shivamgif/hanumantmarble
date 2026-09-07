@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Coffee, LogIn, LogOut, MapPinOff, Play } from 'lucide-react';
+import { Building2, Coffee, LogIn, LogOut, MapPinOff, Play } from 'lucide-react';
 import { formatMinutes } from '@/lib/attendance.mjs';
 import { CLASSES, PILL_BUTTON_CLASS } from '../lib/stock-utils';
 
@@ -36,7 +36,7 @@ function readPosition(timeoutMs = 8000) {
 }
 
 export function AttendanceClock({ onPunched }) {
-  const [state, setState] = useState({ entry: null, elapsedMinutes: 0, onBreak: false });
+  const [state, setState] = useState({ entry: null, elapsedMinutes: 0, onBreak: false, homeBranch: null, currentBranch: null });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
@@ -49,11 +49,18 @@ export function AttendanceClock({ onPunched }) {
   const baseRef = useRef({ minutes: 0, at: Date.now(), running: false });
 
   const applyState = useCallback((json) => {
-    setState({
+    setState((prev) => ({
       entry: json.entry || null,
       elapsedMinutes: json.elapsedMinutes || 0,
       onBreak: Boolean(json.onBreak ?? json.entry?.break_started_at),
-    });
+      // A punch response carries `location` (where it was just attributed); the
+      // state response carries homeBranch/currentBranch. Keep whichever the
+      // caller supplied and fall back to what we already knew, so a punch does
+      // not blank out the branch line.
+      homeBranch: json.homeBranch !== undefined ? json.homeBranch : prev.homeBranch,
+      currentBranch:
+        json.currentBranch !== undefined ? json.currentBranch : json.location !== undefined ? json.location : prev.currentBranch,
+    }));
     baseRef.current = {
       minutes: json.elapsedMinutes || 0,
       at: Date.now(),
@@ -128,6 +135,7 @@ export function AttendanceClock({ onPunched }) {
 
   const isIn = Boolean(state.entry && !state.entry.clock_out_at);
   const onBreak = state.onBreak;
+  const branch = (isIn && state.currentBranch) || state.homeBranch || null;
 
   return (
     <div className={CLASSES.topCard}>
@@ -139,10 +147,23 @@ export function AttendanceClock({ onPunched }) {
           <p className="mt-1 text-4xl font-black tabular-nums text-slate-900 dark:text-white">
             {loading ? '—' : formatMinutes(liveMinutes)}
           </p>
+          {/* While clocked in, show where the punch was actually attributed —
+              someone covering another branch needs to see that, not their usual
+              one. Otherwise show their home branch. Show nothing at all rather
+              than inventing a default. */}
+          {branch ? (
+            <p className="mt-1 flex items-center justify-center gap-1.5 text-[11px] font-bold text-slate-500 sm:justify-start">
+              <Building2 className="h-3.5 w-3.5" />
+              {branch.name}
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                {isIn && state.currentBranch ? 'punched here' : 'your branch'}
+              </span>
+            </p>
+          ) : null}
           {state.entry?.is_outside_geofence ? (
             <p className="mt-1 flex items-center justify-center gap-1.5 text-[11px] font-bold text-amber-600 sm:justify-start">
               <MapPinOff className="h-3.5 w-3.5" />
-              Punched away from the showroom
+              {branch ? `Punched away from ${branch.name}` : 'Punched away from your branch'}
             </p>
           ) : null}
         </div>

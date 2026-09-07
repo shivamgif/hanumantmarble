@@ -30,6 +30,7 @@ async function fetchDashboardUsers() {
          (u.status = 'active') AS is_active,
          u.salary,
          u.monthly_sales_goal,
+         u.default_location_id,
          u.last_login_at
        FROM stock_app_users u
        LEFT JOIN stock_user_divisions ud ON ud.user_id = u.id
@@ -65,6 +66,7 @@ async function fetchDashboardUsers() {
          (u.status = 'active') AS is_active,
          u.salary,
          u.monthly_sales_goal,
+         u.default_location_id,
          u.last_login_at
        FROM stock_app_users u
        LEFT JOIN stock_user_divisions ud ON ud.user_id = u.id

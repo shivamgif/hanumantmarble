@@ -241,6 +241,18 @@ export async function POST(request) {
 
   const roleFlags = getRoleFlags(normalizedRole);
 
+  // Home branch. Optional everywhere: blank means "no fixed branch", and the
+  // punch location is then resolved from GPS exactly as before. Same field name
+  // as /api/stock/attendance/employees so both editors speak one language.
+  const rawDefaultLocation = body.defaultLocationId;
+  const defaultLocationId =
+    rawDefaultLocation === undefined || rawDefaultLocation === null || rawDefaultLocation === ''
+      ? null
+      : Number(rawDefaultLocation);
+  if (defaultLocationId !== null && (!Number.isInteger(defaultLocationId) || defaultLocationId <= 0)) {
+    return NextResponse.json({ error: 'Invalid defaultLocationId' }, { status: 400 });
+  }
+
   // Staff with no app login — loaders, drivers, helpers. They exist for
   // attendance and payroll only, so they get no better-auth credential and no
   // email, which means getStockContext can never match a session to them
@@ -257,8 +269,8 @@ export async function POST(request) {
       // that conflict target cannot fire on a NULL email.
       const noLoginRows = await sql(
         `INSERT INTO stock_app_users
-           (name, phone, role, department, status, salary, has_login, tracks_attendance, created_by)
-         VALUES ($1, $2, $3, $4, 'active', $5, FALSE, TRUE, $6)
+           (name, phone, role, department, status, salary, has_login, tracks_attendance, default_location_id, created_by)
+         VALUES ($1, $2, $3, $4, 'active', $5, FALSE, TRUE, $6, $7)
          RETURNING *`,
         [
           name,
@@ -266,6 +278,7 @@ export async function POST(request) {
           normalizedRole,
           department,
           body.salary === undefined || body.salary === null || body.salary === '' ? null : Number(body.salary),
+          defaultLocationId,
           session.user.email || session.user.sub,
         ]
       );
@@ -353,8 +366,9 @@ export async function POST(request) {
           can_manage_users,
           can_approve_changes,
           can_view_dashboard,
+          default_location_id,
           created_by
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
         ON CONFLICT (email) DO UPDATE SET
           auth0_sub = EXCLUDED.auth0_sub,
           external_auth_provider = EXCLUDED.external_auth_provider,
@@ -368,6 +382,7 @@ export async function POST(request) {
           can_manage_users = EXCLUDED.can_manage_users,
           can_approve_changes = EXCLUDED.can_approve_changes,
           can_view_dashboard = EXCLUDED.can_view_dashboard,
+          default_location_id = COALESCE(EXCLUDED.default_location_id, stock_app_users.default_location_id),
           updated_at = NOW()
         RETURNING *`,
         [
@@ -384,6 +399,7 @@ export async function POST(request) {
           roleFlags.canManageUsers,
           roleFlags.canApproveChanges,
           autoApprovedCanViewDashboard,
+          defaultLocationId,
           session.user.email,
         ]
       );
@@ -405,8 +421,9 @@ export async function POST(request) {
           can_manage_users,
           can_approve_changes,
           can_view_dashboard,
+          default_location_id,
           created_by
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
         ON CONFLICT (email) DO UPDATE SET
           auth0_sub = EXCLUDED.auth0_sub,
           name = EXCLUDED.name,
@@ -418,6 +435,7 @@ export async function POST(request) {
           can_manage_users = EXCLUDED.can_manage_users,
           can_approve_changes = EXCLUDED.can_approve_changes,
           can_view_dashboard = EXCLUDED.can_view_dashboard,
+          default_location_id = COALESCE(EXCLUDED.default_location_id, stock_app_users.default_location_id),
           updated_at = NOW()
         RETURNING *`,
         [
@@ -432,6 +450,7 @@ export async function POST(request) {
           roleFlags.canManageUsers,
           roleFlags.canApproveChanges,
           autoApprovedCanViewDashboard,
+          defaultLocationId,
           session.user.email,
         ]
       );
@@ -503,6 +522,21 @@ export async function PATCH(request) {
   const hasDivisionInPayload = Object.prototype.hasOwnProperty.call(body, 'division');
   const hasSalaryInPayload = Object.prototype.hasOwnProperty.call(body, 'salary');
   const hasSalesGoalInPayload = Object.prototype.hasOwnProperty.call(body, 'monthlySalesGoal');
+  const hasDefaultLocationInPayload = Object.prototype.hasOwnProperty.call(body, 'defaultLocationId');
+  // Clearing the home branch back to "none" has to be possible, and COALESCE
+  // cannot express that — COALESCE(NULL, col) keeps the old value. So this one
+  // column is written through an explicit presence flag instead.
+  const nextDefaultLocationId =
+    body.defaultLocationId === null || body.defaultLocationId === '' || body.defaultLocationId === undefined
+      ? null
+      : Number(body.defaultLocationId);
+  if (
+    hasDefaultLocationInPayload &&
+    nextDefaultLocationId !== null &&
+    (!Number.isInteger(nextDefaultLocationId) || nextDefaultLocationId <= 0)
+  ) {
+    return NextResponse.json({ error: 'Invalid defaultLocationId' }, { status: 400 });
+  }
   const department = hasDepartmentInPayload
     ? normalizeDepartment(body.department, normalizedRole === 'salesperson' ? 'Adhesive' : null)
     : null;
@@ -535,6 +569,7 @@ export async function PATCH(request) {
            division_id = COALESCE($10, division_id),
            salary = COALESCE($12, salary),
            monthly_sales_goal = COALESCE($13, monthly_sales_goal),
+           default_location_id = CASE WHEN $14 THEN $15 ELSE default_location_id END,
            updated_at = NOW()
        WHERE id = $11
        RETURNING *`,
@@ -552,6 +587,8 @@ export async function PATCH(request) {
         body.id,
         hasSalaryInPayload ? (body.salary != null ? Number(body.salary) : null) : null,
         hasSalesGoalInPayload ? (body.monthlySalesGoal != null ? Number(body.monthlySalesGoal) : null) : null,
+        hasDefaultLocationInPayload,
+        hasDefaultLocationInPayload ? nextDefaultLocationId : null,
       ]
     );
 

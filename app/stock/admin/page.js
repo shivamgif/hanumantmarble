@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuthUser } from '@/lib/auth-client';
 import { useSearchParams } from 'next/navigation';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
@@ -13,6 +13,7 @@ import { useStockFormStore } from '@/lib/stores/stock-form-store';
 import { createArrivalItemRow, createBagArrivalItemRow, createDispatchItemRow, createInitialArrivalDraft, createInitialBagArrivalDraft, createInitialDispatchDraft, formatLineVolume, formatShipmentVolume, toNumber, trimText, parseSizeLabelDimensions } from '@/app/stock/lib/stock-utils';
 import { ArrivalFormContent, BagArrivalFormContent } from '@/app/stock/components/arrival-form';
 import { DispatchFormContent } from '@/app/stock/components/dispatch-form';
+import { BranchesPanel } from '@/app/stock/components/branches-panel';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import EntryPreviewSheet, { PreviewKeyValueGrid } from '@/components/ui/entry-preview-sheet';
 import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
@@ -171,6 +172,17 @@ export default function AdminDashboard() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [userFormNotice, setUserFormNotice] = useState(null);
+  // Home-branch options. Deliberately its own fetch rather than part of
+  // refreshDashboard(), which throws on any failure — a missing branch list
+  // must not take the whole admin page down.
+  const [branchOptions, setBranchOptions] = useState([]);
+  const loadBranches = useCallback(() => {
+    fetch('/api/stock/locations', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : { locations: [] }))
+      .then((json) => setBranchOptions(json.locations || []))
+      .catch(() => setBranchOptions([]));
+  }, []);
+  useEffect(loadBranches, [loadBranches]);
   const [actionNotice, setActionNotice] = useState(null);
   const [arrivalPage, setArrivalPage] = useState(1);
   const [dispatchPage, setDispatchPage] = useState(1);
@@ -204,10 +216,12 @@ export default function AdminDashboard() {
       divisions: ['Adhesive'],
       department: '',
       status: 'active',
+      defaultLocationId: '',
     },
   });
   const previewUserForm = useForm({
     defaultValues: {
+      defaultLocationId: '',
       role: 'stock_maintainer',
       divisions: ['Adhesive'],
       status: 'inactive',
@@ -988,7 +1002,7 @@ export default function AdminDashboard() {
         throw new Error(json.error || 'Failed to save user');
       }
 
-      createUserForm.reset({ name: '', phone: '', email: '', password: '', role: 'stock_maintainer', divisions: ['Adhesive'], department: '', status: 'active' });
+      createUserForm.reset({ name: '', phone: '', email: '', password: '', role: 'stock_maintainer', divisions: ['Adhesive'], department: '', status: 'active', defaultLocationId: '' });
       setConfirmPassword('');
       setShowPrimaryPassword(false);
       setShowConfirmPassword(false);
@@ -1042,6 +1056,7 @@ export default function AdminDashboard() {
       canViewDashboard: Boolean(previewState.record.can_view_dashboard),
       salary: previewState.record.salary != null ? String(previewState.record.salary) : '',
       monthlySalesGoal: previewState.record.monthly_sales_goal != null ? String(previewState.record.monthly_sales_goal) : '',
+      defaultLocationId: previewState.record.default_location_id != null ? String(previewState.record.default_location_id) : '',
     });
   }, [previewState.kind, previewState.record, previewState.open, previewUserForm]);
 
@@ -1506,7 +1521,14 @@ export default function AdminDashboard() {
       </>}
 
       <div className="flex items-center overflow-x-auto no-scrollbar bg-slate-100 dark:bg-slate-900/40 p-1 rounded-xl border border-slate-200 dark:border-white/5 w-full sm:w-fit">
-        {[{ id: 'approvals', label: t('approvals') }, { id: 'changes', label: t('changes') }, { id: 'users', label: t('users') }].map((tab) => {
+        {[
+          { id: 'approvals', label: t('approvals') },
+          { id: 'changes', label: t('changes') },
+          { id: 'users', label: t('users') },
+          // Branches are company setup, not user admin — its own tab rather
+          // than buried in the users section.
+          ...(canManageUsers ? [{ id: 'branches', label: language === 'hi' ? 'शाखाएँ' : 'Branches' }] : []),
+        ].map((tab) => {
           const isActive = mobileSection === tab.id;
           return (
             <button
@@ -2114,6 +2136,14 @@ export default function AdminDashboard() {
           </AnalyticsCard>
         </section>
 
+        {/* Branches: every site the company works from, with its geofence
+            anchor. The same component renders in Attendance → Settings, so the
+            two can never drift. onChanged refreshes the home-branch dropdowns
+            on the user form and preview. */}
+        <section id="branches" className={`space-y-6 ${mobileSection === 'branches' ? '' : 'hidden'}`}>
+          {canManageUsers && <BranchesPanel onChanged={loadBranches} />}
+        </section>
+
         <section id="users-contacts" className={`space-y-6 ${mobileSection === 'users' ? '' : 'hidden'}`}>
           <AnalyticsCard
             title={t('usersSalespersons')}
@@ -2177,6 +2207,29 @@ export default function AdminDashboard() {
                           <SelectItem value="read_only_admin">{language === 'hi' ? 'केवल-पढ़ने वाला एडमिन' : 'Read-Only Admin'}</SelectItem>
                           <SelectItem value="manager">{language === 'hi' ? 'मैनेजर' : 'Manager'}</SelectItem>
                           <SelectItem value="admin">{language === 'hi' ? 'सिस्टम एडमिन' : 'System Admin'}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">
+                        {language === 'hi' ? 'मुख्य शाखा' : 'Home Branch'}
+                      </Label>
+                      {/* Optional. Blank means no fixed branch, and the punch
+                          location is resolved from GPS exactly as before. */}
+                      <Select
+                        value={createUserForm.watch('defaultLocationId') || 'none'}
+                        onValueChange={(value) =>
+                          createUserForm.setValue('defaultLocationId', value === 'none' ? '' : value, { shouldDirty: true })
+                        }
+                      >
+                        <SelectTrigger className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold">
+                          <SelectValue placeholder={language === 'hi' ? 'कोई नहीं' : 'No home branch'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">{language === 'hi' ? 'कोई मुख्य शाखा नहीं' : 'No home branch'}</SelectItem>
+                          {branchOptions.map((branch) => (
+                            <SelectItem key={branch.id} value={String(branch.id)}>{branch.name}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -2244,7 +2297,7 @@ export default function AdminDashboard() {
                       onClick={() => {
                         setShowUserForm(false);
                         setUserFormNotice(null);
-                        createUserForm.reset({ name: '', phone: '', email: '', password: '', role: 'stock_maintainer', department: 'Adhesive', status: 'active', division: '' });
+                        createUserForm.reset({ name: '', phone: '', email: '', password: '', role: 'stock_maintainer', department: 'Adhesive', status: 'active', division: '', defaultLocationId: '' });
                         setConfirmPassword('');
                         setShowPrimaryPassword(false);
                         setShowConfirmPassword(false);
@@ -2503,6 +2556,12 @@ export default function AdminDashboard() {
                           { label: 'Email Address', value: previewState.record?.email },
                           { label: 'Primary Contact', value: previewState.record?.phone_number },
                           { label: 'Department', value: previewState.record?.department || 'Adhesive' },
+                          {
+                            label: 'Home Branch',
+                            value:
+                              branchOptions.find((b) => String(b.id) === String(previewState.record?.default_location_id))?.name
+                              || 'No home branch',
+                          },
                           { label: 'Status', value: previewState.record?.is_active ? 'Active Identity' : 'Suspended' },
                         ].map((item) => (
                           <div key={item.label} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/50">
@@ -2532,6 +2591,7 @@ export default function AdminDashboard() {
                               canManageUsers: previewUserForm.watch('canManageUsers'),
                               canApproveChanges: previewUserForm.watch('canApproveChanges'),
                               canViewDashboard: previewUserForm.watch('canViewDashboard'),
+                              defaultLocationId: previewUserForm.watch('defaultLocationId') || null,
                               ...(isSalesperson && { salary: salaryVal !== '' ? Number(salaryVal) : null }),
                               ...(isSalesperson && { monthlySalesGoal: goalVal !== '' ? Number(goalVal) : null }),
                             },
@@ -2554,6 +2614,28 @@ export default function AdminDashboard() {
                                   <SelectItem value="read_only_admin">Read-Only Admin</SelectItem>
                                   <SelectItem value="manager">Manager</SelectItem>
                                   <SelectItem value="admin">Admin</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className={FORM_LABEL_CLASS}>Home Branch</Label>
+                              {/* A soft default, never a restriction: it is the
+                                  GPS-denied fallback, the kiosk's branch-first
+                                  ordering, and per-branch reporting. */}
+                              <Select
+                                value={previewUserForm.watch('defaultLocationId') || 'none'}
+                                onValueChange={(value) =>
+                                  previewUserForm.setValue('defaultLocationId', value === 'none' ? '' : value, { shouldDirty: true })
+                                }
+                              >
+                                <SelectTrigger className="h-11 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                                  <SelectValue placeholder="No home branch" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">No home branch</SelectItem>
+                                  {branchOptions.map((branch) => (
+                                    <SelectItem key={branch.id} value={String(branch.id)}>{branch.name}</SelectItem>
+                                  ))}
                                 </SelectContent>
                               </Select>
                             </div>

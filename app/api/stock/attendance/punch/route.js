@@ -5,6 +5,7 @@ import { isOutsideGeofence, openEntryMinutes } from '@/lib/attendance.mjs';
 import {
   IST_NOW,
   getOpenEntry,
+  locationSummary,
   logTimeline,
   loadSettings,
   readLatLng,
@@ -164,11 +165,23 @@ export async function GET(request) {
 
   try {
     const open = await getOpenEntry(appUser.id);
+
+    // Two different branches, and the difference matters to the employee:
+    // homeBranch is where they usually work, currentBranch is where the open
+    // punch was actually attributed. Someone covering another branch should see
+    // where they are, not where they normally are.
+    const [homeBranch, currentBranch] = await Promise.all([
+      appUser.default_location_id ? locationSummary(appUser.default_location_id) : null,
+      open?.location_id ? locationSummary(open.location_id) : null,
+    ]);
+
     return NextResponse.json({
       entry: serializeEntry(open),
       elapsedMinutes: open ? openEntryMinutes(open) : 0,
       onBreak: Boolean(open?.break_started_at),
       tracksAttendance: appUser.tracks_attendance !== false,
+      homeBranch,
+      currentBranch,
     });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load punch state', detail: error.message }, { status: 500 });

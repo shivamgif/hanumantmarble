@@ -7,12 +7,15 @@
  * warehouse number. Material stuck down as flooring is written off out of
  * showroom_* and survives only as the stock_movements row this route writes.
  *
- * POST /api/stock/movements  { itemId, action, qty, notes }
+ * POST /api/stock/movements  { itemId, action, qty, notes, locationId }
  * GET  /api/stock/movements  ?itemId=&limit=&offset=
  *
- * This is one second location, not a location dimension:
- * stock_inventory_lots.location_id stays unused, and stock_items remains the
- * denormalized read surface it already is for current_*.
+ * Display stock is now PER SHOWROOM, in stock_showroom_stock (item_id,
+ * location_id). The stock_items.showroom_* columns are kept as a company-wide
+ * ROLLUP, written in the same transaction, because every other reader — the
+ * dispatch availability hint above all — asks "is any of this on display
+ * anywhere", not "at which branch". Both are updated under the same advisory
+ * lock so they cannot drift; scripts/check-showroom-reconcile.mjs asserts it.
  */
 
 import { NextResponse } from 'next/server';
@@ -31,14 +34,36 @@ import { SHOWROOM_MOVES, resolveShowroomMove, showroomMoveKey, showroomSplit } f
 
 const WRITE_ROLES = ['admin', 'manager', 'stock_maintainer'];
 
-// ponytail: one showroom, so the id is stable — cache it instead of joining on
-// every read. Add a location param here if a second showroom ever opens.
-let showroomLocationIdCache = null;
-async function getShowroomLocationId() {
-  if (showroomLocationIdCache) return showroomLocationIdCache;
-  const rows = await sql(`SELECT id FROM stock_locations WHERE location_type = 'showroom' ORDER BY id LIMIT 1`, []);
-  showroomLocationIdCache = rows[0]?.id ?? null;
-  return showroomLocationIdCache;
+/**
+ * Which showroom this move is for.
+ *
+ * An explicit locationId must be an ACTIVE showroom-type location — sending
+ * display stock to a warehouse or a retired branch is a mistake, not a move.
+ * With none given, fall back to the oldest showroom, which is what every
+ * pre-multi-branch caller means and keeps existing clients working.
+ *
+ * No cache any more: the answer now depends on the request, and a stale id
+ * would silently post stock to the wrong branch.
+ */
+async function resolveShowroomLocation(locationId) {
+  if (locationId !== undefined && locationId !== null && locationId !== '') {
+    const id = Number(locationId);
+    if (!Number.isInteger(id) || id <= 0) return { error: 'Invalid locationId' };
+    const rows = await sql(
+      `SELECT id, name FROM stock_locations
+        WHERE id = $1 AND location_type = 'showroom' AND is_active`,
+      [id]
+    );
+    if (!rows[0]) return { error: 'That branch is not an active showroom' };
+    return { location: rows[0] };
+  }
+
+  const rows = await sql(
+    `SELECT id, name FROM stock_locations
+      WHERE location_type = 'showroom' AND is_active ORDER BY id LIMIT 1`,
+    []
+  );
+  return rows[0] ? { location: rows[0] } : { error: null };
 }
 
 export async function POST(request) {
@@ -74,13 +99,25 @@ export async function POST(request) {
     }
 
     const schemaCaps = await getStockSchemaCapabilities();
-    const showroomLocationId = schemaCaps.hasShowroomStock ? await getShowroomLocationId() : null;
-    if (!showroomLocationId || !schemaCaps.hasShowroomInstalled) {
+    if (!schemaCaps.hasShowroomStock || !schemaCaps.hasShowroomInstalled) {
       return NextResponse.json(
         { error: 'Showroom stock is not set up. Run the migrations in scripts/migrations/2026-09-0*-showroom-*.sql' },
         { status: 503 }
       );
     }
+
+    const resolved = await resolveShowroomLocation(body.locationId);
+    if (resolved.error) {
+      return NextResponse.json({ error: resolved.error }, { status: 400 });
+    }
+    if (!resolved.location) {
+      return NextResponse.json(
+        { error: 'No active showroom exists. Add one in Attendance → Settings → Branches.' },
+        { status: 503 }
+      );
+    }
+    const showroomLocationId = Number(resolved.location.id);
+    const showroomLocationName = resolved.location.name;
 
     const result = await withTransaction(async (tx) => {
       // Same guard the dispatch approval uses: serialize concurrent writes to
@@ -100,6 +137,18 @@ export async function POST(request) {
         throw Object.assign(new Error('Stock item not found'), { status: 404 });
       }
 
+      // What is on display AT THIS BRANCH. Availability has to be judged here,
+      // not on the company-wide rollup: with two showrooms the rollup would
+      // happily authorise moving stock out of a branch that has none of it.
+      const branchRows = await tx(
+        `SELECT whole_qty, sqft, installed_whole_qty, installed_sqft
+           FROM stock_showroom_stock WHERE item_id = $1 AND location_id = $2`,
+        [itemId, showroomLocationId]
+      );
+      const branch = branchRows[0] || {
+        whole_qty: 0, sqft: 0, installed_whole_qty: 0, installed_sqft: 0,
+      };
+
       // All unit/column/sign branching lives in resolveShowroomMove so it can be
       // asserted without a DB — see scripts/check-showroom-move.mjs.
       const move = resolveShowroomMove({
@@ -107,8 +156,20 @@ export async function POST(request) {
         unitOfMeasure: item.unit_of_measure,
         qty: body.qty,
       });
-      const { isStone, warehouseColumn, showroomColumn, installedColumn, qty, unit } = move;
-      const split = showroomSplit(item);
+      const {
+        isStone, warehouseColumn, showroomColumn, installedColumn,
+        branchShowroomColumn, branchInstalledColumn, qty, unit,
+      } = move;
+
+      // showroomSplit reads the stock_items column names, so present the branch
+      // row in that shape rather than duplicating the stone/whole branching.
+      const split = showroomSplit({
+        unit_of_measure: item.unit_of_measure,
+        showroom_whole_qty: branch.whole_qty,
+        showroom_sqft: branch.sqft,
+        showroom_installed_whole_qty: branch.installed_whole_qty,
+        showroom_installed_sqft: branch.installed_sqft,
+      });
 
       if (qty <= 0) {
         throw Object.assign(
@@ -124,7 +185,7 @@ export async function POST(request) {
       if (needsCassette && qty > split.cassette) {
         throw Object.assign(
           new Error(
-            `Only ${split.cassette} ${unit} is on a cassette for ${item.sku}` +
+            `Only ${split.cassette} ${unit} is on a cassette for ${item.sku} at ${showroomLocationName}` +
             (split.installed > 0 ? ` (${split.installed} is installed as flooring)` : '') +
             `, cannot move ${qty}.`
           ),
@@ -133,7 +194,7 @@ export async function POST(request) {
       }
       if (move.installedSign < 0 && qty > split.installed) {
         throw Object.assign(
-          new Error(`Only ${split.installed} ${unit} is installed for ${item.sku}, cannot move ${qty} back to a cassette.`),
+          new Error(`Only ${split.installed} ${unit} is installed for ${item.sku} at ${showroomLocationName}, cannot move ${qty} back to a cassette.`),
           { status: 400 }
         );
       }
@@ -141,10 +202,10 @@ export async function POST(request) {
       // Guarded decrements — the `>= $1` in the WHERE is what makes
       // over-transfer impossible even under a lost race. No row back means the
       // stock wasn't there.
-      for (const [sign, column, where] of [
-        [move.showroomSign, showroomColumn, 'at the showroom'],
-        [move.warehouseSign, warehouseColumn, 'at the warehouse'],
-        [move.installedSign, installedColumn, 'installed'],
+      for (const [sign, column, branchColumn, where] of [
+        [move.showroomSign, showroomColumn, branchShowroomColumn, `at ${showroomLocationName}`],
+        [move.warehouseSign, warehouseColumn, null, 'at the warehouse'],
+        [move.installedSign, installedColumn, branchInstalledColumn, 'installed'],
       ]) {
         if (sign === 0) continue;
         const op = sign < 0 ? '-' : '+';
@@ -162,6 +223,33 @@ export async function POST(request) {
             new Error(`Only ${have} ${unit} ${where} for ${item.sku}, cannot move ${qty}.`),
             { status: 400 }
           );
+        }
+
+        // The per-branch row, in the same transaction so the rollup above can
+        // never disagree with the sum of the branches.
+        if (!branchColumn) continue;
+        if (sign > 0) {
+          // First move of this item to this branch has no row yet.
+          await tx(
+            `INSERT INTO stock_showroom_stock (item_id, location_id, ${branchColumn})
+             VALUES ($1, $2, $3)
+             ON CONFLICT (item_id, location_id) DO UPDATE
+               SET ${branchColumn} = stock_showroom_stock.${branchColumn} + $3, updated_at = NOW()`,
+            [itemId, showroomLocationId, qty]
+          );
+        } else {
+          const branchRes = await tx(
+            `UPDATE stock_showroom_stock SET ${branchColumn} = ${branchColumn} - $1, updated_at = NOW()
+              WHERE item_id = $2 AND location_id = $3 AND ${branchColumn} >= $1
+              RETURNING id`,
+            [qty, itemId, showroomLocationId]
+          );
+          if (!branchRes[0]) {
+            throw Object.assign(
+              new Error(`Only ${split.total} ${unit} of ${item.sku} is at ${showroomLocationName}, cannot move ${qty}.`),
+              { status: 400 }
+            );
+          }
         }
       }
 

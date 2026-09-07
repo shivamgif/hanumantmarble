@@ -1100,3 +1100,38 @@ ALTER TABLE IF EXISTS stock_app_users
 
 CREATE INDEX IF NOT EXISTS idx_app_users_default_location ON stock_app_users(default_location_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_location_date ON stock_attendance_entries(location_id, work_date DESC);
+
+-- Per-showroom display stock. The four stock_items.showroom_* columns above are
+-- KEPT as a company-wide ROLLUP, because every other reader — the dispatch
+-- availability hint most of all — asks "is any of this on display anywhere",
+-- not "at which branch". Rewriting those nine call sites to join this table for
+-- an answer they already have would be a large diff for no behaviour change.
+-- The rollup and these rows are written in the SAME transaction, under the
+-- advisory lock the move already takes, so they cannot drift.
+-- scripts/check-showroom-reconcile.mjs asserts they agree.
+-- See scripts/migrate-showroom-per-location.mjs.
+CREATE TABLE IF NOT EXISTS stock_showroom_stock (
+  id BIGSERIAL PRIMARY KEY,
+  item_id BIGINT NOT NULL REFERENCES stock_items(id) ON DELETE CASCADE,
+  location_id BIGINT NOT NULL REFERENCES stock_locations(id),
+  whole_qty INTEGER NOT NULL DEFAULT 0,
+  sqft NUMERIC(14, 3) NOT NULL DEFAULT 0,
+  installed_whole_qty INTEGER NOT NULL DEFAULT 0,
+  installed_sqft NUMERIC(14, 3) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (item_id, location_id)
+);
+
+ALTER TABLE stock_showroom_stock DROP CONSTRAINT IF EXISTS stock_showroom_stock_nonnegative;
+ALTER TABLE stock_showroom_stock
+  ADD CONSTRAINT stock_showroom_stock_nonnegative
+  CHECK (whole_qty >= 0 AND sqft >= 0 AND installed_whole_qty >= 0 AND installed_sqft >= 0);
+
+ALTER TABLE stock_showroom_stock DROP CONSTRAINT IF EXISTS stock_showroom_stock_installed_subset;
+ALTER TABLE stock_showroom_stock
+  ADD CONSTRAINT stock_showroom_stock_installed_subset
+  CHECK (installed_whole_qty <= whole_qty AND installed_sqft <= sqft);
+
+CREATE INDEX IF NOT EXISTS idx_showroom_stock_location ON stock_showroom_stock(location_id);
+CREATE INDEX IF NOT EXISTS idx_showroom_stock_item ON stock_showroom_stock(item_id);

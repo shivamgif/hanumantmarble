@@ -21,7 +21,9 @@
     "db:fix-bag-item-divisions": "node scripts/fix-bag-item-divisions.mjs",
     "db:migrate-stone-support": "node --env-file-if-exists=.env.local scripts/migrate-stone-support.mjs",
     "db:migrate-attendance": "node --env-file-if-exists=.env.local scripts/migrate-attendance.mjs",
-    "db:migrate-attendance-locations": "node --env-file-if-exists=.env.local scripts/migrate-attendance-locations.mjs"
+    "db:migrate-attendance-locations": "node --env-file-if-exists=.env.local scripts/migrate-attendance-locations.mjs",
+    "db:migrate-showroom-per-location": "node --env-file-if-exists=.env.local scripts/migrate-showroom-per-location.mjs",
+    "db:check-showroom-reconcile": "node --env-file-if-exists=.env.local scripts/check-showroom-reconcile.mjs"
   },
   "dependencies": {
     "@better-auth/infra": "^0.2.3",
