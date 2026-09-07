@@ -1089,3 +1089,14 @@ CREATE TABLE IF NOT EXISTS stock_kiosk_devices (
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_kiosk_devices_active ON stock_kiosk_devices(is_active) WHERE is_active;
+
+-- Multi-branch attendance. Location on a punch is resolved from the GPS fix
+-- (nearest anchored location), so this column is only the SOFT default: the
+-- GPS-denied fallback, the grouping for a branch kiosk's roster, and per-branch
+-- reporting. It never restricts where someone may punch.
+-- See scripts/migrate-attendance-locations.mjs.
+ALTER TABLE IF EXISTS stock_app_users
+  ADD COLUMN IF NOT EXISTS default_location_id BIGINT REFERENCES stock_locations(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_app_users_default_location ON stock_app_users(default_location_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_location_date ON stock_attendance_entries(location_id, work_date DESC);

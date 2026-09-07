@@ -25,11 +25,12 @@ export async function GET(request) {
   try {
     const rows = await sql(
       `SELECT u.id, u.name, u.role, u.department, u.status, u.has_login,
-              u.tracks_attendance, u.salary,
+              u.tracks_attendance, u.salary, u.default_location_id, loc.name AS default_location_name,
               (u.attendance_pin_hash IS NOT NULL) AS has_pin,
               (e.id IS NOT NULL) AS is_clocked_in,
               e.clock_in_at
          FROM stock_app_users u
+         LEFT JOIN stock_locations loc ON loc.id = u.default_location_id
          LEFT JOIN stock_attendance_entries e
            ON e.user_id = u.id AND e.clock_out_at IS NULL AND e.is_active
         WHERE u.status = 'active'
@@ -47,6 +48,8 @@ export async function GET(request) {
         tracksAttendance: r.tracks_attendance !== false,
         hasPin: Boolean(r.has_pin),
         isClockedIn: Boolean(r.is_clocked_in),
+        defaultLocationId: r.default_location_id === null ? null : Number(r.default_location_id),
+        defaultLocationName: r.default_location_name,
         // Never expose a hash, and only expose pay to someone who manages pay.
         salary: flags.canManageAttendance && r.salary !== null ? Number(r.salary) : null,
       })),
@@ -89,13 +92,24 @@ export async function PATCH(request) {
       values.push(salary);
       updates.push(`salary = $${values.length}`);
     }
+    if (body.defaultLocationId !== undefined) {
+      // Clearing it is valid: someone with no fixed branch falls back to GPS.
+      const locId =
+        body.defaultLocationId === null || body.defaultLocationId === '' ? null : Number(body.defaultLocationId);
+      if (locId !== null && (!Number.isInteger(locId) || locId <= 0)) {
+        return NextResponse.json({ error: 'Invalid defaultLocationId' }, { status: 400 });
+      }
+      values.push(locId);
+      updates.push(`default_location_id = $${values.length}`);
+    }
+
     if (!updates.length) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
 
     values.push(userId);
     const rows = await sql(
       `UPDATE stock_app_users SET ${updates.join(', ')}, updated_at = ${IST_NOW}
         WHERE id = $${values.length}
-        RETURNING id, name, tracks_attendance, salary`,
+        RETURNING id, name, tracks_attendance, salary, default_location_id`,
       values
     );
     if (!rows[0]) return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
@@ -106,6 +120,7 @@ export async function PATCH(request) {
         name: rows[0].name,
         tracksAttendance: rows[0].tracks_attendance !== false,
         salary: rows[0].salary === null ? null : Number(rows[0].salary),
+        defaultLocationId: rows[0].default_location_id === null ? null : Number(rows[0].default_location_id),
       },
     });
   } catch (error) {

@@ -132,7 +132,10 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
   const [settings, setSettings] = useState(null);
   const [holidays, setHolidays] = useState([]);
   const [devices, setDevices] = useState([]);
-  const [status, setStatus] = useState('');
+  // Feedback is scoped to the section that produced it. A single page-level
+  // message rendered far below meant a rejected PIN reported its reason
+  // off-screen, so the form just appeared to do nothing.
+  const [feedback, setFeedback] = useState({ scope: '', kind: '', message: '' });
   const [error, setError] = useState('');
   const [newToken, setNewToken] = useState('');
   const [holidayForm, setHolidayForm] = useState({ date: '', name: '' });
@@ -160,9 +163,11 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
 
   useEffect(load, [load]);
 
-  async function post(url, options, onDone) {
+  // `scope` names the section, so the reply lands next to the button that
+  // triggered it rather than at the bottom of the page.
+  async function post(url, options, onDone, scope = '') {
     setError('');
-    setStatus('');
+    setFeedback({ scope: '', kind: '', message: '' });
     try {
       const res = await fetch(url, {
         headers: { 'Content-Type': 'application/json' },
@@ -173,9 +178,20 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
       onDone?.(json);
       return json;
     } catch (err) {
-      setError(err.message);
+      setFeedback({ scope, kind: 'error', message: err.message });
       return null;
     }
+  }
+
+  const say = (scope, message) => setFeedback({ scope, kind: 'success', message });
+
+  function Feedback({ scope }) {
+    if (feedback.scope !== scope || !feedback.message) return null;
+    return (
+      <p className={`mt-3 text-xs font-bold ${feedback.kind === 'error' ? 'text-rose-500' : 'text-emerald-600'}`}>
+        {feedback.message}
+      </p>
+    );
   }
 
   if (!settings) {
@@ -189,8 +205,11 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
         className={CLASSES.card}
         onSubmit={(e) => {
           e.preventDefault();
-          post('/api/stock/attendance/settings', { method: 'PUT', body: JSON.stringify(settings) }, () =>
-            setStatus('Work rules saved')
+          post(
+            '/api/stock/attendance/settings',
+            { method: 'PUT', body: JSON.stringify(settings) },
+            () => say('rules', 'Work rules saved'),
+            'rules'
           );
         }}
       >
@@ -227,9 +246,9 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
           </div>
         </div>
         <div className="mt-4 flex items-center justify-end gap-3">
-          {status ? <span className="text-xs font-bold text-emerald-600">{status}</span> : null}
           <button type="submit" className={PILL_PRIMARY_BUTTON_CLASS}>Save rules</button>
         </div>
+        <Feedback scope="rules" />
       </form>
 
       {/* Kiosk PINs */}
@@ -241,10 +260,11 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
             '/api/stock/attendance/pin',
             { method: 'PUT', body: JSON.stringify({ userId: pinForm.userId || undefined, pin: pinForm.pin }) },
             () => {
-              setStatus('PIN set');
+              say('pin', 'PIN set. They can now punch at any paired kiosk.');
               setPinForm({ userId: '', pin: '' });
               onEmployeesChanged?.();
-            }
+            },
+            'pin'
           );
         }}
       >
@@ -278,6 +298,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
               pattern="\d{4,8}"
               autoComplete="new-password"
               placeholder="4-8 digits"
+              title="4 to 8 digits. Avoid repeated digits and simple runs like 1234."
               value={pinForm.pin}
               onChange={(e) => setPinForm((f) => ({ ...f, pin: e.target.value }))}
               className={FORM_INPUT_CLASS}
@@ -290,6 +311,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
             </button>
           </div>
         </div>
+        <Feedback scope="pin" />
       </form>
 
       {/* Holidays */}
@@ -302,10 +324,15 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
           className="mt-4 flex flex-wrap items-end gap-3"
           onSubmit={(e) => {
             e.preventDefault();
-            post('/api/stock/attendance/holidays', { method: 'POST', body: JSON.stringify(holidayForm) }, () => {
-              setHolidayForm({ date: '', name: '' });
-              load();
-            });
+            post(
+              '/api/stock/attendance/holidays',
+              { method: 'POST', body: JSON.stringify(holidayForm) },
+              () => {
+                setHolidayForm({ date: '', name: '' });
+                load();
+              },
+              'holidays'
+            );
           }}
         >
           <div>
@@ -348,7 +375,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
                 type="button"
                 aria-label={`Remove ${holiday.name}`}
                 onClick={() =>
-                  post(`/api/stock/attendance/holidays?id=${holiday.id}`, { method: 'DELETE' }, load)
+                  post(`/api/stock/attendance/holidays?id=${holiday.id}`, { method: 'DELETE' }, load, 'holidays')
                 }
                 className="text-slate-400 hover:text-rose-500"
               >
@@ -358,6 +385,89 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
           ))}
           {!holidays.length ? <p className="text-xs font-bold text-slate-400">No holidays configured.</p> : null}
         </div>
+        <Feedback scope="holidays" />
+      </div>
+
+      {/* Staff: home branch + whether they are tracked at all */}
+      <div className={CLASSES.card}>
+        <h2 className={CLASSES.title}>Staff</h2>
+        <p className="mt-1 text-[11px] font-bold text-slate-500">
+          A home branch is a fallback, not a restriction — anyone can punch at any branch, and the punch records where
+          they actually were. It is used when GPS is unavailable, to put a branch&apos;s own people at the front of its
+          kiosk, and to report per branch.
+        </p>
+
+        <div className="mt-4 space-y-2">
+          {employees.map((emp) => (
+            <div key={emp.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 p-3">
+              <div className="min-w-[10rem] flex-1">
+                <p className="text-xs font-black">
+                  {emp.name}
+                  {!emp.hasLogin ? (
+                    <span className="ml-1.5 text-[9px] font-black uppercase tracking-wider text-slate-400">no login</span>
+                  ) : null}
+                  {emp.hasPin ? (
+                    <span className="ml-1.5 text-[9px] font-black uppercase tracking-wider text-emerald-600">pin</span>
+                  ) : null}
+                </p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{emp.role}</p>
+              </div>
+
+              <select
+                value={emp.defaultLocationId ?? ''}
+                aria-label={`Home branch for ${emp.name}`}
+                onChange={(e) =>
+                  post(
+                    '/api/stock/attendance/employees',
+                    {
+                      method: 'PATCH',
+                      body: JSON.stringify({
+                        userId: emp.id,
+                        defaultLocationId: e.target.value === '' ? null : Number(e.target.value),
+                      }),
+                    },
+                    () => {
+                      say('staff', `${emp.name} updated`);
+                      onEmployeesChanged?.();
+                    },
+                    'staff'
+                  )
+                }
+                className={`${FORM_INPUT_CLASS} w-auto`}
+              >
+                <option value="">No home branch</option>
+                {locations.map((loc) => (
+                  <option key={loc.id} value={loc.id}>{loc.name}</option>
+                ))}
+              </select>
+
+              <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                <input
+                  type="checkbox"
+                  checked={emp.tracksAttendance}
+                  onChange={(e) =>
+                    post(
+                      '/api/stock/attendance/employees',
+                      {
+                        method: 'PATCH',
+                        body: JSON.stringify({ userId: emp.id, tracksAttendance: e.target.checked }),
+                      },
+                      () => {
+                        say('staff', `${emp.name} updated`);
+                        onEmployeesChanged?.();
+                      },
+                      'staff'
+                    )
+                  }
+                  className="h-4 w-4 rounded border-border/60"
+                />
+                Tracked
+              </label>
+            </div>
+          ))}
+          {!employees.length ? <p className="text-xs font-bold text-slate-400">No active employees.</p> : null}
+        </div>
+        <Feedback scope="staff" />
       </div>
 
       {/* Geofence anchors */}
@@ -379,15 +489,17 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
                   '/api/stock/attendance/locations',
                   { method: 'PATCH', body: JSON.stringify({ locationId: loc.id, latitude, longitude }) },
                   () => {
-                    setStatus(`Geofence saved for ${loc.name}`);
+                    say('geofence', `Geofence saved for ${loc.name}`);
                     load();
-                  }
+                  },
+                  'geofence'
                 )
               }
             />
           ))}
           {!locations.length ? <p className="text-xs font-bold text-slate-400">No locations configured.</p> : null}
         </div>
+        <Feedback scope="geofence" />
       </div>
 
       {/* Kiosk devices */}
@@ -401,11 +513,16 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
           className="mt-4 flex flex-wrap items-end gap-3"
           onSubmit={(e) => {
             e.preventDefault();
-            post('/api/stock/attendance/devices', { method: 'POST', body: JSON.stringify(deviceForm) }, (json) => {
-              setNewToken(json.pairingPath);
-              setDeviceForm({ label: '', locationId: '' });
-              load();
-            });
+            post(
+              '/api/stock/attendance/devices',
+              { method: 'POST', body: JSON.stringify(deviceForm) },
+              (json) => {
+                setNewToken(json.pairingPath);
+                setDeviceForm({ label: '', locationId: '' });
+                load();
+              },
+              'devices'
+            );
           }}
         >
           <div className="flex-1">
@@ -473,7 +590,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
               <button
                 type="button"
                 aria-label={`Revoke ${device.label}`}
-                onClick={() => post(`/api/stock/attendance/devices?id=${device.id}`, { method: 'DELETE' }, load)}
+                onClick={() => post(`/api/stock/attendance/devices?id=${device.id}`, { method: 'DELETE' }, load, 'devices')}
                 className="text-slate-400 hover:text-rose-500"
               >
                 <Trash2 className="h-4 w-4" />
@@ -482,8 +599,11 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
           ))}
           {!devices.length ? <p className="text-xs font-bold text-slate-400">No kiosk devices paired.</p> : null}
         </div>
+        <Feedback scope="devices" />
       </div>
 
+      {/* Only whole-page load failures land here now; everything a button
+          triggers reports next to that button. */}
       {error ? <p className="text-xs font-bold text-rose-500">{error}</p> : null}
     </div>
   );

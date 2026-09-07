@@ -94,16 +94,19 @@ export async function GET(request) {
   }
 
   try {
+    // Everyone with a PIN is returned, but this branch's own staff are marked
+    // so the tablet can show them first. Staff cover other branches, so a hard
+    // filter would leave a visitor unable to punch at all.
     const roster = await sql(
-      `SELECT u.id, u.name, (e.id IS NOT NULL) AS is_clocked_in
+      `SELECT u.id, u.name, u.default_location_id, (e.id IS NOT NULL) AS is_clocked_in
          FROM stock_app_users u
          LEFT JOIN stock_attendance_entries e
            ON e.user_id = u.id AND e.clock_out_at IS NULL AND e.is_active
         WHERE u.status = 'active'
           AND u.tracks_attendance
           AND u.attendance_pin_hash IS NOT NULL
-        ORDER BY u.name`,
-      []
+        ORDER BY (u.default_location_id IS DISTINCT FROM $1), u.name`,
+      [device.location_id || null]
     );
 
     await sql(`UPDATE stock_kiosk_devices SET last_seen_at = ${IST_NOW} WHERE id = $1`, [device.id]);
@@ -116,6 +119,9 @@ export async function GET(request) {
         id: Number(r.id),
         name: r.name,
         isClockedIn: Boolean(r.is_clocked_in),
+        // True when this is their usual branch. Still no email, phone, role or
+        // salary — a kiosk is a public screen in a showroom.
+        isHomeBranch: device.location_id != null && String(r.default_location_id) === String(device.location_id),
       })),
     });
   } catch (error) {

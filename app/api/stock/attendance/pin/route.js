@@ -56,7 +56,13 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'PIN must be 4 to 8 digits' }, { status: 400 });
     }
     if (WEAK_PINS.has(pin)) {
-      return NextResponse.json({ error: 'That PIN is too easy to guess. Pick another.' }, { status: 400 });
+      return NextResponse.json(
+        {
+          error:
+            'That PIN is too easy to guess — repeated digits (1111) and simple runs (1234) are the first things tried. Pick another.',
+        },
+        { status: 400 }
+      );
     }
 
     const hash = await bcrypt.hash(pin, 10);

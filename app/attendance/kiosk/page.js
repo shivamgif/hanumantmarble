@@ -18,6 +18,7 @@ function KioskInner() {
   const [employees, setEmployees] = useState([]);
   const [selected, setSelected] = useState(null);
   const [pin, setPin] = useState('');
+  const [search, setSearch] = useState('');
   const [status, setStatus] = useState({ kind: '', message: '' });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -73,6 +74,7 @@ function KioskInner() {
     const timer = setTimeout(() => {
       setSelected(null);
       setPin('');
+      setSearch('');
       setStatus({ kind: '', message: '' });
       loadRoster();
     }, 5000);
@@ -109,6 +111,17 @@ function KioskInner() {
     setStatus({ kind: '', message: '' });
     if (next.length === 4) submit(next);
   }
+
+  // Home-branch staff are the default view; anyone else is reachable by search.
+  // The server already sorts home-branch first.
+  const homeStaff = employees.filter((e) => e.isHomeBranch);
+  const visitors = employees.filter((e) => !e.isHomeBranch);
+  const query = search.trim().toLowerCase();
+  const shown = query
+    ? employees.filter((e) => e.name.toLowerCase().includes(query))
+    : homeStaff.length
+      ? homeStaff
+      : employees;
 
   if (loading) {
     return <p className="p-10 text-center text-sm font-bold text-slate-400">Loading…</p>;
@@ -152,8 +165,22 @@ function KioskInner() {
           <p className="mb-3 text-center text-xs font-black uppercase tracking-[0.2em] text-slate-500">
             Tap your name
           </p>
+
+          {/* Staff cover other branches, so everyone with a PIN can punch here.
+              This branch's own people are shown up front; the search reaches
+              the rest without turning the screen into a wall of names. */}
+          {employees.length > 8 || visitors.length ? (
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search for a name…"
+              aria-label="Search for a name"
+              className="mb-4 w-full rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm outline-none focus:border-brand-primary/50"
+            />
+          ) : null}
+
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {employees.map((emp) => (
+            {shown.map((emp) => (
               <button
                 key={emp.id}
                 type="button"
@@ -178,6 +205,12 @@ function KioskInner() {
           {!employees.length ? (
             <p className="py-10 text-center text-sm font-bold text-slate-400">
               Nobody has a kiosk PIN yet. A manager sets these in Attendance → Settings.
+            </p>
+          ) : !shown.length ? (
+            <p className="py-10 text-center text-sm font-bold text-slate-400">No name matches “{search}”.</p>
+          ) : !query && visitors.length ? (
+            <p className="mt-4 text-center text-[11px] font-bold text-slate-400">
+              Visiting from another branch? Search for your name above.
             </p>
           ) : null}
         </>

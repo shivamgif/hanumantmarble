@@ -43,7 +43,7 @@ export async function POST(request) {
 
     const { lat, lng } = readLatLng(body);
     const settings = await loadSettings();
-    const location = await resolvePunchLocation(body?.locationId);
+    const location = await resolvePunchLocation({ locationId: body?.locationId, lat, lng, appUser });
     const outsideFence = isOutsideGeofence(lat, lng, location, settings);
 
     const entry = await withTransaction(async (tx) => {
