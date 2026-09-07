@@ -13,6 +13,44 @@ const today = () => {
   return `${ist.getFullYear()}-${String(ist.getMonth() + 1).padStart(2, '0')}-${String(ist.getDate()).padStart(2, '0')}`;
 };
 
+/**
+ * The clock-in / clock-out photos for one punch, when there are any.
+ *
+ * The <img> src is the authorised API route, not a public blob URL — the
+ * browser sends the session cookie with it and the route re-checks the role, so
+ * a screenshot of this page leaks a face but never a working link. Opening the
+ * full size is a plain link to the same route; a lightbox would be more code
+ * for something looked at once a month.
+ */
+function PunchSelfies({ row }) {
+  const shots = [
+    row.in_selfie_key ? { which: 'in', label: 'Clock-in photo' } : null,
+    row.out_selfie_key ? { which: 'out', label: 'Clock-out photo' } : null,
+  ].filter(Boolean);
+  if (!shots.length) return null;
+
+  return (
+    <div className="flex shrink-0 -space-x-2">
+      {shots.map((shot) => (
+        <a
+          key={shot.which}
+          href={`/api/stock/attendance/selfie/${row.id}?which=${shot.which}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={shot.label}
+        >
+          <img
+            src={`/api/stock/attendance/selfie/${row.id}?which=${shot.which}`}
+            alt={`${shot.label} for ${row.user_name}`}
+            loading="lazy"
+            className="h-9 w-9 rounded-full border-2 border-background object-cover ring-1 ring-border/60"
+          />
+        </a>
+      ))}
+    </div>
+  );
+}
+
 export function AttendanceTeam({ employees = [] }) {
   const [data, setData] = useState({ entries: [], onDuty: [] });
   const [loading, setLoading] = useState(true);
@@ -96,7 +134,9 @@ export function AttendanceTeam({ employees = [] }) {
                   key={row.id}
                   className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 p-3"
                 >
-                  <div>
+                  <div className="flex items-center gap-3">
+                    <PunchSelfies row={row} />
+                    <div>
                     <p className="text-xs font-black">
                       {row.user_name}
                       {row.is_outside_geofence ? (
@@ -107,6 +147,7 @@ export function AttendanceTeam({ employees = [] }) {
                       {clockTime(row.clock_in_at)} → {row.isOpen ? 'in now' : clockTime(row.clock_out_at)}
                       {row.isLate ? <span className="ml-1.5 text-rose-500">late {row.lateMinutes}m</span> : null}
                     </p>
+                    </div>
                   </div>
                   <span className="text-xs font-black tabular-nums">{formatMinutes(row.workedMinutes)}</span>
                 </div>

@@ -36,8 +36,12 @@ const nextConfig = {
           { key: 'X-XSS-Protection', value: '1; mode=block' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           {
+            // camera=(self) because attendance punch selfies use it on this
+            // origin. It was camera=() — a blanket deny that predates that
+            // feature. Still denied to every embedded third party, and
+            // microphone stays off entirely: nothing here records audio.
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(self)',
+            value: 'camera=(self), microphone=(), geolocation=(self)',
           },
         ],
       },

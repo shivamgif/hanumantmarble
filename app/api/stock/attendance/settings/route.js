@@ -77,7 +77,8 @@ export async function PUT(request) {
           SET shift_start = $1::time, shift_end = $2::time,
               full_day_minutes = $3, half_day_minutes = $4, grace_minutes = $5,
               weekly_off_dow = $6, overtime_multiplier = $7, geofence_radius_m = $8,
-              updated_by = $9, updated_at = ${IST_NOW}
+              require_selfie = $9,
+              updated_by = $10, updated_at = ${IST_NOW}
         WHERE id = 1
         RETURNING *`,
       [
@@ -89,6 +90,7 @@ export async function PUT(request) {
         next.weekly_off_dow,
         next.overtime_multiplier,
         next.geofence_radius_m,
+        next.require_selfie,
         appUser.id,
       ]
     );

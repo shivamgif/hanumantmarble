@@ -134,6 +134,25 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
             </select>
           </div>
         </div>
+
+        {/* Off by default. The photo is taken on the employee's phone, shrunk
+            there, and kept for 90 days before the nightly job deletes it — see
+            lib/attendance-selfie.mjs. */}
+        <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-border/60 p-3">
+          <input
+            type="checkbox"
+            checked={Boolean(settings.require_selfie)}
+            onChange={(e) => setSettings((s) => ({ ...s, require_selfie: e.target.checked }))}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600"
+          />
+          <span>
+            <span className="block text-xs font-black">Require a selfie to clock in and out</span>
+            <span className="mt-0.5 block text-[11px] font-bold text-slate-500">
+              A geofence proves a phone was at the branch, not a person. Photos are kept for 90 days,
+              then deleted automatically. Breaks are never photographed.
+            </span>
+          </span>
+        </label>
         <div className="mt-4 flex items-center justify-end gap-3">
           <button type="submit" className={PILL_PRIMARY_BUTTON_CLASS}>Save rules</button>
         </div>

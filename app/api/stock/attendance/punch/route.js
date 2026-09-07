@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getStockContext } from '@/lib/stock-workflow';
-import { withTransaction } from '@/lib/db';
-import { isOutsideGeofence, openEntryMinutes } from '@/lib/attendance.mjs';
+import { sql, withTransaction } from '@/lib/db';
+import { isMissingRequiredPosition, isOutsideGeofence, openEntryMinutes } from '@/lib/attendance.mjs';
 import {
   IST_NOW,
   getOpenEntry,
@@ -12,8 +12,16 @@ import {
   resolvePunchLocation,
   serializeEntry,
 } from '@/lib/attendance-db';
+import { decodeSelfie, putSelfie } from '@/lib/attendance-selfie.mjs';
 
 const ACTIONS = ['in', 'out', 'break_start', 'break_end'];
+
+// The two ends of a shift. These are the punches that carry a photo and a
+// position; nobody needs either to start a tea break.
+const SHIFT_EDGE = new Set(['in', 'out']);
+
+// Which column the photo for that end lands in.
+const SELFIE_ACTIONS = { in: 'in_selfie_key', out: 'out_selfie_key' };
 
 /**
  * Self-service punch. Unlike every other stock route this is NOT role-gated —
@@ -42,10 +50,64 @@ export async function POST(request) {
       return NextResponse.json({ error: `action must be one of ${ACTIONS.join(', ')}` }, { status: 400 });
     }
 
+    // No home branch, no punch.
+    //
+    // This is a hard gate rather than a warning because an unassigned employee
+    // used to skip the geofence entirely: with no default branch and no GPS,
+    // resolvePunchLocation falls through to "is there exactly one active
+    // location?" and, with several, returns null — nothing to measure against,
+    // so the punch landed unflagged from anywhere on earth.
+    //
+    // Checked BEFORE any of the work below so the reject costs no queries. Only
+    // the ends of a shift are gated; the kiosk is deliberately untouched, since
+    // a bolted-down tablet already proves the branch and staff cover sites they
+    // are not assigned to.
+    if (SHIFT_EDGE.has(action) && !appUser.default_location_id) {
+      return NextResponse.json(
+        {
+          error:
+            'Your home branch is not set. Ask a manager to assign your branch in Attendance → Settings before you can clock in or out.',
+          branchRequired: true,
+        },
+        { status: 403 }
+      );
+    }
+
     const { lat, lng } = readLatLng(body);
     const settings = await loadSettings();
     const location = await resolvePunchLocation({ locationId: body?.locationId, lat, lng, appUser });
     const outsideFence = isOutsideGeofence(lat, lng, location, settings);
+
+    // Refuse a punch that withheld its position at a branch we can actually
+    // check. Declining the browser prompt was otherwise the cheapest way to
+    // punch from anywhere: no coordinates meant nothing to compare, so the row
+    // landed unflagged and looked exactly like being in the showroom.
+    //
+    // This applies to clock OUT as well as clock in. A shift closed from
+    // somewhere else is the same lie as one opened there, and leaving the exit
+    // unchecked would just move the bypass. Someone whose GPS genuinely fails
+    // retries, or a manager closes the entry from the timesheet.
+    if (SHIFT_EDGE.has(action) && isMissingRequiredPosition(lat, lng, location)) {
+      return NextResponse.json(
+        {
+          error: 'Location is required to punch. Allow location access in your browser and try again.',
+          locationRequired: true,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Decode BEFORE the transaction: a rejected photo should not cost a
+    // database round trip, and a required-but-missing one must not open a
+    // shift the employee then has to have corrected.
+    const selfieColumn = SELFIE_ACTIONS[action] || null;
+    const selfie = selfieColumn ? decodeSelfie(body?.selfie) : null;
+    if (selfieColumn && settings.require_selfie && !selfie) {
+      return NextResponse.json(
+        { error: 'A selfie is required to punch. Allow camera access and try again.', selfieRequired: true },
+        { status: 400 }
+      );
+    }
 
     const entry = await withTransaction(async (tx) => {
       // FOR UPDATE serialises two taps from the same person; the partial unique
@@ -120,22 +182,46 @@ export async function POST(request) {
       return rows[0];
     });
 
+    // The image is written AFTER the punch has committed and its key patched
+    // in. Writing it earlier orphans a blob every time a double-tap loses the
+    // race for idx_attendance_one_open; writing it inside the transaction would
+    // hold a database lock open across a call to the blob store. A failed
+    // upload leaves the punch standing with a null key — losing the photo is
+    // our problem, not a reason to reject somebody's shift.
+    let saved = entry;
+    if (selfie) {
+      const key = await putSelfie(selfie, { userId: appUser.id, action });
+      if (key) {
+        const rows = await sql(
+          `UPDATE stock_attendance_entries SET ${selfieColumn} = $2 WHERE id = $1 RETURNING *`,
+          [entry.id, key]
+        );
+        saved = rows[0] || entry;
+      }
+    }
+
     await logTimeline({
       eventType: 'other',
       entityType: 'attendance',
       entityId: entry.id,
       summary: `${appUser.name} punched ${action.replace('_', ' ')}`,
-      details: { action, source: 'web', outsideFence, locationId: location?.id || null },
+      details: {
+        action,
+        source: 'web',
+        outsideFence,
+        locationId: location?.id || null,
+        selfie: selfie ? Boolean(saved[selfieColumn]) : false,
+      },
       userId: appUser.id,
     });
 
-    const serialized = serializeEntry(entry);
+    const serialized = serializeEntry(saved);
     return NextResponse.json(
       {
         entry: serialized,
         // The client ticks its own counter from here rather than re-deriving it
         // from timestamps, which keeps browser timezone out of the arithmetic.
-        elapsedMinutes: openEntryMinutes(entry),
+        elapsedMinutes: openEntryMinutes(saved),
         outsideGeofence: outsideFence,
         location: location ? { id: Number(location.id), name: location.name } : null,
       },
@@ -164,7 +250,7 @@ export async function GET(request) {
   if (!appUser) return NextResponse.json({ error: 'No employee record for this account' }, { status: 403 });
 
   try {
-    const open = await getOpenEntry(appUser.id);
+    const [open, settings] = await Promise.all([getOpenEntry(appUser.id), loadSettings()]);
 
     // Two different branches, and the difference matters to the employee:
     // homeBranch is where they usually work, currentBranch is where the open
@@ -180,6 +266,9 @@ export async function GET(request) {
       elapsedMinutes: open ? openEntryMinutes(open) : 0,
       onBreak: Boolean(open?.break_started_at),
       tracksAttendance: appUser.tracks_attendance !== false,
+      // The clock only opens the camera when this is on, so it has to come
+      // down with the state rather than being fetched separately on every tap.
+      requireSelfie: settings.require_selfie,
       homeBranch,
       currentBranch,
     });
