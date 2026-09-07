@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Copy, KeyRound, Plus, Trash2 } from 'lucide-react';
+import { Copy, Crosshair, KeyRound, MapPin, Plus, Trash2 } from 'lucide-react';
 import { CLASSES, FORM_INPUT_CLASS, FORM_LABEL_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../lib/stock-utils';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -15,6 +15,118 @@ const FIELDS = [
   { key: 'overtime_multiplier', label: 'Overtime multiplier', type: 'number', step: '0.1' },
   { key: 'geofence_radius_m', label: 'Geofence radius (m)', type: 'number' },
 ];
+
+/**
+ * One location's geofence anchor. The "use my location" button is the point of
+ * this row: a manager standing in the showroom with the tablet gets the exact
+ * coordinates without looking anything up on a map.
+ */
+function GeofenceRow({ location, onSave }) {
+  const [lat, setLat] = useState(location.latitude ?? '');
+  const [lng, setLng] = useState(location.longitude ?? '');
+  const [locating, setLocating] = useState(false);
+  const [geoError, setGeoError] = useState('');
+
+  const configured = location.latitude !== null && location.longitude !== null;
+  const dirty = String(lat) !== String(location.latitude ?? '') || String(lng) !== String(location.longitude ?? '');
+
+  function useMyLocation() {
+    if (!navigator.geolocation) {
+      setGeoError('This browser cannot report a location.');
+      return;
+    }
+    setLocating(true);
+    setGeoError('');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        // 6 dp is ~0.1 m, and matches the NUMERIC(9,6) column.
+        setLat(pos.coords.latitude.toFixed(6));
+        setLng(pos.coords.longitude.toFixed(6));
+        setLocating(false);
+      },
+      (err) => {
+        setGeoError(
+          err.code === err.PERMISSION_DENIED
+            ? 'Location permission denied. Allow it, or type the coordinates.'
+            : 'Could not get a location fix. Try outdoors, or type the coordinates.'
+        );
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border/60 p-3">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-[8rem] flex-1">
+          <p className="text-xs font-black">
+            {location.name}
+            <span
+              className={`ml-2 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                configured ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'
+              }`}
+            >
+              {configured ? 'Fenced' : 'No fence'}
+            </span>
+          </p>
+        </div>
+
+        <div className="w-32">
+          <label className={FORM_LABEL_CLASS} htmlFor={`lat-${location.id}`}>Latitude</label>
+          <input
+            id={`lat-${location.id}`}
+            inputMode="decimal"
+            value={lat}
+            onChange={(e) => setLat(e.target.value)}
+            className={FORM_INPUT_CLASS}
+            placeholder="26.846700"
+          />
+        </div>
+        <div className="w-32">
+          <label className={FORM_LABEL_CLASS} htmlFor={`lng-${location.id}`}>Longitude</label>
+          <input
+            id={`lng-${location.id}`}
+            inputMode="decimal"
+            value={lng}
+            onChange={(e) => setLng(e.target.value)}
+            className={FORM_INPUT_CLASS}
+            placeholder="80.946700"
+          />
+        </div>
+
+        <button type="button" onClick={useMyLocation} disabled={locating} className={PILL_BUTTON_CLASS}>
+          <Crosshair className="h-3.5 w-3.5" />
+          {locating ? 'Locating…' : 'Use my location'}
+        </button>
+        <button
+          type="button"
+          onClick={() => onSave(lat === '' ? null : lat, lng === '' ? null : lng)}
+          disabled={!dirty}
+          className={PILL_PRIMARY_BUTTON_CLASS}
+        >
+          <MapPin className="h-3.5 w-3.5" />
+          Save
+        </button>
+        {configured ? (
+          <button
+            type="button"
+            onClick={() => {
+              setLat('');
+              setLng('');
+              onSave(null, null);
+            }}
+            className="text-slate-400 transition hover:text-rose-500"
+            aria-label={`Clear geofence for ${location.name}`}
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        ) : null}
+      </div>
+      {geoError ? <p className="mt-2 text-[11px] font-bold text-amber-600">{geoError}</p> : null}
+    </div>
+  );
+}
 
 export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
   const [settings, setSettings] = useState(null);
@@ -245,6 +357,36 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
             </span>
           ))}
           {!holidays.length ? <p className="text-xs font-bold text-slate-400">No holidays configured.</p> : null}
+        </div>
+      </div>
+
+      {/* Geofence anchors */}
+      <div className={CLASSES.card}>
+        <h2 className={CLASSES.title}>Geofence</h2>
+        <p className="mt-1 text-[11px] font-bold text-slate-500">
+          A punch more than {settings.geofence_radius_m} m from these coordinates is flagged for review. It is never
+          blocked — GPS fails indoors, and a location a phone never reported counts as unknown, not absent. A location
+          with no coordinates has no fence at all.
+        </p>
+
+        <div className="mt-4 space-y-2">
+          {locations.map((loc) => (
+            <GeofenceRow
+              key={loc.id}
+              location={loc}
+              onSave={(latitude, longitude) =>
+                post(
+                  '/api/stock/attendance/locations',
+                  { method: 'PATCH', body: JSON.stringify({ locationId: loc.id, latitude, longitude }) },
+                  () => {
+                    setStatus(`Geofence saved for ${loc.name}`);
+                    load();
+                  }
+                )
+              }
+            />
+          ))}
+          {!locations.length ? <p className="text-xs font-bold text-slate-400">No locations configured.</p> : null}
         </div>
       </div>
 
