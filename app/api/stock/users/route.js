@@ -241,6 +241,52 @@ export async function POST(request) {
 
   const roleFlags = getRoleFlags(normalizedRole);
 
+  // Staff with no app login — loaders, drivers, helpers. They exist for
+  // attendance and payroll only, so they get no better-auth credential and no
+  // email, which means getStockContext can never match a session to them
+  // (`NULL = 'x'` is never true). Kept in this route rather than a parallel
+  // staff CRUD so there is exactly one employee directory.
+  if (body.hasLogin === false) {
+    const name = String(body.name || '').trim();
+    const phone = String(body.phone || '').trim();
+    if (!name) return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    if (!phone) return NextResponse.json({ error: 'Phone is required' }, { status: 400 });
+
+    try {
+      // A plain INSERT, not the ON CONFLICT (email) upsert the login path uses:
+      // that conflict target cannot fire on a NULL email.
+      const noLoginRows = await sql(
+        `INSERT INTO stock_app_users
+           (name, phone, role, department, status, salary, has_login, tracks_attendance, created_by)
+         VALUES ($1, $2, $3, $4, 'active', $5, FALSE, TRUE, $6)
+         RETURNING *`,
+        [
+          name,
+          phone,
+          normalizedRole,
+          department,
+          body.salary === undefined || body.salary === null || body.salary === '' ? null : Number(body.salary),
+          session.user.email || session.user.sub,
+        ]
+      );
+
+      await recordTimelineEvent({
+        eventType: 'user_created',
+        entityType: 'stock_app_user',
+        entityId: noLoginRows[0].id,
+        summary: `${appUser.name} added ${name} as staff without a login`,
+        userId: appUser.id,
+      });
+
+      return NextResponse.json({ user: noLoginRows[0] }, { status: 201 });
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'Failed to create staff record', detail: error.message },
+        { status: 500 }
+      );
+    }
+  }
+
   const passwordError = validateStockPassword(body.password);
   if (passwordError) {
     return NextResponse.json({ error: passwordError }, { status: 400 });

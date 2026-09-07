@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { BarChart2, Home, Users } from 'lucide-react';
+import { BarChart2, Clock, Home, Users } from 'lucide-react';
 import { getLogoutHref, useAuthUser } from '@/lib/auth-client';
 import { usePathname, useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
@@ -87,6 +87,9 @@ export default function StockLayout({ children }) {
 
   const navigationItems = [
     { href: '/stock', label: t('dashboard'), icon: Home },
+    // Everyone punches, so this is not role-gated. The page itself hides the
+    // team/payroll/settings tabs from those without the attendance flags.
+    { href: '/stock/attendance', label: t('attendance'), icon: Clock },
   ];
 
   if (accessRole === 'admin' || accessRole === 'manager') {

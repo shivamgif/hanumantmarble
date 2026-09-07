@@ -960,3 +960,132 @@ ON CONFLICT (name) DO UPDATE SET location_type = 'showroom', updated_at = NOW();
 CREATE INDEX IF NOT EXISTS idx_stock_movements_location_created
   ON stock_movements(location_id, created_at DESC);
 
+
+-- ============================================================================
+-- ATTENDANCE / TIME TRACKING
+-- Mirrors scripts/migrate-attendance.mjs. Run: npm run db:migrate-attendance
+--
+-- stock_app_users IS the employee directory. Staff with no app login (loaders,
+-- drivers, helpers) are rows with email/external_auth_id NULL — safe, because
+-- getStockContext() matches on those columns and `NULL = 'x'` is never true, so
+-- such a row can never be attached to a session. attendance_pin_hash is a
+-- kiosk-only secret, NOT a login credential.
+-- ============================================================================
+
+ALTER TABLE IF EXISTS stock_app_users
+  ADD COLUMN IF NOT EXISTS attendance_pin_hash TEXT,
+  ADD COLUMN IF NOT EXISTS tracks_attendance   BOOLEAN NOT NULL DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS has_login           BOOLEAN NOT NULL DEFAULT TRUE;
+
+-- Geofence anchor. NULL coordinates mean "no geofence configured" = always inside.
+ALTER TABLE IF EXISTS stock_locations
+  ADD COLUMN IF NOT EXISTS latitude  NUMERIC(9, 6),
+  ADD COLUMN IF NOT EXISTS longitude NUMERIC(9, 6);
+
+-- One row per WORK SESSION, not per punch event: duration is a subtraction
+-- instead of a pairing algorithm in every report. An open session is
+-- clock_out_at IS NULL. break_started_at is a running break that folds into
+-- break_seconds when it closes, so a phone dying mid-break loses nothing.
+CREATE TABLE IF NOT EXISTS stock_attendance_entries (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES stock_app_users(id) ON DELETE CASCADE,
+  work_date DATE NOT NULL,
+  clock_in_at TIMESTAMP NOT NULL,
+  clock_out_at TIMESTAMP,
+  break_seconds INTEGER NOT NULL DEFAULT 0,
+  break_started_at TIMESTAMP,
+  source TEXT NOT NULL DEFAULT 'web' CHECK (source IN ('web', 'kiosk', 'manual')),
+  location_id BIGINT REFERENCES stock_locations(id),
+  in_lat NUMERIC(9, 6),
+  in_lng NUMERIC(9, 6),
+  out_lat NUMERIC(9, 6),
+  out_lng NUMERIC(9, 6),
+  is_outside_geofence BOOLEAN NOT NULL DEFAULT FALSE,
+  note TEXT,
+  edited_by BIGINT REFERENCES stock_app_users(id),
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE stock_attendance_entries DROP CONSTRAINT IF EXISTS stock_attendance_entries_span_valid;
+ALTER TABLE stock_attendance_entries
+  ADD CONSTRAINT stock_attendance_entries_span_valid
+  CHECK (clock_out_at IS NULL OR clock_out_at > clock_in_at);
+
+ALTER TABLE stock_attendance_entries DROP CONSTRAINT IF EXISTS stock_attendance_entries_break_valid;
+ALTER TABLE stock_attendance_entries
+  ADD CONSTRAINT stock_attendance_entries_break_valid CHECK (break_seconds >= 0);
+
+-- THE double-punch guard. The API's SELECT ... FOR UPDATE is the polite path;
+-- this partial unique index is the one that cannot be raced. is_active is in
+-- the predicate so soft-deleting a mistaken punch-in frees the slot rather than
+-- locking that person out; every "open entry" query must filter is_active too.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_attendance_one_open
+  ON stock_attendance_entries(user_id) WHERE clock_out_at IS NULL AND is_active;
+CREATE INDEX IF NOT EXISTS idx_attendance_date_user ON stock_attendance_entries(work_date DESC, user_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_user_date ON stock_attendance_entries(user_id, work_date DESC);
+
+-- Singleton work-rule config: the id = 1 CHECK is what makes it a singleton, so
+-- no caller has to wonder which row is "the" settings row. A table rather than
+-- constants so a manager can retune the grace period without a redeploy.
+CREATE TABLE IF NOT EXISTS stock_attendance_settings (
+  id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  shift_start TIME NOT NULL DEFAULT '09:30',
+  shift_end TIME NOT NULL DEFAULT '19:00',
+  full_day_minutes INT NOT NULL DEFAULT 480,
+  half_day_minutes INT NOT NULL DEFAULT 240,
+  grace_minutes INT NOT NULL DEFAULT 15,
+  weekly_off_dow INT NOT NULL DEFAULT 0 CHECK (weekly_off_dow BETWEEN 0 AND 6),
+  overtime_multiplier NUMERIC(4, 2) NOT NULL DEFAULT 1.5,
+  geofence_radius_m INT NOT NULL DEFAULT 200,
+  updated_by BIGINT REFERENCES stock_app_users(id),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+INSERT INTO stock_attendance_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
+-- Without holidays the payroll denominator (working days in the month) is wrong
+-- and every present day is silently underpaid.
+CREATE TABLE IF NOT EXISTS stock_holidays (
+  id BIGSERIAL PRIMARY KEY,
+  holiday_date DATE NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  created_by BIGINT REFERENCES stock_app_users(id),
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Approved 'paid' leave counts as a present day for payroll; 'unpaid' does not.
+CREATE TABLE IF NOT EXISTS stock_leave_requests (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES stock_app_users(id) ON DELETE CASCADE,
+  from_date DATE NOT NULL,
+  to_date DATE NOT NULL,
+  leave_type TEXT NOT NULL DEFAULT 'paid' CHECK (leave_type IN ('paid', 'unpaid', 'sick', 'casual')),
+  reason TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  decided_by BIGINT REFERENCES stock_app_users(id),
+  decided_at TIMESTAMP,
+  decision_note TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE stock_leave_requests DROP CONSTRAINT IF EXISTS stock_leave_requests_range_valid;
+ALTER TABLE stock_leave_requests
+  ADD CONSTRAINT stock_leave_requests_range_valid CHECK (to_date >= from_date);
+CREATE INDEX IF NOT EXISTS idx_leave_user_range ON stock_leave_requests(user_id, from_date, to_date);
+CREATE INDEX IF NOT EXISTS idx_leave_status ON stock_leave_requests(status, created_at DESC);
+
+-- Only the bcrypt hash of the device token is stored; the plaintext is shown
+-- once at pairing and then lives only in the tablet's httpOnly cookie.
+CREATE TABLE IF NOT EXISTS stock_kiosk_devices (
+  id BIGSERIAL PRIMARY KEY,
+  label TEXT NOT NULL,
+  token_hash TEXT NOT NULL UNIQUE,
+  location_id BIGINT REFERENCES stock_locations(id),
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  last_seen_at TIMESTAMP,
+  created_by BIGINT REFERENCES stock_app_users(id),
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_kiosk_devices_active ON stock_kiosk_devices(is_active) WHERE is_active;

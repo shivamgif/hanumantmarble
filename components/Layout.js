@@ -8,9 +8,12 @@ import { usePathname } from 'next/navigation';
 
 const Layout = ({ children }) => {
   const pathname = usePathname();
-  const isStockRoute = pathname?.startsWith('/stock');
+  // /attendance is the unauthenticated kiosk. It lives outside /stock because
+  // that layout is the auth gate, but it is an app screen, not a storefront
+  // page — no marketing header or footer on a showroom tablet.
+  const isAppRoute = pathname?.startsWith('/stock') || pathname?.startsWith('/attendance');
 
-  if (isStockRoute) {
+  if (isAppRoute) {
     // stock-scope mutes the color tokens for /stock only — see styles/globals.css
     return (
       <div className="stock-scope flex flex-col min-h-screen">
