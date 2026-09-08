@@ -74,6 +74,37 @@ Only emails listed in `lib/admin-config.js` can:
 - See the admin button in navigation
 
 
+## 🔀 Local and production are DIFFERENT databases
+
+`.env.local` and the `DATABASE_URL` in Netlify point at two separate Neon databases.
+Every `npm run db:migrate-*` script reads `.env.local`, so running one migrates **only
+the dev database**. Production stays behind until a request hits the new column and the
+API returns `column "..." does not exist`.
+
+After a migration lands, run it a second time against production:
+
+```bash
+npm run db:migrate:prod -- scripts/migrate-attendance-selfie.mjs
+```
+
+The `--` is required so npm forwards the script path. Migrations are idempotent single
+transactions, so re-running is safe.
+
+**Do not use `netlify dev:exec` for this.** It injects `.env.local` *over* the site's
+project settings, so `DATABASE_URL` resolves back to the dev database and the migration
+silently runs against the wrong one — the exact failure this section exists to prevent.
+`db:migrate:prod` instead resolves the value explicitly with
+`netlify env:get DATABASE_URL --context production` and runs plain `node`, which never
+reads `.env.local`.
+
+To confirm which database you are about to hit:
+
+```bash
+netlify env:get DATABASE_URL --context production | sed -E 's#.*@##; s#/.*##'
+```
+
+Production is the `-pooler` host; local is not.
+
 ## 📝 Manual Database Operations
 
 If you need to run custom SQL:

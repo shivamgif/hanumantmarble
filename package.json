@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "db:migrate:prod": "DATABASE_URL=$(netlify env:get DATABASE_URL --context production) node",
     "db:migrate-notification-read-columns": "node scripts/migrate-notification-read-columns.js",
     "db:migrate-salesperson-role": "node --env-file-if-exists=.env.local scripts/migrate-salesperson-role.mjs",
     "db:migrate-department-columns": "node scripts/migrate-department-columns.mjs",

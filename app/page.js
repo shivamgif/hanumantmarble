@@ -29,6 +29,11 @@ const HeroCarousel = dynamic(
   { ssr: false, loading: () => heroPlaceholder }
 );
 
+const WorkGallery = dynamic(
+  () => import("../components/ui/work-gallery").then((mod) => mod.WorkGallery),
+  { ssr: false, loading: () => sectionPlaceholder("py-20") }
+);
+
 const ProductsGrid = dynamic(
   () => import("../components/ui/products-grid").then((mod) => mod.ProductsGrid),
   { ssr: false, loading: () => sectionPlaceholder("py-20") }
@@ -44,18 +49,14 @@ const Branches = dynamic(
   { ssr: false, loading: () => sectionPlaceholder("py-20") }
 );
 
-const LiquidChrome = dynamic(
-  () => import("../components/ui/liquid-chrome").then((mod) => mod.LiquidChrome),
-  { ssr: false }
-);
-
 export default function Home() {
   return (
     <React.Fragment>
       <main>
         <HeroCarousel />
-        <ProductsGrid />
+        <WorkGallery />
         <ProductShowcase />
+        <ProductsGrid />
         <Branches />
       </main>
     </React.Fragment>

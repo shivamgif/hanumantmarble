@@ -252,10 +252,10 @@ export function HeroCarousel({
         ))}
       </div>
 
-      {/* Bottom fade into the next section's warm cream tone */}
+      {/* Bottom fade into the dark work-gallery band below */}
       <div
         className="absolute bottom-0 left-0 right-0 pointer-events-none"
-        style={{ height: 160, background: 'linear-gradient(to top, #f5f0eb, transparent)', zIndex: 5 }}
+        style={{ height: 160, background: 'linear-gradient(to top, #0a0a1a, transparent)', zIndex: 5 }}
         aria-hidden="true"
       />
     </section>

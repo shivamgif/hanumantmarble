@@ -86,20 +86,19 @@ export function ProductCard({ product }) {
             </p>
           )}
         </CardContent>
-        <CardFooter className="flex justify-between items-center p-4 sm:p-5 pt-0">
-          <div className="flex flex-col">
-            <span className="text-xs text-muted-foreground">Price</span>
-            <span className="font-bold text-lg sm:text-xl text-foreground">
-              ₹{product.price.toLocaleString()}
-            </span>
-          </div>
-          <Button 
-            onClick={handleAddToCart} 
+        {/* ponytail: price intentionally not shown on the landing card — it still
+            flows through to the cart and the product detail page. */}
+        <CardFooter className="flex items-center gap-3 p-4 sm:p-5 pt-0">
+          <Button
+            onClick={handleAddToCart}
             variant="outline"
-            className="rounded-full border-2 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-300"
+            className="flex-1 rounded-full border-2 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-300"
           >
             Add to Cart
           </Button>
+          <span className="text-sm font-medium text-primary whitespace-nowrap">
+            View details
+          </span>
         </CardFooter>
       </Card>
     </Link>
