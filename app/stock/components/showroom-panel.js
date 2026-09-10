@@ -56,48 +56,48 @@ export function ShowroomPanel({ tabs, tc, pageSize, setPageSize, refreshKey }) {
 
   return (
     <div className="stock-tab-panel" key="stock-panel-showroom">
-      <section id="showroom" className="flex h-full flex-col overflow-hidden scroll-mt-6 glass-panel rounded-2xl">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-muted/40 px-3 py-3 sm:px-4">
-          {tabs}
-          <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-3">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className={PILL_BUTTON_CLASS}
-              title="Export Showroom Movements to CSV"
+      <div className="flex flex-wrap items-center justify-between gap-3 py-3">
+        {tabs}
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5 sm:gap-3">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className={PILL_BUTTON_CLASS}
+            title="Export Showroom Movements to CSV"
+          >
+            <Download className="h-4 w-4" />
+            Export
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {EXPORT_PERIOD_PRESETS.map((preset) => (
+            <DropdownMenuItem
+              key={preset.id}
+              onClick={() => {
+                const dateStr = new Date().toISOString().split('T')[0];
+                const columns = [
+                  { id: 'date', label: 'Date', value: (row) => formatDateTime(row.created_at) },
+                  { id: 'sku', label: 'SKU', value: (row) => row.sku || '' },
+                  { id: 'name', label: 'Item', value: (row) => row.name || '' },
+                  { id: 'action', label: 'Action', value: (row) => SHOWROOM_ACTIONS[showroomActionOf(row)]?.label || row.movement_type },
+                  { id: 'qty', label: 'Quantity', value: (row) => formatShowroomQty(row) },
+                  { id: 'by', label: 'Recorded By', value: (row) => row.created_by || '' },
+                  { id: 'notes', label: 'Notes', value: (row) => row.notes || '' },
+                ];
+                const filtered = filterRowsByPeriod(rows, ['created_at'], preset.id);
+                const suffix = preset.id === 'all' ? '' : `_${preset.id}`;
+                exportToCSV(`Showroom_Export${suffix}_${dateStr}.csv`, filtered, columns);
+              }}
             >
-              <Download className="h-4 w-4" />
-              Export
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {EXPORT_PERIOD_PRESETS.map((preset) => (
-              <DropdownMenuItem
-                key={preset.id}
-                onClick={() => {
-                  const dateStr = new Date().toISOString().split('T')[0];
-                  const columns = [
-                    { id: 'date', label: 'Date', value: (row) => formatDateTime(row.created_at) },
-                    { id: 'sku', label: 'SKU', value: (row) => row.sku || '' },
-                    { id: 'name', label: 'Item', value: (row) => row.name || '' },
-                    { id: 'action', label: 'Action', value: (row) => SHOWROOM_ACTIONS[showroomActionOf(row)]?.label || row.movement_type },
-                    { id: 'qty', label: 'Quantity', value: (row) => formatShowroomQty(row) },
-                    { id: 'by', label: 'Recorded By', value: (row) => row.created_by || '' },
-                    { id: 'notes', label: 'Notes', value: (row) => row.notes || '' },
-                  ];
-                  const filtered = filterRowsByPeriod(rows, ['created_at'], preset.id);
-                  const suffix = preset.id === 'all' ? '' : `_${preset.id}`;
-                  exportToCSV(`Showroom_Export${suffix}_${dateStr}.csv`, filtered, columns);
-                }}
-              >
-                {preset.label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-          </div>
+              {preset.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
         </div>
+      </div>
+      <section id="showroom" className="flex h-full flex-col overflow-hidden scroll-mt-6 glass-panel rounded-2xl">
 
         <div className="sticky top-0 z-10 border-b border-slate-200/60 bg-white/50 px-3 py-2.5 backdrop-blur-md dark:bg-slate-900/50">
           <div className="relative group">

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getStockContext } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
+import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
+import { netRevenueExpr } from '@/lib/stock-analytics-sql.mjs';
 
 const SORT_COLS = {
   datetime: 'dispatch_date',
@@ -72,6 +74,10 @@ export async function GET(request) {
       )`;
     }
 
+    // Same billable-quantity rule the invoice and the analytics pages use, so a
+    // shipment shows one value everywhere it appears.
+    const netRevenue = netRevenueExpr(await getStockSchemaCapabilities(), 'soi', 'i');
+
     params.push(pageSize);
     const limitParam = `$${pIdx++}`;
     params.push(offset);
@@ -98,7 +104,7 @@ export async function GET(request) {
            + COALESCE(SUM(CASE WHEN i.unit_of_measure != 'bag' THEN soi.loaded_broken_qty ELSE 0 END), 0) AS total_tile_qty,
          COALESCE(SUM(soi.returned_whole_qty), 0) AS total_return_whole_qty,
          COALESCE(SUM(soi.returned_broken_qty), 0) AS total_return_broken_qty,
-         COALESCE(SUM((GREATEST((COALESCE(soi.loaded_whole_qty, 0) + COALESCE(soi.loaded_broken_qty, 0)) - (COALESCE(soi.returned_whole_qty, 0) + COALESCE(soi.returned_broken_qty, 0)), 0)) * COALESCE(soi.rate_per_unit, 0)), 0) AS total_selling_price_excl,
+         COALESCE(SUM(${netRevenue}), 0) AS total_selling_price_excl,
          COALESCE(MAX(submitter.name), MAX(submitter.email), MAX(sos.created_by), '—') AS generated_by,
          COALESCE(MAX(submitter.role), 'stock_maintainer') AS generated_by_role,
          CASE

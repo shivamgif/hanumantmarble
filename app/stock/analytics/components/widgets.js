@@ -616,6 +616,7 @@ export function DeadStockWidget({ data, months }) {
   const count = Number(data?.itemCount || 0);
   const units = Number(data?.unitsIdle || 0);
   const value = Number(data?.estimatedValue || 0);
+  const uncosted = Number(data?.uncostedItems || 0);
   return (
     <AnalyticsCard
       title={t('deadStock')}
@@ -639,6 +640,11 @@ export function DeadStockWidget({ data, months }) {
             <div>
               <p className="text-xl font-black font-sans text-slate-900 dark:text-white tabular-nums leading-none">{formatCompactINR(value)}</p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">{t('capitalIdle')}</p>
+              {uncosted > 0 ? (
+                <p className="text-[9px] font-bold text-amber-600 dark:text-amber-400 mt-1">
+                  {uncosted} {t('uncostedItems')}
+                </p>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -763,6 +769,11 @@ export function SalesPaceWidget({ rows }) {
   );
 }
 
+// Share of total revenue at which one customer counts as a dependency worth
+// flagging. ponytail: a flat threshold, not a Herfindahl index - raise it if
+// the customer list is long enough that a fifth is normal.
+const CONCENTRATION_ALERT_PCT = 20;
+
 export function CustomerConcentrationWidget({ rows }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
@@ -773,11 +784,17 @@ export function CustomerConcentrationWidget({ rows }) {
       </AnalyticsCard>
     );
   }
+  const allRevenue = Number(rows[0]?.all_customer_revenue || 0);
+  const shownRevenue = rows.reduce((sum, row) => sum + Number(row.revenue || 0), 0);
+  const otherRevenue = Math.max(0, allRevenue - shownRevenue);
   const pieData = rows.map((row, i) => ({
     name: row.name,
     value: Number(row.revenue || 0),
     color: INDUSTRIAL_COLORS[i % INDUSTRIAL_COLORS.length],
   }));
+  if (otherRevenue > 0) {
+    pieData.push({ name: t('otherCustomers'), value: otherRevenue, color: '#94a3b8' });
+  }
   return (
     <AnalyticsCard title={t('topCustomers')} subtitle={t('concentrationSubtitle')}>
       <div className="h-36 mb-3">
@@ -793,7 +810,7 @@ export function CustomerConcentrationWidget({ rows }) {
       <div className="space-y-1.5">
         {rows.slice(0, 5).map((row, i) => {
           const share = Number(row.share_pct || 0);
-          const isConcentrated = share >= 10;
+          const isConcentrated = share >= CONCENTRATION_ALERT_PCT;
           return (
             <div key={row.id} className="flex items-center gap-2 text-xs">
               <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: INDUSTRIAL_COLORS[i % INDUSTRIAL_COLORS.length] }} />
@@ -860,13 +877,13 @@ export function RiskInventoryTable({ divisionRisk, months }) {
             <tr className="border-b border-border/60">
               <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('divisionName')}</th>
               <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('available')}</th>
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('outOfStock')}</th>
               <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('lowStock')}</th>
               <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('status')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
             {divisionRisk.slice(0, 8).map((d) => {
-              const healthy = (d.total_items || 0) - (d.at_risk || 0);
               const riskRatio = (d.at_risk || 0) / (d.total_items || 1);
               const isCritical = riskRatio > 0.4;
 
@@ -878,8 +895,9 @@ export function RiskInventoryTable({ divisionRisk, months }) {
                       <p className="text-[10px] text-slate-500 mt-1 max-w-[200px] truncate" title={d.critical_items_list}>⚠️ {d.critical_items_list}</p>
                     )}
                   </td>
-                  <td className="px-5 py-4 text-right font-sans text-emerald-600 dark:text-emerald-400 font-black text-xs">{formatCompactNumber(healthy)}</td>
-                  <td className="px-5 py-4 text-right font-sans text-amber-600 dark:text-amber-400 font-black text-xs">{formatCompactNumber(d.at_risk)}</td>
+                  <td className="px-5 py-4 text-right font-sans text-emerald-600 dark:text-emerald-400 font-black text-xs">{formatCompactNumber(d.current_stock)}</td>
+                  <td className="px-5 py-4 text-right font-sans text-rose-600 dark:text-rose-400 font-black text-xs">{formatCompactNumber(d.out_of_stock)}</td>
+                  <td className="px-5 py-4 text-right font-sans text-amber-600 dark:text-amber-400 font-black text-xs">{formatCompactNumber(d.low_stock)}</td>
                   <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-3 text-[10px] font-black uppercase tracking-widest">
                       <span className={isCritical ? 'text-rose-500' : 'text-emerald-500'}>
@@ -898,7 +916,6 @@ export function RiskInventoryTable({ divisionRisk, months }) {
       {/* Mobile Cards for Risk Inventory */}
       <div className="md:hidden space-y-4">
         {divisionRisk.slice(0, 8).map((d) => {
-          const healthy = (d.total_items || 0) - (d.at_risk || 0);
           const riskRatio = (d.at_risk || 0) / (d.total_items || 1);
           const isCritical = riskRatio > 0.4;
           return (
@@ -918,14 +935,18 @@ export function RiskInventoryTable({ divisionRisk, months }) {
                   <span className={`w-2 h-2 rounded-full ${isCritical ? 'bg-rose-500' : 'bg-emerald-500'}`} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border/60">
+              <div className="grid grid-cols-3 gap-4 pt-2 border-t border-border/60">
                 <div>
                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('available')}</p>
-                  <p className="text-xs font-black text-emerald-600">{formatCompactNumber(healthy)}</p>
+                  <p className="text-xs font-black text-emerald-600">{formatCompactNumber(d.current_stock)}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('outOfStock')}</p>
+                  <p className="text-xs font-black text-rose-600">{formatCompactNumber(d.out_of_stock)}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('lowStock')}</p>
-                  <p className="text-xs font-black text-amber-600">{formatCompactNumber(d.at_risk)}</p>
+                  <p className="text-xs font-black text-amber-600">{formatCompactNumber(d.low_stock)}</p>
                 </div>
               </div>
             </div>

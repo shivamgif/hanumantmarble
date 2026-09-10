@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getStockContext, normalizeStockRole } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
+import { netRevenueExpr, ownershipFilter, shippedFilter } from '@/lib/stock-analytics-sql.mjs';
 
 export async function GET(request) {
   const { session, appUser } = await getStockContext(request);
@@ -172,15 +173,16 @@ export async function GET(request) {
 
     const currentMonthValuePromise = appUser?.role === 'salesperson' && appUser?.id
       ? sql(
-          `SELECT COALESCE(SUM((GREATEST((COALESCE(soi.loaded_whole_qty, 0) + COALESCE(soi.loaded_broken_qty, 0)) - (COALESCE(soi.returned_whole_qty, 0) + COALESCE(soi.returned_broken_qty, 0)), 0))
-                              * COALESCE(soi.rate_per_unit, 0)), 0) AS current_month_dispatch_value
+          // The same month-to-date figure the analytics page and the admin goal
+          // tracker report, so all three agree: shared revenue rule, shared
+          // ownership rule, shared excluded statuses, IST month boundaries.
+          `SELECT COALESCE(SUM(${netRevenueExpr(schemaCaps, 'soi', 'i')}), 0) AS current_month_dispatch_value
            FROM stock_outbound_shipments s
            JOIN stock_outbound_shipment_items soi ON soi.outbound_shipment_id = s.id
-           WHERE ${schemaCaps.hasOutboundSalespersonUserId
-             ? `(s.salesperson_user_id = $1 OR (s.salesperson_user_id IS NULL AND s.submitted_by_user_id = $1))`
-             : `s.submitted_by_user_id = $1`}
-             AND DATE_TRUNC('month', s.dispatch_date) = DATE_TRUNC('month', CURRENT_DATE)
-             AND s.status != 'cancelled'`,
+           JOIN stock_items i ON i.id = soi.item_id
+           WHERE ${ownershipFilter(schemaCaps, 's', '$1')}
+             AND DATE_TRUNC('month', s.dispatch_date) = DATE_TRUNC('month', (NOW() AT TIME ZONE 'Asia/Kolkata'))
+             AND ${shippedFilter('s')}`,
           [appUser.id]
         )
       : Promise.resolve([{ current_month_dispatch_value: 0 }]);

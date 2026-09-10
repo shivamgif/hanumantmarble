@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getRoleFlags, getStockContext, normalizeStockRole } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
+import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
+import { netRevenueExpr } from '@/lib/stock-analytics-sql.mjs';
 
 function isMissingExternalAuthColumnError(error) {
   const message = String(error?.message || '').toLowerCase();
@@ -92,6 +94,9 @@ export async function GET(request) {
   }
 
   try {
+    // Same billable-quantity rule as the invoice and the analytics pages.
+    const netRevenue = netRevenueExpr(await getStockSchemaCapabilities(), 'soi', 'i');
+
     const [pendingArrivals, pendingDispatches, cancelledArrivals, users] = await Promise.all([
       sql(
         `SELECT
@@ -131,9 +136,10 @@ export async function GET(request) {
                 sos.created_at AS dispatch_date, sos.status,
                 COALESCE(SUM(soi.loaded_whole_qty), 0) as total_whole_qty, COALESCE(SUM(soi.loaded_broken_qty), 0) as total_broken_qty,
                 COALESCE(SUM(soi.qty_sqft), 0) as total_sqft_qty,
-                COALESCE(SUM((GREATEST((COALESCE(soi.loaded_whole_qty, 0) + COALESCE(soi.loaded_broken_qty, 0)) - (COALESCE(soi.returned_whole_qty, 0) + COALESCE(soi.returned_broken_qty, 0)), 0)) * COALESCE(soi.rate_per_unit, 0)), 0) as total_selling_price_excl
+                COALESCE(SUM(${netRevenue}), 0) as total_selling_price_excl
          FROM stock_outbound_shipments sos
          LEFT JOIN stock_outbound_shipment_items soi ON sos.id = soi.outbound_shipment_id
+         LEFT JOIN stock_items i ON i.id = soi.item_id
          LEFT JOIN stock_customers c_direct ON c_direct.id = sos.customer_id
          LEFT JOIN stock_sales_orders sso ON sos.sales_order_id = sso.id
          LEFT JOIN stock_customers c_so ON c_so.id = sso.customer_id

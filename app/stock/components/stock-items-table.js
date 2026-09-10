@@ -16,43 +16,43 @@ export function StockItemsTable({ tabs, kpis, pagination, sort, setSort, search,
   }, [setSort]);
 
   return (
-    <div className="stock-tab-panel space-y-6" key="stock-panel-items">
-      <div id="current-stock" className="glass-panel overflow-hidden rounded-2xl">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-muted/40 px-3 py-3 sm:px-4">
-          {tabs}
-          <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              const dateStr = new Date().toISOString().split('T')[0];
-              const columns = [
-                { id: 'sku', label: 'SKU', value: (row) => row.sku || '' },
-                { id: 'name', label: 'Name', value: (row) => row.name || '' },
-                { id: 'brand', label: 'Brand', value: (row) => row.brand_name || '' },
-                { id: 'division', label: 'Category/Division', value: (row) => row.division_name || '' },
-                { id: 'size', label: 'Size', value: (row) => row.size_label || row.type_name || '' },
-                { id: 'whole', label: 'Whole Qty', value: (row) => row.current_whole_qty || '0' },
-                { id: 'piece_remainder', label: 'Piece Remainder', value: (row) => row.current_piece_remainder || '0' },
-                { id: 'broken', label: 'Broken Qty', value: (row) => row.current_broken_qty || '0' },
-                { id: 'broken_piece_remainder', label: 'Broken Piece Remainder', value: (row) => row.current_broken_piece_remainder || '0' },
-                { id: 'bags', label: 'Bags Qty', value: (row) => row.unit_of_measure === 'bag' ? row.current_whole_qty : '0' },
-                { id: 'sqft', label: 'Sqft Left', value: (row) => row.unit_of_measure === 'sqft' ? Number(row.current_sqft || 0) : '0' },
-                { id: 'showroom', label: 'At Showroom', value: (row) => showroomSplit(row).total },
-                { id: 'showroom_cassette', label: 'Showroom On Cassette', value: (row) => showroomSplit(row).cassette },
-                { id: 'showroom_installed', label: 'Showroom Installed', value: (row) => showroomSplit(row).installed },
-                { id: 'slab_size', label: 'Last Slab Size', value: (row) => row.last_slab_size_label || '' },
-                { id: 'reorder', label: 'Reorder Level', value: (row) => row.reorder_level || '0' },
-              ];
-              exportToCSV(`Inventory_Export_${dateStr}.csv`, pagination.allRows, columns);
-            }}
-            className={PILL_BUTTON_CLASS}
-            title="Export Inventory to CSV"
-          >
-            <Download className="h-4 w-4" />
-            Export
-          </button>
-          </div>
+    <div className="stock-tab-panel" key="stock-panel-items">
+      <div className="flex flex-wrap items-center justify-between gap-3 py-3">
+        {tabs}
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5 sm:gap-3">
+        <button
+          type="button"
+          onClick={() => {
+            const dateStr = new Date().toISOString().split('T')[0];
+            const columns = [
+              { id: 'sku', label: 'SKU', value: (row) => row.sku || '' },
+              { id: 'name', label: 'Name', value: (row) => row.name || '' },
+              { id: 'brand', label: 'Brand', value: (row) => row.brand_name || '' },
+              { id: 'division', label: 'Category/Division', value: (row) => row.division_name || '' },
+              { id: 'size', label: 'Size', value: (row) => row.size_label || row.type_name || '' },
+              { id: 'whole', label: 'Whole Qty', value: (row) => row.current_whole_qty || '0' },
+              { id: 'piece_remainder', label: 'Piece Remainder', value: (row) => row.current_piece_remainder || '0' },
+              { id: 'broken', label: 'Broken Qty', value: (row) => row.current_broken_qty || '0' },
+              { id: 'broken_piece_remainder', label: 'Broken Piece Remainder', value: (row) => row.current_broken_piece_remainder || '0' },
+              { id: 'bags', label: 'Bags Qty', value: (row) => row.unit_of_measure === 'bag' ? row.current_whole_qty : '0' },
+              { id: 'sqft', label: 'Sqft Left', value: (row) => row.unit_of_measure === 'sqft' ? Number(row.current_sqft || 0) : '0' },
+              { id: 'showroom', label: 'At Showroom', value: (row) => showroomSplit(row).total },
+              { id: 'showroom_cassette', label: 'Showroom On Cassette', value: (row) => showroomSplit(row).cassette },
+              { id: 'showroom_installed', label: 'Showroom Installed', value: (row) => showroomSplit(row).installed },
+              { id: 'slab_size', label: 'Last Slab Size', value: (row) => row.last_slab_size_label || '' },
+              { id: 'reorder', label: 'Reorder Level', value: (row) => row.reorder_level || '0' },
+            ];
+            exportToCSV(`Inventory_Export_${dateStr}.csv`, pagination.allRows, columns);
+          }}
+          className={PILL_BUTTON_CLASS}
+          title="Export Inventory to CSV"
+        >
+          <Download className="h-4 w-4" />
+          Export
+        </button>
         </div>
+      </div>
+      <div id="current-stock" className="glass-panel overflow-hidden rounded-2xl">
 
         {kpis && <div className="border-b border-border/60 bg-muted/20 px-3 py-3 sm:px-4">{kpis}</div>}
         <div className="sticky top-0 z-10 border-b border-slate-200/60 bg-white/50 px-3 py-2.5 backdrop-blur-md dark:bg-slate-900/50">

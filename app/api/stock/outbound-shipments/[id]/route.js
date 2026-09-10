@@ -9,6 +9,7 @@ import {
   computePieceIncrement,
 } from '@/lib/stock-piece-balance';
 import { toSqft, toPositiveSqft, assertSqftAvailable } from '@/lib/stock-sqft';
+import { netRevenueExpr } from '@/lib/stock-analytics-sql.mjs';
 import { showroomHint } from '@/lib/stock-showroom';
 
 async function loadShipmentWithItems(id) {
@@ -27,6 +28,7 @@ async function loadShipmentWithItems(id) {
      LEFT JOIN stock_divisions sd ON sd.id = spu.division_id`
     : '';
 
+  const netRevenue = netRevenueExpr(schemaCaps, 'osi', 'i');
   const salespersonNameExpr = schemaCaps.hasOutboundSalespersonUserId
     ? 'COALESCE(spu.name, sp.name)'
     : 'sp.name';
@@ -49,15 +51,20 @@ async function loadShipmentWithItems(id) {
      LEFT JOIN stock_sales_people sp ON sp.id = sos.salesperson_id
      ${salespersonUserJoins}
      LEFT JOIN (
-       SELECT outbound_shipment_id,
-              SUM(loaded_whole_qty) AS total_whole_qty,
-              SUM(loaded_broken_qty) AS total_broken_qty,
-              SUM(returned_whole_qty) AS total_return_whole_qty,
-              SUM(returned_broken_qty) AS total_return_broken_qty,
-              COALESCE(SUM((GREATEST((COALESCE(loaded_whole_qty, 0) + COALESCE(loaded_broken_qty, 0)) - (COALESCE(returned_whole_qty, 0) + COALESCE(returned_broken_qty, 0)), 0)) * COALESCE(rate_per_unit, 0)), 0) AS total_selling_price_excl
-       FROM stock_outbound_shipment_items
-       WHERE outbound_shipment_id = $1
-       GROUP BY outbound_shipment_id
+       SELECT osi.outbound_shipment_id,
+              SUM(osi.loaded_whole_qty) AS total_whole_qty,
+              SUM(osi.loaded_broken_qty) AS total_broken_qty,
+              SUM(osi.returned_whole_qty) AS total_return_whole_qty,
+              SUM(osi.returned_broken_qty) AS total_return_broken_qty,
+              -- Must equal the sum of the line amounts the preview sheet prints,
+              -- which bill whole units (square feet for stone) and never broken
+              -- pieces. The old formula charged broken pieces at the box rate and
+              -- valued every stone line at zero.
+              COALESCE(SUM(${netRevenue}), 0) AS total_selling_price_excl
+       FROM stock_outbound_shipment_items osi
+       JOIN stock_items i ON i.id = osi.item_id
+       WHERE osi.outbound_shipment_id = $1
+       GROUP BY osi.outbound_shipment_id
      ) agg ON agg.outbound_shipment_id = sos.id
      WHERE sos.id = $1
      LIMIT 1`,

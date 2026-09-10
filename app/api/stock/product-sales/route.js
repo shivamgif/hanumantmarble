@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getStockContext } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
+import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
+import { netRevenueExpr, shippedFilter } from '@/lib/stock-analytics-sql.mjs';
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
@@ -42,6 +44,9 @@ export async function GET(request) {
       divisionFilter = `AND i.division_id = ANY($2::bigint[])`;
     }
 
+    const netRevenue = netRevenueExpr(await getStockSchemaCapabilities(), 'soi', 'i');
+    const shipped = shippedFilter('sos');
+
     const rows = await sql(
       `SELECT
          i.id AS item_id,
@@ -57,7 +62,7 @@ export async function GET(request) {
            THEN GREATEST(COALESCE(soi.loaded_whole_qty, 0) - COALESCE(soi.returned_whole_qty, 0), 0) END), 0) AS bag_qty,
          COALESCE(SUM(CASE WHEN i.unit_of_measure = 'sqft'
            THEN GREATEST(COALESCE(soi.qty_sqft, 0) - COALESCE(soi.returned_qty_sqft, 0), 0) END), 0) AS sqft_qty,
-         COALESCE(SUM((GREATEST((COALESCE(soi.loaded_whole_qty, 0) + COALESCE(soi.loaded_broken_qty, 0)) - (COALESCE(soi.returned_whole_qty, 0) + COALESCE(soi.returned_broken_qty, 0)), 0)) * COALESCE(soi.rate_per_unit, 0)), 0) AS revenue_excl,
+         COALESCE(SUM(${netRevenue}), 0) AS revenue_excl,
          COUNT(DISTINCT sos.id)::int AS dispatch_count
        FROM stock_outbound_shipments sos
        JOIN stock_outbound_shipment_items soi ON soi.outbound_shipment_id = sos.id
@@ -65,6 +70,7 @@ export async function GET(request) {
        LEFT JOIN stock_customers c ON c.id = sos.customer_id
        WHERE ${MONTH_BUCKET} >= $1::timestamp
          AND ${MONTH_BUCKET} < ($1::timestamp + INTERVAL '1 month')
+         AND ${shipped}
          ${divisionFilter}
        GROUP BY i.id, i.name, i.sku, i.unit_of_measure, c.name
        ORDER BY i.name ASC, revenue_excl DESC`,

@@ -304,7 +304,10 @@ export default function AnalyticsDashboard() {
   const divisionRisk = adminAnalytics?.inventoryHealth?.divisionRisk || [];
   const divisionPerformance = adminAnalytics?.divisionPerformance?.ranking || [];
   const dispatchTrend = adminAnalytics?.dispatchPerformance?.trend || [];
-  const costTrend = adminAnalytics?.costAndPayment?.trend || [];
+  const inboundTrend = adminAnalytics?.inboundFlow?.trend || [];
+  // The final bucket is the month in progress. Charts that compare periods drop
+  // it rather than pit a few days against a whole month.
+  const partialLastMonth = Boolean(adminAnalytics?.range?.partialLastMonth);
   const salespersonRanking = adminAnalytics?.salespersonPerformance?.ranking || [];
   const salespersonTrend = adminAnalytics?.salespersonPerformance?.trend || [];
   const monthlyProfit = adminAnalytics?.monthlyProfit || [];
@@ -334,7 +337,7 @@ export default function AnalyticsDashboard() {
       </header>
 
       <HeroCallouts
-        stockedOut={reorderNow.length}
+        stockedOut={Number(stockRisk?.zeroStock || 0)}
         approvalsWaiting={Number(approvalOps?.pendingCount || 0)}
         oldestPendingHours={Number(approvalOps?.oldestPendingHours || 0)}
         salespeopleBehindPace={salespeopleBehindPace}
@@ -370,12 +373,12 @@ export default function AnalyticsDashboard() {
         </div>
 
         <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-3">
-          <div className="flex items-center rounded-xl border border-border/60 bg-muted p-1">
+          <div className="flex min-h-[38px] shrink-0 items-center rounded-full border border-border/60 bg-muted p-1 sm:min-h-[44px]">
             {[3, 6, 12].map((m) => (
               <button
                 key={m}
                 onClick={() => setAnalyticsRangeMonths(m)}
-                className={`flex h-10 items-center rounded-lg px-2.5 text-[10px] font-black transition-all sm:h-auto sm:px-4 sm:py-2.5 sm:text-xs ${analyticsRangeMonths === m
+                className={`flex h-[30px] items-center rounded-full px-3 text-[10px] font-black uppercase tracking-wide transition-all sm:h-9 sm:px-4 sm:text-[11px] sm:tracking-widest ${analyticsRangeMonths === m
                   ? 'bg-white dark:bg-slate-800 text-brand-primary shadow-sm'
                   : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                   }`}
@@ -399,7 +402,7 @@ export default function AnalyticsDashboard() {
       {activeTab === 'overview' && (
         <div className="space-y-6">
           <StockHealthScorecard data={divisionRisk} stockRisk={stockRisk} approvalOps={approvalOps} />
-          <SalesRevenueChart data={dispatchTrend} />
+          <SalesRevenueChart data={dispatchTrend} partial={partialLastMonth} />
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             <div className="lg:col-span-7 min-w-0" id="widget-reorder">
               <ReorderNowWidget items={reorderNow} months={analyticsRangeMonths} />
@@ -419,13 +422,13 @@ export default function AnalyticsDashboard() {
       {activeTab === 'sales' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div className="lg:col-span-8 min-w-0">
-            <MonthlyProfitChart data={monthlyProfit} />
+            <MonthlyProfitChart data={monthlyProfit} partial={partialLastMonth} />
           </div>
           <div className="lg:col-span-4 min-w-0">
             <TopDivisionsChart data={divisionPerformance} />
           </div>
           <div className="lg:col-span-8 min-w-0">
-            <MonthlyCostVolumeChart dispatchTrend={dispatchTrend} costTrend={costTrend} />
+            <MonthlyCostVolumeChart dispatchTrend={dispatchTrend} inboundTrend={inboundTrend} partial={partialLastMonth} />
           </div>
           <div className="lg:col-span-4 min-w-0">
             <CustomerConcentrationWidget rows={customerConcentration} />

@@ -31,7 +31,7 @@ import {
   formatCompactINR,
 } from '../../components/dashboard-ui';
 
-export function SalesRevenueChart({ data }) {
+export function SalesRevenueChart({ data, partial = false }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
 
@@ -42,27 +42,33 @@ export function SalesRevenueChart({ data }) {
       </AnalyticsCard>
     );
 
-  const chartData = data.map((d) => ({
-    month: formatMonthLabel(d.month || d.bucket),
+  const chartData = data.map((d, i) => ({
+    month: formatMonthLabel(d.month || d.bucket) + (partial && i === data.length - 1 ? '*' : ''),
     total: Number(d.total || 0),
   }));
 
+  // The last bucket is the month we are standing in, so comparing it against a
+  // full prior month always reads as a fall. Trend and peak both use complete
+  // months only; the partial bucket still draws, marked with an asterisk.
+  const complete = partial ? data.slice(0, -1) : data;
   const trend =
-    data.length >= 2
-      ? ((Number(data[data.length - 1].total || 0) - Number(data[data.length - 2].total || 0)) /
-        Number(data[data.length - 2].total || 1)) *
+    complete.length >= 2
+      ? ((Number(complete[complete.length - 1].total || 0) - Number(complete[complete.length - 2].total || 0)) /
+        Number(complete[complete.length - 2].total || 1)) *
       100
       : 0;
   const isPositive = trend >= 0;
 
-  const peak = data.reduce((best, d) => (Number(d.total || 0) > Number(best.total || 0) ? d : best), data[0]);
+  const peakPool = complete.length > 0 ? complete : data;
+  const peak = peakPool.reduce((best, d) => (Number(d.total || 0) > Number(best.total || 0) ? d : best), peakPool[0]);
   const peakLabel = peak ? `${t('highestActivity')}: ${formatCompactNumber(peak.total)} ${t('unitsIn')} ${formatMonthLabel(peak.month || peak.bucket)}` : null;
+  const contextBar = partial ? `${peakLabel} · ${t('partialMonthNote')}` : peakLabel;
 
   return (
     <AnalyticsCard
       title={t('activityTrend')}
       subtitle={t('monthlyOutboundVolume')}
-      contextBar={peakLabel}
+      contextBar={contextBar}
       topRight={<TrendCapsule value={trend} isPositive={isPositive} />}
     >
       <div className="h-72 lg:h-80 rounded-xl border border-border/60 bg-muted/20 p-4">
@@ -77,8 +83,8 @@ export function SalesRevenueChart({ data }) {
             <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200/80 dark:stroke-slate-800" />
             <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactNumber} width={40} />
-            <RechartsTooltip content={<ChartTooltip formatter={(v) => `${formatCompactNumber(v)} ${t('units')}`} />} />
-            <Area type="monotone" dataKey="total" name={t('units')} stroke={CHART_ORANGE} strokeWidth={2} fill="url(#salesArea)" dot={false} activeDot={{ r: 6, stroke: 'rgb(var(--card))', strokeWidth: 2 }} />
+            <RechartsTooltip content={<ChartTooltip formatter={(v) => `${formatCompactNumber(v)} ${t('dispatchesUnit')}`} />} />
+            <Area type="monotone" dataKey="total" name={t('dispatchesUnit')} stroke={CHART_ORANGE} strokeWidth={2} fill="url(#salesArea)" dot={false} activeDot={{ r: 6, stroke: 'rgb(var(--card))', strokeWidth: 2 }} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -98,12 +104,19 @@ export function TopDivisionsChart({ data }) {
     );
 
   const topDivisions = [...data].sort((a, b) => Number(b.total_revenue || 0) - Number(a.total_revenue || 0)).slice(0, 5);
-  const totalRev = topDivisions.reduce((s, d) => s + Number(d.total_revenue || 0), 0) || 1;
+  // Share is of every division, not just the five shown, so a top-five list
+  // cannot imply it is the whole business.
+  const totalRev = data.reduce((s, d) => s + Number(d.total_revenue || 0), 0) || 1;
+  const shownRev = topDivisions.reduce((s, d) => s + Number(d.total_revenue || 0), 0);
+  const otherRev = Math.max(0, totalRev - shownRev);
   const pieData = topDivisions.map((d, i) => ({
     name: d.division || t('unknown'),
     value: Number(d.total_revenue || 0),
     color: INDUSTRIAL_COLORS[i % INDUSTRIAL_COLORS.length],
   }));
+  if (otherRev > 0) {
+    pieData.push({ name: t('otherDivisions'), value: otherRev, color: '#94a3b8' });
+  }
 
   return (
     <AnalyticsCard
@@ -140,31 +153,31 @@ export function TopDivisionsChart({ data }) {
   );
 }
 
-export function MonthlyCostVolumeChart({ dispatchTrend, costTrend }) {
+export function MonthlyCostVolumeChart({ dispatchTrend, inboundTrend, partial = false }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
 
   const chartData = useMemo(() => {
     const byMonth = {};
-    (costTrend || []).forEach((d) => {
+    (inboundTrend || []).forEach((d) => {
       const k = d.bucket || d.month;
       if (!k) return;
-      byMonth[k] = { ...byMonth[k], month: k, inboundSqm: Number(d.total_qty_sqm || 0) };
+      byMonth[k] = { ...byMonth[k], month: k, inboundValue: Number(d.inbound_value || 0) };
     });
     (dispatchTrend || []).forEach((d) => {
       const k = d.bucket || d.month;
       if (!k) return;
-      byMonth[k] = { ...byMonth[k], month: k, outboundSqm: Number(d.dispatched_volume || 0) };
+      byMonth[k] = { ...byMonth[k], month: k, outboundValue: Number(d.revenue || 0) };
     });
-    return Object.values(byMonth)
+    const ordered = Object.values(byMonth)
       .sort((a, b) => (a.month < b.month ? -1 : 1))
-      .slice(-6)
-      .map((d) => ({
-        month: formatMonthLabel(d.month),
-        inbound: d.inboundSqm || 0,
-        outbound: d.outboundSqm || 0,
-      }));
-  }, [costTrend, dispatchTrend]);
+      .slice(-6);
+    return ordered.map((d, i) => ({
+      month: formatMonthLabel(d.month) + (partial && i === ordered.length - 1 ? '*' : ''),
+      inbound: d.inboundValue || 0,
+      outbound: d.outboundValue || 0,
+    }));
+  }, [inboundTrend, dispatchTrend, partial]);
 
   if (!chartData || chartData.length === 0)
     return (
@@ -177,6 +190,7 @@ export function MonthlyCostVolumeChart({ dispatchTrend, costTrend }) {
     <AnalyticsCard
       title={t('businessFlow')}
       subtitle={t('inboundOutboundMatch')}
+      contextBar={partial ? t('partialMonthNote') : null}
       topRight={
         <div className="flex flex-wrap gap-2">
           <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] bg-card px-3 py-1.5 rounded-full border border-border">
@@ -193,8 +207,8 @@ export function MonthlyCostVolumeChart({ dispatchTrend, costTrend }) {
           <BarChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }} barGap={4}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200/80 dark:stroke-slate-800" />
             <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactNumber} width={40} />
-            <RechartsTooltip content={<ChartTooltip formatter={(v) => `${formatCompactNumber(v)} sqm`} />} cursor={{ fill: 'rgba(148,163,184,0.08)' }} />
+            <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactINR} width={56} />
+            <RechartsTooltip content={<ChartTooltip formatter={(v) => formatCompactINR(v)} />} cursor={{ fill: 'rgba(148,163,184,0.08)' }} />
             <Bar dataKey="inbound" name={t('inbound')} fill="#F43F5E" radius={[4, 4, 0, 0]} />
             <Bar dataKey="outbound" name={t('outbound')} fill="#10B981" radius={[4, 4, 0, 0]} />
           </BarChart>
@@ -204,12 +218,13 @@ export function MonthlyCostVolumeChart({ dispatchTrend, costTrend }) {
   );
 }
 
-export function MonthlyProfitChart({ data }) {
+export function MonthlyProfitChart({ data, partial = false }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
 
-  const chartData = (data || []).map((d) => ({
-    month: formatMonthLabel(d.bucket || d.month),
+  const rows = data || [];
+  const chartData = rows.map((d, i) => ({
+    month: formatMonthLabel(d.bucket || d.month) + (partial && i === rows.length - 1 ? '*' : ''),
     revenue: Number(d.revenue || 0),
     profit: Number(d.profit || 0),
   }));
@@ -221,9 +236,18 @@ export function MonthlyProfitChart({ data }) {
       </AnalyticsCard>
     );
 
+  // Margin is measured against the revenue that could be costed. Revenue from
+  // items with no recorded purchase cost is called out separately rather than
+  // being counted as pure profit.
+  const latestRow = rows[rows.length - 1] || {};
   const latest = chartData[chartData.length - 1];
-  const marginPct = latest.revenue > 0 ? (latest.profit / latest.revenue) * 100 : 0;
-  const contextBar = `${latest.month}: ${formatCompactINR(latest.profit)} ${t('profit')} · ${marginPct.toFixed(1)}% ${t('margin')}`;
+  const costedRevenue = Number(latestRow.costed_revenue ?? latestRow.revenue ?? 0);
+  const uncostedRevenue = Number(latestRow.uncosted_revenue || 0);
+  const marginPct = costedRevenue > 0 ? (Number(latestRow.profit || 0) / costedRevenue) * 100 : 0;
+  const contextBar = [
+    `${latest.month}${partial ? ` (${t('partialMonth')})` : ''}: ${formatCompactINR(latest.profit)} ${t('profit')} · ${marginPct.toFixed(1)}% ${t('margin')}`,
+    uncostedRevenue > 0 ? `${formatCompactINR(uncostedRevenue)} ${t('uncostedRevenue')}` : null,
+  ].filter(Boolean).join(' · ');
 
   return (
     <AnalyticsCard
@@ -340,8 +364,7 @@ export function AbcItemsWidget({ items }) {
     );
   }
   const totalItems = Number(items[0]?.total_items_with_sales || items.length);
-  const top80 = items.findIndex((it) => Number(it.cumulative_pct) >= 80);
-  const top80Count = top80 >= 0 ? top80 + 1 : items.length;
+  const top80Count = Number(items[0]?.rank_at_80 || 0);
   const chartData = items.slice(0, 30).map((it) => ({
     rank: it.rank,
     revenue: Number(it.revenue),
@@ -351,7 +374,7 @@ export function AbcItemsWidget({ items }) {
     <AnalyticsCard
       title={t('abcItems')}
       subtitle={t('abcSubtitle')}
-      contextBar={`${top80Count} ${t('ofLabel')} ${totalItems} ${t('itemsEqual80')}`}
+      contextBar={top80Count > 0 ? `${top80Count} ${t('ofLabel')} ${totalItems} ${t('itemsEqual80')}` : null}
     >
       <div className="h-44">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>

@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
+import {
+  availableQtyExpr,
+  netRevenueExpr,
+  monthProgress,
+  netUnitsExpr,
+  shippedFilter,
+  unitCostCte,
+} from '@/lib/stock-analytics-sql.mjs';
 
 function toDateOnly(value) {
   return value.toISOString().slice(0, 10);
@@ -27,10 +35,14 @@ function normalizeRange(searchParams) {
   const startDate = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth() - (rangeMonths - 1), 1));
   const normalizedEnd = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth() + 1, 0, 23, 59, 59, 999));
 
+  const lastBucket = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), 1));
+
   return {
     months: rangeMonths,
     startDate,
     endDate: normalizedEnd,
+    lastBucket,
+    ...monthProgress(endDate),
   };
 }
 
@@ -85,21 +97,30 @@ export async function GET(request) {
     const salespersonUserJoin = schemaCaps.hasOutboundSalespersonUserId
       ? `LEFT JOIN stock_app_users spu ON spu.id = s.salesperson_user_id`
       : '';
+    // A salesperson owns a dispatch when they are named on it, or when nobody
+    // is named and they filed it. Matches /api/stock/salesperson-analytics so
+    // the goal tracker and a salesperson's own page agree.
+    const goalOwnership = schemaCaps.hasOutboundSalespersonUserId
+      ? `(o.salesperson_user_id = u.id OR (o.salesperson_user_id IS NULL AND o.submitted_by_user_id = u.id))`
+      : `o.submitted_by_user_id = u.id`;
+
+    const netRevenue = netRevenueExpr(schemaCaps, 'osi', 'i');
+    const netUnits = netUnitsExpr(schemaCaps, 'osi', 'i');
+    const availableQty = availableQtyExpr(schemaCaps, 'i');
+    const outboundShipped = shippedFilter('s');
+    const outboundShippedO = shippedFilter('o');
 
     const { searchParams } = new URL(request.url);
     const range = normalizeRange(searchParams);
     const startDate = toDateOnly(range.startDate);
     const endDate = toDateOnly(range.endDate);
+    const lastBucket = toDateOnly(range.lastBucket);
+    const elapsedFraction = range.elapsedFraction;
 
     const [
-      purchaseTrend,
-      purchaseFunnelRows,
       dispatchTrend,
-      inboundCostTrend,
-      paymentMix,
-      paymentExposure,
+      inboundTrend,
       divisionRisk,
-      inventoryRiskTrend,
       salespersonTrend,
       salespersonRanking,
       divisionPerformance,
@@ -114,163 +135,75 @@ export async function GET(request) {
       abcItemRows,
       monthlyProfitRows,
     ] = await Promise.all([
+      // Outbound activity per month: how many dispatches went out and what they
+      // billed. Draft, cancelled and rejected shipments are excluded - a draft
+      // would otherwise book revenue, because dispatch_date defaults to NOW().
       sql(
         `WITH periods AS (
            SELECT generate_series(date_trunc('month', $1::date), date_trunc('month', $2::date), interval '1 month')::date AS bucket
-         ), shipments AS (
+         ), dispatch_value AS (
            SELECT
-             date_trunc('month', COALESCE(submitted_at, arrival_date, created_at))::date AS bucket,
-             approval_status
-           FROM stock_inbound_shipments
-           WHERE COALESCE(submitted_at, arrival_date, created_at)::date BETWEEN $1::date AND $2::date
-         )
-         SELECT
-           p.bucket,
-           COUNT(s.*)::int AS total,
-           COUNT(*) FILTER (WHERE s.approval_status = 'pending')::int AS pending,
-           COUNT(*) FILTER (WHERE s.approval_status = 'reviewed')::int AS reviewed,
-           COUNT(*) FILTER (WHERE s.approval_status = 'approved')::int AS approved,
-           COUNT(*) FILTER (WHERE s.approval_status = 'rejected')::int AS rejected,
-           COUNT(*) FILTER (WHERE s.approval_status = 'changes_requested')::int AS changes_requested
-         FROM periods p
-         LEFT JOIN shipments s ON s.bucket = p.bucket
-         GROUP BY p.bucket
-         ORDER BY p.bucket ASC`,
-        [startDate, endDate]
-      ),
-      sql(
-        `SELECT
-           approval_status,
-           COUNT(*)::int AS count
-         FROM stock_inbound_shipments
-         WHERE COALESCE(submitted_at, arrival_date, created_at)::date BETWEEN $1::date AND $2::date
-         GROUP BY approval_status`,
-        [startDate, endDate]
-      ),
-      sql(
-        `WITH periods AS (
-           SELECT generate_series(date_trunc('month', $1::date), date_trunc('month', $2::date), interval '1 month')::date AS bucket
-         ), dispatch_items AS (
-           SELECT
-             outbound_shipment_id,
-             COALESCE(SUM(loaded_whole_qty), 0) + COALESCE(SUM(loaded_broken_qty), 0) AS total_qty
-           FROM stock_outbound_shipment_items
-           GROUP BY outbound_shipment_id
+             osi.outbound_shipment_id,
+             SUM(${netRevenue}) AS revenue
+           FROM stock_outbound_shipment_items osi
+           JOIN stock_items i ON i.id = osi.item_id
+           GROUP BY osi.outbound_shipment_id
          ), dispatches AS (
            SELECT
-             date_trunc('month', COALESCE(dispatch_date, created_at))::date AS bucket,
-             status,
-             approval_status,
-             dispatch_date,
-             delivered_date,
-             COALESCE(di.total_qty, 0) AS total_qty,
-             CASE
-               WHEN delivered_date IS NOT NULL AND dispatch_date IS NOT NULL THEN GREATEST(EXTRACT(EPOCH FROM (delivered_date - dispatch_date)) / 86400.0, 0)
-               ELSE NULL
-             END AS delay_days,
-             CASE
-               WHEN delivered_date IS NOT NULL AND dispatch_date IS NOT NULL AND delivered_date <= dispatch_date + interval '2 days' THEN 1
-               ELSE 0
-             END AS on_time_flag
+             date_trunc('month', s.dispatch_date)::date AS bucket,
+             s.status,
+             COALESCE(dv.revenue, 0) AS revenue
            FROM stock_outbound_shipments s
-           LEFT JOIN dispatch_items di ON di.outbound_shipment_id = s.id
-           WHERE COALESCE(dispatch_date, created_at)::date BETWEEN $1::date AND $2::date
+           LEFT JOIN dispatch_value dv ON dv.outbound_shipment_id = s.id
+           WHERE s.dispatch_date::date BETWEEN $1::date AND $2::date
+             AND ${outboundShipped}
          )
          SELECT
            p.bucket,
            COUNT(d.*)::int AS total,
-           COUNT(*) FILTER (WHERE d.status = 'submitted')::int AS submitted,
-           COUNT(*) FILTER (WHERE d.status = 'packed')::int AS packed,
-           COUNT(*) FILTER (WHERE d.status = 'dispatched')::int AS dispatched,
            COUNT(*) FILTER (WHERE d.status = 'delivered')::int AS delivered,
-           COUNT(*) FILTER (WHERE d.status = 'cancelled')::int AS cancelled,
-           COALESCE(AVG(d.delay_days), 0)::numeric(10,2) AS avg_delay_days,
-           COALESCE(SUM(d.total_qty), 0)::numeric(14,2) AS dispatched_volume,
-           CASE
-             WHEN COUNT(*) FILTER (WHERE d.delivered_date IS NOT NULL) = 0 THEN 0
-             ELSE (
-               SUM(d.on_time_flag)::numeric / NULLIF(COUNT(*) FILTER (WHERE d.delivered_date IS NOT NULL), 0)
-             )
-           END::numeric(10,4) AS on_time_ratio
+           COALESCE(SUM(d.revenue), 0)::numeric(14,2) AS revenue
          FROM periods p
          LEFT JOIN dispatches d ON d.bucket = p.bucket
          GROUP BY p.bucket
          ORDER BY p.bucket ASC`,
         [startDate, endDate]
       ),
+      // Inbound value per month, in rupees, so it can be compared against
+      // outbound revenue on one axis. grand_total is what the shipment was
+      // actually priced at.
       sql(
         `WITH periods AS (
            SELECT generate_series(date_trunc('month', $1::date), date_trunc('month', $2::date), interval '1 month')::date AS bucket
-         ), shipment_cost AS (
+         ), arrivals AS (
            SELECT
-             s.id,
-             date_trunc('month', COALESCE(s.submitted_at, s.arrival_date, s.created_at))::date AS bucket,
-             COALESCE(SUM(COALESCE(isi.qty_sqm, 0)), 0) AS total_qty_sqm,
-             COALESCE(AVG(NULLIF(isi.cost_per_sqm, 0)), 0) AS avg_cost_per_sqm
+             date_trunc('month', COALESCE(s.arrival_date, s.created_at))::date AS bucket,
+             COALESCE(s.grand_total, 0) AS inbound_value
            FROM stock_inbound_shipments s
-           LEFT JOIN stock_inbound_shipment_items isi ON isi.inbound_shipment_id = s.id
-           WHERE COALESCE(s.submitted_at, s.arrival_date, s.created_at)::date BETWEEN $1::date AND $2::date
-           GROUP BY s.id, bucket
+           WHERE COALESCE(s.arrival_date, s.created_at)::date BETWEEN $1::date AND $2::date
+             AND s.approval_status <> 'rejected'
          )
          SELECT
            p.bucket,
-           COALESCE(AVG(sc.avg_cost_per_sqm), 0)::numeric(12,2) AS avg_cost_per_sqm,
-           COALESCE(SUM(sc.total_qty_sqm), 0)::numeric(14,3) AS total_qty_sqm
+           COUNT(a.*)::int AS arrivals,
+           COALESCE(SUM(a.inbound_value), 0)::numeric(14,2) AS inbound_value
          FROM periods p
-         LEFT JOIN shipment_cost sc ON sc.bucket = p.bucket
+         LEFT JOIN arrivals a ON a.bucket = p.bucket
          GROUP BY p.bucket
          ORDER BY p.bucket ASC`,
         [startDate, endDate]
       ),
+      // Stock health per division. current_stock is in the unit that division
+      // sells in (square feet for stone, boxes or pieces elsewhere), which is
+      // consistent within a row even though rows are not comparable.
       sql(
         `SELECT
-           payment_status,
-           COUNT(*)::int AS count
-         FROM stock_inbound_shipments
-         WHERE COALESCE(submitted_at, arrival_date, created_at)::date BETWEEN $1::date AND $2::date
-         GROUP BY payment_status`,
-        [startDate, endDate]
-      ),
-      sql(
-        `WITH shipment_totals AS (
-           SELECT
-             s.id,
-             s.payment_status,
-             COALESCE(s.paid_amount, 0) AS paid_amount,
-             COALESCE(
-               SUM(
-                 CASE
-                   WHEN COALESCE(isi.qty_sqm, 0) > 0 AND COALESCE(isi.cost_per_sqm, 0) > 0
-                     THEN isi.qty_sqm * isi.cost_per_sqm
-                   ELSE (COALESCE(isi.received_whole_qty, 0) + COALESCE(isi.received_broken_qty, 0)) * COALESCE(NULLIF(isi.unit_cost, 0), 0)
-                 END
-               ),
-               0
-             ) AS estimated_total
-           FROM stock_inbound_shipments s
-           LEFT JOIN stock_inbound_shipment_items isi ON isi.inbound_shipment_id = s.id
-           WHERE COALESCE(s.submitted_at, s.arrival_date, s.created_at)::date BETWEEN $1::date AND $2::date
-           GROUP BY s.id, s.payment_status, s.paid_amount
-         )
-         SELECT
-           COALESCE(SUM(
-             CASE
-               WHEN payment_status = 'paid' THEN 0
-               WHEN payment_status = 'unpaid' THEN estimated_total
-               WHEN payment_status = 'partial' THEN GREATEST(estimated_total - paid_amount, 0)
-               ELSE GREATEST(estimated_total - paid_amount, 0)
-             END
-           ), 0)::numeric(14,2) AS outstanding_exposure,
-           COALESCE(SUM(estimated_total), 0)::numeric(14,2) AS estimated_gross
-         FROM shipment_totals`,
-        [startDate, endDate]
-      ),
-      sql(
-        `SELECT
-           COALESCE(d.name, 'Adhesive') AS division,
-           COUNT(*) FILTER (WHERE COALESCE(i.reorder_level, 0) > 0 AND (COALESCE(i.current_whole_qty, 0) + COALESCE(i.current_broken_qty, 0)) <= COALESCE(i.reorder_level, 0))::int AS at_risk,
+           COALESCE(d.name, 'Uncategorized') AS division,
+           COUNT(*) FILTER (WHERE ${availableQty} <= 0)::int AS out_of_stock,
+           COUNT(*) FILTER (WHERE ${availableQty} > 0 AND ${availableQty} <= COALESCE(i.reorder_level, 0))::int AS low_stock,
+           COUNT(*) FILTER (WHERE ${availableQty} <= COALESCE(i.reorder_level, 0))::int AS at_risk,
            COUNT(*)::int AS total_items,
-           COALESCE(SUM(COALESCE(i.current_whole_qty, 0) + COALESCE(i.current_broken_qty, 0)), 0)::numeric(14,2) AS current_stock,
+           COALESCE(SUM(${availableQty}), 0)::numeric(14,2) AS current_stock,
            (
              SELECT string_agg(sub.name, ', ')
              FROM (
@@ -278,9 +211,8 @@ export async function GET(request) {
                FROM stock_items i2
                WHERE i2.is_active = TRUE
                  AND COALESCE(i2.division_id, -1) = COALESCE(d.id, -1)
-                 AND COALESCE(i2.reorder_level, 0) > 0 
-                 AND (COALESCE(i2.current_whole_qty, 0) + COALESCE(i2.current_broken_qty, 0)) <= COALESCE(i2.reorder_level, 0)
-               ORDER BY (COALESCE(i2.current_whole_qty, 0) + COALESCE(i2.current_broken_qty, 0)) ASC
+                 AND ${availableQtyExpr(schemaCaps, 'i2')} <= COALESCE(i2.reorder_level, 0)
+               ORDER BY ${availableQtyExpr(schemaCaps, 'i2')} ASC
                LIMIT 2
              ) sub
            ) AS critical_items_list
@@ -291,86 +223,53 @@ export async function GET(request) {
          ORDER BY at_risk DESC, division ASC`,
         []
       ),
+      // Every salesperson x month row, no LIMIT - the Team tab slices this down
+      // client-side for the spotlight without a second fetch.
       sql(
-        `WITH periods AS (
-           SELECT generate_series(date_trunc('month', $1::date), date_trunc('month', $2::date), interval '1 month')::date AS bucket
-         ), at_risk_items AS (
-           SELECT id
-           FROM stock_items
-           WHERE is_active = TRUE
-             AND COALESCE(reorder_level, 0) > 0
-             AND (COALESCE(current_whole_qty, 0) + COALESCE(current_broken_qty, 0)) <= COALESCE(reorder_level, 0)
-         ), inbound AS (
-           SELECT
-             date_trunc('month', COALESCE(s.arrival_date, s.created_at))::date AS bucket,
-             COALESCE(SUM(COALESCE(isi.received_whole_qty, 0) + COALESCE(isi.received_broken_qty, 0)), 0) AS inbound_qty
-           FROM stock_inbound_shipments s
-           JOIN stock_inbound_shipment_items isi ON isi.inbound_shipment_id = s.id
-           JOIN at_risk_items ari ON ari.id = isi.item_id
-           WHERE s.approval_status = 'approved'
-             AND COALESCE(s.arrival_date, s.created_at)::date BETWEEN $1::date AND $2::date
-           GROUP BY bucket
-         ), outbound AS (
-           SELECT
-             date_trunc('month', COALESCE(s.dispatch_date, s.created_at))::date AS bucket,
-             COALESCE(SUM(COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)), 0) AS outbound_qty
-           FROM stock_outbound_shipments s
-           JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = s.id
-           JOIN at_risk_items ari ON ari.id = osi.item_id
-           WHERE s.approval_status = 'approved'
-             AND COALESCE(s.dispatch_date, s.created_at)::date BETWEEN $1::date AND $2::date
-           GROUP BY bucket
-         )
-         SELECT
-           p.bucket,
-           COALESCE(i.inbound_qty, 0)::numeric(14,2) AS inbound_qty,
-           COALESCE(o.outbound_qty, 0)::numeric(14,2) AS outbound_qty,
-           (COALESCE(o.outbound_qty, 0) - COALESCE(i.inbound_qty, 0))::numeric(14,2) AS pressure
-         FROM periods p
-         LEFT JOIN inbound i ON i.bucket = p.bucket
-         LEFT JOIN outbound o ON o.bucket = p.bucket
-         ORDER BY p.bucket ASC`,
-        [startDate, endDate]
-      ),
-      sql(
-        `WITH shipment_qty AS (
-           SELECT
-             s.id,
-             date_trunc('month', COALESCE(s.dispatch_date, s.created_at))::date AS bucket,
-             ${salespersonLabelExpr} AS salesperson,
-             COALESCE(SUM(COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)), 0) AS total_qty,
-             COALESCE(SUM((GREATEST((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) - (COALESCE(osi.returned_whole_qty, 0) + COALESCE(osi.returned_broken_qty, 0)), 0)) * COALESCE(osi.rate_per_unit, 0)), 0) AS total_revenue
-           FROM stock_outbound_shipments s
-           LEFT JOIN stock_sales_people sp ON sp.id = s.salesperson_id
-           ${salespersonUserJoin}
-           LEFT JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = s.id
-           WHERE COALESCE(s.dispatch_date, s.created_at)::date BETWEEN $1::date AND $2::date
-           GROUP BY s.id, bucket, salesperson
-         )
-         SELECT
-           bucket,
-           salesperson,
-           COUNT(*)::int AS shipment_count,
-           COALESCE(SUM(total_qty), 0)::numeric(14,2) AS total_qty,
-           COALESCE(SUM(total_revenue), 0)::numeric(14,2) AS total_revenue
-         FROM shipment_qty
+        `SELECT
+           date_trunc('month', s.dispatch_date)::date AS bucket,
+           ${salespersonLabelExpr} AS salesperson,
+           COUNT(DISTINCT s.id)::int AS shipment_count,
+           COALESCE(SUM(${netUnits}), 0)::numeric(14,2) AS total_qty,
+           COALESCE(SUM(${netRevenue}), 0)::numeric(14,2) AS total_revenue
+         FROM stock_outbound_shipments s
+         LEFT JOIN stock_sales_people sp ON sp.id = s.salesperson_id
+         ${salespersonUserJoin}
+         LEFT JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = s.id
+         LEFT JOIN stock_items i ON i.id = osi.item_id
+         WHERE s.dispatch_date::date BETWEEN $1::date AND $2::date
+           AND ${outboundShipped}
          GROUP BY bucket, salesperson
-         ORDER BY bucket ASC, total_qty DESC`,
+         ORDER BY bucket ASC, total_revenue DESC`,
         [startDate, endDate]
       ),
+      // Leaderboard. Ordered by revenue, the only figure comparable across
+      // stone and tile, and the same order the CSV export uses.
+      //
+      // growth_ratio prorates the previous month down to the share of the
+      // current month that has elapsed ($4), so a month-to-date figure is
+      // compared against a like-for-like slice rather than a full month.
+      //
+      // consistency_score is simply the share of months in the range with any
+      // sales. The old version also subtracted a variance penalty scaled by an
+      // unexplained constant, and divided by months the person appeared in
+      // rather than months in the range, which handed a perfect score to
+      // anyone with a single active month.
       sql(
         `WITH monthly AS (
            SELECT
-             date_trunc('month', COALESCE(s.dispatch_date, s.created_at))::date AS bucket,
+             date_trunc('month', s.dispatch_date)::date AS bucket,
              ${salespersonLabelExpr} AS salesperson,
-             COUNT(*)::int AS shipment_count,
-             COALESCE(SUM(COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)), 0)::numeric(14,2) AS total_qty,
-             COALESCE(SUM((GREATEST((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) - (COALESCE(osi.returned_whole_qty, 0) + COALESCE(osi.returned_broken_qty, 0)), 0)) * COALESCE(osi.rate_per_unit, 0)), 0)::numeric(14,2) AS total_revenue
+             COUNT(DISTINCT s.id)::int AS shipment_count,
+             COALESCE(SUM(${netUnits}), 0)::numeric(14,2) AS total_qty,
+             COALESCE(SUM(${netRevenue}), 0)::numeric(14,2) AS total_revenue
            FROM stock_outbound_shipments s
            LEFT JOIN stock_sales_people sp ON sp.id = s.salesperson_id
            ${salespersonUserJoin}
            LEFT JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = s.id
-           WHERE COALESCE(s.dispatch_date, s.created_at)::date BETWEEN $1::date AND $2::date
+           LEFT JOIN stock_items i ON i.id = osi.item_id
+           WHERE s.dispatch_date::date BETWEEN $1::date AND $2::date
+             AND ${outboundShipped}
            GROUP BY bucket, salesperson
          ), ranked AS (
            SELECT
@@ -378,12 +277,9 @@ export async function GET(request) {
              SUM(shipment_count)::int AS shipments,
              COALESCE(SUM(total_qty), 0)::numeric(14,2) AS quantity,
              COALESCE(SUM(total_revenue), 0)::numeric(14,2) AS revenue,
-             COALESCE(MAX(total_qty) FILTER (WHERE bucket = date_trunc('month', $2::date)), 0)::numeric(14,2) AS current_period_qty,
-             COALESCE(MAX(total_qty) FILTER (WHERE bucket = date_trunc('month', $2::date) - interval '1 month'), 0)::numeric(14,2) AS previous_period_qty,
-             COUNT(*) FILTER (WHERE total_qty > 0)::int AS active_months,
-             COUNT(*)::int AS months_present,
-             COALESCE(AVG(total_qty), 0)::numeric(14,2) AS avg_monthly_qty,
-             COALESCE(STDDEV_POP(total_qty), 0)::numeric(14,2) AS stddev_monthly_qty
+             COALESCE(MAX(total_revenue) FILTER (WHERE bucket = $3::date), 0)::numeric(14,2) AS current_period_revenue,
+             COALESCE(MAX(total_revenue) FILTER (WHERE bucket = ($3::date - interval '1 month')::date), 0)::numeric(14,2) AS previous_period_revenue,
+             COUNT(*) FILTER (WHERE total_revenue > 0)::int AS active_months
            FROM monthly
            GROUP BY salesperson
          )
@@ -392,39 +288,31 @@ export async function GET(request) {
            shipments,
            quantity,
            revenue,
-           current_period_qty,
-           previous_period_qty,
+           current_period_revenue,
+           previous_period_revenue,
            CASE
-             WHEN previous_period_qty = 0 THEN NULL
-             ELSE ((current_period_qty - previous_period_qty) / previous_period_qty)::numeric(10,4)
+             WHEN previous_period_revenue * $4::numeric = 0 THEN NULL
+             ELSE ((current_period_revenue - previous_period_revenue * $4::numeric)
+                   / (previous_period_revenue * $4::numeric))::numeric(10,4)
            END AS growth_ratio,
-           LEAST(
-             100,
-             GREATEST(
-               0,
-               (active_months::numeric / NULLIF(months_present, 0)) * 100
-               - (CASE
-                    WHEN avg_monthly_qty = 0 THEN 0
-                    ELSE (stddev_monthly_qty / avg_monthly_qty) * 18
-                  END)
-             )
-           )::numeric(10,2) AS consistency_score
+           LEAST(100, GREATEST(0, (active_months::numeric / $5::numeric) * 100))::numeric(10,2) AS consistency_score
          FROM ranked
-         ORDER BY quantity DESC
+         ORDER BY revenue DESC
          LIMIT 50`,
-        [startDate, endDate]
+        [startDate, endDate, lastBucket, elapsedFraction, range.months]
       ),
       sql(
         `WITH item_sales AS (
            SELECT
              COALESCE(d.name, 'Uncategorized') AS division,
              i.name AS item_name,
-             COALESCE(SUM((GREATEST((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) - (COALESCE(osi.returned_whole_qty, 0) + COALESCE(osi.returned_broken_qty, 0)), 0)) * COALESCE(osi.rate_per_unit, 0)), 0) AS revenue
+             COALESCE(SUM(${netRevenue}), 0) AS revenue
            FROM stock_outbound_shipments s
            JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = s.id
            JOIN stock_items i ON i.id = osi.item_id
            LEFT JOIN stock_divisions d ON d.id = i.division_id
-           WHERE COALESCE(s.dispatch_date, s.created_at)::date BETWEEN $1::date AND $2::date
+           WHERE s.dispatch_date::date BETWEEN $1::date AND $2::date
+             AND ${outboundShipped}
            GROUP BY division, i.name
          ), ranked_items AS (
            SELECT
@@ -439,13 +327,14 @@ export async function GET(request) {
            SELECT
              COALESCE(d.name, 'Uncategorized') AS division,
              COUNT(DISTINCT s.id)::int AS shipment_count,
-             COALESCE(SUM(COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)), 0)::numeric(14,2) AS total_qty,
-             COALESCE(SUM((GREATEST((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) - (COALESCE(osi.returned_whole_qty, 0) + COALESCE(osi.returned_broken_qty, 0)), 0)) * COALESCE(osi.rate_per_unit, 0)), 0)::numeric(14,2) AS total_revenue
+             COALESCE(SUM(${netUnits}), 0)::numeric(14,2) AS total_qty,
+             COALESCE(SUM(${netRevenue}), 0)::numeric(14,2) AS total_revenue
            FROM stock_outbound_shipments s
            JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = s.id
            JOIN stock_items i ON i.id = osi.item_id
            LEFT JOIN stock_divisions d ON d.id = i.division_id
-           WHERE COALESCE(s.dispatch_date, s.created_at)::date BETWEEN $1::date AND $2::date
+           WHERE s.dispatch_date::date BETWEEN $1::date AND $2::date
+             AND ${outboundShipped}
            GROUP BY division
          )
          SELECT
@@ -463,52 +352,51 @@ export async function GET(request) {
          ORDER BY dt.total_revenue DESC`,
         [startDate, endDate]
       ),
+      // Approval speed over the selected range, plus the live pending backlog.
+      // The lag is scoped to the range because the page offers a range picker;
+      // the backlog is deliberately "right now", which is what a queue means.
       sql(
-        `WITH outbound AS (
-           SELECT
-             approval_status,
-             submitted_at,
-             approved_at,
-             CASE
-               WHEN approved_at IS NOT NULL AND submitted_at IS NOT NULL
-               THEN EXTRACT(EPOCH FROM (approved_at - submitted_at)) / 3600.0
-               ELSE NULL
-             END AS lag_hours,
-             CASE
-               WHEN approval_status = 'pending' AND submitted_at IS NOT NULL
-               THEN EXTRACT(EPOCH FROM (NOW() - submitted_at)) / 3600.0
-               ELSE NULL
-             END AS pending_age_hours
+        `WITH approved AS (
+           SELECT EXTRACT(EPOCH FROM (approved_at - submitted_at)) / 3600.0 AS lag_hours
            FROM stock_outbound_shipments
+           WHERE approved_at IS NOT NULL
+             AND submitted_at IS NOT NULL
+             AND approved_at::date BETWEEN $1::date AND $2::date
+         ), pending AS (
+           SELECT EXTRACT(EPOCH FROM (NOW() - submitted_at)) / 3600.0 AS pending_age_hours
+           FROM stock_outbound_shipments
+           WHERE approval_status = 'pending' AND submitted_at IS NOT NULL
          )
          SELECT
-           COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY lag_hours) FILTER (WHERE lag_hours IS NOT NULL), 0)::numeric(10,2) AS median_lag_hours,
-           COALESCE(AVG(lag_hours) FILTER (WHERE lag_hours IS NOT NULL), 0)::numeric(10,2) AS avg_lag_hours,
-           COUNT(*) FILTER (WHERE approval_status = 'pending')::int AS pending_count,
-           COALESCE(MAX(pending_age_hours), 0)::numeric(10,2) AS oldest_pending_hours
-         FROM outbound`,
-        []
+           COALESCE((SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY lag_hours) FROM approved), 0)::numeric(10,2) AS median_lag_hours,
+           COALESCE((SELECT AVG(lag_hours) FROM approved), 0)::numeric(10,2) AS avg_lag_hours,
+           (SELECT COUNT(*) FROM pending)::int AS pending_count,
+           COALESCE((SELECT MAX(pending_age_hours) FROM pending), 0)::numeric(10,2) AS oldest_pending_hours`,
+        [startDate, endDate]
       ),
       sql(
         `SELECT
-           COUNT(*) FILTER (WHERE COALESCE(current_whole_qty, 0) + COALESCE(current_broken_qty, 0) <= 0)::int AS zero_stock,
+           COUNT(*) FILTER (WHERE ${availableQty} <= 0)::int AS zero_stock,
            COUNT(*) FILTER (
-             WHERE COALESCE(current_whole_qty, 0) + COALESCE(current_broken_qty, 0) > 0
-               AND COALESCE(reorder_level, 0) > 0
-               AND COALESCE(current_whole_qty, 0) + COALESCE(current_broken_qty, 0) <= COALESCE(reorder_level, 0)
+             WHERE ${availableQty} > 0
+               AND ${availableQty} <= COALESCE(i.reorder_level, 0)
            )::int AS low_stock,
            COUNT(*)::int AS total_items
-         FROM stock_items
-         WHERE is_active = TRUE`,
+         FROM stock_items i
+         WHERE i.is_active = TRUE`,
         []
       ),
-      // Reorder Now: items at zero stock with active 30d velocity
+      // Reorder Now: items at or below reorder level that are still selling.
       sql(
         `WITH velocity AS (
-           SELECT osi.item_id, SUM(COALESCE(osi.loaded_whole_qty,0) + COALESCE(osi.loaded_broken_qty,0))::numeric AS sold_30d
+           SELECT
+             osi.item_id,
+             SUM(${netUnits})::numeric AS sold_30d
            FROM stock_outbound_shipment_items osi
            JOIN stock_outbound_shipments o ON o.id = osi.outbound_shipment_id
+           JOIN stock_items i ON i.id = osi.item_id
            WHERE o.dispatch_date > NOW() - INTERVAL '30 days'
+             AND ${outboundShippedO}
            GROUP BY osi.item_id
          )
          SELECT
@@ -516,37 +404,39 @@ export async function GET(request) {
            i.sku,
            i.name,
            COALESCE(d.name, 'Uncategorized') AS division,
-           (COALESCE(i.current_whole_qty,0) + COALESCE(i.current_broken_qty,0))::int AS available_qty,
-           v.sold_30d::int AS sold_30d,
-           CASE WHEN v.sold_30d > 0
-             THEN ROUND((COALESCE(i.current_whole_qty,0) + COALESCE(i.current_broken_qty,0)) / v.sold_30d * 30, 1)
-             ELSE NULL
-           END AS days_cover
+           ${availableQty}::numeric(14,2) AS available_qty,
+           v.sold_30d::numeric(14,2) AS sold_30d,
+           ROUND(${availableQty} / v.sold_30d * 30, 1) AS days_cover
          FROM stock_items i
          JOIN velocity v ON v.item_id = i.id
          LEFT JOIN stock_divisions d ON d.id = i.division_id
          WHERE i.is_active = TRUE
            AND v.sold_30d > 0
-           AND (COALESCE(i.current_whole_qty,0) + COALESCE(i.current_broken_qty,0)) <= COALESCE(i.reorder_level, 0)
-         ORDER BY days_cover NULLS FIRST, v.sold_30d DESC
+           AND ${availableQty} <= COALESCE(i.reorder_level, 0)
+         ORDER BY days_cover ASC, v.sold_30d DESC
          LIMIT 8`,
         []
       ),
-      // Dead Stock: items with qty > 0 and no outbound in 60d
+      // Dead Stock: on hand, nothing shipped in 60 days. Capital idle is valued
+      // at what the stock actually cost to buy; items with no priced receipt
+      // are counted but contribute no value rather than a made-up zero-cost one.
       sql(
-        `SELECT
+        `WITH ${unitCostCte(schemaCaps)}
+         SELECT
            COUNT(*)::int AS item_count,
-           COALESCE(SUM(COALESCE(i.current_whole_qty,0) + COALESCE(i.current_broken_qty,0)), 0)::int AS units_idle,
-           COALESCE(SUM(
-             (COALESCE(i.current_whole_qty,0) + COALESCE(i.current_broken_qty,0)) * COALESCE(NULLIF(i.landed_cost, 0), NULLIF(i.purchase_price, 0), 0)
-           ), 0)::numeric(14,2) AS estimated_value
+           COALESCE(SUM(${availableQty}), 0)::numeric(14,2) AS units_idle,
+           COALESCE(SUM(${availableQty} * uc.cost_per_unit) FILTER (WHERE uc.cost_per_unit IS NOT NULL), 0)::numeric(14,2) AS estimated_value,
+           COUNT(*) FILTER (WHERE uc.cost_per_unit IS NULL)::int AS uncosted_items
          FROM stock_items i
+         LEFT JOIN unit_cost uc ON uc.item_id = i.id
          WHERE i.is_active = TRUE
-           AND (COALESCE(i.current_whole_qty,0) + COALESCE(i.current_broken_qty,0)) > 0
+           AND ${availableQty} > 0
            AND NOT EXISTS (
              SELECT 1 FROM stock_outbound_shipment_items osi
              JOIN stock_outbound_shipments o ON o.id = osi.outbound_shipment_id
-             WHERE osi.item_id = i.id AND o.dispatch_date > NOW() - INTERVAL '60 days'
+             WHERE osi.item_id = i.id
+               AND o.dispatch_date > NOW() - INTERVAL '60 days'
+               AND ${outboundShippedO}
            )`,
         []
       ),
@@ -569,18 +459,24 @@ export async function GET(request) {
          LIMIT 5`,
         []
       ),
-      // Salesperson Goal Tracker (current month, actual vs goal)
+      // Salesperson goal tracker for the current IST month. Month boundaries,
+      // ownership and the excluded statuses all match
+      // /api/stock/salesperson-analytics so the two pages report the same
+      // number for the same person.
       sql(
         `WITH actual AS (
            SELECT
-             o.salesperson_user_id AS uid,
-             COALESCE(SUM((GREATEST((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) - (COALESCE(osi.returned_whole_qty, 0) + COALESCE(osi.returned_broken_qty, 0)), 0)) * COALESCE(osi.rate_per_unit,0)), 0) AS rev,
+             u.id AS uid,
+             COALESCE(SUM(${netRevenue}), 0) AS rev,
              COUNT(DISTINCT o.id) AS shipments
-           FROM stock_outbound_shipments o
+           FROM stock_app_users u
+           JOIN stock_outbound_shipments o ON ${goalOwnership}
            LEFT JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = o.id
-           WHERE o.salesperson_user_id IS NOT NULL
-             AND date_trunc('month', o.dispatch_date) = date_trunc('month', NOW())
-           GROUP BY o.salesperson_user_id
+           LEFT JOIN stock_items i ON i.id = osi.item_id
+           WHERE date_trunc('month', o.dispatch_date)
+                 = date_trunc('month', (NOW() AT TIME ZONE 'Asia/Kolkata'))
+             AND ${outboundShippedO}
+           GROUP BY u.id
          )
          SELECT
            u.id,
@@ -595,18 +491,22 @@ export async function GET(request) {
          LIMIT 20`,
         []
       ),
-      // Customer Concentration (top 8 in range)
+      // Customer concentration. share_pct is measured against every customer in
+      // the range, not just the eight returned, so the shares do not sum to 100
+      // and the widget renders the remainder as its own slice.
       sql(
         `WITH totals AS (
            SELECT
              c.id,
              c.name,
-             COALESCE(SUM((GREATEST((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) - (COALESCE(osi.returned_whole_qty, 0) + COALESCE(osi.returned_broken_qty, 0)), 0)) * COALESCE(osi.rate_per_unit,0)), 0) AS revenue,
+             COALESCE(SUM(${netRevenue}), 0) AS revenue,
              COUNT(DISTINCT o.id)::int AS shipments
            FROM stock_outbound_shipments o
            JOIN stock_customers c ON c.id = o.customer_id
            LEFT JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = o.id
-           WHERE COALESCE(o.dispatch_date, o.created_at)::date BETWEEN $1::date AND $2::date
+           LEFT JOIN stock_items i ON i.id = osi.item_id
+           WHERE o.dispatch_date::date BETWEEN $1::date AND $2::date
+             AND ${outboundShippedO}
            GROUP BY c.id, c.name
          ), grand AS (SELECT SUM(revenue) AS total FROM totals)
          SELECT
@@ -614,6 +514,7 @@ export async function GET(request) {
            t.name,
            t.revenue::numeric(14,2) AS revenue,
            t.shipments,
+           g.total::numeric(14,2) AS all_customer_revenue,
            CASE WHEN g.total > 0 THEN ROUND((t.revenue / g.total) * 100, 1)::numeric(6,1) ELSE 0 END AS share_pct
          FROM totals t, grand g
          WHERE t.revenue > 0
@@ -639,20 +540,23 @@ export async function GET(request) {
          LIMIT 12`,
         []
       ),
-      // ABC Items: Pareto (per-item revenue in range, compute cumulative)
+      // ABC / Pareto. Only 50 rows are returned for the chart, but rank_at_80
+      // is computed over every item with sales so the "N items make 80%"
+      // caption stays true when the answer lies past rank 50.
       sql(
         `WITH item_rev AS (
            SELECT
              i.id,
              i.name,
              i.sku,
-             SUM((GREATEST((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) - (COALESCE(osi.returned_whole_qty, 0) + COALESCE(osi.returned_broken_qty, 0)), 0)) * COALESCE(osi.rate_per_unit,0)) AS revenue
+             SUM(${netRevenue}) AS revenue
            FROM stock_outbound_shipment_items osi
            JOIN stock_outbound_shipments o ON o.id = osi.outbound_shipment_id
            JOIN stock_items i ON i.id = osi.item_id
-           WHERE COALESCE(o.dispatch_date, o.created_at)::date BETWEEN $1::date AND $2::date
+           WHERE o.dispatch_date::date BETWEEN $1::date AND $2::date
+             AND ${outboundShippedO}
            GROUP BY i.id, i.name, i.sku
-           HAVING SUM((GREATEST((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) - (COALESCE(osi.returned_whole_qty, 0) + COALESCE(osi.returned_broken_qty, 0)), 0)) * COALESCE(osi.rate_per_unit,0)) > 0
+           HAVING SUM(${netRevenue}) > 0
          ), ranked AS (
            SELECT
              id,
@@ -664,40 +568,54 @@ export async function GET(request) {
              SUM(revenue) OVER () AS total_revenue,
              COUNT(*) OVER () AS total_items
            FROM item_rev
+         ), pareto AS (
+           SELECT COALESCE(MIN(rank), 0)::int AS rank_at_80
+           FROM ranked
+           WHERE cum_revenue >= total_revenue * 0.8
          )
          SELECT
-           rank::int AS rank,
-           id,
-           name,
-           sku,
-           revenue::numeric(14,2) AS revenue,
-           ROUND((cum_revenue / NULLIF(total_revenue,0)) * 100, 2)::numeric(6,2) AS cumulative_pct,
-           total_items::int AS total_items_with_sales
-         FROM ranked
-         ORDER BY rank
+           r.rank::int AS rank,
+           r.id,
+           r.name,
+           r.sku,
+           r.revenue::numeric(14,2) AS revenue,
+           ROUND((r.cum_revenue / NULLIF(r.total_revenue,0)) * 100, 2)::numeric(6,2) AS cumulative_pct,
+           r.total_items::int AS total_items_with_sales,
+           p.rank_at_80
+         FROM ranked r, pareto p
+         ORDER BY r.rank
          LIMIT 50`,
         [startDate, endDate]
       ),
-      // Monthly Profit: revenue minus estimated COGS (current landed/purchase cost per item)
+      // Monthly profit. Cost comes from what each item actually cost to buy,
+      // averaged over priced receipts and held in the same unit the item sells
+      // in. Lines for items with no priced receipt cannot be costed, so their
+      // revenue is reported separately as uncosted_revenue instead of being
+      // silently treated as pure profit.
       sql(
         `WITH periods AS (
            SELECT generate_series(date_trunc('month', $1::date), date_trunc('month', $2::date), interval '1 month')::date AS bucket
-         ), sales AS (
+         ), ${unitCostCte(schemaCaps)}, sales AS (
            SELECT
-             date_trunc('month', COALESCE(o.dispatch_date, o.created_at))::date AS bucket,
-             SUM((GREATEST((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) - (COALESCE(osi.returned_whole_qty, 0) + COALESCE(osi.returned_broken_qty, 0)), 0)) * COALESCE(osi.rate_per_unit,0)) AS revenue,
-             SUM((GREATEST((COALESCE(osi.loaded_whole_qty, 0) + COALESCE(osi.loaded_broken_qty, 0)) - (COALESCE(osi.returned_whole_qty, 0) + COALESCE(osi.returned_broken_qty, 0)), 0)) * COALESCE(NULLIF(i.landed_cost,0), NULLIF(i.purchase_price,0), 0)) AS cost
+             date_trunc('month', o.dispatch_date)::date AS bucket,
+             SUM(${netRevenue}) AS revenue,
+             SUM(${netRevenue}) FILTER (WHERE uc.cost_per_unit IS NULL) AS uncosted_revenue,
+             SUM(${netUnits} * uc.cost_per_unit) FILTER (WHERE uc.cost_per_unit IS NOT NULL) AS cost
            FROM stock_outbound_shipments o
            JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = o.id
            JOIN stock_items i ON i.id = osi.item_id
-           WHERE COALESCE(o.dispatch_date, o.created_at)::date BETWEEN $1::date AND $2::date
+           LEFT JOIN unit_cost uc ON uc.item_id = i.id
+           WHERE o.dispatch_date::date BETWEEN $1::date AND $2::date
+             AND ${outboundShippedO}
            GROUP BY bucket
          )
          SELECT
            p.bucket,
            COALESCE(s.revenue, 0)::numeric(14,2) AS revenue,
+           COALESCE(s.uncosted_revenue, 0)::numeric(14,2) AS uncosted_revenue,
+           (COALESCE(s.revenue, 0) - COALESCE(s.uncosted_revenue, 0))::numeric(14,2) AS costed_revenue,
            COALESCE(s.cost, 0)::numeric(14,2) AS cost,
-           (COALESCE(s.revenue, 0) - COALESCE(s.cost, 0))::numeric(14,2) AS profit
+           (COALESCE(s.revenue, 0) - COALESCE(s.uncosted_revenue, 0) - COALESCE(s.cost, 0))::numeric(14,2) AS profit
          FROM periods p
          LEFT JOIN sales s ON s.bucket = p.bucket
          ORDER BY p.bucket ASC`,
@@ -705,68 +623,29 @@ export async function GET(request) {
       ),
     ]);
 
-    const purchaseFunnel = {
-      pending: 0,
-      reviewed: 0,
-      approved: 0,
-      rejected: 0,
-      changes_requested: 0,
-    };
-
-    for (const row of purchaseFunnelRows) {
-      const key = row.approval_status;
-      if (Object.prototype.hasOwnProperty.call(purchaseFunnel, key)) {
-        purchaseFunnel[key] = Number(row.count || 0);
-      }
-    }
-
-    const totalPurchases = purchaseTrend.reduce((sum, row) => sum + Number(row.total || 0), 0);
-    const totalApproved = purchaseTrend.reduce((sum, row) => sum + Number(row.approved || 0), 0);
-
     const approvalOpsRow = approvalOps[0] || {};
     const stockRiskRow = stockRisk[0] || {};
+    const deadStockData = deadStockRow[0] || {};
 
     const payload = {
       range: {
         months: range.months,
         startDate,
         endDate,
-      },
-      purchasePerformance: {
-        trend: purchaseTrend,
-        funnel: purchaseFunnel,
-        kpis: {
-          totalPurchases,
-          approvalRate: totalPurchases > 0 ? Number((totalApproved / totalPurchases).toFixed(4)) : 0,
-        },
+        lastBucket,
+        // The UI drops or labels the final bucket wherever a comparison would
+        // otherwise pit part of a month against a whole one.
+        partialLastMonth: range.partialLastMonth,
+        elapsedFraction: Number(elapsedFraction.toFixed(4)),
       },
       dispatchPerformance: {
         trend: dispatchTrend,
-        kpis: {
-          totalDispatched: dispatchTrend.reduce((sum, row) => sum + Number(row.total || 0), 0),
-          avgDelayDays: dispatchTrend.length
-            ? Number((dispatchTrend.reduce((sum, row) => sum + Number(row.avg_delay_days || 0), 0) / dispatchTrend.length).toFixed(2))
-            : 0,
-          onTimeRatio: dispatchTrend.length
-            ? Number((dispatchTrend.reduce((sum, row) => sum + Number(row.on_time_ratio || 0), 0) / dispatchTrend.length).toFixed(4))
-            : 0,
-        },
       },
-      costAndPayment: {
-        trend: inboundCostTrend,
-        paymentMix,
-        exposure: paymentExposure[0] || {
-          outstanding_exposure: 0,
-          estimated_gross: 0,
-        },
+      inboundFlow: {
+        trend: inboundTrend,
       },
       inventoryHealth: {
         divisionRisk,
-        trend: inventoryRiskTrend,
-        kpis: {
-          atRiskItems: divisionRisk.reduce((sum, row) => sum + Number(row.at_risk || 0), 0),
-          totalItems: divisionRisk.reduce((sum, row) => sum + Number(row.total_items || 0), 0),
-        },
       },
       salespersonPerformance: {
         trend: salespersonTrend,
@@ -788,9 +667,10 @@ export async function GET(request) {
       },
       reorderNow: reorderNowRows,
       deadStock: {
-        itemCount: Number((deadStockRow[0] || {}).item_count || 0),
-        unitsIdle: Number((deadStockRow[0] || {}).units_idle || 0),
-        estimatedValue: Number((deadStockRow[0] || {}).estimated_value || 0),
+        itemCount: Number(deadStockData.item_count || 0),
+        unitsIdle: Number(deadStockData.units_idle || 0),
+        estimatedValue: Number(deadStockData.estimated_value || 0),
+        uncostedItems: Number(deadStockData.uncosted_items || 0),
       },
       pendingQueue: pendingQueueRows,
       salespersonGoals: salespersonGoalRows,
