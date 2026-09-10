@@ -1,14 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronRight, Download, Search, Store } from 'lucide-react';
+import { Download, Search, Store } from 'lucide-react';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { paginateRows } from '@/lib/pagination';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  FORM_INPUT_CLASS, PILL_BUTTON_CLASS, PILL_ROW_CLASS, formatDateTime, exportToCSV, EXPORT_PERIOD_PRESETS, filterRowsByPeriod,
+  FORM_INPUT_CLASS, PILL_BUTTON_CLASS, formatDateTime, exportToCSV, EXPORT_PERIOD_PRESETS, filterRowsByPeriod,
   normalizeSearchValue, matchesQuery, SHOWROOM_ACTIONS, showroomActionOf, formatShowroomQty,
 } from '../lib/stock-utils';
 
@@ -21,7 +21,7 @@ import {
  * If this ever gets slow, push search + paging into the route's existing
  * limit/offset params.
  */
-export function ShowroomPanel({ tc, pageSize, setPageSize, refreshKey }) {
+export function ShowroomPanel({ tabs, tc, pageSize, setPageSize, refreshKey }) {
   const [movements, setMovements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -56,7 +56,10 @@ export function ShowroomPanel({ tc, pageSize, setPageSize, refreshKey }) {
 
   return (
     <div className="stock-tab-panel" key="stock-panel-showroom">
-      <div className={PILL_ROW_CLASS}>
+      <section id="showroom" className="flex h-full flex-col overflow-hidden scroll-mt-6 glass-panel rounded-2xl">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-muted/40 px-3 py-3 sm:px-4">
+          {tabs}
+          <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-3">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -93,24 +96,6 @@ export function ShowroomPanel({ tc, pageSize, setPageSize, refreshKey }) {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
-
-      <section id="showroom" className="flex h-full flex-col overflow-hidden scroll-mt-6 glass-panel rounded-2xl">
-        <div className="flex items-start justify-between border-b border-border/60 bg-muted/40 px-6 py-5">
-          <div className="space-y-1.5">
-            <nav className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-slate-400">
-              <span>{tc.inventoryHub}</span>
-              <ChevronRight className="h-2.5 w-2.5 opacity-50" />
-              <span className="text-brand-primary">{tc.showroom ?? 'Showroom'}</span>
-            </nav>
-            <div className="flex items-center gap-3">
-              <h3 className="text-sm font-black text-slate-900 dark:text-white tracking-tight">
-                {tc.showroomMovements ?? 'Showroom Movements'}
-              </h3>
-              <span className="rounded-full bg-brand-primary/10 border border-brand-primary/20 px-3 py-1 text-[9px] font-black uppercase tracking-widest tabular-nums text-brand-primary shadow-sm">
-                {pagination.total}
-              </span>
-            </div>
           </div>
         </div>
 

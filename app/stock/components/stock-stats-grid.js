@@ -1,10 +1,7 @@
 'use client';
 
 import React from 'react';
-import {
-  TrendingUp,
-  TrendingDown,
-} from 'lucide-react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 
 function getTone(label) {
   const l = String(label).toLowerCase();
@@ -21,94 +18,65 @@ function fmt(value) {
   return typeof value === 'number' ? value.toLocaleString() : value;
 }
 
+// ponytail: one dense card — hero stat left, the remaining stats as mini tiles on the right
 export function StockStatsGrid({ stats, language, t }) {
   if (!stats || stats.length === 0) return null;
 
   const [hero, ...rest] = stats;
+  const Icon = hero.icon;
+  const tone = getTone(hero.label);
+  const isPositive = hero.trend >= 0;
+  const breakdown = Array.isArray(hero.breakdown) ? hero.breakdown : [];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 items-start">
-      <HeroCard stat={hero} t={t} className="lg:col-span-2" />
-      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4 sm:gap-5">
-        {rest.map((m) => (
-          <CompactCard key={m.label} stat={m} t={t} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function HeroCard({ stat: m, t, className = '' }) {
-  const Icon = m.icon;
-  const isPositive = m.trend >= 0;
-  const tone = getTone(m.label);
-  const hasBreakdown = Array.isArray(m.breakdown) && m.breakdown.length > 0;
-
-  return (
-    <div className={`glass-panel rounded-2xl p-6 sm:p-8 relative overflow-hidden transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group ${className}`}>
-      <div className="relative z-10">
-        <div className="flex items-center justify-between mb-8">
-          <div className={`w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center rounded-xl border ${tone.bg} ${tone.border}`}>
-            <Icon className={`h-7 w-7 sm:h-8 sm:w-8 ${tone.color}`} />
+    <div className="glass-panel rounded-xl px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 shrink-0 flex items-center justify-center rounded-lg border ${tone.bg} ${tone.border}`}>
+            <Icon className={`h-5 w-5 ${tone.color}`} />
           </div>
-          <div className="flex flex-col items-end">
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">{t('logisticsKPI')}</span>
-            <span className={`flex items-center gap-1 text-[10px] font-black px-3 py-1 rounded-full mt-2 ${tone.color} ${tone.bg} border ${tone.border}`}>
-              {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-              {Math.abs(m.trend)}%
-            </span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">{hero.label}</span>
+              <span className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-black ${tone.color} ${tone.bg} ${tone.border}`}>
+                {isPositive ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
+                {Math.abs(hero.trend)}%
+              </span>
+              {hero.trendLabel && <span className="hidden sm:inline text-[9px] font-bold uppercase tracking-tight text-slate-400">{hero.trendLabel}</span>}
+            </div>
+            <div className="mt-0.5 text-2xl sm:text-3xl font-black font-sans tracking-tighter leading-none text-slate-900 dark:text-white">
+              {fmt(hero.value)}
+            </div>
           </div>
         </div>
-        <div className="space-y-2">
-          <div className="text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.15em]">{m.label}</div>
-          <div className="text-3xl sm:text-4xl lg:text-5xl font-black font-sans tracking-tighter text-slate-900 dark:text-white leading-none">
-            {fmt(m.value)}
-          </div>
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mt-3">{m.trendLabel}</div>
-        </div>
-        {hasBreakdown && (
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 border-t border-slate-200/60 dark:border-white/5 pt-4">
-            {m.breakdown.map((b) => (
-              <div key={b.label} className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">{b.label}</span>
-                <span className="tabular-nums text-[11px] font-black text-slate-700 dark:text-white/90">
-                  {b.value.toLocaleString()}
-                  {b.isBag && <span className="ml-1 text-[8px] font-bold text-amber-400/80 uppercase">bags</span>}
-                  {b.isSqft && <span className="ml-1 text-[8px] font-bold text-sky-400/80 uppercase">sqft</span>}
-                </span>
+        <div className="flex flex-wrap items-center gap-2">
+          {rest.map((stat) => {
+            const StatIcon = stat.icon;
+            const statTone = getTone(stat.label);
+            return (
+              <div key={stat.label} className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${statTone.bg} ${statTone.border}`}>
+                <StatIcon className={`h-4 w-4 shrink-0 ${statTone.color}`} />
+                <span className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{stat.label}</span>
+                <span className="tabular-nums text-base font-black leading-none text-slate-900 dark:text-white">{fmt(stat.value)}</span>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-      <div className="absolute -right-6 -bottom-6 w-32 h-32 sm:w-40 sm:h-40 opacity-[0.04] transition-opacity duration-200 pointer-events-none group-hover:opacity-[0.08]">
-        <Icon className="w-full h-full" />
-      </div>
-    </div>
-  );
-}
-
-function CompactCard({ stat: m, t }) {
-  const Icon = m.icon;
-  const isPositive = m.trend >= 0;
-  const tone = getTone(m.label);
-
-  return (
-    <div className="glass-panel rounded-2xl p-4 sm:p-5 flex items-center gap-4 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group">
-      <div className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border ${tone.bg} ${tone.border}`}>
-        <Icon className={`h-5 w-5 ${tone.color}`} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400 truncate">{m.label}</div>
-        <div className="text-2xl font-black font-sans tracking-tighter text-slate-900 dark:text-white leading-none mt-0.5">
-          {fmt(m.value)}
+            );
+          })}
         </div>
-        {m.trendLabel && <div className="text-[9px] font-bold text-slate-400 uppercase tracking-tight mt-1 truncate">{m.trendLabel}</div>}
       </div>
-      <span className={`shrink-0 flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-full ${tone.color} ${tone.bg} border ${tone.border}`}>
-        {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-        {Math.abs(m.trend)}%
-      </span>
+      {breakdown.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5 border-t border-slate-200/60 pt-2.5 dark:border-white/5">
+          {breakdown.map((b) => (
+            <div key={b.label} className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{b.label}</span>
+              <span className="tabular-nums text-[11px] font-black text-slate-700 dark:text-white/90">
+                {b.value.toLocaleString()}
+                {b.isBag && <span className="ml-1 text-[8px] font-bold uppercase text-amber-400/80">bags</span>}
+                {b.isSqft && <span className="ml-1 text-[8px] font-bold uppercase text-sky-400/80">sqft</span>}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

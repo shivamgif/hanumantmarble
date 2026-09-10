@@ -5,7 +5,7 @@ import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuthUser } from '@/lib/auth-client';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { BarChart3, Boxes, CircleAlert, PackageCheck, ChevronRight } from 'lucide-react';
+import { BarChart3, Boxes, PackageCheck, ChevronRight, Send, Store } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
@@ -1065,11 +1065,43 @@ export default function StockDashboard() {
   }, [t]);
 
   const tableViewTabs = [
-    { id: 'dispatches', label: t('dispatches') },
-    { id: 'purchases', label: t('purchases') },
-    { id: 'items', label: t('currentStock') },
-    { id: 'showroom', label: tc.showroom ?? 'Showroom' },
+    { id: 'dispatches', label: t('dispatches'), icon: Send },
+    { id: 'purchases', label: t('purchases'), icon: PackageCheck },
+    { id: 'items', label: t('currentStock'), icon: Boxes },
+    { id: 'showroom', label: tc.showroom ?? 'Showroom', icon: Store },
   ];
+
+  // ponytail: one tab strip, rendered inside whichever panel's header is on screen.
+  // On mobile only the active tab shows its label; the rest collapse to icon circles
+  // so four tabs fit without a horizontal scroll. Labels animate open/closed.
+  const tabsBar = (
+    <div className="flex w-full min-w-0 items-center gap-1 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-white/5 dark:bg-slate-900/40 scrollbar-none sm:w-auto sm:gap-0 sm:overflow-x-auto">
+      {tableViewTabs.map((tab) => {
+        const isActive = activeTableView === tab.id;
+        const Icon = tab.icon;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTableView(tab.id)}
+            aria-label={tab.label}
+            aria-current={isActive ? 'true' : undefined}
+            className={`flex h-10 items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap rounded-full text-xs font-black uppercase tracking-widest transition-all duration-300 ease-out sm:h-auto sm:w-auto sm:flex-none sm:rounded-lg sm:px-6 sm:py-2.5 ${isActive
+              ? 'flex-1 bg-white px-3 text-brand-primary shadow-sm dark:bg-slate-800'
+              : 'w-10 shrink-0 px-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+              }`}
+          >
+            <Icon className="h-4 w-4 shrink-0 sm:hidden" />
+            <span
+              className={`overflow-hidden transition-all duration-300 ease-out sm:max-w-none sm:opacity-100 ${isActive ? 'tab-label-enter max-w-[12rem] opacity-100' : 'max-w-0 opacity-0'}`}
+            >
+              {tab.label}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
 
   // arrival rows come from server — no client-side filtering or sorting needed
 
@@ -1192,7 +1224,7 @@ export default function StockDashboard() {
     return () => clearTimeout(timeoutId);
   }, [highlightedShipmentKey]);
 
-  const { totalWholeStock, totalBrokenStock, totalStockUnits, pendingArrivals, pendingDispatches, riskItems, divisionBreakdown } = useMemo(() => {
+  const { totalWholeStock, totalBrokenStock, totalStockUnits, pendingArrivals, pendingDispatches, divisionBreakdown } = useMemo(() => {
     const items = data?.activeItems || [];
     const whole = items.reduce((sum, item) => sum + Number(item.current_whole_qty || 0), 0);
     const broken = items.reduce((sum, item) => sum + Number(item.current_broken_qty || 0), 0);
@@ -1204,7 +1236,6 @@ export default function StockDashboard() {
     const onHand = (item) => item.unit_of_measure === 'sqft'
       ? Number(item.current_sqft || 0)
       : Number(item.current_whole_qty || 0) + Number(item.current_broken_qty || 0);
-    const risk = items.filter((item) => Number(item.reorder_level || 0) > 0 && onHand(item) <= Number(item.reorder_level || 0)).length;
     // Per-division on-hand split (e.g. Ceramic, Vitrified, Eternity, Adhesive, Stone)
     const byDivision = new Map();
     for (const item of items) {
@@ -1221,15 +1252,14 @@ export default function StockDashboard() {
       byDivision.set(name, entry);
     }
     const breakdown = Array.from(byDivision.values()).sort((a, b) => b.value - a.value);
-    return { totalWholeStock: whole, totalBrokenStock: broken, totalStockUnits: total, pendingArrivals: pending, pendingDispatches: dispatchPending, riskItems: risk, divisionBreakdown: breakdown };
+    return { totalWholeStock: whole, totalBrokenStock: broken, totalStockUnits: total, pendingArrivals: pending, pendingDispatches: dispatchPending, divisionBreakdown: breakdown };
   }, [data?.activeItems, data?.pendingArrivalCount, data?.pendingDispatchCount]);
 
   const stockStats = useMemo(() => [
     { label: t('totalStock'), value: totalStockUnits, trend: totalStockUnits ? Math.round((totalWholeStock / totalStockUnits) * 100) : 0, trendLabel: t('wholeRatio'), icon: Boxes, accent: 'from-[#E07A00]/20 to-[#E07A00]/5', isNeutral: true, breakdown: divisionBreakdown },
     { label: t('pendingPurchases'), value: pendingArrivals, trend: pendingArrivals === 0 ? 100 : -Math.min(pendingArrivals * 10, 100), trendLabel: t('queueHealth'), icon: PackageCheck, accent: 'from-[#1A1A54]/25 to-[#1A1A54]/10', isNeutral: true },
     { label: t('pendingDispatches'), value: pendingDispatches, trend: pendingDispatches === 0 ? 100 : -Math.min(pendingDispatches * 10, 100), trendLabel: t('dispatchReadiness'), icon: BarChart3, accent: 'from-[#F59E0B]/25 to-[#F59E0B]/10', isNeutral: true },
-    { label: t('reorderRisks'), value: riskItems, trend: riskItems === 0 ? 100 : -Math.min(riskItems * 12, 100), trendLabel: t('safetyScore'), icon: CircleAlert, accent: 'from-[#1A1A54]/20 to-[#E07A00]/15', isAlert: riskItems > 0 },
-  ], [totalStockUnits, totalWholeStock, pendingArrivals, pendingDispatches, riskItems, divisionBreakdown, t]);
+  ], [totalStockUnits, totalWholeStock, pendingArrivals, pendingDispatches, divisionBreakdown, t]);
 
   const stockPaginationWithPage = useMemo(() => ({ ...stockPagination, setPage: setStockPage }), [stockPagination]);
 
@@ -1261,15 +1291,9 @@ export default function StockDashboard() {
             <ChevronRight className="h-3 w-3 opacity-50" />
             <span className="text-slate-900 dark:text-white">{t('operationalNode')}</span>
           </nav>
-          <div className="flex flex-wrap items-center gap-4">
-            <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-              {language === 'hi' ? t('stockControl') : <><span className="text-brand-primary">Stock</span> Control</>}
-            </h1>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 text-[10px] font-black uppercase tracking-widest border border-orange-500/20 whitespace-nowrap">
-              <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
-              {t('realTimeFlow')}
-            </div>
-          </div>
+          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+            {language === 'hi' ? t('stockControl') : <><span className="text-brand-primary">Stock</span> Control</>}
+          </h1>
         </div>
       </header>
 
@@ -1309,29 +1333,11 @@ export default function StockDashboard() {
         );
       })()}
 
-      <div className="flex items-center overflow-x-auto scrollbar-none bg-slate-100 dark:bg-slate-900/40 p-1 rounded-xl border border-slate-200 dark:border-white/5 w-full sm:w-fit">
-        {tableViewTabs.map((tab) => {
-          const isActive = activeTableView === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTableView(tab.id)}
-              className={`px-4 sm:px-6 py-2.5 text-xs font-black uppercase tracking-widest rounded-lg whitespace-nowrap transition-all flex-1 sm:flex-none ${isActive
-                ? 'bg-white dark:bg-slate-800 text-brand-primary shadow-sm'
-                : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                }`}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
       {activeTableView === 'items' && (
         <div className="space-y-6">
-          <StockStatsGrid stats={stockStats} language={language} t={t} />
           <StockItemsTable
+            tabs={tabsBar}
+            kpis={<StockStatsGrid stats={stockStats} language={language} t={t} />}
             pagination={stockPaginationWithPage}
             sort={stockSort}
             setSort={setStockSort}
@@ -1348,6 +1354,7 @@ export default function StockDashboard() {
 
       {activeTableView === 'showroom' && (
         <ShowroomPanel
+          tabs={tabsBar}
           tc={tc}
           pageSize={pageSize}
           setPageSize={setPageSize}
@@ -1357,6 +1364,7 @@ export default function StockDashboard() {
 
       {activeTableView === 'purchases' && (
         <PurchasesPanel
+          tabs={tabsBar}
           arrivalForm={arrivalForm}
           arrivalItemsFieldArray={arrivalItemsFieldArray}
           arrivalWatchedItems={arrivalItems}
@@ -1402,6 +1410,7 @@ export default function StockDashboard() {
 
       {activeTableView === 'dispatches' && (
         <DispatchesPanel
+          tabs={tabsBar}
           dispatchForm={dispatchForm}
           dispatchItemsFieldArray={dispatchItemsFieldArray}
           dispatchSheetOpen={dispatchSheetOpen}

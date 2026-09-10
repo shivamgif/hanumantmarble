@@ -1,13 +1,13 @@
 'use client';
 
 import { useCallback } from 'react';
-import { Download, Boxes, ChevronRight, ChevronUp, ChevronDown, Package, Search } from 'lucide-react';
+import { Download, Boxes, ChevronUp, ChevronDown, Package, Search } from 'lucide-react';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
-import { FORM_INPUT_CLASS, FORM_LABEL_CLASS, exportToCSV } from '../lib/stock-utils';
+import { FORM_INPUT_CLASS, FORM_LABEL_CLASS, PILL_BUTTON_CLASS, exportToCSV } from '../lib/stock-utils';
 import { showroomSplit } from '@/lib/stock-showroom';
 
-export function StockItemsTable({ pagination, sort, setSort, search, setSearch, openPreview, t, tc, pageSize, setPageSize }) {
+export function StockItemsTable({ tabs, kpis, pagination, sort, setSort, search, setSearch, openPreview, t, tc, pageSize, setPageSize }) {
   const toggleSort = useCallback((key) => {
     setSort((current) => ({
       key,
@@ -18,20 +18,9 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
   return (
     <div className="stock-tab-panel space-y-6" key="stock-panel-items">
       <div id="current-stock" className="glass-panel overflow-hidden rounded-2xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 bg-muted/40 px-6 py-5">
-          <div className="space-y-1.5">
-            <nav className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-slate-400">
-              <span>{tc.inventoryHub}</span>
-              <ChevronRight className="h-2.5 w-2.5 opacity-50" />
-              <span className="text-brand-primary">{tc.stockLedger}</span>
-            </nav>
-            <div className="flex items-center gap-3">
-              <h3 className="text-sm font-black text-slate-900 dark:text-white tracking-tight">{t('currentStock')}</h3>
-              <span className="rounded-full bg-brand-primary/10 border border-brand-primary/20 px-3 py-1 text-[9px] font-black uppercase tracking-widest tabular-nums text-brand-primary shadow-sm">
-                {pagination.total} {t('items')}
-              </span>
-            </div>
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-muted/40 px-3 py-3 sm:px-4">
+          {tabs}
+          <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-3">
           <button
             type="button"
             onClick={() => {
@@ -56,14 +45,16 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
               ];
               exportToCSV(`Inventory_Export_${dateStr}.csv`, pagination.allRows, columns);
             }}
-            className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-[11px] font-black uppercase tracking-widest text-slate-700 shadow-card transition-all hover:bg-muted/50 active:scale-95 dark:text-slate-300 focus-ring"
+            className={PILL_BUTTON_CLASS}
             title="Export Inventory to CSV"
           >
             <Download className="h-4 w-4" />
             Export
           </button>
+          </div>
         </div>
 
+        {kpis && <div className="border-b border-border/60 bg-muted/20 px-3 py-3 sm:px-4">{kpis}</div>}
         <div className="sticky top-0 z-10 border-b border-slate-200/60 bg-white/50 px-3 py-2.5 backdrop-blur-md dark:bg-slate-900/50">
           <div className="relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 transition-colors group-focus-within:text-brand-primary" />

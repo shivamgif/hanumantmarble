@@ -308,22 +308,22 @@ export function StockHealthScorecard({ data, stockRisk, approvalOps }) {
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
       {metrics.map((m) => (
-        <div className="glass-panel rounded-2xl p-5 sm:p-6 relative overflow-hidden transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group" key={m.label}>
+        <div className="glass-panel rounded-xl p-3 sm:rounded-2xl sm:p-6 relative overflow-hidden transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group" key={m.label}>
           <div className="relative z-10">
-            <div className="flex items-center justify-between mb-5">
-              <div className={`w-16 h-16 flex items-center justify-center rounded-xl border ${m.bg} ${m.border}`}>
-                <m.icon className={`h-8 w-8 ${m.color}`} />
+            <div className="flex items-center justify-between mb-3 sm:mb-5">
+              <div className={`w-10 h-10 sm:w-16 sm:h-16 flex items-center justify-center rounded-lg sm:rounded-xl border ${m.bg} ${m.border}`}>
+                <m.icon className={`h-5 w-5 sm:h-8 sm:w-8 ${m.color}`} />
               </div>
             </div>
-            <div className="space-y-2">
-              <div className="text-slate-500 dark:text-slate-400 text-sm font-bold">{m.label}</div>
-              <div className={`text-3xl sm:text-4xl lg:text-5xl font-black font-sans tracking-tighter text-slate-900 dark:text-white leading-none`}>{m.value}</div>
-              <div className="text-xs font-medium text-slate-400 mt-3">{m.subValue}</div>
+            <div className="space-y-1 sm:space-y-2">
+              <div className="text-slate-500 dark:text-slate-400 text-[11px] sm:text-sm font-bold">{m.label}</div>
+              <div className={`text-2xl sm:text-4xl lg:text-5xl font-black font-sans tracking-tighter text-slate-900 dark:text-white leading-none`}>{m.value}</div>
+              <div className="text-[10px] sm:text-xs font-medium text-slate-400 mt-1.5 sm:mt-3">{m.subValue}</div>
             </div>
           </div>
-          <div className={`absolute -right-6 -bottom-6 w-40 h-40 opacity-[0.04] transition-opacity duration-200 pointer-events-none group-hover:opacity-[0.08]`}>
+          <div className={`absolute -right-6 -bottom-6 w-24 h-24 sm:w-40 sm:h-40 opacity-[0.04] transition-opacity duration-200 pointer-events-none group-hover:opacity-[0.08]`}>
             <m.icon className="w-full h-full" />
           </div>
         </div>
@@ -363,18 +363,18 @@ export function HeroCallouts({ stockedOut, approvalsWaiting, oldestPendingHours,
     },
   ];
   return (
-    <div className="flex flex-wrap gap-3">
+    <div className="flex flex-wrap gap-2">
       {pills.map((p) => (
         <button
           key={p.label}
           type="button"
           onClick={() => onNavigate?.(p.tab, p.target)}
-          className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-xs font-black uppercase tracking-widest transition-shadow duration-200 hover:shadow-card focus-ring ${p.tone}`}
+          className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider transition-shadow duration-200 hover:shadow-card focus-ring ${p.tone}`}
         >
-          <p.icon className="h-4 w-4" />
-          <span className="tabular-nums text-base">{p.value}</span>
-          <span>{p.label}</span>
-          {p.hint ? <span className="opacity-70 text-[10px]">· {p.hint}</span> : null}
+          <p.icon className="h-3.5 w-3.5 shrink-0" />
+          <span className="tabular-nums text-sm leading-none">{p.value}</span>
+          <span className="whitespace-nowrap">{p.label}</span>
+          {p.hint ? <span className="whitespace-nowrap text-[9px] opacity-70">· {p.hint}</span> : null}
         </button>
       ))}
     </div>

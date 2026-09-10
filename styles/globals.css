@@ -50,8 +50,42 @@
   animation: slide-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.stock-tab-panel {
+/* Only the content below the panel header animates in. The tab strip lives in
+   that header and has to sit still across a switch, the way the analytics strip
+   does; animating the whole card made the tabs themselves jump. */
+.stock-tab-panel > section > :not(:first-child),
+.stock-tab-panel > div > :not(:first-child) {
   animation: stock-tab-panel-enter 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* The dashboard tab strip lives inside the panel that swaps on every switch, so
+   the active pill mounts fresh with no previous state to transition from. This
+   replays the expand the analytics strip gets from its CSS transition. Mobile
+   only: above sm every label is visible and nothing collapses. */
+@keyframes tab-label-expand {
+  from {
+    max-width: 0;
+    opacity: 0;
+  }
+
+  to {
+    max-width: 12rem;
+    opacity: 1;
+  }
+}
+
+@media (max-width: 639px) {
+  .tab-label-enter {
+    animation: tab-label-expand 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stock-tab-panel > section > :not(:first-child),
+  .stock-tab-panel > div > :not(:first-child),
+  .tab-label-enter {
+    animation: fade-in 200ms ease-out both;
+  }
 }
 
 /* Hot sales streak. Uses the existing pulse-glow keyframe, so the halo is brand

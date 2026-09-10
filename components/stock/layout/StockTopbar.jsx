@@ -335,6 +335,22 @@ export default function StockTopbar({
   navigationItems,
   isActiveRoute,
 }) {
+  // The mobile nav keeps two labels open: the active entry and its companion —
+  // whichever entry the user was on before this one. Falls back to the entry
+  // after the active one until a second page has actually been visited.
+  const activeHref = navigationItems.find((item) => isActiveRoute(item.href))?.href;
+  const [previousHref, setPreviousHref] = useState(null);
+  const lastHrefRef = useRef(null);
+
+  useEffect(() => {
+    if (!activeHref || activeHref === lastHrefRef.current) return;
+    if (lastHrefRef.current) setPreviousHref(lastHrefRef.current);
+    lastHrefRef.current = activeHref;
+  }, [activeHref]);
+
+  const activeIndex = navigationItems.findIndex((item) => item.href === activeHref);
+  const fallbackHref = navigationItems[(activeIndex + 1) % Math.max(navigationItems.length, 1)]?.href;
+  const companionHref = previousHref && previousHref !== activeHref ? previousHref : fallbackHref;
 
   return (
     <header className="sticky top-0 z-20 border-b border-border/60 bg-background/60 backdrop-blur-2xl">
@@ -440,25 +456,35 @@ export default function StockTopbar({
             </div>
           </div>
 
-          <nav className="flex items-center gap-1.5 overflow-x-auto border-t border-border/60 px-4 py-3 scrollbar-none" aria-label={t('mobileNav')}>
-            {navigationItems.map((item) => {
+          {/* Two labels at a time: the page you are on, and the one you came
+              from — the pair you actually bounce between. Everything else is an
+              icon, so the row never scrolls. Before any second visit the runner
+              up is the next entry in the list, which is where a first-time
+              session tends to go. */}
+          <nav className="flex items-center gap-1.5 border-t border-border/60 px-4 py-3" aria-label={t('mobileNav')}>
+            {navigationItems.map((item, index) => {
               const active = isActiveRoute(item.href);
+              const expanded = active || item.href === companionHref;
 
               return (
                 <Link
                   key={`mobile-top-${item.href}`}
                   href={item.href}
-                  className={`inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[11px] font-black uppercase tracking-widest transition-colors duration-200 active:scale-95 focus-ring ${
+                  aria-label={item.label}
+                  aria-current={active ? 'page' : undefined}
+                  className={`inline-flex min-h-[44px] items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap rounded-full text-[11px] font-black uppercase tracking-widest transition-all duration-300 ease-out active:scale-95 focus-ring ${
                     active
                       ? 'bg-brand-primary/10 text-brand-primary'
                       : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                  }`}
+                  } ${expanded ? 'flex-1 px-3.5' : 'w-11 shrink-0 px-0'}`}
                 >
-                  <item.icon className="h-3 w-3" />
+                  <item.icon className="h-3 w-3 shrink-0" />
                   {/* The label the layout already resolved. Deriving it from
                       href here instead meant any new nav entry silently fell
                       through to "Dashboard". */}
-                  <span>{item.label}</span>
+                  <span className={`overflow-hidden transition-all duration-300 ease-out ${expanded ? 'max-w-[10rem] opacity-100' : 'max-w-0 opacity-0'}`}>
+                    {item.label}
+                  </span>
                 </Link>
               );
             })}

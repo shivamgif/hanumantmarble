@@ -44,7 +44,8 @@ import {
   Package,
   X,
   Clock,
-  Pencil
+  Pencil,
+  Building2
 } from 'lucide-react';
 
 import { AnalyticsCard, CLASSES, formatCompactNumber } from '@/app/stock/components/dashboard-ui';
@@ -189,7 +190,7 @@ export default function AdminDashboard() {
   const [cancelledArrivalPage, setCancelledArrivalPage] = useState(1);
   const [changeRequestPage, setChangeRequestPage] = useState(1);
   const [userPage, setUserPage] = useState(1);
-  const [showInsights, setShowInsights] = useState(true);
+  const [showInsights, setShowInsights] = useState(false);
   const [changeRequests, setChangeRequests] = useState([]);
   const [highlightedChangeRequestId, setHighlightedChangeRequestId] = useState(null);
   const [processedDeepLink, setProcessedDeepLink] = useState('');
@@ -1335,15 +1336,9 @@ export default function AdminDashboard() {
             <ChevronRight className="h-3 w-3 opacity-50" />
             <span className="text-slate-900 dark:text-white">{t('adminTitle')}</span>
           </nav>
-          <div className="flex flex-wrap items-center gap-4">
-            <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-              <span className="text-brand-primary">{t('adminTitle').split(' ')[0]}</span> {t('adminTitle').split(' ')[1] || 'Hub'}
-            </h1>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest border border-emerald-500/20 whitespace-nowrap">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              {t('operationalCore')}
-            </div>
-          </div>
+          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+            <span className="text-brand-primary">{t('adminTitle').split(' ')[0]}</span> {t('adminTitle').split(' ')[1] || 'Hub'}
+          </h1>
         </div>
 
         <div className="flex items-center gap-3">
@@ -1381,27 +1376,27 @@ export default function AdminDashboard() {
       )}
 
       {canViewAnalytics && <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
         {summaryTiles.map((m, i) => {
           const Icon = m.icon;
           const isPositive = m.trend >= 0;
           return (
-            <div className="glass-panel rounded-2xl p-6 relative overflow-hidden transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group" key={m.label}>
+            <div className="glass-panel rounded-xl p-3 sm:rounded-2xl sm:p-6 relative overflow-hidden transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group" key={m.label}>
               <div className="relative z-10">
-                <div className="flex items-center justify-between mb-5">
-                  <div className={`w-16 h-16 flex items-center justify-center rounded-xl border ${m.iconAccent.split(' ')[0]} bg-opacity-20 border-opacity-20`}>
-                    <Icon className={`h-8 w-8 ${m.iconAccent.split(' ')[1]}`} />
+                <div className="flex items-center justify-between gap-2 mb-3 sm:mb-5">
+                  <div className={`w-10 h-10 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center rounded-lg sm:rounded-xl border ${m.iconAccent.split(' ')[0]} bg-opacity-20 border-opacity-20`}>
+                    <Icon className={`h-5 w-5 sm:h-8 sm:w-8 ${m.iconAccent.split(' ')[1]}`} />
                   </div>
                   <div className="flex flex-col items-end">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{t('systemMetric')}</span>
-                    <span className={`text-[10px] font-black px-3 py-1 rounded-full mt-2 ${isPositive ? 'text-emerald-600 bg-emerald-500/10' : 'text-rose-600 bg-rose-500/10'}`}>
+                    <span className="hidden sm:inline text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{t('systemMetric')}</span>
+                    <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-black sm:mt-2 sm:px-3 sm:py-1 sm:text-[10px] ${isPositive ? 'text-emerald-600 bg-emerald-500/10' : 'text-rose-600 bg-rose-500/10'}`}>
                       {isPositive ? '+' : ''}{m.trend} {t('units')}
                     </span>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <div className="text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.15em]">{m.label}</div>
-                  <div className="text-3xl sm:text-4xl lg:text-5xl font-black font-sans tracking-tighter text-slate-900 dark:text-white leading-none">{formatCompactNumber(m.value)}</div>
+                <div className="space-y-1 sm:space-y-2">
+                  <div className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.15em]">{m.label}</div>
+                  <div className="text-2xl sm:text-4xl lg:text-5xl font-black font-sans tracking-tighter text-slate-900 dark:text-white leading-none">{formatCompactNumber(m.value)}</div>
 
                   {showInsights && (
                     <div className="mt-6 p-3 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50 animate-scale-in">
@@ -1424,7 +1419,7 @@ export default function AdminDashboard() {
                   )}
                 </div>
               </div>
-              <div className="absolute -right-6 -bottom-6 w-40 h-40 opacity-[0.04] transition-all duration-700 pointer-events-none group-hover:scale-110 group-hover:opacity-[0.08]">
+              <div className="absolute -right-6 -bottom-6 w-24 h-24 sm:w-40 sm:h-40 opacity-[0.04] transition-all duration-700 pointer-events-none group-hover:scale-110 group-hover:opacity-[0.08]">
                 <Icon className="w-full h-full" />
               </div>
             </div>
@@ -1520,27 +1515,35 @@ export default function AdminDashboard() {
       </section>
       </>}
 
-      <div className="flex items-center overflow-x-auto scrollbar-none bg-slate-100 dark:bg-slate-900/40 p-1 rounded-xl border border-slate-200 dark:border-white/5 w-full sm:w-fit">
+      {/* Same strip as the dashboard and analytics: below sm only the active tab
+          keeps its label, the rest collapse to icon circles. */}
+      <div className="flex w-full min-w-0 items-center gap-1 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 p-1 scrollbar-none dark:border-white/5 dark:bg-slate-900/40 sm:w-fit sm:gap-0 sm:overflow-x-auto">
         {[
-          { id: 'approvals', label: t('approvals') },
-          { id: 'changes', label: t('changes') },
-          { id: 'users', label: t('users') },
+          { id: 'approvals', label: t('approvals'), icon: ShieldCheck },
+          { id: 'changes', label: t('changes'), icon: Clock },
+          { id: 'users', label: t('users'), icon: UsersRound },
           // Branches are company setup, not user admin — its own tab rather
           // than buried in the users section.
-          ...(canManageUsers ? [{ id: 'branches', label: language === 'hi' ? 'शाखाएँ' : 'Branches' }] : []),
+          ...(canManageUsers ? [{ id: 'branches', label: language === 'hi' ? 'शाखाएँ' : 'Branches', icon: Building2 }] : []),
         ].map((tab) => {
           const isActive = mobileSection === tab.id;
+          const Icon = tab.icon;
           return (
             <button
               key={tab.id}
               type="button"
               onClick={() => setMobileSection(tab.id)}
-              className={`px-4 sm:px-6 py-2.5 text-xs font-black uppercase tracking-widest rounded-lg whitespace-nowrap transition-all flex-1 sm:flex-none ${isActive
-                ? 'bg-white dark:bg-slate-800 text-brand-primary shadow-sm'
-                : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+              aria-label={tab.label}
+              aria-current={isActive ? 'true' : undefined}
+              className={`flex h-10 items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap rounded-full text-xs font-black uppercase tracking-widest transition-all duration-300 ease-out sm:h-auto sm:w-auto sm:flex-none sm:rounded-lg sm:px-6 sm:py-2.5 ${isActive
+                ? 'flex-1 bg-white px-3 text-brand-primary shadow-sm dark:bg-slate-800'
+                : 'w-10 shrink-0 px-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                 }`}
             >
-              {tab.label}
+              <Icon className="h-4 w-4 shrink-0 sm:hidden" />
+              <span className={`overflow-hidden transition-all duration-300 ease-out sm:max-w-none sm:opacity-100 ${isActive ? 'max-w-[12rem] opacity-100' : 'max-w-0 opacity-0'}`}>
+                {tab.label}
+              </span>
             </button>
           );
         })}

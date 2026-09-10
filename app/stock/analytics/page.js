@@ -8,9 +8,10 @@ import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { getRoleFlags } from '@/lib/stock-roles.mjs';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, Download } from 'lucide-react';
+import { Boxes, ChevronRight, Download, LayoutGrid, TrendingUp, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CLASSES, paceAdjustedTarget } from '../components/dashboard-ui';
+import { PILL_BUTTON_CLASS } from '../lib/stock-utils';
 import {
   SalesRevenueChart,
   TopDivisionsChart,
@@ -35,10 +36,10 @@ import {
 } from './components/widgets';
 
 const TABS = [
-  { id: 'overview', labelKey: 'tabOverview' },
-  { id: 'sales', labelKey: 'tabSales' },
-  { id: 'inventory', labelKey: 'tabInventory' },
-  { id: 'team', labelKey: 'tabTeam' },
+  { id: 'overview', labelKey: 'tabOverview', icon: LayoutGrid },
+  { id: 'sales', labelKey: 'tabSales', icon: TrendingUp },
+  { id: 'inventory', labelKey: 'tabInventory', icon: Boxes },
+  { id: 'team', labelKey: 'tabTeam', icon: Users },
 ];
 
 export default function AnalyticsDashboard() {
@@ -319,7 +320,7 @@ export default function AnalyticsDashboard() {
 
   return (
     <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
-      <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+      <header>
         <div className="space-y-2">
           <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
             <Link href="/stock/admin" className="hover:text-brand-primary transition-colors">{t('operationalCore')}</Link>
@@ -329,32 +330,6 @@ export default function AnalyticsDashboard() {
           <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
             <span className="text-brand-primary">{t('executiveDashboard').split(' ')[0]}</span> {t('executiveDashboard').split(' ').slice(1).join(' ')}
           </h1>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="flex items-center bg-muted p-1 rounded-xl border border-border/60">
-            {[3, 6, 12].map((m) => (
-              <button
-                key={m}
-                onClick={() => setAnalyticsRangeMonths(m)}
-                className={`px-4 py-2 text-xs font-black rounded-lg transition-all ${analyticsRangeMonths === m
-                  ? 'bg-white dark:bg-slate-800 text-brand-primary shadow-sm'
-                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                  }`}
-              >
-                {m}M
-              </button>
-            ))}
-          </div>
-          <a
-            href={`/api/stock/admin/analytics/export?type=trends&months=${analyticsRangeMonths}`}
-            download
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border shadow-card text-slate-600 dark:text-slate-300 hover:text-brand-primary hover:border-brand-primary/40 text-xs font-black uppercase tracking-widest transition-all focus-ring"
-            title={t('downloadTrendsCsv')}
-          >
-            <Download className="h-4 w-4" />
-            CSV
-          </a>
         </div>
       </header>
 
@@ -366,20 +341,58 @@ export default function AnalyticsDashboard() {
         onNavigate={jumpTo}
       />
 
-      <div className="sticky top-0 z-20 -mx-4 px-4 py-2 sm:mx-0 sm:px-0 bg-background/80 backdrop-blur-md">
-        <div className="flex items-center overflow-x-auto scrollbar-none bg-muted p-1 rounded-xl border border-border/60 w-full sm:w-fit">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 sm:px-6 py-2.5 text-xs font-black uppercase tracking-widest rounded-lg whitespace-nowrap transition-all flex-1 sm:flex-none ${activeTab === tab.id
-                ? 'bg-white dark:bg-slate-800 text-brand-primary shadow-sm'
-                : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                }`}
-            >
-              {t(tab.labelKey)}
-            </button>
-          ))}
+      <div className="sticky top-0 z-20 -mx-4 flex flex-col gap-2 bg-background/80 px-4 py-2 backdrop-blur-md sm:mx-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-0">
+        {/* ponytail: below sm only the active tab shows its label, the rest collapse
+            to icon circles, so four tabs fit without a horizontal scroll */}
+        <div className="flex w-full min-w-0 items-center gap-1 overflow-hidden rounded-xl border border-border/60 bg-muted p-1 scrollbar-none sm:w-fit sm:gap-0 sm:overflow-x-auto">
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab.id;
+            const Icon = tab.icon;
+            const label = t(tab.labelKey);
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                aria-label={label}
+                aria-current={isActive ? 'true' : undefined}
+                className={`flex h-10 items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap rounded-full text-xs font-black uppercase tracking-widest transition-all duration-300 ease-out sm:h-auto sm:w-auto sm:flex-none sm:rounded-lg sm:px-6 sm:py-2.5 ${isActive
+                  ? 'flex-1 bg-white px-3 text-brand-primary shadow-sm dark:bg-slate-800'
+                  : 'w-10 shrink-0 px-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                  }`}
+              >
+                <Icon className="h-4 w-4 shrink-0 sm:hidden" />
+                <span className={`overflow-hidden transition-all duration-300 ease-out sm:max-w-none sm:opacity-100 ${isActive ? 'max-w-[12rem] opacity-100' : 'max-w-0 opacity-0'}`}>
+                  {label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-3">
+          <div className="flex items-center rounded-xl border border-border/60 bg-muted p-1">
+            {[3, 6, 12].map((m) => (
+              <button
+                key={m}
+                onClick={() => setAnalyticsRangeMonths(m)}
+                className={`flex h-10 items-center rounded-lg px-2.5 text-[10px] font-black transition-all sm:h-auto sm:px-4 sm:py-2.5 sm:text-xs ${analyticsRangeMonths === m
+                  ? 'bg-white dark:bg-slate-800 text-brand-primary shadow-sm'
+                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                  }`}
+              >
+                {m}M
+              </button>
+            ))}
+          </div>
+          <a
+            href={`/api/stock/admin/analytics/export?type=trends&months=${analyticsRangeMonths}`}
+            download
+            className={PILL_BUTTON_CLASS}
+            title={t('downloadTrendsCsv')}
+          >
+            <Download className="h-4 w-4" />
+            CSV
+          </a>
         </div>
       </div>
 

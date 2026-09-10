@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Download, ChevronRight, PackageCheck, Plus, Search, Package, Boxes, Layers } from 'lucide-react';
+import { Download, PackageCheck, Plus, Search, Package, Boxes, Layers } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -11,7 +11,7 @@ import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
 import { bagArrivalFormSchema, stoneArrivalFormSchema } from '@/lib/forms/stock-forms';
 import { ArrivalFormContent, BagArrivalFormContent, StoneArrivalFormContent } from './arrival-form';
-import { createStoneArrivalItemRow, createInitialStoneArrivalDraft, createBagArrivalItemRow, createInitialBagArrivalDraft, formatDateTime, getGeneratedByRoleLabel, getStatusVariant, CLASSES, FORM_INPUT_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS, PILL_ROW_CLASS, toNumber, trimText, fetchShipmentDetails, invalidateShipmentCache, exportToCSV, EXPORT_PERIOD_PRESETS, filterRowsByPeriod } from '../lib/stock-utils';
+import { createStoneArrivalItemRow, createInitialStoneArrivalDraft, createBagArrivalItemRow, createInitialBagArrivalDraft, formatDateTime, getGeneratedByRoleLabel, getStatusVariant, CLASSES, FORM_INPUT_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS, toNumber, trimText, fetchShipmentDetails, invalidateShipmentCache, exportToCSV, EXPORT_PERIOD_PRESETS, filterRowsByPeriod } from '../lib/stock-utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 export function PurchasesPanel({
+  tabs,
   arrivalForm,
   arrivalItemsFieldArray,
   arrivalWatchedItems,
@@ -351,7 +352,10 @@ export function PurchasesPanel({
 
   return (
     <div className="stock-tab-panel" key="stock-panel-purchases">
-      <div className={PILL_ROW_CLASS}>
+      <section id="purchases" className="flex h-full flex-col overflow-hidden scroll-mt-6 glass-panel rounded-2xl">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-muted/40 px-3 py-3 sm:px-4">
+          {tabs}
+          <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-3">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -408,22 +412,6 @@ export function PurchasesPanel({
           <Plus className="h-4 w-4" />
           {tc.logNewPurchase}
         </button>
-      </div>
-
-      <section id="purchases" className="flex h-full flex-col overflow-hidden scroll-mt-6 glass-panel rounded-2xl">
-        <div className="flex items-start justify-between p-4 sm:p-5 border-b border-border/60 bg-muted/40 px-6 py-5">
-          <div className="space-y-1.5">
-            <nav className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-slate-400">
-              <span>{tc.inventoryHub}</span>
-              <ChevronRight className="h-2.5 w-2.5 opacity-50" />
-              <span className="text-brand-primary">{tc.purchases}</span>
-            </nav>
-            <div className="flex items-center gap-3">
-              <h3 className="text-sm font-black text-slate-900 dark:text-white tracking-tight">{tc.purchases}</h3>
-              <span className="rounded-full bg-brand-primary/10 border border-brand-primary/20 px-3 py-1 text-[9px] font-black uppercase tracking-widest tabular-nums text-brand-primary shadow-sm">
-                {arrivalPagination.total} {t('items')}
-              </span>
-            </div>
           </div>
           <Sheet open={arrivalSheetOpen} onOpenChange={(open) => { setArrivalSheetOpen(open); if (!open) { if (setEditingBagArrivalId) setEditingBagArrivalId(null); bagArrivalForm.reset(createInitialBagArrivalDraft()); stoneArrivalForm.reset(createInitialStoneArrivalDraft()); setPurchaseType('tile'); setBagNotice(null); setStoneNotice(null); } }}>
 
@@ -537,7 +525,7 @@ export function PurchasesPanel({
             />
           </div>
         </div>
-        <div className={`space-y-4 p-3 md:hidden transition-opacity duration-200 ${arrivalFetching ? 'opacity-50' : ''}`}>
+        <div className={`space-y-3 p-3 md:hidden transition-opacity duration-200 ${arrivalFetching ? 'opacity-50' : ''}`}>
           {arrivalFetching && arrivalPagination.rows.length === 0 && (
             <div className="flex items-center justify-center gap-2 py-8 text-slate-400">
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-brand-primary" />
@@ -547,7 +535,7 @@ export function PurchasesPanel({
           {arrivalPagination.rows.map((a) => {
             const expanded = arrivalExpandedId === a.id;
             return (
-              <article key={`arrival-mobile-${a.id}`} className="glass-panel rounded-2xl p-4">
+              <article key={`arrival-mobile-${a.id}`} className="glass-panel rounded-2xl p-3">
                 <div className="flex items-start justify-between gap-2">
                   <button
                     type="button"
@@ -560,7 +548,7 @@ export function PurchasesPanel({
                   </button>
                   <Badge variant={getStatusVariant(a.status)}>{a.status}</Badge>
                 </div>
-                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-600 dark:text-slate-300">
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-600 dark:text-slate-300">
                   {Number(a.total_sqft_qty || 0) > 0 && (
                     <span className="text-sky-500 font-black" title={`${Number(a.total_sqft_qty)} Sqft`}>
                       {Number(a.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-[10px] uppercase text-sky-400/70">Sqft</span>
@@ -583,27 +571,14 @@ export function PurchasesPanel({
                     </span>
                   )}
                 </div>
+                {/* Invoice and route share a line; stacked they cost a row each. */}
                 <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                   <span className="font-semibold text-slate-600 dark:text-slate-300">{tc.invoice}:</span> {a.invoice_number || '—'}{a.invoice_date ? ` (${formatDateTime(a.invoice_date)})` : ''}
+                  <span className="mx-1.5 opacity-40">·</span>
+                  {a.origin_city || '—'} → {a.destination_warehouse_name || '—'}
                 </p>
-                <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                  <span className="font-semibold text-slate-600 dark:text-slate-300">{tc.route}:</span> {a.origin_city || '—'} → {a.destination_warehouse_name || '—'}
-                </p>
-                <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-                  <span className="font-semibold text-slate-600 dark:text-slate-300">{tc.payment}:</span> <span className={`capitalize ${a.payment_status === 'paid' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''}`}>{a.payment_status || 'Unpaid'}</span>{a.paid_amount != null ? ` · ₹${Number(a.paid_amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}` : ''}
-                </p>
-                {canEdit && a.approval_status === 'approved' && a.payment_status !== 'paid' && (
-                  <button
-                    type="button"
-                    onClick={e => { e.stopPropagation(); setConfirmPaidId(a.id); }}
-                    disabled={markingPaidId === a.id}
-                    className="mt-1 px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[9px] font-black uppercase tracking-widest disabled:opacity-50"
-                  >
-                    {markingPaidId === a.id ? '…' : 'Mark as Paid'}
-                  </button>
-                )}
                 {expanded ? (
-                  <div className="mt-2 space-y-1 text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-white/5 pt-2">
+                  <div className="mt-1.5 space-y-0.5 border-t border-slate-100 pt-1.5 text-[11px] text-slate-500 dark:border-white/5 dark:text-slate-400">
                     <p className="truncate font-medium text-slate-700 dark:text-slate-300">{a.product_names || a.product_skus || '—'}</p>
                     <p><span className="font-semibold">{tc.division}:</span> {a.divisions || tc.general || 'Adhesive'}</p>
                     {a.grand_total ? <p><span className="font-semibold">{tc.grandTotal}:</span> ₹{Number(a.grand_total).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p> : null}
@@ -612,11 +587,25 @@ export function PurchasesPanel({
                     {a.approved_by ? <p><span className="font-semibold">{tc.approvedBy}:</span> {a.approved_by}</p> : null}
                   </div>
                 ) : null}
-                <div className="mt-2 flex gap-2">
+                {/* Payment state and every action share one wrapping row. */}
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+                  <span className={`capitalize ${a.payment_status === 'paid' ? 'font-bold text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                    {a.payment_status || 'Unpaid'}{a.paid_amount != null ? ` · ₹${Number(a.paid_amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}` : ''}
+                  </span>
+                  {canEdit && a.approval_status === 'approved' && a.payment_status !== 'paid' && (
+                    <button
+                      type="button"
+                      onClick={e => { e.stopPropagation(); setConfirmPaidId(a.id); }}
+                      disabled={markingPaidId === a.id}
+                      className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-emerald-600 disabled:opacity-50"
+                    >
+                      {markingPaidId === a.id ? '…' : 'Mark as Paid'}
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setArrivalExpandedId((current) => (current === a.id ? null : a.id))}
-                    className="rounded-lg border border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground transition hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="ml-auto rounded-lg border border-border px-2 py-1 font-semibold text-muted-foreground transition hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20"
                     aria-label={expanded ? tc.collapse : tc.expand}
                   >
                     {expanded ? tc.collapse : tc.expand}
@@ -624,7 +613,7 @@ export function PurchasesPanel({
                   {canEdit && (
                     <button
                       type="button"
-                      className="rounded-lg border border-border px-2 py-1 text-[11px] font-semibold text-foreground transition hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      className="rounded-lg border border-border px-2 py-1 font-semibold text-foreground transition hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20"
                       onClick={e => { e.stopPropagation(); onEdit(a); }}
                     >
                       {tc.edit}

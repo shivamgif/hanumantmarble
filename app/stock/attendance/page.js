@@ -1,7 +1,9 @@
 'use client';
 
 import { Suspense, useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { CalendarDays, CalendarOff, ChevronRight, Clock, Settings, Users, Wallet } from 'lucide-react';
 import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { getRoleFlags } from '@/lib/stock-roles.mjs';
@@ -16,12 +18,12 @@ import { CLASSES } from '../lib/stock-utils';
 // Plain pill buttons rather than a Tabs primitive — components/ui has no
 // tabs.jsx, and the dashboard uses this same pattern at app/stock/page.js.
 const TABS = [
-  { id: 'me', label: 'My time', needs: null },
-  { id: 'team', label: 'Team', needs: 'canViewAllAttendance' },
-  { id: 'timesheets', label: 'Timesheets', needs: 'canViewAllAttendance' },
-  { id: 'leave', label: 'Leave', needs: null },
-  { id: 'payroll', label: 'Payroll', needs: 'canViewAllAttendance' },
-  { id: 'settings', label: 'Settings', needs: 'canManageAttendance' },
+  { id: 'me', label: 'My time', needs: null, icon: Clock },
+  { id: 'team', label: 'Team', needs: 'canViewAllAttendance', icon: Users },
+  { id: 'timesheets', label: 'Timesheets', needs: 'canViewAllAttendance', icon: CalendarDays },
+  { id: 'leave', label: 'Leave', needs: null, icon: CalendarOff },
+  { id: 'payroll', label: 'Payroll', needs: 'canViewAllAttendance', icon: Wallet },
+  { id: 'settings', label: 'Settings', needs: 'canManageAttendance', icon: Settings },
 ];
 
 function AttendancePageInner() {
@@ -59,27 +61,50 @@ function AttendancePageInner() {
 
   return (
     <div className={CLASSES.contentWrap}>
-      <div>
-        <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Attendance</h1>
-        <p className="mt-1 text-xs font-bold text-slate-500">Clock in, track hours, and run payroll.</p>
-      </div>
+      <header>
+        <div className="space-y-2">
+          <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
+            <Link href="/stock" className="hover:text-brand-primary transition-colors">Dashboard</Link>
+            <ChevronRight className="h-3 w-3 opacity-50" />
+            <span className="text-slate-900 dark:text-white">Attendance</span>
+          </nav>
+          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+            <span className="text-brand-primary">Attendance</span>
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-3xl">
+            Clock in, track hours, and run payroll.
+          </p>
+        </div>
+      </header>
 
       {tabs.length > 1 ? (
-        <div className="flex flex-wrap gap-2">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setView(tab.id)}
-              className={`rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${
-                view === tab.id
-                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
-                  : 'border border-border/60 text-slate-600 hover:bg-slate-500/5 dark:text-slate-400'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        // Same strip as the dashboard, analytics and admin tabs: below sm only the
+        // active tab keeps its label, the rest collapse to icon circles. Six tabs
+        // is one more than those strips carry, so this one may still scroll on the
+        // narrowest phones rather than clip.
+        <div className="flex w-full min-w-0 items-center gap-1 overflow-x-auto rounded-xl border border-border/60 bg-muted p-1 scrollbar-none sm:w-fit sm:gap-0">
+          {tabs.map((tab) => {
+            const isActive = view === tab.id;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setView(tab.id)}
+                aria-label={tab.label}
+                aria-current={isActive ? 'true' : undefined}
+                className={`flex h-10 items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap rounded-full text-xs font-black uppercase tracking-widest transition-all duration-300 ease-out sm:h-auto sm:w-auto sm:flex-none sm:rounded-lg sm:px-6 sm:py-2.5 ${isActive
+                  ? 'flex-1 bg-white px-3 text-brand-primary shadow-sm dark:bg-slate-800'
+                  : 'w-10 shrink-0 px-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                  }`}
+              >
+                <Icon className="h-4 w-4 shrink-0 sm:hidden" />
+                <span className={`overflow-hidden transition-all duration-300 ease-out sm:max-w-none sm:opacity-100 ${isActive ? 'max-w-[12rem] opacity-100' : 'max-w-0 opacity-0'}`}>
+                  {tab.label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       ) : null}
 

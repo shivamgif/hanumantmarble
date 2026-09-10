@@ -320,7 +320,7 @@ export default function StockDocumentsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t.title}</p>

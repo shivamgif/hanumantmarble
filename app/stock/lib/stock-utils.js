@@ -477,15 +477,14 @@ export const FORM_LABEL_CLASS = 'block text-[10px] font-black uppercase tracking
 export const FORM_INPUT_CLASS = 'w-full rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10';
 export const FORM_CARD_CLASS = 'glass-panel rounded-2xl p-4 sm:p-5 transition-[box-shadow,border-color] duration-200';
 
-// Panel header action pills. Tighter padding/tracking below sm so three of them
-// still fit a 360px viewport; the row that holds them must be flex-wrap.
-const PILL_BASE = 'flex min-h-[44px] shrink-0 items-center gap-1.5 sm:gap-2 rounded-full px-3 py-2 sm:px-4 text-[11px] font-black uppercase tracking-wider sm:tracking-widest transition-transform duration-100 ease-out active:scale-95 disabled:cursor-not-allowed disabled:opacity-50';
+// Panel header action pills. Smaller text, padding and gap below sm so three of
+// them still fit one line on a 360px viewport; the row holding them is flex-wrap.
+const PILL_BASE = 'flex min-h-[38px] sm:min-h-[44px] shrink-0 items-center gap-1 sm:gap-2 rounded-full px-2.5 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-[11px] font-black uppercase tracking-wide sm:tracking-widest [&>svg]:h-3.5 [&>svg]:w-3.5 sm:[&>svg]:h-4 sm:[&>svg]:w-4 transition-transform duration-100 ease-out active:scale-95 disabled:cursor-not-allowed disabled:opacity-50';
 export const PILL_BUTTON_CLASS = `${PILL_BASE} border border-slate-200/60 bg-white text-slate-700 shadow-sm hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800`;
 export const PILL_PRIMARY_BUTTON_CLASS = `${PILL_BASE} bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90`;
-export const PILL_ROW_CLASS = 'mb-6 flex flex-wrap items-center justify-end gap-2 sm:gap-3';
 
 export const CLASSES = {
-  contentWrap: 'mx-auto w-full max-w-[1600px] space-y-4 sm:space-y-6',
+  contentWrap: 'mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6',
   topCard: 'glass-panel rounded-2xl p-4 sm:p-6 lg:p-8',
   interactiveCard: 'glass-panel rounded-2xl transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover',
   card: 'glass-panel rounded-2xl p-4 sm:p-6 lg:p-8 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group/card',

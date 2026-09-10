@@ -227,7 +227,7 @@
       "logNewDispatch": "Log New Dispatch",
       "logNewDispatchDesc": "Record an outbound shipment leaving the Godaam for delivery.",
       "dispatchNo": "Dispatch No",
-      "currentStock": "Current Physical Stock",
+      "currentStock": "Current Stock",
       "items": "Items",
       "sku": "SKU",
       "name": "Name",

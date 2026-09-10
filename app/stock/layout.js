@@ -281,7 +281,7 @@ export default function StockLayout({ children }) {
           isActiveRoute={isActiveRoute}
         />
 
-        <main className="flex-1 px-3 py-8 sm:px-8 lg:px-12">
+        <main className="flex-1">
           <div className="mx-auto w-full max-w-[1600px]">
             {children}
           </div>
