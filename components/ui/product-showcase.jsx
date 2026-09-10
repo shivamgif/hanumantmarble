@@ -1,13 +1,30 @@
 "use client";
 
-import { Clock, Users, Package, Store, Award } from "lucide-react";
-import { CatalogueViewer } from "./catalogue-viewer";
+import dynamic from "next/dynamic";
+import { BookOpen, Clock, Users, Package, Store, Award } from "lucide-react";
+import { Button } from "./button";
+
 import { SectionHeading } from "./section-heading";
 import { cn } from "@/lib/utils";
 import { useInView } from "@/lib/hooks/useInView";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTranslation } from "@/lib/translations";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./card";
+
+// react-pdf touches browser-only globals at module scope, so this one subtree
+// stays client-only. The rest of the section server-renders.
+const CatalogueViewer = dynamic(
+  () => import("./catalogue-viewer").then((mod) => mod.CatalogueViewer),
+  {
+    ssr: false,
+    loading: () => (
+      <Button variant="outline" disabled className="w-full border border-primary/20 rounded-xl h-11">
+        <BookOpen className="mr-2 h-4 w-4" />
+        Catalogue
+      </Button>
+    ),
+  }
+);
 
 const statsData = [
   { value: "30+", key: "yearsExperience", icon: <Clock className="w-5 h-5" /> },
@@ -47,7 +64,7 @@ export function ProductShowcase() {
                 index > 1 && "border-t md:border-t-0",
                 isStatsInView && "in-view"
               )}
-              style={{ transitionDelay: `${index * 90}ms` }}
+              style={{ transitionDelay: `${Math.min(index, 3) * 70}ms` }}
             >
               <div className="text-primary shrink-0">{stat.icon}</div>
               <div>
@@ -74,7 +91,7 @@ export function ProductShowcase() {
             <div
               key={b.brand}
               className={cn("animate-on-scroll", isProductsInView && "in-view")}
-              style={{ transitionDelay: `${index * 100}ms` }}
+              style={{ transitionDelay: `${Math.min(index, 3) * 70}ms` }}
             >
               <Card className="group overflow-hidden h-full flex flex-col border border-border/60 bg-card shadow-none hover:border-primary/40 hover:shadow-lg transition-all duration-300">
                 <CardHeader className="p-0">

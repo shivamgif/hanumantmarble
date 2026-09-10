@@ -46,6 +46,7 @@ import { ShipmentPreviewSheet } from './components/shipment-preview-sheet';
 import { ShowroomPanel } from './components/showroom-panel';
 import { showroomSplit } from '@/lib/stock-showroom';
 import { StockToast } from './components/stock-toast';
+import { ReasonDialog } from '@/components/ui/reason-dialog';
 
 export default function StockDashboard() {
   const { language } = useLanguage();
@@ -241,6 +242,7 @@ export default function StockDashboard() {
   const [previewItemsPage, setPreviewItemsPage] = useState(1);
   const [pageSize, setPageSize] = usePageSize();
   const [toast, setToast] = useState(null);
+  const [reasonDialog, setReasonDialog] = useState(null);
   const [previewState, setPreviewState] = useState({
     open: false,
     loading: false,
@@ -459,13 +461,27 @@ export default function StockDashboard() {
 
   const onApproveShipment = useCallback((kind, record) => handleShipmentInlineAction(kind, record, 'approve'), [handleShipmentInlineAction]);
   const onRejectShipment = useCallback((kind, record) => {
-    const reason = window.prompt('Reason for rejection (optional):') || 'Rejected from preview';
-    return handleShipmentInlineAction(kind, record, 'reject', { notes: reason, reason });
+    setReasonDialog({
+      title: 'Reject shipment',
+      description: `${record?.shipment_number || 'This shipment'} will be marked rejected. No stock changes apply.`,
+      placeholder: 'Reason for rejection (optional)',
+      confirmText: 'Reject',
+      tone: 'rose',
+      onSubmit: (reason) => {
+        const text = reason || 'Rejected from preview';
+        handleShipmentInlineAction(kind, record, 'reject', { notes: text, reason: text });
+      },
+    });
   }, [handleShipmentInlineAction]);
   const onRequestShipmentChanges = useCallback((kind, record) => {
-    const reason = window.prompt('What changes are needed?');
-    if (!reason) return;
-    return handleShipmentInlineAction(kind, record, 'request_changes', { notes: reason, reason });
+    setReasonDialog({
+      title: 'Request changes',
+      description: `Send this back to whoever raised ${record?.shipment_number || 'it'}.`,
+      placeholder: 'What changes are needed?',
+      required: true,
+      confirmText: 'Send request',
+      onSubmit: (reason) => handleShipmentInlineAction(kind, record, 'request_changes', { notes: reason, reason }),
+    });
   }, [handleShipmentInlineAction]);
   const onMarkShipmentPaid = useCallback((kind, record) => {
     if (kind !== 'dispatch') return;
@@ -1293,7 +1309,7 @@ export default function StockDashboard() {
         );
       })()}
 
-      <div className="flex items-center overflow-x-auto no-scrollbar bg-slate-100 dark:bg-slate-900/40 p-1 rounded-xl border border-slate-200 dark:border-white/5 w-full sm:w-fit">
+      <div className="flex items-center overflow-x-auto scrollbar-none bg-slate-100 dark:bg-slate-900/40 p-1 rounded-xl border border-slate-200 dark:border-white/5 w-full sm:w-fit">
         {tableViewTabs.map((tab) => {
           const isActive = activeTableView === tab.id;
           return (
@@ -1440,6 +1456,7 @@ export default function StockDashboard() {
         onShowroomChanged={handleShowroomChanged}
       />
 
+      <ReasonDialog request={reasonDialog} onClose={() => setReasonDialog(null)} />
       <StockToast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );

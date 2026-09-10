@@ -39,7 +39,8 @@ export function Header() {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20)
     }
-    window.addEventListener('scroll', handleScroll)
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
@@ -48,7 +49,13 @@ export function Header() {
   }
 
   return (
-    <header className={`w-full z-40 sticky top-0 transition-all duration-300 ${scrolled ? 'bg-background/80 backdrop-blur-xl shadow-lg border-b border-border/50' : 'bg-background border-b border-border/50'}`}>
+    <header className={`w-full z-40 sticky top-0 transition-colors duration-300 ${scrolled ? 'bg-background/80 backdrop-blur-xl' : 'bg-background'}`}>
+      {/* Scroll edge effect, not a permanent 1px rule: the chrome only separates
+          itself from content once content is actually passing underneath it. */}
+      <div
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-x-0 top-full h-6 transition-opacity duration-300 bg-gradient-to-b from-foreground/[0.07] to-transparent ${scrolled ? 'opacity-100' : 'opacity-0'}`}
+      />
       <div className="container mx-auto h-20 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center">

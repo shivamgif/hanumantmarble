@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { ReasonDialog } from '@/components/ui/reason-dialog';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getTranslation } from '@/lib/translations';
@@ -55,6 +56,7 @@ export default function AnalyticsDashboard() {
   const [selectedSalesperson, setSelectedSalesperson] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [reasonDialog, setReasonDialog] = useState(null);
 
   const roleFlags = getRoleFlags(accessRole);
   // admin, manager and read_only_admin all see the company-wide analytics; only the
@@ -126,8 +128,7 @@ export default function AnalyticsDashboard() {
     }
   }, [refetchAnalytics]);
 
-  const handlePendingReject = useCallback(async (item) => {
-    const reason = window.prompt(getTranslation('stock.analytics.rejectReasonPrompt', language)) || getTranslation('stock.analytics.rejectedFromAnalytics', language);
+  const rejectPending = useCallback(async (item, reason) => {
     setPendingActionLoading(String(item.id));
     try {
       const response = await fetch(`/api/stock/outbound-shipments/${item.id}`, {
@@ -142,7 +143,18 @@ export default function AnalyticsDashboard() {
     } finally {
       setPendingActionLoading(null);
     }
-  }, [refetchAnalytics, language]);
+  }, [refetchAnalytics]);
+
+  const handlePendingReject = useCallback((item) => {
+    setReasonDialog({
+      title: 'Reject shipment',
+      description: `${item?.shipment_number || 'This shipment'} will be marked rejected. No stock changes apply.`,
+      placeholder: getTranslation('stock.analytics.rejectReasonPrompt', language),
+      confirmText: 'Reject',
+      tone: 'rose',
+      onSubmit: (reason) => rejectPending(item, reason || getTranslation('stock.analytics.rejectedFromAnalytics', language)),
+    });
+  }, [rejectPending, language]);
 
   const jumpTo = useCallback((tab, widgetId) => {
     setActiveTab(tab);
@@ -355,7 +367,7 @@ export default function AnalyticsDashboard() {
       />
 
       <div className="sticky top-0 z-20 -mx-4 px-4 py-2 sm:mx-0 sm:px-0 bg-background/80 backdrop-blur-md">
-        <div className="flex items-center overflow-x-auto no-scrollbar bg-muted p-1 rounded-xl border border-border/60 w-full sm:w-fit">
+        <div className="flex items-center overflow-x-auto scrollbar-none bg-muted p-1 rounded-xl border border-border/60 w-full sm:w-fit">
           {TABS.map((tab) => (
             <button
               key={tab.id}
@@ -453,6 +465,8 @@ export default function AnalyticsDashboard() {
           </div>
         </div>
       )}
+
+      <ReasonDialog request={reasonDialog} onClose={() => setReasonDialog(null)} />
     </div>
   );
 }

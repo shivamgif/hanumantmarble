@@ -243,10 +243,14 @@ function SearchBox({ dashboardSearchRef, runDashboardSearch, placeholder }) {
       e.preventDefault();
       if (open && results[activeIndex]) {
         handleSelect(results[activeIndex]);
-      } else {
-        runDashboardSearch(query);
+      } else if (runDashboardSearch(query)) {
         setQuery('');
         setOpen(false);
+      } else {
+        // Nothing matched. Leave the query in place and keep the dropdown on
+        // its "no commands found" state instead of navigating somewhere the
+        // user did not ask for.
+        setOpen(true);
       }
     }
   }, [open, results, activeIndex, query, dashboardSearchRef, handleSelect, runDashboardSearch]);
@@ -423,7 +427,7 @@ export default function StockTopbar({
                   onClick={btn.onClick}
                   aria-label={btn.ariaLabel}
                   title={btn.ariaLabel}
-                  className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-card text-slate-500 shadow-card transition-all active:scale-90 dark:text-slate-400 focus-ring"
+                  className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-slate-500 shadow-card transition-transform duration-100 ease-out active:scale-90 dark:text-slate-400 focus-ring"
                 >
                   {btn.icon}
                   {btn.badge != null && (
@@ -444,7 +448,7 @@ export default function StockTopbar({
                 <Link
                   key={`mobile-top-${item.href}`}
                   href={item.href}
-                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[10px] font-black uppercase tracking-widest transition-colors duration-200 active:scale-95 focus-ring ${
+                  className={`inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[11px] font-black uppercase tracking-widest transition-colors duration-200 active:scale-95 focus-ring ${
                     active
                       ? 'bg-brand-primary/10 text-brand-primary'
                       : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'

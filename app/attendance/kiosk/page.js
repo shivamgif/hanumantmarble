@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Delete, LogIn, LogOut } from 'lucide-react';
+import { haptic } from '@/lib/haptics';
 
 /**
  * Shared showroom tablet. No session — the device is authorised by a paired
@@ -94,10 +95,13 @@ function KioskInner() {
       if (!res.ok) throw new Error(json.error || 'Punch failed');
       setStatus({
         kind: 'success',
+        action: json.action === 'in' ? 'in' : 'out',
         message: `${json.name} clocked ${json.action === 'in' ? 'in' : 'out'}`,
       });
+      haptic('success');
     } catch (err) {
       setStatus({ kind: 'error', message: err.message });
+      haptic('error');
       setPin('');
     } finally {
       setBusy(false);
@@ -109,7 +113,6 @@ function KioskInner() {
     const next = `${pin}${digit}`.slice(0, 8);
     setPin(next);
     setStatus({ kind: '', message: '' });
-    if (next.length === 4) submit(next);
   }
 
   // Home-branch staff are the default view; anyone else is reachable by search.
@@ -144,7 +147,7 @@ function KioskInner() {
   if (status.kind === 'success') {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-emerald-600 p-6 text-white">
-        {status.message.includes('in') ? <LogIn className="h-16 w-16" /> : <LogOut className="h-16 w-16" />}
+        {status.action === 'in' ? <LogIn className="h-16 w-16" /> : <LogOut className="h-16 w-16" />}
         <p className="text-center text-3xl font-black">{status.message}</p>
         <p className="text-sm font-bold opacity-80">{new Date().toLocaleTimeString('en-IN')}</p>
       </div>
@@ -269,7 +272,9 @@ function KioskInner() {
             </button>
           </div>
 
-          {pin.length > 4 ? (
+          {/* The only way to submit: PINs are 4-8 digits and the kiosk cannot
+              know which length this employee has. */}
+          {pin.length >= 4 ? (
             <button
               type="button"
               onClick={() => submit(pin)}
@@ -283,7 +288,7 @@ function KioskInner() {
       )}
 
       {status.kind === 'error' ? (
-        <p className="mt-5 text-center text-sm font-black text-rose-500">{status.message}</p>
+        <p role="alert" className="mt-5 text-center text-sm font-black text-rose-500">{status.message}</p>
       ) : null}
     </div>
   );

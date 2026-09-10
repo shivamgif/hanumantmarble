@@ -80,7 +80,7 @@ export function WorkGallery() {
                 shot.height,
                 isGridInView && "in-view"
               )}
-              style={{ transitionDelay: `${index * 90}ms` }}
+              style={{ transitionDelay: `${Math.min(index, 3) * 70}ms` }}
             >
               <Image
                 src={shot.src}

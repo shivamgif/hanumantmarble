@@ -1520,7 +1520,7 @@ export default function AdminDashboard() {
       </section>
       </>}
 
-      <div className="flex items-center overflow-x-auto no-scrollbar bg-slate-100 dark:bg-slate-900/40 p-1 rounded-xl border border-slate-200 dark:border-white/5 w-full sm:w-fit">
+      <div className="flex items-center overflow-x-auto scrollbar-none bg-slate-100 dark:bg-slate-900/40 p-1 rounded-xl border border-slate-200 dark:border-white/5 w-full sm:w-fit">
         {[
           { id: 'approvals', label: t('approvals') },
           { id: 'changes', label: t('changes') },

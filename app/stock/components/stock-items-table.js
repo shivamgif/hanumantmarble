@@ -77,7 +77,7 @@ export function StockItemsTable({ pagination, sort, setSort, search, setSearch, 
           </div>
         </div>
 
-        <div className="overflow-x-auto overflow-y-auto max-h-[60vh] no-scrollbar">
+        <div className="overflow-x-auto overflow-y-auto max-h-[60vh] scrollbar-none">
           <table className="w-full text-left whitespace-nowrap border-collapse">
             <thead className="sticky top-0 z-20 bg-muted/90 backdrop-blur-sm">
               <tr className="border-b border-border/60">

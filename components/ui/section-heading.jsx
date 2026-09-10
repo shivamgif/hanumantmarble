@@ -56,7 +56,7 @@ export function SectionHeading({
           dark ? "text-white" : "text-foreground",
           inView && "in-view"
         )}
-        style={{ transitionDelay: "100ms" }}
+        style={{ transitionDelay: "70ms" }}
       >
         {title}
       </h2>
@@ -69,7 +69,7 @@ export function SectionHeading({
             dark ? "text-white/65" : "text-muted-foreground",
             inView && "in-view"
           )}
-          style={{ transitionDelay: "200ms" }}
+          style={{ transitionDelay: "140ms" }}
         >
           {subtitle}
         </p>
@@ -81,7 +81,7 @@ export function SectionHeading({
             "h-1 w-24 rounded-full bg-primary mx-auto mt-6 scale-on-scroll",
             inView && "in-view"
           )}
-          style={{ transitionDelay: "300ms" }}
+          style={{ transitionDelay: "210ms" }}
         />
       )}
     </div>

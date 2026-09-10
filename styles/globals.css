@@ -5,12 +5,6 @@
 
 
 /* Keyframe Definitions */
-@keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-15px); }
-  100% { transform: translateY(0px); }
-}
-
 @keyframes slide-up {
   from { transform: translateY(50px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
@@ -26,30 +20,9 @@
   to { transform: scale(1); opacity: 1; }
 }
 
-@keyframes shimmer {
-  0% { background-position: -1000px 0; }
-  100% { background-position: 1000px 0; }
-}
-
 @keyframes pulse-glow {
   0%, 100% { box-shadow: 0 0 20px rgb(var(--primary) / 0.3); }
   50% { box-shadow: 0 0 40px rgb(var(--primary) / 0.5); }
-}
-
-@keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-@keyframes float-subtle {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
-}
-
-@keyframes draw-path {
-  from { stroke-dashoffset: 1000; }
-  to { stroke-dashoffset: 0; }
 }
 
 @keyframes stock-tab-panel-enter {
@@ -73,17 +46,8 @@
   animation: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
 .animate-slide-up {
   animation: slide-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.animate-gradient {
-  background-size: 200% 200%;
-  animation: gradient-shift 4s ease infinite;
 }
 
 .stock-tab-panel {
@@ -96,11 +60,64 @@
   animation: pulse-glow 2.4s ease-in-out infinite;
 }
 
+/* Reduced motion means a gentler equivalent, not no feedback: keep the opacity
+   cross-fade so reveals still read as arriving, drop every translate, scale and
+   loop. Unlayered, so it outranks the @layer components rules below. */
 @media (prefers-reduced-motion: reduce) {
-  .animate-pulse-glow,
-  .animate-float,
-  .animate-gradient {
+  .animate-pulse-glow {
     animation: none;
+  }
+
+  .animate-slide-up,
+  .animate-scale-in {
+    animation: fade-in 200ms ease-out both;
+  }
+
+  .animate-on-scroll,
+  .scale-on-scroll {
+    transform: none;
+  }
+
+  .animate-on-scroll.in-view,
+  .scale-on-scroll.in-view,
+  .fade-on-scroll.in-view {
+    transform: none;
+    transition: opacity 200ms ease-out;
+    transition-delay: 0ms !important;
+  }
+
+  /* Hover growth is unbidden motion and, on touch, it sticks after a tap.
+     The press scale stays: it is direct feedback, not travel. */
+  .hover\:scale-105:hover,
+  .hover\:scale-110:hover,
+  .group:hover .group-hover\:scale-105,
+  .group:hover .group-hover\:scale-110 {
+    transform: none;
+  }
+}
+
+/* Frost the glass: opaque surfaces and a defined edge instead of blur. */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  * {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  header.sticky {
+    background: rgb(var(--background));
+    border-bottom: 1px solid rgb(var(--border));
+  }
+}
+
+/* These reveals start at opacity 0 and are un-hidden by JS. Now that the page
+   server-renders, a no-JS visitor would otherwise get a blank page.
+   ponytail: covers JS disabled, not JS that loaded and threw. */
+@media (scripting: none) {
+  .animate-on-scroll,
+  .scale-on-scroll,
+  .fade-on-scroll {
+    opacity: 1;
+    transform: none;
   }
 }
 
@@ -124,16 +141,7 @@
   .animate-on-scroll.in-view {
     opacity: 1;
     transform: translateY(0);
-    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  .float-on-scroll {
-    opacity: 0;
-  }
-
-  .float-on-scroll.in-view {
-    opacity: 1;
-    animation: float 6s ease-in-out;
+    transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .scale-on-scroll {
@@ -144,7 +152,7 @@
   .scale-on-scroll.in-view {
     opacity: 1;
     transform: scale(1);
-    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .fade-on-scroll {
@@ -153,114 +161,15 @@
 
   .fade-on-scroll.in-view {
     opacity: 1;
-    transition: opacity 0.5s ease-out;
+    transition: opacity 0.4s ease-out;
   }
 
-  /* Interactive animations (these don't need scroll triggering) */
-  .hover-scale {
-    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  
-  .hover-scale:hover {
-    transform: scale(1.05);
-  }
-
-  .hover-lift {
-    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
-  }
-
-  .hover-lift:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-  }
-
-  .shimmer {
-    background: linear-gradient(
-      90deg,
-      rgba(26, 26, 26, 0) 0%,
-      rgb(255, 125, 50) 50%,
-      rgba(9, 9, 9, 0) 100%
-    );
-    background-size: 1000px 100%;
-    animation: shimmer 3s linear;
-  }
-
-  /* Semi-transparent section backgrounds for liquid chrome backdrop */
-  .chrome-wrapper section {
-    background: rgba(248, 250, 252, 0.82) !important;
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-  }
-  .dark .chrome-wrapper section {
-    background: #020617 !important;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-
-  /* DM Serif Display font utility */
+  /* DM Serif Display font utility. Noto sits in the stack because DM Serif and
+     Georgia carry no Devanagari, so Hindi headings would otherwise resolve to
+     whatever serif the OS happens to have. Fallback is per-glyph, so Latin
+     still renders in DM Serif. */
   .font-display {
-    font-family: 'DM Serif Display', Georgia, 'Times New Roman', serif;
-  }
-
-  /* Gradient text */
-  .gradient-text {
-    background: linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--primary-foreground)) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  /* Modern button styles */
-  .btn-modern {
-    position: relative;
-    overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  .btn-modern::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-    transition: left 0.5s;
-  }
-
-  .btn-modern:hover::before {
-    left: 100%;
-  }
-
-  /* Card shine effect */
-  .card-shine {
-    position: relative;
-    overflow: hidden;
-  }
-
-  .card-shine::after {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: linear-gradient(
-      to bottom right,
-      rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, 0) 40%,
-      rgba(255, 255, 255, 0.1) 50%,
-      rgba(255, 255, 255, 0) 60%,
-      rgba(255, 255, 255, 0) 100%
-    );
-    transform: rotate(45deg);
-    transition: all 0.5s;
-    opacity: 0;
-  }
-
-  .card-shine:hover::after {
-    opacity: 0;
-    transform: rotate(45deg) translate(50%, 50%);
+    font-family: 'DM Serif Display', 'Noto Sans Devanagari', Georgia, 'Times New Roman', serif;
   }
 
   /* Unified elevated-card surface (formerly frosted glass) */
@@ -272,9 +181,6 @@
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 
-  .text-tight {
-    letter-spacing: -0.025em;
-  }
 }
  
 @layer base {
@@ -454,6 +360,14 @@ html[lang="hi"] [class*="tracking-"] {
 
 html[lang="hi"] .font-black {
   font-weight: 800; /* Noto Sans Devanagari black is very heavy */
+}
+
+/* Devanagari matras sit above and below the baseline, so Tailwind's tight
+   display leading (text-4xl/text-5xl ship line-height: 1) clips them. */
+html[lang="hi"] h1,
+html[lang="hi"] h2,
+html[lang="hi"] h3 {
+  line-height: 1.35;
 }
 
 

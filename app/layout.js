@@ -4,7 +4,6 @@ import { LanguageProvider } from '@/contexts/LanguageContext'
 import { ClientProviders } from '@/contexts/ClientProviders'
 import Layout from '@/components/Layout'
 import PWAInstall from '@/components/PWAInstall'
-import HapticProvider from '@/components/HapticProvider'
 
 const BASE_URL = "https://hanumantmarble.com";
 
@@ -124,7 +123,6 @@ export default function RootLayout({ children }) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        <HapticProvider />
         <PWAInstall />
         <LanguageProvider>
           <ThemeProvider

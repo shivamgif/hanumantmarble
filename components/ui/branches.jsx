@@ -47,7 +47,7 @@ export function Branches() {
                   "group flex flex-col overflow-hidden rounded-2xl bg-card border border-border/60 hover:border-primary/40 hover:shadow-lg transition-all duration-300 animate-on-scroll",
                   inView && "in-view"
                 )}
-                style={{ transitionDelay: `${index * 100}ms` }}
+                style={{ transitionDelay: `${Math.min(index, 3) * 70}ms` }}
               >
                 <div className="relative h-44 overflow-hidden">
                   <Image

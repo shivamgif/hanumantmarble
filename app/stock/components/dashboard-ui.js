@@ -10,15 +10,15 @@ export const INDUSTRIAL_COLORS = [
   '#C96E00',
   '#1A1A54',
   '#059669',
-  '#DC2626',
+  '#7C3AED',
   '#2563EB',
   '#D97706',
-  '#7C3AED',
+  '#DC2626',
   '#0891B2',
 ];
 
 // Line-series palette: same hues minus brand navy, which is invisible on dark surfaces (1.1:1 contrast)
-export const SERIES_COLORS = ['#C96E00', '#2563EB', '#059669', '#DC2626', '#7C3AED'];
+export const SERIES_COLORS = ['#C96E00', '#2563EB', '#059669', '#7C3AED', '#DC2626'];
 
 export const CLASSES = {
   heroGrid: 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 lg:gap-6',
@@ -26,7 +26,7 @@ export const CLASSES = {
   title: 'text-[10px] font-black uppercase tracking-[0.25em] text-slate-600 dark:text-slate-400',
   value: 'mt-2 text-3xl font-extrabold text-slate-900 dark:text-slate-100 font-sans tracking-tight',
   grid: 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
-  mobileScroll: 'flex overflow-x-auto no-scrollbar gap-2 pb-2 snap-x snap-mandatory overscroll-x-contain',
+  mobileScroll: 'flex overflow-x-auto scrollbar-none gap-2 pb-2 snap-x snap-mandatory overscroll-x-contain',
   sectionHead: 'text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400 mb-4',
 };
 

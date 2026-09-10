@@ -299,7 +299,7 @@ export function DispatchesPanel({
             );
           })}
         </div>
-        <div className="overflow-x-auto overflow-y-auto max-h-[60vh] no-scrollbar flex-1">
+        <div className="overflow-x-auto overflow-y-auto max-h-[60vh] scrollbar-none flex-1">
           <table className="hidden w-full text-left whitespace-nowrap md:table border-collapse">
             <thead className="sticky top-0 z-20 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xl">
               <tr className="border-b border-slate-200/60 dark:border-white/5">

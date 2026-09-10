@@ -14,7 +14,7 @@ export function HeroCarousel({
   subtitle = "One of the biggest collection of tiles and sanitaryware in Lucknow. Build your dream home with us.",
   ctaText = "Get Quote",
 }) {
-  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true }, [Autoplay({ delay: 4500, stopOnInteraction: false })]);
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true }, [Autoplay({ delay: 4500, stopOnInteraction: true, stopOnMouseEnter: true })]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scrollSnaps, setScrollSnaps] = useState([]);
 
@@ -43,20 +43,28 @@ export function HeroCarousel({
     return () => emblaApi.off('select', onSelect)
   }, [emblaApi, onSelect])
 
-  useEffect(() => {
-    const handleKey = (e) => {
-      if (e.key === 'ArrowLeft') scrollPrev()
-      if (e.key === 'ArrowRight') scrollNext()
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
+  // Scoped to the section, not window: arrow keys should still scroll the page
+  // when focus is anywhere else.
+  const onKeyDown = useCallback((e) => {
+    if (e.key === 'ArrowLeft') { e.preventDefault(); scrollPrev() }
+    if (e.key === 'ArrowRight') { e.preventDefault(); scrollNext() }
   }, [scrollPrev, scrollNext])
+
+  // Auto-advancing content is unbidden motion; honour the OS setting.
+  useEffect(() => {
+    if (!emblaApi) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      emblaApi.plugins().autoplay?.stop()
+    }
+  }, [emblaApi])
 
   return (
     <section
       className="relative overflow-hidden bg-[#0a0a1a]"
       style={{ height: '88vh', minHeight: 600 }}
+      aria-roledescription="carousel"
       aria-label="Hero carousel"
+      onKeyDown={onKeyDown}
     >
       {/* Slides */}
       <div className="overflow-hidden absolute inset-0" ref={emblaRef}>
@@ -156,7 +164,7 @@ export function HeroCarousel({
         <div className="flex flex-wrap gap-4 items-center animate-scale-in" style={{ animationDelay: '400ms' }}>
           <Button
             size="lg"
-            className="rounded-full h-[52px] px-8 text-base font-bold hover:scale-105 transition-all duration-300"
+            className="rounded-full h-[52px] px-8 text-base font-bold hover:scale-105 transition-transform duration-100 ease-out"
             style={{
               background: '#e07a00',
               color: '#fff',
@@ -173,7 +181,7 @@ export function HeroCarousel({
           <Button
             size="lg"
             variant="outline"
-            className="rounded-full h-[52px] px-8 text-base font-medium hover:scale-105 transition-all duration-300"
+            className="rounded-full h-[52px] px-8 text-base font-medium hover:scale-105 transition-transform duration-100 ease-out"
             style={{
               background: 'rgba(255,255,255,0.1)',
               color: '#fff',
@@ -208,7 +216,7 @@ export function HeroCarousel({
         <Button
           variant="outline"
           size="icon"
-          className="rounded-full h-[42px] w-[42px] transition-all duration-300 text-white"
+          className="rounded-full h-[42px] w-[42px] transition-transform duration-100 ease-out text-white"
           style={{
             background: 'rgba(255,255,255,0.1)',
             backdropFilter: 'blur(8px)',
@@ -222,7 +230,7 @@ export function HeroCarousel({
         <Button
           variant="outline"
           size="icon"
-          className="rounded-full h-[42px] w-[42px] transition-all duration-300 text-white"
+          className="rounded-full h-[42px] w-[42px] transition-transform duration-100 ease-out text-white"
           style={{
             background: 'rgba(255,255,255,0.1)',
             backdropFilter: 'blur(8px)',
@@ -236,12 +244,11 @@ export function HeroCarousel({
       </div>
 
       {/* Dot indicators */}
-      <div className="absolute bottom-9 left-1/2 -translate-x-1/2 flex gap-1.5 z-20" role="tablist" aria-label="Slide indicators">
+      <div className="absolute bottom-9 left-1/2 -translate-x-1/2 flex gap-1.5 z-20" role="group" aria-label="Slide indicators">
         {scrollSnaps.map((_, index) => (
           <button
             key={index}
-            role="tab"
-            aria-selected={index === selectedIndex}
+            aria-current={index === selectedIndex ? "true" : undefined}
             aria-label={`Go to slide ${index + 1}`}
             onClick={() => scrollTo(index)}
             className={cn(

@@ -21,6 +21,17 @@ import StockSidebar from '@/components/stock/layout/StockSidebar';
 import StockTopbar from '@/components/stock/layout/StockTopbar';
 import StockNotificationsSheet from '@/components/stock/layout/StockNotificationsSheet';
 
+function FullScreenSpinner({ label }) {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-[#0b0f1a]">
+      <div className="flex flex-col items-center gap-4" role="status" aria-live="polite">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-[#E07A00] dark:border-slate-700 dark:border-t-[#E07A00]" />
+        <p className="text-sm text-slate-400 dark:text-slate-500">{label}</p>
+      </div>
+    </div>
+  );
+}
+
 const CLASSES = {
   shell: 'relative min-h-screen bg-slate-50/80 font-sans text-slate-900 dark:bg-[#0b0f1a] dark:text-slate-100',
   sidebar: 'fixed inset-y-0 left-0 z-30 hidden h-screen w-60 bg-white lg:flex lg:flex-col dark:border-white/8 dark:bg-slate-950',
@@ -107,64 +118,66 @@ export default function StockLayout({ children }) {
     return pathname?.startsWith(cleanHref);
   };
 
+  // Returns false when nothing matched, so the caller can keep the palette open
+  // on its "no commands found" state rather than silently navigating away.
   function runDashboardSearch(rawQuery) {
     const query = String(rawQuery || '').trim().toLowerCase();
     if (!query) {
-      return;
+      return false;
     }
 
     if (query.includes('new purchase') || query.includes('new arrival') || query === 'np') {
       router.push('/stock?view=purchases&new=purchase');
-      return;
+      return true;
     }
 
     if (query.includes('new dispatch') || query === 'nd') {
       router.push('/stock?view=dispatches&new=dispatch');
-      return;
+      return true;
     }
 
     if (query.includes('purchase') || query.includes('arrival') || query.includes('inbound')) {
       router.push('/stock?view=purchases');
-      return;
+      return true;
     }
 
     if (query.includes('dispatch') || query.includes('outbound')) {
       router.push('/stock?view=dispatches');
-      return;
+      return true;
     }
 
     if (query.includes('item') || query.includes('stock') || query.includes('inventory')) {
       router.push('/stock?view=items');
-      return;
+      return true;
     }
 
     if (query.includes('document')) {
       router.push('/stock/documents');
-      return;
+      return true;
     }
 
     if (query.includes('approval') || query.includes('change request')) {
       router.push('/stock/admin?focus=change-requests');
-      return;
+      return true;
     }
 
     if (query.includes('admin') || query.includes('analytics') || query.includes('user')) {
       router.push('/stock/admin');
-      return;
+      return true;
     }
 
-    router.push('/stock');
+    // The palette's Dashboard entry searches for 'home', which matched nothing
+    // above and used to reach /stock only via the blind fallback.
+    if (query.includes('dashboard') || query.includes('home') || query.includes('overview') || query === 'main') {
+      router.push('/stock');
+      return true;
+    }
+
+    return false;
   }
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-[#0b0f1a]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-[#E07A00] dark:border-slate-700 dark:border-t-[#E07A00]" />
-          <p className="text-sm text-slate-400 dark:text-slate-500">Loading…</p>
-        </div>
-      </div>
-    );
+    return <FullScreenSpinner label="Loading…" />;
   }
 
   if (error && !isUnauthorizedError) {
@@ -183,14 +196,7 @@ export default function StockLayout({ children }) {
   }
 
   if (accessLoading && !hasResolvedAccessOnce) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-[#0b0f1a]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-[#E07A00] dark:border-slate-700 dark:border-t-[#E07A00]" />
-          <p className="text-sm text-slate-400 dark:text-slate-500">{t('loadingAccess')}</p>
-        </div>
-      </div>
-    );
+    return <FullScreenSpinner label={t('loadingAccess')} />;
   }
 
   if (!accessApproved) {
@@ -287,10 +293,6 @@ export default function StockLayout({ children }) {
               <span className="text-brand-primary opacity-60">Operational Protocol</span>
               <span className="hidden sm:inline opacity-20">•</span>
               <span>{t('footerTitle')}</span>
-              <span className="hidden sm:inline opacity-20">•</span>
-              <span className="text-slate-900 dark:text-slate-300">Live Status: Stable</span>
-              <span className="hidden sm:inline opacity-20">•</span>
-              <span className="hidden sm:inline">{t('footerUpdated')}: {new Date().toLocaleString()}</span>
             </p>
           </div>
         </footer>

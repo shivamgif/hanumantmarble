@@ -51,3 +51,5 @@ scratch.js
 .graphifyignore
 CLAUDE.md
 .code-review-graphignore
+.agents/skills/apple-design/SKILL.md
+skills-lock.json

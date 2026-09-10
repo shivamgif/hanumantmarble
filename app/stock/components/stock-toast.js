@@ -16,8 +16,10 @@ const COLORS = {
 };
 
 export function StockToast({ toast, onDismiss }) {
+  // Errors stay until dismissed. Auto-hiding the one message someone has to
+  // act on is how a failed save goes unnoticed.
   useEffect(() => {
-    if (!toast) return;
+    if (!toast || toast.type === 'error') return undefined;
     const timer = setTimeout(onDismiss, 4000);
     return () => clearTimeout(timer);
   }, [toast, onDismiss]);
@@ -27,8 +29,8 @@ export function StockToast({ toast, onDismiss }) {
   return (
     <div
       className={`fixed bottom-6 right-6 z-[9999] flex items-start gap-3 rounded-xl border bg-card text-card-foreground px-5 py-4 shadow-card-hover transition-all duration-200 max-w-sm ${COLORS[toast.type] ?? COLORS.success}`}
-      role="status"
-      aria-live="polite"
+      role={toast.type === 'error' ? 'alert' : 'status'}
+      aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
     >
       {ICONS[toast.type] ?? ICONS.success}
       <p className="text-sm font-semibold text-foreground leading-snug">{toast.message}</p>

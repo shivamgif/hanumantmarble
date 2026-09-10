@@ -479,7 +479,7 @@ export const FORM_CARD_CLASS = 'glass-panel rounded-2xl p-4 sm:p-5 transition-[b
 
 // Panel header action pills. Tighter padding/tracking below sm so three of them
 // still fit a 360px viewport; the row that holds them must be flex-wrap.
-const PILL_BASE = 'flex shrink-0 items-center gap-1.5 sm:gap-2 rounded-full px-3 py-2 sm:px-4 text-[10px] sm:text-[11px] font-black uppercase tracking-wider sm:tracking-widest transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50';
+const PILL_BASE = 'flex min-h-[44px] shrink-0 items-center gap-1.5 sm:gap-2 rounded-full px-3 py-2 sm:px-4 text-[11px] font-black uppercase tracking-wider sm:tracking-widest transition-transform duration-100 ease-out active:scale-95 disabled:cursor-not-allowed disabled:opacity-50';
 export const PILL_BUTTON_CLASS = `${PILL_BASE} border border-slate-200/60 bg-white text-slate-700 shadow-sm hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800`;
 export const PILL_PRIMARY_BUTTON_CLASS = `${PILL_BASE} bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90`;
 export const PILL_ROW_CLASS = 'mb-6 flex flex-wrap items-center justify-end gap-2 sm:gap-3';
@@ -497,8 +497,7 @@ export const CLASSES = {
   statCard: 'min-w-0 glass-panel rounded-2xl p-4 sm:p-5 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover',
   statLabel: 'text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400',
   statValue: 'mt-1.5 text-2xl font-black text-slate-900 sm:text-3xl dark:text-slate-100 leading-none tracking-tighter',
-  iconButton: 'h-8 w-8 rounded-lg hover:bg-slate-100 transition-colors active:scale-95 dark:hover:bg-slate-800 focus-ring',
-  mobileScroll: 'flex overflow-x-auto no-scrollbar gap-2 pb-2 snap-x snap-mandatory overscroll-x-contain',
+  mobileScroll: 'flex overflow-x-auto scrollbar-none gap-2 pb-2 snap-x snap-mandatory overscroll-x-contain',
 };
 
 export const INVOICE_CLASSES = {
@@ -511,7 +510,7 @@ export const INVOICE_CLASSES = {
   logisticsLabel: 'flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-brand-primary opacity-80',
   logisticsValue: 'mt-2 text-sm font-black tracking-tight text-slate-900 dark:text-slate-100',
   subBar: 'flex flex-wrap gap-6 rounded-xl bg-muted px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300',
-  tableWrap: 'overflow-hidden rounded-2xl border border-border/60 max-h-[60vh] overflow-y-auto no-scrollbar',
+  tableWrap: 'overflow-hidden rounded-2xl border border-border/60 max-h-[60vh] overflow-y-auto scrollbar-none',
   tableHead: 'bg-muted/90 text-slate-700 dark:text-slate-100 text-[9px] font-black uppercase tracking-[0.25em] sticky top-0 z-20 backdrop-blur-sm',
   tableHeadCell: 'px-5 py-4',
   tableRow: 'border-b border-border hover:bg-muted/50 transition-colors duration-150',
