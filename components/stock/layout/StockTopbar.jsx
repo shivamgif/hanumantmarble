@@ -478,7 +478,7 @@ export default function StockTopbar({
                       : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                   } ${expanded ? 'flex-1 px-3.5' : 'w-11 shrink-0 px-0'}`}
                 >
-                  <item.icon className="h-3 w-3 shrink-0" />
+                  <item.icon className="h-[18px] w-[18px] shrink-0" />
                   {/* The label the layout already resolved. Deriving it from
                       href here instead meant any new nav entry silently fell
                       through to "Dashboard". */}
