@@ -234,7 +234,7 @@ export default function AnalyticsDashboard() {
               <h2 className="text-sm font-bold text-slate-500 whitespace-nowrap">Dispatch Value Trend</h2>
               <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
             </div>
-            <div className="glass-panel rounded-2xl p-6 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover">
+            <div className="glass-panel rounded-2xl p-4 sm:p-6 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover">
               <div className="space-y-4">
                 {monthlyTrend.map((row) => {
                   const barPct = Math.round((row.totalValue / Math.max(bestMonthValue, 1)) * 100);
@@ -243,14 +243,15 @@ export default function AnalyticsDashboard() {
                   // Best month wins the crown colour; any other goal month stays green.
                   const barColor = isBest ? 'bg-yellow-400' : hitGoal ? 'bg-emerald-500' : 'bg-brand-primary';
                   return (
-                    <div key={row.month} className="flex items-center gap-4">
+                    /* ponytail: mobile wraps the bar onto its own line via order/basis, no duplicate markup. */
+                    <div key={row.month} className="flex flex-wrap items-center gap-x-2 gap-y-2 sm:flex-nowrap sm:gap-4">
                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 w-16 shrink-0">{row.month}</span>
-                      <div className="flex-1 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                      <div className="order-last basis-full h-6 sm:order-none sm:basis-auto sm:flex-1 sm:h-8 rounded-xl bg-slate-100 dark:bg-slate-800 overflow-hidden">
                         <div className={`h-full rounded-xl transition-all duration-700 ${barColor}`} style={{ width: `${barPct}%` }} />
                       </div>
                       <span className="w-6 shrink-0 text-center text-sm" aria-hidden="true">{isBest ? '🏆' : hitGoal ? '✅' : ''}</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 w-28 text-right shrink-0 tabular-nums">{fmt(row.totalValue)}</span>
-                      <span className="text-[10px] text-slate-400 w-16 shrink-0 tabular-nums">{row.dispatchCount} orders</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 flex-1 sm:flex-none sm:w-28 text-right shrink-0 tabular-nums">{fmt(row.totalValue)}</span>
+                      <span className="text-[10px] text-slate-400 w-16 shrink-0 tabular-nums text-right sm:text-left">{row.dispatchCount} orders</span>
                     </div>
                   );
                 })}

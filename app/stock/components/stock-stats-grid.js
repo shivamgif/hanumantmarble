@@ -29,7 +29,7 @@ export function StockStatsGrid({ stats, language, t }) {
   const breakdown = Array.isArray(hero.breakdown) ? hero.breakdown : [];
 
   return (
-    <div className="glass-panel rounded-xl px-4 py-3">
+    <div className="rounded-xl sm:glass-panel sm:px-4 sm:py-3">
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 shrink-0 flex items-center justify-center rounded-lg border ${tone.bg} ${tone.border}`}>
@@ -49,15 +49,15 @@ export function StockStatsGrid({ stats, language, t }) {
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
           {rest.map((stat) => {
             const StatIcon = stat.icon;
             const statTone = getTone(stat.label);
             return (
-              <div key={stat.label} className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${statTone.bg} ${statTone.border}`}>
+              <div key={stat.label} className={`flex min-w-0 items-center gap-1.5 rounded-lg border px-2 py-1 ${statTone.bg} ${statTone.border}`}>
                 <StatIcon className={`h-4 w-4 shrink-0 ${statTone.color}`} />
-                <span className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{stat.label}</span>
-                <span className="tabular-nums text-base font-black leading-none text-slate-900 dark:text-white">{fmt(stat.value)}</span>
+                <span className="truncate text-[8px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{stat.label}</span>
+                <span className="ml-auto shrink-0 tabular-nums text-xs font-semibold leading-none text-slate-900 dark:text-white sm:ml-0">{fmt(stat.value)}</span>
               </div>
             );
           })}

@@ -54,6 +54,8 @@ export async function GET(request) {
          i.sku,
          i.unit_of_measure,
          COALESCE(c.name, '—') AS customer_name,
+         sos.id AS shipment_id,
+         TO_CHAR(${MONTH_BUCKET}, 'YYYY-MM-DD') AS sale_date,
          COALESCE(SUM(CASE WHEN i.unit_of_measure <> 'bag'
            THEN GREATEST(COALESCE(soi.loaded_whole_qty, 0) - COALESCE(soi.returned_whole_qty, 0), 0) END), 0) AS box_qty,
          COALESCE(SUM(CASE WHEN i.unit_of_measure <> 'bag'
@@ -72,8 +74,8 @@ export async function GET(request) {
          AND ${MONTH_BUCKET} < ($1::timestamp + INTERVAL '1 month')
          AND ${shipped}
          ${divisionFilter}
-       GROUP BY i.id, i.name, i.sku, i.unit_of_measure, c.name
-       ORDER BY i.name ASC, revenue_excl DESC`,
+       GROUP BY i.id, i.name, i.sku, i.unit_of_measure, c.name, sos.id
+       ORDER BY i.name ASC, sale_date DESC`,
       params
     );
 

@@ -12,6 +12,12 @@ const currentMonth = () => new Date().toISOString().slice(0, 7);
 const int = (value) => Number(value || 0).toLocaleString('en-IN');
 const sqft = (value) => Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
 const rupees = (value) => `₹${Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+// sale_date is 'YYYY-MM-DD' text from the query: reorder it, never re-parse it into a Date,
+// which is what shifted the day by a timezone in the first place. The slice tolerates a timestamp.
+const saleDate = (value) => {
+  const [y, m, d] = String(value || '').slice(0, 10).split('-');
+  return y && m && d ? `${d}.${m}.${y}` : '—';
+};
 
 function QtyCells({ row }) {
   return (
@@ -70,6 +76,7 @@ export function ProductSalesReport({ open, onOpenChange }) {
     exportToCSV(`Product_Sales_${month}.csv`, exportRows, [
       { id: 'product', label: 'Product', value: (r) => r.item_name || '' },
       { id: 'sku', label: 'SKU', value: (r) => r.sku || '' },
+      { id: 'date', label: 'Sale Date', value: (r) => r.sale_date || '' },
       { id: 'customer', label: 'Customer', value: (r) => r.customer_name || '' },
       { id: 'boxes', label: 'Boxes', value: (r) => r.box_qty || '0' },
       { id: 'broken', label: 'Broken', value: (r) => r.broken_qty || '0' },
@@ -93,7 +100,7 @@ export function ProductSalesReport({ open, onOpenChange }) {
         <SheetHeader className="border-b border-border pb-4">
           <SheetTitle className="text-base">Sales by Product</SheetTitle>
           <SheetDescription className="text-xs">
-            Quantity sold per product for the selected month, net of returns. Expand a product for its customer breakdown.
+            Quantity sold per product for the selected month, net of returns. Expand a product for its individual sales.
           </SheetDescription>
         </SheetHeader>
 
@@ -149,15 +156,18 @@ export function ProductSalesReport({ open, onOpenChange }) {
                     {p.sqftQty ? <span className="text-sky-500">{sqft(p.sqftQty)} <span className="text-[10px] uppercase text-sky-400/70">Sqft</span></span> : null}
                   </p>
                   <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-                    {p.customers.length} customers
+                    {p.sales.length} sales
                     {canSeeRevenue ? <span className="ml-2 font-black text-emerald-600 dark:text-emerald-400">{rupees(p.revenueExcl)}</span> : null}
                   </p>
                 </button>
                 {expanded ? (
                   <ul className="mt-2 space-y-1 border-t border-border/60 pt-2">
-                    {p.customers.map((c) => (
-                      <li key={`${p.itemId}-${c.name}`} className="flex justify-between gap-3 text-[11px] text-slate-600 dark:text-slate-300">
-                        <span className="truncate">{c.name}</span>
+                    {p.sales.map((c) => (
+                      <li key={`${p.itemId}-${c.shipmentId}`} className="flex justify-between gap-3 text-[11px] text-slate-600 dark:text-slate-300">
+                        <span className="truncate">
+                          <span className="mr-2 font-bold tabular-nums text-slate-400">{saleDate(c.date)}</span>
+                          {c.name}
+                        </span>
                         <span className="font-black tabular-nums">
                           {c.sqftQty ? `${sqft(c.sqftQty)} sqft` : c.bagQty ? `${int(c.bagQty)} bags` : `${int(c.boxQty)} boxes`}
                         </span>
@@ -180,7 +190,7 @@ export function ProductSalesReport({ open, onOpenChange }) {
                   { id: 'boxes', label: 'Boxes', align: 'right' },
                   { id: 'bags', label: 'Bags', align: 'right' },
                   { id: 'sqft', label: 'Sqft', align: 'right' },
-                  { id: 'customers', label: 'Customers', align: 'right' },
+                  { id: 'sales', label: 'Sales', align: 'right' },
                   ...(canSeeRevenue ? [{ id: 'revenue', label: 'Revenue', align: 'right' }] : []),
                 ].map((col) => (
                   <th key={col.id} className={`px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 ${col.align === 'right' ? 'text-right' : ''}`}>
@@ -208,7 +218,7 @@ export function ProductSalesReport({ open, onOpenChange }) {
                       </div>
                     </td>
                     <QtyCells row={p} />
-                    <td className="px-4 py-3 text-right text-xs font-black tabular-nums text-slate-600 dark:text-slate-300">{p.customers.length}</td>
+                    <td className="px-4 py-3 text-right text-xs font-black tabular-nums text-slate-600 dark:text-slate-300">{p.sales.length}</td>
                     {canSeeRevenue ? (
                       <td className="px-4 py-3 text-right">
                         <div className="text-xs font-black tabular-nums text-emerald-600 dark:text-emerald-400">{rupees(p.revenueExcl)}</div>
@@ -216,11 +226,11 @@ export function ProductSalesReport({ open, onOpenChange }) {
                       </td>
                     ) : null}
                   </tr>,
-                  ...(expanded ? p.customers.map((c) => (
-                    <tr key={`product-${p.itemId}-${c.name}`} className="bg-slate-50/40 dark:bg-slate-800/30">
+                  ...(expanded ? p.sales.map((c) => (
+                    <tr key={`product-${p.itemId}-${c.shipmentId}`} className="bg-slate-50/40 dark:bg-slate-800/30">
                       <td className="px-4 py-2 pl-11 text-[11px] font-bold text-slate-600 dark:text-slate-300">{c.name}</td>
                       <QtyCells row={c} />
-                      <td className="px-4 py-2 text-right text-[10px] font-bold tabular-nums text-slate-500">{int(c.dispatchCount)} disp.</td>
+                      <td className="px-4 py-2 text-right text-[10px] font-bold tabular-nums text-slate-500">{saleDate(c.date)}</td>
                       {canSeeRevenue ? (
                         <td className="px-4 py-2 text-right text-[11px] font-black tabular-nums text-emerald-600 dark:text-emerald-400">{rupees(c.revenueExcl)}</td>
                       ) : null}

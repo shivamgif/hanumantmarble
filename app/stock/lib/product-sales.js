@@ -16,10 +16,7 @@ function addInto(target, row) {
 
 const emptyTotals = () => ({ boxQty: 0, brokenQty: 0, bagQty: 0, sqftQty: 0, revenueExcl: 0, dispatchCount: 0 });
 
-// Rank customers by whichever unit the product actually sells in.
-const customerWeight = (c) => c.sqftQty || c.bagQty || c.boxQty + c.brokenQty;
-
-/** Flat product x customer rows -> products A-Z, each with its customer breakdown. */
+/** Flat product x dispatch rows -> products A-Z, each with its individual sales, newest first. */
 export function groupByProduct(rows) {
   const products = new Map();
 
@@ -32,20 +29,21 @@ export function groupByProduct(rows) {
         sku: row.sku || '',
         unit: row.unit_of_measure || 'box',
         ...emptyTotals(),
-        customers: new Map(),
+        sales: [],
       };
       products.set(row.item_id, product);
     }
     addInto(product, row);
-
-    const name = row.customer_name || '—';
-    addInto(product.customers.get(name) || product.customers.set(name, { name, ...emptyTotals() }).get(name), row);
+    // One row per dispatch: sales stay separate instead of collapsing into a customer total.
+    product.sales.push(addInto({
+      shipmentId: row.shipment_id,
+      name: row.customer_name || '—',
+      date: row.sale_date || '',
+      ...emptyTotals(),
+    }, row));
   }
 
   return [...products.values()]
-    .map((p) => ({
-      ...p,
-      customers: [...p.customers.values()].sort((a, b) => customerWeight(b) - customerWeight(a)),
-    }))
+    .map((p) => ({ ...p, sales: p.sales.sort((a, b) => String(b.date).localeCompare(String(a.date))) }))
     .sort((a, b) => a.itemName.localeCompare(b.itemName, undefined, { numeric: true, sensitivity: 'base' }));
 }
