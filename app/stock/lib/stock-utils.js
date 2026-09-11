@@ -150,10 +150,6 @@ export function createInitialBagArrivalDraft() {
 }
 
 export function createInitialBagDispatchDraft() {
-  const now = new Date();
-  const dateStr = now.toISOString().split('T')[0];
-  const timeStr = now.toTimeString().slice(0, 5);
-
   return {
     customerName: '',
     customerPhoneNumber: '',
@@ -162,7 +158,9 @@ export function createInitialBagDispatchDraft() {
     invoiceNumber: '',
     salespersonName: '',
     salespersonUserId: '',
-    dispatchDate: `${dateStr}T${timeStr}`,
+    // Left blank on purpose: this is the invoice date, not the entry date. A
+    // prefilled "today" got saved unread and landed sales in the wrong month.
+    dispatchDate: '',
     transportCost: '',
     laborCost: '',
     notes: '',
@@ -255,11 +253,6 @@ export function createInitialArrivalDraft() {
 }
 
 export function createInitialDispatchDraft() {
-  const now = new Date();
-  const dateStr = now.toISOString().split('T')[0];
-  const timeStr = now.toTimeString().slice(0, 5);
-  const fullDateTime = `${dateStr}T${timeStr}`;
-
   return {
     customerName: '',
     customerPhoneNumber: '',
@@ -268,7 +261,8 @@ export function createInitialDispatchDraft() {
     invoiceNumber: '',
     salespersonName: '',
     salespersonUserId: '',
-    dispatchDate: fullDateTime,
+    // Blank on purpose — see createInitialBagDispatchDraft.
+    dispatchDate: '',
     transportCost: '',
     laborCost: '',
     notes: '',

@@ -255,7 +255,7 @@ export function BagDispatchFormContent({
             <StockFormField control={form.control} name="customerName" label={t?.('customer') ?? 'Customer'} placeholder="Customer Name..." autoFocus />
             <StockFormField control={form.control} name="customerPhoneNumber" label={tc?.customerPhone ?? 'Customer Phone'} placeholder="+91 9876543210" type="tel" />
             <StockFormField control={form.control} name="invoiceNumber" label={t?.('invoiceNo') ?? 'Invoice No.'} placeholder="INV-..." invoiceChars />
-            <StockDateField control={form.control} name="dispatchDate" label={tc?.date ?? 'Date'} placeholder="Date" />
+            <StockDateField control={form.control} name="dispatchDate" label={tc?.invoiceDate ?? 'Invoice Date'} placeholder={tc?.invoiceDate ?? 'Invoice Date'} />
             <StockFormField control={form.control} name="salespersonName" label={t?.('salesperson') ?? 'Salesperson'} placeholder="Salesperson..." />
             <AttachmentField label={tc?.salesInvoicePhoto ?? 'Sales Invoice'} file={attachments?.salesInvoice} onChange={(file) => setAttachment('salesInvoice', file)} hint={tc?.salesInvoiceHint} tc={tc} />
             <AttachmentField label={tc?.gatepassPhoto ?? 'Gate Pass'} file={attachments?.gatepass} onChange={(file) => setAttachment('gatepass', file)} accept="image/*" hint={tc?.gatepassHint} tc={tc} />
@@ -399,7 +399,7 @@ export function DispatchFormContent({
             <StockFormField control={form.control} name="customerName" label={t('customer')} placeholder="Customer Name..." autoFocus />
             <StockFormField control={form.control} name="customerPhoneNumber" label={tc.customerPhone} placeholder="+91 9876543210" type="tel" />
             <StockFormField control={form.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." invoiceChars />
-            <StockDateField control={form.control} name="dispatchDate" label={tc.date} placeholder={tc.date} />
+            <StockDateField control={form.control} name="dispatchDate" label={tc.invoiceDate} placeholder={tc.invoiceDate} />
             <SuggestComboboxField
               control={form.control}
               name="salespersonName"
