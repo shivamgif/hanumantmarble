@@ -112,7 +112,7 @@ export function ShowroomPanel({ tabs, tc, pageSize, setPageSize, refreshKey }) {
           </div>
         </div>
 
-        <div className="overflow-x-auto overflow-y-auto max-h-[60vh] scrollbar-none">
+        <div className="overflow-x-auto overflow-y-auto max-h-[60vh]">
           <table className="w-full text-left whitespace-nowrap border-collapse">
             <thead className="sticky top-0 z-20 bg-muted/90 backdrop-blur-sm">
               <tr className="border-b border-border/60">
