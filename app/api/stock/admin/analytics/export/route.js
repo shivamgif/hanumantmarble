@@ -6,6 +6,8 @@ import {
   availableQtyExpr,
   netRevenueExpr,
   netUnitsExpr,
+  marginAggregates,
+  marginColumns,
   shippedFilter,
   unitCostCte,
 } from '@/lib/stock-analytics-sql.mjs';
@@ -90,19 +92,25 @@ export async function GET(request) {
         ? `LEFT JOIN stock_app_users spu ON spu.id = s.salesperson_user_id`
         : '';
       const rows = await sql(
-        `SELECT
-           ${salespersonLabelExpr} AS salesperson,
-           COUNT(*)::int AS shipments,
-           COALESCE(SUM(${netUnits}), 0)::numeric(14,2) AS quantity,
-           COALESCE(SUM(${netRevenue}), 0)::numeric(14,2) AS revenue
-         FROM stock_outbound_shipments s
-         LEFT JOIN stock_sales_people sp ON sp.id = s.salesperson_id
-         ${salespersonUserJoin}
-         LEFT JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = s.id
-         LEFT JOIN stock_items i ON i.id = osi.item_id
-         WHERE s.dispatch_date::date BETWEEN $1::date AND $2::date
-           AND ${outboundShipped}
-         GROUP BY salesperson
+        `WITH ${unitCostCte(schemaCaps)}, totals AS (
+           SELECT
+             ${salespersonLabelExpr} AS salesperson,
+             COUNT(*)::int AS shipments,
+             COALESCE(SUM(${netUnits}), 0)::numeric(14,2) AS quantity,
+             COALESCE(SUM(${netRevenue}), 0)::numeric(14,2) AS revenue,
+             ${marginAggregates(schemaCaps)}
+           FROM stock_outbound_shipments s
+           LEFT JOIN stock_sales_people sp ON sp.id = s.salesperson_id
+           ${salespersonUserJoin}
+           LEFT JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = s.id
+           LEFT JOIN stock_items i ON i.id = osi.item_id
+           LEFT JOIN unit_cost uc ON uc.item_id = i.id
+           WHERE s.dispatch_date::date BETWEEN $1::date AND $2::date
+             AND ${outboundShipped}
+           GROUP BY salesperson
+         )
+         SELECT salesperson, shipments, quantity, revenue, uncosted_revenue, cost, ${marginColumns()}
+         FROM totals
          ORDER BY revenue DESC`,
         [range.startDate, range.endDate]
       );
@@ -112,6 +120,10 @@ export async function GET(request) {
         { label: 'Shipments', accessor: 'shipments' },
         { label: 'Billable Units (sqft for stone)', accessor: 'quantity' },
         { label: 'Revenue (INR)', accessor: 'revenue' },
+        { label: 'Cost (INR)', accessor: 'cost' },
+        { label: 'Gross Profit (INR)', accessor: 'gross_profit' },
+        { label: 'Margin %', accessor: 'margin_pct' },
+        { label: 'Uncosted Revenue (INR)', accessor: 'uncosted_revenue' },
       ];
       return csvResponse(`leaderboard_${range.startDate}_to_${range.endDate}_${stamp}.csv`, rowsToCsv(headers, rows));
     }

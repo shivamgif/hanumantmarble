@@ -7,6 +7,8 @@ import {
   netRevenueExpr,
   monthProgress,
   netUnitsExpr,
+  marginAggregates,
+  marginColumns,
   shippedFilter,
   unitCostCte,
 } from '@/lib/stock-analytics-sql.mjs';
@@ -45,6 +47,9 @@ function normalizeRange(searchParams) {
     ...monthProgress(endDate),
   };
 }
+
+// Below this many dispatches an item's median rate is an anecdote, not a price.
+const MIN_PRICED_SALES = 5;
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const analyticsCache = new Map();
@@ -134,6 +139,7 @@ export async function GET(request) {
       activityFeedRows,
       abcItemRows,
       monthlyProfitRows,
+      priceDispersionRows,
     ] = await Promise.all([
       // Outbound activity per month: how many dispatches went out and what they
       // billed. Draft, cancelled and rejected shipments are excluded - a draft
@@ -256,18 +262,20 @@ export async function GET(request) {
       // rather than months in the range, which handed a perfect score to
       // anyone with a single active month.
       sql(
-        `WITH monthly AS (
+        `WITH ${unitCostCte(schemaCaps)}, monthly AS (
            SELECT
              date_trunc('month', s.dispatch_date)::date AS bucket,
              ${salespersonLabelExpr} AS salesperson,
              COUNT(DISTINCT s.id)::int AS shipment_count,
              COALESCE(SUM(${netUnits}), 0)::numeric(14,2) AS total_qty,
-             COALESCE(SUM(${netRevenue}), 0)::numeric(14,2) AS total_revenue
+             COALESCE(SUM(${netRevenue}), 0)::numeric(14,2) AS total_revenue,
+             ${marginAggregates(schemaCaps)}
            FROM stock_outbound_shipments s
            LEFT JOIN stock_sales_people sp ON sp.id = s.salesperson_id
            ${salespersonUserJoin}
            LEFT JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = s.id
            LEFT JOIN stock_items i ON i.id = osi.item_id
+           LEFT JOIN unit_cost uc ON uc.item_id = i.id
            WHERE s.dispatch_date::date BETWEEN $1::date AND $2::date
              AND ${outboundShipped}
            GROUP BY bucket, salesperson
@@ -277,6 +285,8 @@ export async function GET(request) {
              SUM(shipment_count)::int AS shipments,
              COALESCE(SUM(total_qty), 0)::numeric(14,2) AS quantity,
              COALESCE(SUM(total_revenue), 0)::numeric(14,2) AS revenue,
+             COALESCE(SUM(uncosted_revenue), 0)::numeric(14,2) AS uncosted_revenue,
+             COALESCE(SUM(cost), 0)::numeric(14,2) AS cost,
              COALESCE(MAX(total_revenue) FILTER (WHERE bucket = $3::date), 0)::numeric(14,2) AS current_period_revenue,
              COALESCE(MAX(total_revenue) FILTER (WHERE bucket = ($3::date - interval '1 month')::date), 0)::numeric(14,2) AS previous_period_revenue,
              COUNT(*) FILTER (WHERE total_revenue > 0)::int AS active_months
@@ -288,6 +298,9 @@ export async function GET(request) {
            shipments,
            quantity,
            revenue,
+           uncosted_revenue,
+           cost,
+           ${marginColumns()},
            current_period_revenue,
            previous_period_revenue,
            CASE
@@ -495,16 +508,18 @@ export async function GET(request) {
       // the range, not just the eight returned, so the shares do not sum to 100
       // and the widget renders the remainder as its own slice.
       sql(
-        `WITH totals AS (
+        `WITH ${unitCostCte(schemaCaps)}, totals AS (
            SELECT
              c.id,
              c.name,
              COALESCE(SUM(${netRevenue}), 0) AS revenue,
-             COUNT(DISTINCT o.id)::int AS shipments
+             COUNT(DISTINCT o.id)::int AS shipments,
+             ${marginAggregates(schemaCaps)}
            FROM stock_outbound_shipments o
            JOIN stock_customers c ON c.id = o.customer_id
            LEFT JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = o.id
            LEFT JOIN stock_items i ON i.id = osi.item_id
+           LEFT JOIN unit_cost uc ON uc.item_id = i.id
            WHERE o.dispatch_date::date BETWEEN $1::date AND $2::date
              AND ${outboundShippedO}
            GROUP BY c.id, c.name
@@ -513,6 +528,9 @@ export async function GET(request) {
            t.id,
            t.name,
            t.revenue::numeric(14,2) AS revenue,
+           t.uncosted_revenue,
+           t.cost,
+           ${marginColumns('t.revenue', 't.uncosted_revenue', 't.cost')},
            t.shipments,
            g.total::numeric(14,2) AS all_customer_revenue,
            CASE WHEN g.total > 0 THEN ROUND((t.revenue / g.total) * 100, 1)::numeric(6,1) ELSE 0 END AS share_pct
@@ -621,6 +639,70 @@ export async function GET(request) {
          ORDER BY p.bucket ASC`,
         [startDate, endDate]
       ),
+      // Price dispersion. The same item leaves the yard at a different rate on
+      // every dispatch, and the spread is money rather than noise: uplift is
+      // what the range would have billed had the below-median sales been
+      // charged the item's own median rate.
+      //
+      // The median is over lines, not units, because it stands in for "the rate
+      // this item normally goes out at", which is a decision made once per
+      // dispatch regardless of how many boxes it covered.
+      //
+      // ponytail: items with fewer than MIN_PRICED_SALES dispatches are dropped
+      // rather than modelled - a median over three sales is an anecdote, and
+      // acting on it would send someone to renegotiate noise.
+      sql(
+        `WITH sale_lines AS (
+           SELECT
+             osi.item_id,
+             i.sku,
+             i.name,
+             ${netUnits} AS units,
+             COALESCE(osi.rate_per_unit, 0) AS rate
+           FROM stock_outbound_shipments o
+           JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = o.id
+           JOIN stock_items i ON i.id = osi.item_id
+           WHERE o.dispatch_date::date BETWEEN $1::date AND $2::date
+             AND ${outboundShippedO}
+         ), typical AS (
+           SELECT
+             item_id,
+             COUNT(*)::int AS sale_count,
+             PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY rate)::numeric(12,2) AS median_rate,
+             MIN(rate)::numeric(12,2) AS min_rate,
+             MAX(rate)::numeric(12,2) AS max_rate
+           FROM sale_lines
+           WHERE units > 0 AND rate > 0
+           GROUP BY item_id
+           HAVING COUNT(*) >= $3::int
+         ), by_item AS (
+           SELECT
+             l.item_id,
+             MAX(l.sku) AS sku,
+             MAX(l.name) AS name,
+             t.sale_count,
+             t.median_rate,
+             t.min_rate,
+             t.max_rate,
+             SUM(l.units * l.rate)::numeric(14,2) AS revenue,
+             COUNT(*) FILTER (WHERE l.rate < t.median_rate)::int AS below_count,
+             SUM(CASE WHEN l.rate < t.median_rate THEN l.units * (t.median_rate - l.rate) ELSE 0 END)::numeric(14,2) AS uplift
+           FROM sale_lines l
+           JOIN typical t ON t.item_id = l.item_id
+           WHERE l.units > 0 AND l.rate > 0
+           GROUP BY l.item_id, t.sale_count, t.median_rate, t.min_rate, t.max_rate
+           HAVING SUM(CASE WHEN l.rate < t.median_rate THEN l.units * (t.median_rate - l.rate) ELSE 0 END) > 0
+         )
+         SELECT
+           by_item.*,
+           -- Uplift across every qualifying item, not just the twelve returned,
+           -- so the card's headline figure does not shrink as the table is cut.
+           SUM(uplift) OVER ()::numeric(14,2) AS all_item_uplift
+         FROM by_item
+         ORDER BY uplift DESC
+         LIMIT 12`,
+        [startDate, endDate, MIN_PRICED_SALES]
+      ),
     ]);
 
     const approvalOpsRow = approvalOps[0] || {};
@@ -678,6 +760,7 @@ export async function GET(request) {
       activityFeed: activityFeedRows,
       abcItems: abcItemRows,
       monthlyProfit: monthlyProfitRows,
+      priceDispersion: priceDispersionRows,
     };
 
     cacheSet(cacheKey, payload);

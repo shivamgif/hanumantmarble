@@ -27,6 +27,7 @@ import {
   Flame,
   Truck,
   Wallet,
+  Tags,
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
@@ -43,6 +44,7 @@ import {
   formatRelativeTime,
   formatMonthLabel,
   formatCompactNumber,
+  formatINR,
   formatCompactINR,
   formatHours,
 } from '../../components/dashboard-ui';
@@ -506,9 +508,16 @@ export function SalespersonSpotlight({ trend, ranking, goals, selected, onSelect
   );
 }
 
-function LeaderboardRow({ row, i, maxVal, onSelect, isSelected }) {
+function LeaderboardRow({ row, i, maxVal, onSelect, isSelected, blendedMargin }) {
   const growthRatio = row.growth_ratio != null ? Number(row.growth_ratio) : null;
+  const margin = row.margin_pct != null ? Number(row.margin_pct) : null;
+  // Red means this person sells at a worse margin than the business as a whole,
+  // which is the only comparison that says anything - a "good" margin is set by
+  // what the range actually achieved, not by a number picked here.
+  const marginLags = margin != null && blendedMargin != null && margin < blendedMargin;
   const name = row.salesperson || row.name;
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   // Row is a button only when the parent wired a handler, same as PendingQueueWidget.
   const Wrapper = onSelect ? 'button' : 'div';
   const interactiveProps = onSelect
@@ -526,6 +535,14 @@ function LeaderboardRow({ row, i, maxVal, onSelect, isSelected }) {
           <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{row.name || row.salesperson}</p>
           <div className="flex items-center gap-2 shrink-0">
             <p className="text-xs font-black font-sans text-slate-900 dark:text-white tabular-nums">{formatCompactINR(row.revenue)}</p>
+            {margin != null ? (
+              <span
+                className={`text-[10px] font-black tabular-nums ${marginLags ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}
+                title={`${formatCompactINR(row.gross_profit)} ${t('profit')}`}
+              >
+                {margin.toFixed(1)}% {t('margin')}
+              </span>
+            ) : null}
             {growthRatio != null ? (
               <span className={`text-[10px] font-black tabular-nums ${growthRatio >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                 {growthRatio >= 0 ? '+' : ''}{(growthRatio * 100).toFixed(0)}%
@@ -548,6 +565,11 @@ export function Leaderboard({ ranking, months, onSelect, selected }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   const maxRev = Math.max(...ranking.map(r => Number(r.revenue || 0)), 1);
+  // The whole range's margin, not the average of the per-person margins, so a
+  // small seller cannot drag the bar the big sellers are measured against.
+  const costedRevenue = ranking.reduce((sum, r) => sum + Number(r.revenue || 0) - Number(r.uncosted_revenue || 0), 0);
+  const totalProfit = ranking.reduce((sum, r) => sum + Number(r.gross_profit || 0), 0);
+  const blendedMargin = costedRevenue > 0 ? (totalProfit / costedRevenue) * 100 : null;
   return (
     <AnalyticsCard
       title={t('salesPerformance')}
@@ -561,6 +583,7 @@ export function Leaderboard({ ranking, months, onSelect, selected }) {
             row={row}
             i={i}
             maxVal={maxRev}
+            blendedMargin={blendedMargin}
             onSelect={onSelect}
             isSelected={selected != null && selected === (row.salesperson || row.name)}
           />
@@ -784,6 +807,11 @@ export function CustomerConcentrationWidget({ rows }) {
       </AnalyticsCard>
     );
   }
+  // Same blended-margin yardstick the leaderboard uses, measured over the
+  // customers shown rather than all of them - those are the rows being compared.
+  const costedRevenue = rows.reduce((sum, r) => sum + Number(r.revenue || 0) - Number(r.uncosted_revenue || 0), 0);
+  const totalProfit = rows.reduce((sum, r) => sum + Number(r.gross_profit || 0), 0);
+  const blendedMargin = costedRevenue > 0 ? (totalProfit / costedRevenue) * 100 : null;
   const allRevenue = Number(rows[0]?.all_customer_revenue || 0);
   const shownRevenue = rows.reduce((sum, row) => sum + Number(row.revenue || 0), 0);
   const otherRevenue = Math.max(0, allRevenue - shownRevenue);
@@ -811,11 +839,19 @@ export function CustomerConcentrationWidget({ rows }) {
         {rows.slice(0, 5).map((row, i) => {
           const share = Number(row.share_pct || 0);
           const isConcentrated = share >= CONCENTRATION_ALERT_PCT;
+          const margin = row.margin_pct != null ? Number(row.margin_pct) : null;
+          const marginLags = margin != null && blendedMargin != null && margin < blendedMargin;
           return (
             <div key={row.id} className="flex items-center gap-2 text-xs">
               <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: INDUSTRIAL_COLORS[i % INDUSTRIAL_COLORS.length] }} />
               <span className="font-bold text-slate-700 dark:text-slate-300 flex-1 truncate" title={row.name}>{row.name}</span>
               <span className="font-sans font-black text-slate-900 dark:text-white tabular-nums shrink-0">{formatCompactINR(row.revenue)}</span>
+              <span
+                className={`text-[10px] font-black tabular-nums shrink-0 w-14 text-right ${marginLags ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}
+                title={margin != null ? `${formatCompactINR(row.gross_profit)} ${t('profit')}` : undefined}
+              >
+                {margin != null ? `${margin.toFixed(1)}% ${t('margin')}` : '\u2014'}
+              </span>
               <span className={`text-[10px] font-black tabular-nums shrink-0 w-12 text-right ${isConcentrated ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}>
                 {share.toFixed(1)}%
               </span>
@@ -823,6 +859,122 @@ export function CustomerConcentrationWidget({ rows }) {
           );
         })}
       </div>
+    </AnalyticsCard>
+  );
+}
+
+// How far below its own typical rate a sale has to sit before the row is worth
+// arguing about. Under this the spread is rounding, freight adjustments and
+// odd-lot pricing rather than a discount anyone chose.
+const RATE_GAP_ALERT_PCT = 10;
+
+// Price Dispersion: the same item billed at a different rate on every dispatch.
+//
+// The table is sorted by uplift, not by spread, because a 30% spread on an item
+// that sold twice is worth less than a 5% spread on the item that carries the
+// month. Uplift is already the answer to "where do I start".
+export function PriceDispersionWidget({ rows }) {
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+
+  if (!rows || rows.length === 0) {
+    return (
+      <AnalyticsCard title={t('priceDispersion')} subtitle={t('priceDispersionSubtitle')}>
+        <EmptyState label={t('noData')} />
+      </AnalyticsCard>
+    );
+  }
+
+  // Every row carries the same all-item total from the query, so the headline
+  // counts the items the table had to cut as well as the twelve it shows.
+  const totalUplift = Number(rows[0]?.all_item_uplift ?? 0)
+    || rows.reduce((sum, r) => sum + Number(r.uplift || 0), 0);
+  const gapPct = (row) => {
+    const median = Number(row.median_rate || 0);
+    return median > 0 ? ((median - Number(row.min_rate || 0)) / median) * 100 : 0;
+  };
+
+  return (
+    <AnalyticsCard
+      title={t('priceDispersion')}
+      subtitle={t('priceDispersionSubtitle')}
+      topRight={
+        <div className="flex items-center gap-2">
+          <Tags className="w-3.5 h-3.5 text-amber-500" />
+          <span className="font-sans text-sm font-black text-amber-600 dark:text-amber-400 tabular-nums">
+            {formatCompactINR(totalUplift)}
+          </span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('uplift')}</span>
+        </div>
+      }
+    >
+      <div className="hidden md:block overflow-x-auto rounded-xl border border-border/60">
+        <table className="w-full text-left text-sm min-w-[640px]">
+          <thead>
+            <tr className="border-b border-border/60">
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('itemName')}</th>
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('typicalRate')}</th>
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('rateRange')}</th>
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('belowTypical')}</th>
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('uplift')}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/40">
+            {rows.map((row) => {
+              const wideGap = gapPct(row) >= RATE_GAP_ALERT_PCT;
+              return (
+                <tr key={row.item_id} className="group hover:bg-muted/50 transition-colors">
+                  <td className="px-5 py-4">
+                    <p className="font-bold text-slate-900 dark:text-slate-100 text-xs truncate max-w-[240px]" title={row.name}>{row.name}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5 truncate max-w-[240px]" title={row.sku}>{row.sku}</p>
+                  </td>
+                  <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-900 dark:text-white">{formatINR(row.median_rate)}</td>
+                  <td className={`px-5 py-4 text-right font-sans font-black text-xs ${wideGap ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500'}`}>
+                    {formatINR(row.min_rate)} – {formatINR(row.max_rate)}
+                  </td>
+                  <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-500 tabular-nums">
+                    {row.below_count} / {row.sale_count}
+                  </td>
+                  <td className="px-5 py-4 text-right font-sans font-black text-xs text-amber-600 dark:text-amber-400">{formatCompactINR(row.uplift)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="md:hidden space-y-4">
+        {rows.map((row) => {
+          const wideGap = gapPct(row) >= RATE_GAP_ALERT_PCT;
+          return (
+            <div key={`disp-mob-${row.item_id}`} className="p-5 rounded-2xl border border-border/60 bg-muted/20 space-y-4">
+              <div className="flex justify-between items-start gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-black text-slate-900 dark:text-white truncate">{row.name}</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5 truncate">{row.sku}</p>
+                </div>
+                <span className="font-sans text-sm font-black text-amber-600 dark:text-amber-400 shrink-0">{formatCompactINR(row.uplift)}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-4 pt-2 border-t border-border/60">
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('typicalRate')}</p>
+                  <p className="text-xs font-black text-slate-900 dark:text-white">{formatINR(row.median_rate)}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('rateRange')}</p>
+                  <p className={`text-xs font-black ${wideGap ? 'text-rose-600' : 'text-slate-500'}`}>{formatINR(row.min_rate)} – {formatINR(row.max_rate)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('belowTypical')}</p>
+                  <p className="text-xs font-black text-slate-500">{row.below_count} / {row.sale_count}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="mt-4 text-[10px] text-slate-500 leading-relaxed">{t('priceDispersionNote')}</p>
     </AnalyticsCard>
   );
 }

@@ -31,6 +31,7 @@ import {
   SalesPaceWidget,
   MyPerformanceHero,
   CustomerConcentrationWidget,
+  PriceDispersionWidget,
   ActivityFeedWidget,
   RiskInventoryTable,
 } from './components/widgets';
@@ -319,6 +320,7 @@ export default function AnalyticsDashboard() {
   const pendingQueue = adminAnalytics?.pendingQueue || [];
   const salespersonGoals = salespersonGoalsAll;
   const customerConcentration = adminAnalytics?.customerConcentration || [];
+  const priceDispersion = adminAnalytics?.priceDispersion || [];
   const activityFeed = adminAnalytics?.activityFeed || [];
   const abcItems = adminAnalytics?.abcItems || [];
 
@@ -430,6 +432,9 @@ export default function AnalyticsDashboard() {
           </div>
           <div className="lg:col-span-4 min-w-0">
             <CustomerConcentrationWidget rows={customerConcentration} />
+          </div>
+          <div className="lg:col-span-12 min-w-0">
+            <PriceDispersionWidget rows={priceDispersion} />
           </div>
         </div>
       )}
