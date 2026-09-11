@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
   ResponsiveContainer,
   PieChart,
@@ -28,6 +28,7 @@ import {
   Truck,
   Wallet,
   Tags,
+  ChevronDown,
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
@@ -868,6 +869,14 @@ export function CustomerConcentrationWidget({ rows }) {
 // odd-lot pricing rather than a discount anyone chose.
 const RATE_GAP_ALERT_PCT = 10;
 
+// The query hands back 'YYYY-MM-DD' as text for exactly this reason: parsing a
+// date here and formatting it back would shift it a day west of UTC.
+function formatTripDate(value) {
+  if (!value) return '-';
+  const [year, month, day] = String(value).slice(0, 10).split('-');
+  return day && month ? `${day}/${month}/${year.slice(2)}` : String(value);
+}
+
 // Price Dispersion: the same item billed at a different rate on every dispatch.
 //
 // The table is sorted by uplift, not by spread, because a 30% spread on an item
@@ -975,6 +984,220 @@ export function PriceDispersionWidget({ rows }) {
       </div>
 
       <p className="mt-4 text-[10px] text-slate-500 leading-relaxed">{t('priceDispersionNote')}</p>
+    </AnalyticsCard>
+  );
+}
+
+// The shipments behind one trip. Rendered under the table row and inside the
+// mobile card, so it lives on its own rather than being written twice.
+function TripShipments({ shipments, t }) {
+  if (!shipments || shipments.length === 0) return null;
+  return (
+    <div className="rounded-xl border border-border/60 bg-background/60 overflow-hidden">
+      <table className="w-full text-left text-xs">
+        <thead>
+          <tr className="border-b border-border/60">
+            <th className="px-4 py-2.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground">{t('shipmentNumber')}</th>
+            <th className="px-4 py-2.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground">{t('invoiceNumber')}</th>
+            <th className="px-4 py-2.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground">{t('supplierName')}</th>
+            <th className="px-4 py-2.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground text-right">{t('unitsReceived')}</th>
+            <th className="px-4 py-2.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground text-right">{t('goodsValue')}</th>
+            <th className="px-4 py-2.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground text-right">{t('freightLabel')}</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border/40">
+          {shipments.map((ship) => (
+            <tr key={ship.id}>
+              <td className="px-4 py-2.5 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{ship.shipment_number}</td>
+              <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">{ship.invoice_number || '\u2014'}</td>
+              <td className="px-4 py-2.5 text-slate-500 truncate max-w-[180px]" title={ship.supplier || ''}>{ship.supplier || '\u2014'}</td>
+              <td className="px-4 py-2.5 text-right font-sans font-black text-slate-500 tabular-nums">{formatCompactNumber(ship.units)}</td>
+              <td className="px-4 py-2.5 text-right font-sans font-black text-slate-500">{formatCompactINR(ship.goods)}</td>
+              <td className="px-4 py-2.5 text-right font-sans font-black text-rose-600 dark:text-rose-400">{formatINR(ship.freight)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Freight per truck trip.
+//
+// The books do not have a "trip" - they have inbound shipments, and one lorry
+// that arrives carrying four invoices is entered four times. Whoever keys the
+// second shipment keys the freight again, so the charge is counted as many
+// times as the load was split. Plate + driver + arrival date is the closest
+// thing the schema has to a trip identity.
+export function FreightTripsWidget({ trips, summary }) {
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+  // One row open at a time: the expanded block is a table of its own, and two
+  // of them stacked makes the page unreadable on a phone.
+  const [openTrip, setOpenTrip] = useState(null);
+  const tripKey = (trip) => `${trip.plate}-${trip.driver}-${trip.arrival_date}`;
+
+  const freightTotal = Number(summary?.freight_total || 0);
+  const goodsTotal = Number(summary?.goods_total || 0);
+  const freightShare = goodsTotal > 0 ? (freightTotal / goodsTotal) * 100 : null;
+  const repeatedTotal = Number(trips?.[0]?.all_repeated_amount || 0);
+
+  if (!trips || trips.length === 0) {
+    return (
+      <AnalyticsCard title={t('freightTrips')} subtitle={t('freightTripsSubtitle')}>
+        <EmptyState label={t('noData')} />
+      </AnalyticsCard>
+    );
+  }
+
+  return (
+    <AnalyticsCard
+      title={t('freightTrips')}
+      subtitle={t('freightTripsSubtitle')}
+      topRight={
+        <div className="flex items-center gap-2">
+          <Truck className="w-3.5 h-3.5 text-rose-500" />
+          <span className="font-sans text-sm font-black text-rose-600 dark:text-rose-400 tabular-nums">
+            {formatCompactINR(repeatedTotal)}
+          </span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('repeatedFreight')}</span>
+        </div>
+      }
+    >
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-5">
+        <div className="p-4 rounded-2xl border border-border/60 bg-muted/20">
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('freightBooked')}</p>
+          <p className="font-sans text-base font-black text-slate-900 dark:text-white">{formatCompactINR(freightTotal)}</p>
+        </div>
+        <div className="p-4 rounded-2xl border border-border/60 bg-muted/20">
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('ofGoodsValue')}</p>
+          <p className="font-sans text-base font-black text-amber-600 dark:text-amber-400">
+            {freightShare != null ? `${freightShare.toFixed(1)}%` : '\u2014'}
+          </p>
+        </div>
+        <div className="p-4 rounded-2xl border border-border/60 bg-muted/20">
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('repeatedFreight')}</p>
+          <p className="font-sans text-base font-black text-rose-600 dark:text-rose-400">{formatCompactINR(repeatedTotal)}</p>
+        </div>
+      </div>
+
+      <div className="hidden md:block overflow-x-auto rounded-xl border border-border/60">
+        <table className="w-full text-left text-sm min-w-[720px]">
+          <thead>
+            <tr className="border-b border-border/60">
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('licensePlate')}</th>
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('driverName')}</th>
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('arrivedOn')}</th>
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('shipmentsLabel')}</th>
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('freightEach')}</th>
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('freightBooked')}</th>
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('goodsValue')}</th>
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('repeatedFreight')}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/40">
+            {trips.map((trip) => {
+              const key = tripKey(trip);
+              const isOpen = openTrip === key;
+              return (
+              <Fragment key={key}>
+              <tr
+                className="group hover:bg-muted/50 transition-colors cursor-pointer"
+                onClick={() => setOpenTrip(isOpen ? null : key)}
+                aria-expanded={isOpen}
+              >
+                <td className="px-5 py-4 font-bold text-slate-900 dark:text-slate-100 text-xs whitespace-nowrap">
+                  <span className="inline-flex items-center gap-2">
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isOpen ? '' : '-rotate-90'}`}
+                      aria-label={t('expandTrip')}
+                    />
+                    {trip.plate}
+                  </span>
+                </td>
+                <td className="px-5 py-4 text-xs text-slate-500 truncate max-w-[140px]" title={trip.driver}>{trip.driver}</td>
+                <td className="px-5 py-4 text-xs text-slate-500 whitespace-nowrap">{formatTripDate(trip.arrival_date)}</td>
+                <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-900 dark:text-white tabular-nums">{trip.shipments}</td>
+                <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-500">{formatINR(trip.freight_each)}</td>
+                <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-900 dark:text-white">{formatCompactINR(trip.freight_booked)}</td>
+                <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-500">{formatCompactINR(trip.goods_value)}</td>
+                <td className="px-5 py-4 text-right">
+                  {trip.same_amount ? (
+                    <span className="font-sans font-black text-xs text-rose-600 dark:text-rose-400" title={t('sameAmountFlag')}>
+                      {formatCompactINR(trip.repeated_amount)}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('mixedAmountFlag')}</span>
+                  )}
+                </td>
+              </tr>
+              {isOpen ? (
+                <tr>
+                  <td colSpan={8} className="px-5 pb-5 pt-0 bg-muted/30">
+                    <TripShipments shipments={trip.shipments_detail} t={t} />
+                  </td>
+                </tr>
+              ) : null}
+              </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="md:hidden space-y-4">
+        {trips.map((trip) => {
+          const key = tripKey(trip);
+          const isOpen = openTrip === key;
+          return (
+          <div key={`trip-mob-${key}`} className="p-5 rounded-2xl border border-border/60 bg-muted/20 space-y-4">
+            <button
+              type="button"
+              className="flex w-full justify-between items-start gap-3 text-left focus-ring"
+              onClick={() => setOpenTrip(isOpen ? null : key)}
+              aria-expanded={isOpen}
+            >
+              <span className="min-w-0">
+                <span className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isOpen ? '' : '-rotate-90'}`}
+                    aria-label={t('expandTrip')}
+                  />
+                  {trip.plate}
+                </span>
+                <span className="block text-[10px] text-slate-500 mt-0.5 truncate">{trip.driver} · {formatTripDate(trip.arrival_date)}</span>
+              </span>
+              {trip.same_amount ? (
+                <span className="font-sans text-sm font-black text-rose-600 dark:text-rose-400 shrink-0">{formatCompactINR(trip.repeated_amount)}</span>
+              ) : (
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 shrink-0">{t('mixedAmountFlag')}</span>
+              )}
+            </button>
+            <div className="grid grid-cols-3 gap-4 pt-2 border-t border-border/60">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('shipmentsLabel')}</p>
+                <p className="text-xs font-black text-slate-900 dark:text-white">{trip.shipments}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('freightEach')}</p>
+                <p className="text-xs font-black text-slate-500">{formatINR(trip.freight_each)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('freightBooked')}</p>
+                <p className="text-xs font-black text-slate-900 dark:text-white">{formatCompactINR(trip.freight_booked)}</p>
+              </div>
+            </div>
+            {isOpen ? (
+              <div className="overflow-x-auto">
+                <TripShipments shipments={trip.shipments_detail} t={t} />
+              </div>
+            ) : null}
+          </div>
+          );
+        })}
+      </div>
+
+      <p className="mt-4 text-[10px] text-slate-500 leading-relaxed">{t('freightNote')}</p>
     </AnalyticsCard>
   );
 }

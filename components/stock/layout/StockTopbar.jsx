@@ -358,8 +358,8 @@ export default function StockTopbar({
         {/* Desktop bar */}
         <div className="hidden h-20 items-center justify-between gap-4 xl:gap-10 px-8 lg:flex">
           <div className="min-w-0 shrink-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500 mb-1 truncate">{t('erpWorkspace')}</p>
-            <p className="text-xs font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest truncate">{t('stockOpsApprovals')}</p>
+            <p className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-slate-100 mb-1 truncate">{t('erpWorkspace')}</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500 truncate">{t('stockOpsApprovals')}</p>
           </div>
 
           <div className="flex flex-1 items-center justify-end gap-4 lg:gap-6">

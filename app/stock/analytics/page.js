@@ -8,7 +8,7 @@ import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { getRoleFlags } from '@/lib/stock-roles.mjs';
 import { useRouter } from 'next/navigation';
-import { Boxes, ChevronRight, Download, LayoutGrid, TrendingUp, Users } from 'lucide-react';
+import { Boxes, ChevronRight, Download, LayoutGrid, TrendingUp, Truck, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CLASSES, paceAdjustedTarget } from '../components/dashboard-ui';
 import { PILL_BUTTON_CLASS, tabButtonClass } from '../lib/stock-utils';
@@ -32,6 +32,7 @@ import {
   MyPerformanceHero,
   CustomerConcentrationWidget,
   PriceDispersionWidget,
+  FreightTripsWidget,
   ActivityFeedWidget,
   RiskInventoryTable,
 } from './components/widgets';
@@ -41,6 +42,7 @@ const TABS = [
   { id: 'sales', labelKey: 'tabSales', icon: TrendingUp },
   { id: 'inventory', labelKey: 'tabInventory', icon: Boxes },
   { id: 'team', labelKey: 'tabTeam', icon: Users },
+  { id: 'freight', labelKey: 'tabFreight', icon: Truck },
 ];
 
 export default function AnalyticsDashboard() {
@@ -321,6 +323,8 @@ export default function AnalyticsDashboard() {
   const salespersonGoals = salespersonGoalsAll;
   const customerConcentration = adminAnalytics?.customerConcentration || [];
   const priceDispersion = adminAnalytics?.priceDispersion || [];
+  const freightTrips = adminAnalytics?.freight?.trips || [];
+  const freightSummary = adminAnalytics?.freight?.summary || {};
   const activityFeed = adminAnalytics?.activityFeed || [];
   const abcItems = adminAnalytics?.abcItems || [];
 
@@ -435,6 +439,14 @@ export default function AnalyticsDashboard() {
           </div>
           <div className="lg:col-span-12 min-w-0">
             <PriceDispersionWidget rows={priceDispersion} />
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'freight' && (
+        <div className="grid grid-cols-1 gap-6 items-start">
+          <div className="min-w-0">
+            <FreightTripsWidget trips={freightTrips} summary={freightSummary} />
           </div>
         </div>
       )}

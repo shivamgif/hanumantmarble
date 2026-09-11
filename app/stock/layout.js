@@ -34,7 +34,7 @@ function FullScreenSpinner({ label }) {
 
 const CLASSES = {
   shell: 'relative min-h-screen bg-slate-50/80 font-sans text-slate-900 dark:bg-[#0b0f1a] dark:text-slate-100',
-  sidebar: 'fixed inset-y-0 left-0 z-30 hidden h-screen w-60 bg-white lg:flex lg:flex-col dark:border-white/8 dark:bg-slate-950',
+  sidebar: 'fixed inset-y-0 left-0 z-30 hidden h-screen bg-white lg:flex lg:flex-col dark:border-white/8 dark:bg-slate-950 transition-[width] duration-200',
 };
 
 export default function StockLayout({ children }) {
@@ -46,6 +46,7 @@ export default function StockLayout({ children }) {
 
   const dashboardSearchRef = useRef(null);
   const [dashboardSearchValue, setDashboardSearchValue] = useState('');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const { accessLoading, hasResolvedAccessOnce, accessApproved, accessMessage, accessRole } = useStockAccess(user);
 
@@ -246,7 +247,9 @@ export default function StockLayout({ children }) {
       </div>
 
       <StockSidebar
-        classes={CLASSES}
+        classes={{ ...CLASSES, sidebar: `${CLASSES.sidebar} ${sidebarCollapsed ? 'w-[4.5rem]' : 'w-60'}` }}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
         t={t}
         language={language}
         toggleLanguage={toggleLanguage}
@@ -260,7 +263,7 @@ export default function StockLayout({ children }) {
         handleStockLogout={handleStockLogout}
       />
 
-      <div className="relative z-10 flex min-h-screen flex-col lg:pl-60">
+      <div className={`relative z-10 flex min-h-screen flex-col transition-[padding] duration-200 ${sidebarCollapsed ? 'lg:pl-[4.5rem]' : 'lg:pl-60'}`}>
         <StockTopbar
           t={t}
           language={language}

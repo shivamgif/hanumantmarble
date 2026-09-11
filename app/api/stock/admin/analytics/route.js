@@ -140,6 +140,8 @@ export async function GET(request) {
       abcItemRows,
       monthlyProfitRows,
       priceDispersionRows,
+      freightTripRows,
+      freightSummaryRow,
     ] = await Promise.all([
       // Outbound activity per month: how many dispatches went out and what they
       // billed. Draft, cancelled and rejected shipments are excluded - a draft
@@ -703,6 +705,98 @@ export async function GET(request) {
          LIMIT 12`,
         [startDate, endDate, MIN_PRICED_SALES]
       ),
+      // One truck's trip, reassembled. A load that arrives split across several
+      // inbound shipments is entered several times, and the freight is entered
+      // again with each of them, so the same lorry charge lands in the books
+      // two, four, six times over.
+      //
+      // A trip is one plate and one driver on one arrival date. same_amount
+      // says every shipment in the group carries an identical freight figure,
+      // which is what a copied charge looks like; repeated_amount is only
+      // reported for those, because when the figures differ there is no way to
+      // tell a double entry from two genuinely separate charges.
+      sql(
+        `WITH trip AS (
+           SELECT
+             COALESCE(NULLIF(TRIM(ins.truck_license_plate_snapshot), ''), '-') AS plate,
+             COALESCE(NULLIF(TRIM(ins.driver_name_snapshot), ''), '-') AS driver,
+             ins.arrival_date::date AS arrival_date,
+             ins.id,
+             ins.shipment_number,
+             ins.invoice_number,
+             sup.name AS supplier,
+             (COALESCE(ins.delivery_cost, 0) + COALESCE(ins.unloading_labour_cost, 0)) AS freight,
+             (SELECT COALESCE(SUM(isi.total_cost), 0)
+                FROM stock_inbound_shipment_items isi
+               WHERE isi.inbound_shipment_id = ins.id) AS goods,
+             (SELECT COALESCE(SUM(isi.received_whole_qty + isi.received_broken_qty), 0)
+                FROM stock_inbound_shipment_items isi
+               WHERE isi.inbound_shipment_id = ins.id) AS units
+           FROM stock_inbound_shipments ins
+           LEFT JOIN stock_suppliers sup ON sup.id = ins.supplier_id
+           WHERE ins.arrival_date::date BETWEEN $1::date AND $2::date
+             AND ins.status <> 'cancelled'
+             AND (COALESCE(ins.delivery_cost, 0) + COALESCE(ins.unloading_labour_cost, 0)) > 0
+         ), grouped AS (
+           SELECT
+             plate,
+             driver,
+             -- As text, not a date: the driver would hand back a JS Date at
+             -- local midnight, which serialises to the previous day for any
+             -- timezone behind UTC. The UI only ever prints this.
+             arrival_date::text AS arrival_date,
+             COUNT(*)::int AS shipments,
+             MAX(freight)::numeric(14,2) AS freight_each,
+             SUM(freight)::numeric(14,2) AS freight_booked,
+             SUM(goods)::numeric(14,2) AS goods_value,
+             SUM(units)::int AS units,
+             (COUNT(DISTINCT freight) = 1) AS same_amount,
+             (CASE WHEN COUNT(DISTINCT freight) = 1 THEN SUM(freight) - MAX(freight) END)::numeric(14,2) AS repeated_amount,
+             -- The shipments themselves, so expanding a row costs no round
+             -- trip. A trip is a handful of shipments, and the table is capped
+             -- at 15 rows, so this stays small.
+             JSONB_AGG(
+               JSONB_BUILD_OBJECT(
+                 'id', id,
+                 'shipment_number', shipment_number,
+                 'invoice_number', invoice_number,
+                 'supplier', supplier,
+                 'freight', freight,
+                 'goods', goods,
+                 'units', units
+               ) ORDER BY id
+             ) AS shipments_detail
+           FROM trip
+           GROUP BY plate, driver, arrival_date
+           HAVING COUNT(*) > 1
+         )
+         SELECT
+           grouped.*,
+           -- Across every repeated trip in the range, not only the rows shown.
+           COALESCE(SUM(repeated_amount) OVER (), 0)::numeric(14,2) AS all_repeated_amount,
+           COUNT(*) OVER ()::int AS all_trip_count
+         FROM grouped
+         ORDER BY repeated_amount DESC NULLS LAST, freight_booked DESC
+         LIMIT 15`,
+        [startDate, endDate]
+      ),
+      // Range-wide freight, so the tab can say what share of what the business
+      // bought was spent moving it. Separate from the trip query because that
+      // one only sees loads that arrived split.
+      sql(
+        `SELECT
+           COALESCE(SUM(COALESCE(ins.delivery_cost, 0) + COALESCE(ins.unloading_labour_cost, 0)), 0)::numeric(14,2) AS freight_total,
+           COALESCE(SUM(ins.delivery_cost), 0)::numeric(14,2) AS delivery_total,
+           COALESCE(SUM(ins.unloading_labour_cost), 0)::numeric(14,2) AS unloading_total,
+           COALESCE(SUM((SELECT COALESCE(SUM(isi.total_cost), 0)
+                           FROM stock_inbound_shipment_items isi
+                          WHERE isi.inbound_shipment_id = ins.id)), 0)::numeric(14,2) AS goods_total,
+           COUNT(*)::int AS shipment_count
+         FROM stock_inbound_shipments ins
+         WHERE ins.arrival_date::date BETWEEN $1::date AND $2::date
+           AND ins.status <> 'cancelled'`,
+        [startDate, endDate]
+      ),
     ]);
 
     const approvalOpsRow = approvalOps[0] || {};
@@ -761,6 +855,10 @@ export async function GET(request) {
       abcItems: abcItemRows,
       monthlyProfit: monthlyProfitRows,
       priceDispersion: priceDispersionRows,
+      freight: {
+        trips: freightTripRows,
+        summary: freightSummaryRow[0] || {},
+      },
     };
 
     cacheSet(cacheKey, payload);
