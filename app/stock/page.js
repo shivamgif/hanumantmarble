@@ -217,7 +217,9 @@ export default function StockDashboard() {
   const [arrivalSort, setArrivalSort] = useState({ key: 'datetime', direction: 'desc' });
   const [dispatchSort, setDispatchSort] = useState({ key: 'datetime', direction: 'desc' });
   const [stockSort, setStockSort] = useState({ key: 'sku', direction: 'asc' });
-  const [activeTableView, setActiveTableView] = useState('dispatches');
+  // Null until the user picks a tab, so the role-based default can win once the
+  // dashboard tells us who is looking.
+  const [pickedTableView, setActiveTableView] = useState(null);
   const [processedDeepLink, setProcessedDeepLink] = useState('');
   const [highlightedShipmentKey, setHighlightedShipmentKey] = useState(null);
   const [arrivalExpandedId, setArrivalExpandedId] = useState(null);
@@ -279,6 +281,7 @@ export default function StockDashboard() {
   const dispatchItemsFieldArray = useFieldArray({ control: dispatchForm.control, name: 'items' });
   const arrivalItems = useWatch({ control: arrivalForm.control, name: 'items' }) || [];
 
+  const activeTableView = pickedTableView ?? (accessRole === 'salesperson' ? 'items' : 'dispatches');
   const canCreateArrival = !getRoleFlags(accessRole).isReadOnly;
 
   const refreshDashboard = useCallback(async () => {
@@ -1070,6 +1073,8 @@ export default function StockDashboard() {
     { id: 'items', label: t('currentStock'), icon: Boxes },
     { id: 'showroom', label: tc.showroom ?? 'Showroom', icon: Store },
   ];
+  // Salespeople answer "is it in stock?" all day, so physical stock leads for them.
+  if (accessRole === 'salesperson') tableViewTabs.unshift(...tableViewTabs.splice(2, 1));
 
   // ponytail: one tab strip, rendered inside whichever panel's header is on screen.
   // On mobile only the active tab shows its label; the rest collapse to icon circles
@@ -1086,9 +1091,10 @@ export default function StockDashboard() {
             onClick={() => setActiveTableView(tab.id)}
             aria-label={tab.label}
             aria-current={isActive ? 'true' : undefined}
-            className={`flex h-10 items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap rounded-full text-xs font-black uppercase tracking-widest transition-all duration-300 ease-out sm:h-auto sm:w-auto sm:flex-none sm:rounded-lg sm:px-6 sm:py-2.5 ${isActive
-              ? 'flex-1 bg-white px-3 text-brand-primary shadow-sm dark:bg-slate-800'
-              : 'w-10 shrink-0 px-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+            className={`flex h-10 items-center justify-center overflow-hidden whitespace-nowrap rounded-full text-xs font-black uppercase tracking-widest transition-all duration-300 ease-out sm:h-auto sm:w-auto sm:flex-none sm:rounded-lg sm:px-6 sm:py-2.5 ${isActive
+              ? 'flex-1 gap-1.5 bg-white px-2 text-brand-primary shadow-sm dark:bg-slate-800'
+              // Mobile has no hover, so inactive icons get a chip look to read as tappable.
+              : 'w-10 shrink-0 bg-white/50 px-0 text-slate-600 ring-1 ring-inset ring-slate-300 active:scale-95 dark:bg-slate-800/60 dark:text-slate-300 dark:ring-white/10 sm:bg-transparent sm:text-slate-400 sm:ring-0 sm:active:scale-100 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
           >
             <Icon className="h-4 w-4 shrink-0 sm:hidden" />
