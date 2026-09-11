@@ -10,7 +10,7 @@ import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { arrivalFormSchema, bagArrivalFormSchema, dispatchFormSchema } from '@/lib/forms/stock-forms';
 import { useStockFormStore } from '@/lib/stores/stock-form-store';
-import { createArrivalItemRow, createBagArrivalItemRow, createDispatchItemRow, createInitialArrivalDraft, createInitialBagArrivalDraft, createInitialDispatchDraft, formatLineVolume, formatShipmentVolume, toNumber, trimText, parseSizeLabelDimensions } from '@/app/stock/lib/stock-utils';
+import { createArrivalItemRow, createBagArrivalItemRow, createDispatchItemRow, createInitialArrivalDraft, createInitialBagArrivalDraft, createInitialDispatchDraft, formatLineVolume, formatShipmentVolume, toNumber, trimText, parseSizeLabelDimensions, tabButtonClass } from '@/app/stock/lib/stock-utils';
 import { ArrivalFormContent, BagArrivalFormContent } from '@/app/stock/components/arrival-form';
 import { DispatchFormContent } from '@/app/stock/components/dispatch-form';
 import { BranchesPanel } from '@/app/stock/components/branches-panel';
@@ -1535,10 +1535,7 @@ export default function AdminDashboard() {
               onClick={() => setMobileSection(tab.id)}
               aria-label={tab.label}
               aria-current={isActive ? 'true' : undefined}
-              className={`flex h-10 items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap rounded-full text-xs font-black uppercase tracking-widest transition-all duration-300 ease-out sm:h-auto sm:w-auto sm:flex-none sm:rounded-lg sm:px-6 sm:py-2.5 ${isActive
-                ? 'flex-1 bg-white px-3 text-brand-primary shadow-sm dark:bg-slate-800'
-                : 'w-10 shrink-0 px-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                }`}
+              className={tabButtonClass(isActive)}
             >
               <Icon className="h-4 w-4 shrink-0 sm:hidden" />
               <span className={`overflow-hidden transition-all duration-300 ease-out sm:max-w-none sm:opacity-100 ${isActive ? 'max-w-[12rem] opacity-100' : 'max-w-0 opacity-0'}`}>

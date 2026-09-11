@@ -472,11 +472,13 @@ export default function StockTopbar({
                   href={item.href}
                   aria-label={item.label}
                   aria-current={active ? 'page' : undefined}
-                  className={`inline-flex min-h-[44px] items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap rounded-full text-[11px] font-black uppercase tracking-widest transition-all duration-300 ease-out active:scale-95 focus-ring ${
+                  className={`inline-flex min-h-[44px] items-center justify-center overflow-hidden whitespace-nowrap rounded-full border text-[11px] font-black uppercase tracking-widest transition-all duration-300 ease-out active:scale-95 focus-ring ${
                     active
-                      ? 'bg-brand-primary/10 text-brand-primary'
-                      : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                  } ${expanded ? 'flex-1 px-3.5' : 'w-11 shrink-0 px-0'}`}
+                      ? 'border-brand-primary/20 bg-brand-primary/10 text-brand-primary'
+                      // Touch has no hover, so the icon-only entries carry the same
+                      // card-and-border chrome as the action buttons above them.
+                      : 'border-border bg-card text-slate-500 shadow-card hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                  } ${expanded ? 'flex-1 gap-1.5 px-3.5' : 'w-11 shrink-0 px-0'}`}
                 >
                   <item.icon className="h-[18px] w-[18px] shrink-0" />
                   {/* The label the layout already resolved. Deriving it from

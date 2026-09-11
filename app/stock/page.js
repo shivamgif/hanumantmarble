@@ -37,6 +37,7 @@ import {
   fetchShipmentDocuments,
   invalidateShipmentCache,
   shipmentCache,
+  tabButtonClass,
 } from './lib/stock-utils';
 import { StockStatsGrid } from './components/stock-stats-grid';
 import { StockItemsTable } from './components/stock-items-table';
@@ -1091,11 +1092,7 @@ export default function StockDashboard() {
             onClick={() => setActiveTableView(tab.id)}
             aria-label={tab.label}
             aria-current={isActive ? 'true' : undefined}
-            className={`flex h-10 items-center justify-center overflow-hidden whitespace-nowrap rounded-full text-xs font-black uppercase tracking-widest transition-all duration-300 ease-out sm:h-auto sm:w-auto sm:flex-none sm:rounded-lg sm:px-6 sm:py-2.5 ${isActive
-              ? 'flex-1 gap-1.5 bg-white px-2 text-brand-primary shadow-sm dark:bg-slate-800'
-              // Mobile has no hover, so inactive icons get a chip look to read as tappable.
-              : 'w-10 shrink-0 bg-white/50 px-0 text-slate-600 ring-1 ring-inset ring-slate-300 active:scale-95 dark:bg-slate-800/60 dark:text-slate-300 dark:ring-white/10 sm:bg-transparent sm:text-slate-400 sm:ring-0 sm:active:scale-100 hover:text-slate-700 dark:hover:text-slate-200'
-              }`}
+            className={tabButtonClass(isActive)}
           >
             <Icon className="h-4 w-4 shrink-0 sm:hidden" />
             <span

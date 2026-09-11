@@ -13,7 +13,7 @@ import { AttendanceLeave } from '../components/attendance-leave';
 import { AttendancePayroll } from '../components/attendance-payroll';
 import { AttendanceSettings } from '../components/attendance-settings';
 import { AttendanceTeam } from '../components/attendance-team';
-import { CLASSES } from '../lib/stock-utils';
+import { CLASSES, tabButtonClass } from '../lib/stock-utils';
 
 // Plain pill buttons rather than a Tabs primitive — components/ui has no
 // tabs.jsx, and the dashboard uses this same pattern at app/stock/page.js.
@@ -93,10 +93,7 @@ function AttendancePageInner() {
                 onClick={() => setView(tab.id)}
                 aria-label={tab.label}
                 aria-current={isActive ? 'true' : undefined}
-                className={`flex h-10 items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap rounded-full text-xs font-black uppercase tracking-widest transition-all duration-300 ease-out sm:h-auto sm:w-auto sm:flex-none sm:rounded-lg sm:px-6 sm:py-2.5 ${isActive
-                  ? 'flex-1 bg-white px-3 text-brand-primary shadow-sm dark:bg-slate-800'
-                  : 'w-10 shrink-0 px-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                  }`}
+                className={tabButtonClass(isActive)}
               >
                 <Icon className="h-4 w-4 shrink-0 sm:hidden" />
                 <span className={`overflow-hidden transition-all duration-300 ease-out sm:max-w-none sm:opacity-100 ${isActive ? 'max-w-[12rem] opacity-100' : 'max-w-0 opacity-0'}`}>

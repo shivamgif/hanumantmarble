@@ -483,6 +483,13 @@ const PILL_BASE = 'flex min-h-[38px] sm:min-h-[44px] shrink-0 items-center gap-1
 export const PILL_BUTTON_CLASS = `${PILL_BASE} border border-slate-200/60 bg-white text-slate-700 shadow-sm hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800`;
 export const PILL_PRIMARY_BUTTON_CLASS = `${PILL_BASE} bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90`;
 
+// Mobile tab strips (dashboard, analytics, admin, attendance). Below sm only the
+// active tab keeps its label; the rest collapse to icon chips. Mobile has no
+// hover, so those chips carry a ring and a press scale to read as tappable.
+export const tabButtonClass = (isActive) => `flex h-10 items-center justify-center overflow-hidden whitespace-nowrap rounded-full text-xs font-black uppercase tracking-widest transition-all duration-300 ease-out sm:h-auto sm:w-auto sm:flex-none sm:rounded-lg sm:px-6 sm:py-2.5 ${isActive
+  ? 'flex-1 gap-1.5 bg-white px-2 text-brand-primary shadow-sm dark:bg-slate-800'
+  : 'w-10 shrink-0 bg-white/50 px-0 text-slate-600 ring-1 ring-inset ring-slate-300 active:scale-95 hover:text-slate-700 dark:bg-slate-800/60 dark:text-slate-300 dark:ring-white/10 dark:hover:text-slate-200 sm:bg-transparent sm:text-slate-400 sm:ring-0 sm:active:scale-100'}`;
+
 export const CLASSES = {
   contentWrap: 'mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6',
   topCard: 'glass-panel rounded-2xl p-4 sm:p-6 lg:p-8',
