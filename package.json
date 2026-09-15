@@ -26,6 +26,7 @@
     "db:migrate-attendance-selfie": "node --env-file-if-exists=.env.local scripts/migrate-attendance-selfie.mjs",
     "db:migrate-showroom-per-location": "node --env-file-if-exists=.env.local scripts/migrate-showroom-per-location.mjs",
     "db:check-showroom-reconcile": "node --env-file-if-exists=.env.local scripts/check-showroom-reconcile.mjs",
+    "db:migrate-inbound-trips": "node --env-file-if-exists=.env.local scripts/migrate-inbound-trips.mjs",
     "check:analytics-sql": "node scripts/check-analytics-sql.mjs"
   },
   "dependencies": {

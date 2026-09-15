@@ -988,6 +988,15 @@ export function PriceDispersionWidget({ rows }) {
   );
 }
 
+// What a truck-day row says about its freight. One trip means its invoices
+// share a single charge, which is the healthy case. Several trips with the same
+// figure is the charge keyed twice. Several with different figures might be
+// two real deliveries, so nothing is claimed.
+function tripFreightStatus(trip) {
+  if (Number(trip.trip_count || 1) <= 1) return 'shared';
+  return trip.same_amount ? 'repeated' : 'mixed';
+}
+
 // The shipments behind one trip. Rendered under the table row and inside the
 // mobile card, so it lives on its own rather than being written twice.
 function TripShipments({ shipments, t }) {
@@ -1013,7 +1022,9 @@ function TripShipments({ shipments, t }) {
               <td className="px-4 py-2.5 text-slate-500 truncate max-w-[180px]" title={ship.supplier || ''}>{ship.supplier || '\u2014'}</td>
               <td className="px-4 py-2.5 text-right font-sans font-black text-slate-500 tabular-nums">{formatCompactNumber(ship.units)}</td>
               <td className="px-4 py-2.5 text-right font-sans font-black text-slate-500">{formatCompactINR(ship.goods)}</td>
-              <td className="px-4 py-2.5 text-right font-sans font-black text-rose-600 dark:text-rose-400">{formatINR(ship.freight)}</td>
+              <td className="px-4 py-2.5 text-right font-sans font-black text-slate-900 dark:text-white">
+                {ship.freight != null ? formatINR(ship.freight) : <span className="text-slate-400">{'\u2014'}</span>}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -1117,17 +1128,24 @@ export function FreightTripsWidget({ trips, summary }) {
                 </td>
                 <td className="px-5 py-4 text-xs text-slate-500 truncate max-w-[140px]" title={trip.driver}>{trip.driver}</td>
                 <td className="px-5 py-4 text-xs text-slate-500 whitespace-nowrap">{formatTripDate(trip.arrival_date)}</td>
-                <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-900 dark:text-white tabular-nums">{trip.shipments}</td>
+                <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-900 dark:text-white tabular-nums">
+                  {trip.shipments}
+                  {Number(trip.trip_count) > 1 ? (
+                    <span className="block text-[10px] font-bold text-slate-400">{trip.trip_count} {t('tripsLabel')}</span>
+                  ) : null}
+                </td>
                 <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-500">{formatINR(trip.freight_each)}</td>
                 <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-900 dark:text-white">{formatCompactINR(trip.freight_booked)}</td>
                 <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-500">{formatCompactINR(trip.goods_value)}</td>
                 <td className="px-5 py-4 text-right">
-                  {trip.same_amount ? (
+                  {tripFreightStatus(trip) === 'repeated' ? (
                     <span className="font-sans font-black text-xs text-rose-600 dark:text-rose-400" title={t('sameAmountFlag')}>
                       {formatCompactINR(trip.repeated_amount)}
                     </span>
                   ) : (
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('mixedAmountFlag')}</span>
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${tripFreightStatus(trip) === 'shared' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                      {t(tripFreightStatus(trip) === 'shared' ? 'sharedTripFlag' : 'mixedAmountFlag')}
+                    </span>
                   )}
                 </td>
               </tr>
@@ -1167,16 +1185,20 @@ export function FreightTripsWidget({ trips, summary }) {
                 </span>
                 <span className="block text-[10px] text-slate-500 mt-0.5 truncate">{trip.driver} · {formatTripDate(trip.arrival_date)}</span>
               </span>
-              {trip.same_amount ? (
+              {tripFreightStatus(trip) === 'repeated' ? (
                 <span className="font-sans text-sm font-black text-rose-600 dark:text-rose-400 shrink-0">{formatCompactINR(trip.repeated_amount)}</span>
               ) : (
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 shrink-0">{t('mixedAmountFlag')}</span>
+                <span className={`text-[10px] font-black uppercase tracking-widest shrink-0 ${tripFreightStatus(trip) === 'shared' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                  {t(tripFreightStatus(trip) === 'shared' ? 'sharedTripFlag' : 'mixedAmountFlag')}
+                </span>
               )}
             </button>
             <div className="grid grid-cols-3 gap-4 pt-2 border-t border-border/60">
               <div>
                 <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('shipmentsLabel')}</p>
-                <p className="text-xs font-black text-slate-900 dark:text-white">{trip.shipments}</p>
+                <p className="text-xs font-black text-slate-900 dark:text-white">
+                  {trip.shipments}{Number(trip.trip_count) > 1 ? ` · ${trip.trip_count} ${t('tripsLabel')}` : ''}
+                </p>
               </div>
               <div className="text-center">
                 <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('freightEach')}</p>

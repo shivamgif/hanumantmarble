@@ -206,7 +206,7 @@ export default function AnalyticsDashboard() {
     const bestMonthValue = Math.max(...monthlyTrend.map((r) => r.totalValue), 0);
 
     return (
-      <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
+      <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-clip">
         <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
           <div className="space-y-2">
             <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
@@ -329,7 +329,7 @@ export default function AnalyticsDashboard() {
   const abcItems = adminAnalytics?.abcItems || [];
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
+    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-clip">
       <header>
         <div className="space-y-2">
           <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
@@ -351,7 +351,9 @@ export default function AnalyticsDashboard() {
         onNavigate={jumpTo}
       />
 
-      <div className="sticky top-0 z-20 -mx-4 flex flex-col gap-2 bg-background/80 px-4 py-2 backdrop-blur-md sm:mx-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-0">
+      {/* ponytail: top offsets mirror StockTopbar's height (mobile 134px, lg 81px);
+          z-10 keeps this bar under the topbar's z-20. Update both if the topbar changes. */}
+      <div className="sticky top-[134px] z-10 -mx-4 flex lg:top-[81px] flex-col gap-2 bg-background/80 px-4 py-2 backdrop-blur-md sm:mx-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-0">
         {/* ponytail: below sm only the active tab shows its label, the rest collapse
             to icon circles, so four tabs fit without a horizontal scroll */}
         <div className="flex w-full min-w-0 items-center gap-1 overflow-hidden rounded-xl border border-border/60 bg-muted p-1 scrollbar-none sm:w-fit sm:gap-0 sm:overflow-x-auto">

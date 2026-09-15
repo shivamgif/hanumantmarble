@@ -1,6 +1,7 @@
 'use client';
 
-import { memo, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
+import { useWatch } from 'react-hook-form';
 import { Boxes, FileText, Plus, ReceiptText, Sparkles, Truck, ChevronRight, X, Package } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -17,13 +18,16 @@ import {
   SuggestComboboxField,
 } from './stock-form-fields';
 import { FORM_CARD_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS, parseSizeLabelSqm, round3, toNumber } from '../lib/stock-utils';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { getTranslation } from '@/lib/translations';
 
 // Transporter, truck and driver, plus the escape hatch for the rare delivery
 // that shows up with no transport paperwork at all. Shared by the tile form and
 // the flat-rate (bag/stone) form so all three enforce the same rule — see
 // refineTransporter in lib/forms/stock-forms.js, which requires a note instead.
 function TransporterFields({ form, suggestions, t, tc }) {
-  const unknown = form.watch('transporterUnknown');
+  // useWatch, not form.watch: see TripPicker.
+  const unknown = useWatch({ control: form.control, name: 'transporterUnknown' });
 
   return (
     <>
@@ -87,6 +91,194 @@ function TransporterFields({ form, suggestions, t, tc }) {
         )}
       />
     </>
+  );
+}
+
+// Freight weight, stored in kg, typed in kg or tonnes. Shared by the tile and
+// the bag/stone forms. The toggle sits beside the input at every width: stacked
+// under it on a phone it stretched to a full-width bar with its buttons stuck
+// to one end.
+function FreightWeightField({ form, label }) {
+  const [unit, setUnit] = useState('kg');
+  return (
+    <FormField
+      control={form.control}
+      name="freightWeightKg"
+      render={({ field }) => {
+        const displayValue = field.value === '' || field.value == null
+          ? ''
+          : unit === 't'
+            ? String(round3(toNumber(field.value) / 1000))
+            : field.value;
+        return (
+          <FormItem>
+            <FormLabel className={FORM_LABEL_CLASS}>{label ?? 'Freight Weight'}</FormLabel>
+            <div className="flex items-center gap-2">
+              <FormControl>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  placeholder="0"
+                  inputMode="decimal"
+                  className={`${FORM_INPUT_CLASS} min-w-0 flex-1`}
+                  value={displayValue}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === '') { field.onChange(''); return; }
+                    const num = parseFloat(raw);
+                    if (isNaN(num)) return;
+                    field.onChange(unit === 't' ? String(num * 1000) : raw);
+                  }}
+                  onBlur={field.onBlur}
+                />
+              </FormControl>
+              <div role="group" aria-label="Weight unit" className="inline-flex shrink-0 items-center rounded-full bg-slate-100 p-1 dark:bg-slate-800">
+                {['kg', 't'].map((u) => (
+                  <button
+                    key={u}
+                    type="button"
+                    onClick={() => setUnit(u)}
+                    aria-pressed={unit === u}
+                    className={`h-8 min-w-10 rounded-full px-3 text-[11px] font-black uppercase tracking-wider transition-colors ${unit === u ? 'bg-brand-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                  >
+                    {u}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <FormMessage className="text-xs" />
+          </FormItem>
+        );
+      }}
+    />
+  );
+}
+
+const inr = (value) => `\u20b9${Math.round(Number(value || 0)).toLocaleString('en-IN')}`;
+
+// Freight is charged once per lorry, and a lorry often brings several invoices.
+// When the truck typed here already has a trip within a few days of this
+// invoice, offer to add the invoice to it: the freight fields then show that
+// trip's charge, shared by every invoice on it, instead of inviting a second
+// copy of the same charge. Choosing "separate trip" keeps the old behaviour.
+function TripPicker({ form }) {
+  const { language } = useLanguage();
+  const tt = (key) => getTranslation(`stock.dashboard.${key}`, language);
+  // useWatch subscribes this component itself. form.watch only re-renders the
+  // component that called useForm, and only for names registered since the
+  // last form.reset() - which clears that list. The purchase sheet resets the
+  // form every time it opens or closes, so after that, typing a plate never
+  // reached this component and the trip was never looked up.
+  const [plate, date, watchedTripId] = useWatch({
+    control: form.control,
+    name: ['truckLicensePlate', 'invoiceDate', 'tripId'],
+  });
+  const tripId = watchedTripId || '';
+  const [trips, setTrips] = useState([]);
+
+  // On edit, the purchase's own trip comes back too. Alone on it, that is not
+  // "another delivery by this truck", so it is not offered.
+  const ownTripId = String(form.formState.defaultValues?.tripId || '');
+
+  useEffect(() => {
+    const plateKey = String(plate || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (plateKey.length < 4 || !/^\d{4}-\d{2}-\d{2}$/.test(date || '')) {
+      setTrips([]);
+      return undefined;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      fetch(`/api/stock/inbound-trips?plate=${encodeURIComponent(plateKey)}&date=${date}`, { signal: controller.signal })
+        .then((res) => (res.ok ? res.json() : { trips: null }))
+        .then((json) => {
+          if (!json.trips) return; // a failed lookup changes nothing
+          setTrips(json.trips);
+          // A trip picked for a different truck or date must not ride along.
+          const current = form.getValues('tripId');
+          if (current && !json.trips.some((trip) => String(trip.id) === String(current))) {
+            form.setValue('tripId', '', { shouldDirty: true });
+          }
+        })
+        .catch(() => {});
+    }, 400);
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [plate, date, form]);
+
+  const offered = trips.filter((trip) => !(String(trip.id) === ownTripId && (trip.shipments?.length || 0) <= 1));
+  if (offered.length === 0) return null;
+
+  const join = (trip) => {
+    form.setValue('tripId', String(trip.id), { shouldDirty: true });
+    // Same lorry, same route. Overwritten rather than filled-if-empty: an origin
+    // typed before picking the trip is the one that disagrees with the truck.
+    if (trip.origin_city) {
+      form.setValue('originCity', trip.origin_city, { shouldDirty: true, shouldValidate: true });
+    }
+    if (trip.destination_warehouse_name) {
+      form.setValue('destinationWarehouseName', trip.destination_warehouse_name, { shouldDirty: true, shouldValidate: true });
+    }
+    // Stored in kg whichever unit the toggle shows; the field converts for display.
+    if (Number(trip.freight_weight_kg) > 0) {
+      form.setValue('freightWeightKg', String(Number(trip.freight_weight_kg)), { shouldDirty: true, shouldValidate: true });
+    }
+    form.setValue('transportCost', String(Number(trip.delivery_cost || 0)), { shouldDirty: true, shouldValidate: true });
+    form.setValue('laborCost', String(Number(trip.unloading_labour_cost || 0)), { shouldDirty: true, shouldValidate: true });
+  };
+  const separate = () => {
+    const joined = offered.find((trip) => String(trip.id) === String(tripId));
+    form.setValue('tripId', '', { shouldDirty: true });
+    // Leaving a trip with its charge still in the boxes is how the charge got
+    // keyed twice in the first place, so it goes with the trip.
+    if (joined
+      && Number(form.getValues('transportCost') || 0) === Number(joined.delivery_cost || 0)
+      && Number(form.getValues('laborCost') || 0) === Number(joined.unloading_labour_cost || 0)) {
+      form.setValue('transportCost', '', { shouldDirty: true, shouldValidate: true });
+      form.setValue('laborCost', '', { shouldDirty: true, shouldValidate: true });
+    }
+  };
+  const selected = offered.find((trip) => String(trip.id) === String(tripId));
+
+  return (
+    <div className="sm:col-span-2 lg:col-span-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+      <p className="text-xs font-bold text-foreground">{tt('tripFoundTitle')}</p>
+      <p className="text-[11px] text-muted-foreground">{tt('tripFoundHint')}</p>
+      <div className="space-y-2" role="radiogroup" aria-label={tt('tripFoundTitle')}>
+        {offered.map((trip) => {
+          const invoices = (trip.shipments || []).map((ship) => ship.invoice_number || ship.shipment_number).filter(Boolean);
+          const checked = String(trip.id) === String(tripId);
+          return (
+            <label
+              key={trip.id}
+              className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${checked ? 'border-brand-primary bg-brand-primary/5' : 'border-border hover:bg-muted/40'}`}
+            >
+              <input type="radio" name="trip-choice" className="mt-1 accent-brand-primary" checked={checked} onChange={() => join(trip)} />
+              <span className="min-w-0 space-y-1">
+                <span className="block text-xs font-black text-foreground">
+                  {String(trip.arrival_date).split('-').reverse().join('/')} · {trip.truck_license_plate}{trip.driver_name ? ` · ${trip.driver_name}` : ''}
+                </span>
+                <span className="block text-[11px] text-muted-foreground">
+                  {tt('transportCost')} {inr(trip.delivery_cost)} · {tt('laborCost')} {inr(trip.unloading_labour_cost)}
+                </span>
+                <span className="block text-[11px] text-muted-foreground truncate" title={invoices.join(', ')}>
+                  {invoices.length} {tt('tripInvoices')}: {invoices.join(', ')}
+                </span>
+              </span>
+            </label>
+          );
+        })}
+        <label className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${!tripId ? 'border-brand-primary bg-brand-primary/5' : 'border-border hover:bg-muted/40'}`}>
+          <input type="radio" name="trip-choice" className="accent-brand-primary" checked={!tripId} onChange={separate} />
+          <span className="text-xs font-bold text-foreground">{tt('tripSeparate')}</span>
+        </label>
+      </div>
+      {selected ? (
+        <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">{tt('tripSharedFreightNote')}</p>
+      ) : null}
+    </div>
   );
 }
 
@@ -413,7 +605,6 @@ export function FlatRateArrivalFormContent({
       .map((i) => i.brand_name)
       .filter((b) => { if (seen.has(b)) return false; seen.add(b); return true; });
   }, [activeItems, v.unitOfMeasure]);
-  const [weightUnit, setWeightUnit] = useState('kg');
 
   return (
     <Form {...form}>
@@ -442,52 +633,12 @@ export function FlatRateArrivalFormContent({
           <FormSectionTitle category="Mobility Details" icon={Truck} title={tc?.transportInvoice ?? 'Transport & Vehicle'} tc={tc} />
           <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             <TransporterFields form={form} suggestions={suggestions} t={t} tc={tc} />
+            <TripPicker form={form} />
             <SuggestComboboxField control={form.control} name="originCity" label={tc?.originCity ?? 'Origin City'} placeholder="Source city" options={suggestions?.originCity} />
             <SuggestComboboxField control={form.control} name="destinationWarehouseName" label={tc?.destinationWarehouse ?? 'Destination Warehouse'} placeholder="Warehouse name" options={suggestions?.destinationWarehouseName} />
             <StockMoneyField control={form.control} name="transportCost" label={t?.('transportCost') ?? 'Transport Cost'} hint={tc?.amountInInr} />
             <StockMoneyField control={form.control} name="laborCost" label={t?.('laborCost') ?? 'Labour Cost'} hint={tc?.amountInInr} />
-            <FormField
-              control={form.control}
-              name="freightWeightKg"
-              render={({ field }) => {
-                const displayValue = field.value === '' || field.value == null
-                  ? ''
-                  : weightUnit === 't'
-                    ? String(round3(toNumber(field.value) / 1000))
-                    : field.value;
-                return (
-                  <FormItem>
-                    <FormLabel className={FORM_LABEL_CLASS}>{tc?.weightKg ?? 'Freight Weight'}</FormLabel>
-                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-1.5">
-                        <FormControl>
-                          <Input
-                            type="number" min="0" step="0.001" placeholder="0"
-                            className={FORM_INPUT_CLASS}
-                            value={displayValue}
-                            onChange={(e) => {
-                              const raw = e.target.value;
-                              if (raw === '') { field.onChange(''); return; }
-                              const num = parseFloat(raw);
-                              if (isNaN(num)) return;
-                              field.onChange(weightUnit === 't' ? String(num * 1000) : raw);
-                            }}
-                            onBlur={field.onBlur}
-                          />
-                        </FormControl>
-                        <div className="inline-flex items-center gap-2 rounded-full bg-brand-primary/10 p-2 text-[15px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95">
-                          {['kg', 't'].map((u) => (
-                            <button key={u} type="button" onClick={() => setWeightUnit(u)}
-                              className={`px-3 rounded-full transition-colors uppercase tracking-wider ${weightUnit === u ? 'bg-brand-primary text-white' : 'text-slate-400 hover:bg-slate-500/10'}`}>
-                              {u}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    <FormMessage className="text-xs" />
-                  </FormItem>
-                );
-              }}
-            />
+            <FreightWeightField form={form} label={tc?.weightKg ?? 'Freight Weight'} />
           </div>
         </div>
         <div className={FORM_CARD_CLASS}>
@@ -590,7 +741,6 @@ export function ArrivalFormContent({
 }) {
   const percentFieldClass = 'w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20';
   const itemNames = useMemo(() => (activeItems || []).map((it) => it.name).filter(Boolean), [activeItems]);
-  const [weightUnit, setWeightUnit] = useState('kg');
 
   return (
     <Form {...form}>
@@ -619,60 +769,12 @@ export function ArrivalFormContent({
           <FormSectionTitle category="Mobility Details" icon={Truck} title={tc.transportInvoice} tc={tc} />
           <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             <TransporterFields form={form} suggestions={suggestions} t={t} tc={tc} />
+            <TripPicker form={form} />
             <SuggestComboboxField control={form.control} name="originCity" label={tc.originCity} placeholder="Source city" options={suggestions.originCity} />
             <SuggestComboboxField control={form.control} name="destinationWarehouseName" label={tc.destinationWarehouse} placeholder="Warehouse name" options={suggestions.destinationWarehouseName} />
             <StockMoneyField control={form.control} name="transportCost" label={t('transportCost')} hint={tc.amountInInr} />
             <StockMoneyField control={form.control} name="laborCost" label={t('laborCost')} hint={tc.amountInInr} />
-            <FormField
-              control={form.control}
-              name="freightWeightKg"
-              render={({ field }) => {
-                const displayValue = field.value === '' || field.value == null
-                  ? ''
-                  : weightUnit === 't'
-                    ? String(round3(toNumber(field.value) / 1000))
-                    : field.value;
-                return (
-                  <FormItem>
-                    <FormLabel className={FORM_LABEL_CLASS}>{tc.weightKg}</FormLabel>
-                    
-                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-1.5">
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.001"
-                            placeholder="0"
-                            className={FORM_INPUT_CLASS}
-                            value={displayValue}
-                            onChange={(e) => {
-                              const raw = e.target.value;
-                              if (raw === '') { field.onChange(''); return; }
-                              const num = parseFloat(raw);
-                              if (isNaN(num)) return;
-                              field.onChange(weightUnit === 't' ? String(num * 1000) : raw);
-                            }}
-                            onBlur={field.onBlur}
-                          />
-                        </FormControl>
-                        <div className="inline-flex items-center gap-2 rounded-full bg-brand-primary/10 p-2 text-[15px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95">
-                          {['kg', 't'].map((u) => (
-                            <button
-                              key={u}
-                              type="button"
-                              onClick={() => setWeightUnit(u)}
-                              className={`px-3 rounded-full transition-colors uppercase tracking-wider ${weightUnit === u ? 'bg-brand-primary text-white' : ' text-slate-400 hover:bg-slate-500/10'}`}
-                            >
-                              {u}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    <FormMessage className="text-xs" />
-                  </FormItem>
-                );
-              }}
-            />
+            <FreightWeightField form={form} label={tc.weightKg} />
           </div>
         </div>
         <div className={FORM_CARD_CLASS}>

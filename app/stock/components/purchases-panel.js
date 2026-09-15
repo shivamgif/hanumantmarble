@@ -118,8 +118,10 @@ export function PurchasesPanel({
           paymentMode: s.payment_mode || '',
           transporterName: s.transporter_name || '',
           transporterUnknown: !(s.transporter_name || s.truck_license_plate || s.driver_name),
-          transportCost: s.delivery_cost ?? '',
-          laborCost: s.unloading_labour_cost ?? '',
+          // Freight lives on the truck trip; the shipment's own columns are 0.
+          tripId: s.trip_id ? String(s.trip_id) : '',
+          transportCost: s.trip_delivery_cost ?? s.delivery_cost ?? '',
+          laborCost: s.trip_unloading_labour_cost ?? s.unloading_labour_cost ?? '',
           handlingCostPercent: s.handling_cost_percent != null ? String(s.handling_cost_percent) : '1.0',
           fuelCostPercent: s.fuel_cost_percent != null ? String(s.fuel_cost_percent) : '5.0',
           gstPercent: s.gst_percent != null ? String(s.gst_percent) : '18.0',
@@ -422,32 +424,35 @@ export function PurchasesPanel({
                   <SheetDescription className="text-xs">{tc.purchaseSheetDesc}</SheetDescription>
                 </div>
               </div>
-              <div className="flex items-center justify-evenly gap-1 rounded-full bg-slate-100 dark:bg-slate-800 p-1">
-                  <button
-                    type="button"
-                    onClick={() => setPurchaseType('tile')}
-                    className={`inline-flex items-center gap-1.5 px-10 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors ${purchaseType === 'tile' ? 'bg-brand-primary text-white shadow' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                  >
-                    <Boxes className="h-3 w-3" />
-                    Tiles
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setPurchaseType('bag'); bagArrivalForm.reset(createInitialBagArrivalDraft()); }}
-                    className={`inline-flex items-center gap-1.5 px-10 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors ${purchaseType === 'bag' ? 'bg-amber-500 text-white shadow' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                  >
-                    <Package className="h-3 w-3" />
-                    Bags
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setPurchaseType('stone'); stoneArrivalForm.reset(createInitialStoneArrivalDraft()); }}
-                    className={`inline-flex items-center gap-1.5 px-10 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors ${purchaseType === 'stone' ? 'bg-sky-500 text-white shadow' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                  >
-                    <Layers className="h-3 w-3" />
-                    Stone
-                  </button>
-                </div>
+              {/* Three equal-width segments. Each used to carry 40px of side
+                  padding, so on a phone the row ran past the sheet edge. */}
+              <div role="tablist" aria-label="Purchase type" className="flex items-center gap-1 rounded-full bg-slate-100 p-1 dark:bg-slate-800">
+                {[
+                  { type: 'tile', label: 'Tiles', Icon: Boxes, activeClass: 'bg-brand-primary', blank: null },
+                  { type: 'bag', label: 'Bags', Icon: Package, activeClass: 'bg-amber-500', blank: () => bagArrivalForm.reset(createInitialBagArrivalDraft()) },
+                  { type: 'stone', label: 'Stone', Icon: Layers, activeClass: 'bg-sky-500', blank: () => stoneArrivalForm.reset(createInitialStoneArrivalDraft()) },
+                ].map(({ type, label, Icon, activeClass, blank }) => {
+                  const active = purchaseType === type;
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => {
+                        // Tapping the tab already open used to wipe what was typed.
+                        if (active) return;
+                        setPurchaseType(type);
+                        blank?.();
+                      }}
+                      className={`flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-2 text-[10px] font-black uppercase tracking-widest transition-colors sm:px-6 ${active ? `${activeClass} text-white shadow` : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    >
+                      <Icon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </SheetHeader>
             {purchaseType === 'tile' ? (
               <ArrivalFormContent

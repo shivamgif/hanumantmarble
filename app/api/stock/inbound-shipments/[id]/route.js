@@ -5,6 +5,7 @@ import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { computeInboundTotals } from '@/lib/stock-pricing';
 import { recomputeInboundShipmentTotals } from '@/lib/stock-inbound-recompute';
 import { toPositiveSqft, sqftLineTotal } from '@/lib/stock-sqft';
+import { assignShipmentToTrip, deleteTripIfEmpty, findTrip, parseFreight } from '@/lib/stock-inbound-trips.mjs';
 
 function computeSqmValues(item, size) {
   const widthMm = size?.width_mm;
@@ -458,6 +459,25 @@ export async function GET(request, context) {
       [id]
     );
 
+    // The edit forms prefill freight from trip_delivery_cost, not from the
+    // shipment columns, which are 0 for any purchase on a trip.
+    const detailCaps = await getStockSchemaCapabilities();
+    if (rows[0] && detailCaps.hasInboundTrips && rows[0].trip_id) {
+      const tripRows = await sql(
+        `SELECT t.delivery_cost, t.unloading_labour_cost,
+                (SELECT COUNT(*) FROM stock_inbound_shipments m
+                  WHERE m.trip_id = t.id AND m.status <> 'cancelled')::int AS shipment_count
+           FROM stock_inbound_trips t
+          WHERE t.id = $1`,
+        [rows[0].trip_id]
+      );
+      if (tripRows[0]) {
+        rows[0].trip_delivery_cost = tripRows[0].delivery_cost;
+        rows[0].trip_unloading_labour_cost = tripRows[0].unloading_labour_cost;
+        rows[0].trip_shipment_count = tripRows[0].shipment_count;
+      }
+    }
+
     const schemaCaps = await getStockSchemaCapabilities();
     const items = await sql(
       `WITH size_parsed AS (
@@ -724,10 +744,14 @@ export async function PATCH(request, context) {
           [id]
         );
 
-        return tx(
+        const deleted = await tx(
           `DELETE FROM stock_inbound_shipments WHERE id = $1 RETURNING *`,
           [id]
         );
+        if (deleted[0]?.trip_id) {
+          await deleteTripIfEmpty(tx, deleted[0].trip_id);
+        }
+        return deleted;
       });
 
       return NextResponse.json({
@@ -807,6 +831,15 @@ export async function PATCH(request, context) {
         resolvedLocationId = lRows[0]?.id || null;
       }
 
+      const tripCaps = await getStockSchemaCapabilities();
+      if (tripCaps.hasInboundTrips && body.tripId && !(await findTrip(sql, Number(body.tripId)))) {
+        return NextResponse.json(
+          { error: 'The truck trip picked for this purchase no longer exists. Pick the trip again.' },
+          { status: 409 }
+        );
+      }
+      const freight = parseFreight(body);
+
       const updatedRows = await sql(
         `UPDATE stock_inbound_shipments
          SET shipment_number = COALESCE($1, shipment_number),
@@ -850,8 +883,9 @@ export async function PATCH(request, context) {
           body.paymentDate || null,
           body.paymentReference || null,
           body.paymentMode || null,
-          (body.deliveryCost ?? body.transportCost) != null && (body.deliveryCost ?? body.transportCost) !== '' ? Number(body.deliveryCost ?? body.transportCost) : null,
-          (body.unloadingLabourCost) != null && body.unloadingLabourCost !== '' ? Number(body.unloadingLabourCost) : null,
+          // With trips the freight is written to the trip below, never here.
+          tripCaps.hasInboundTrips ? null : freight.deliveryCost,
+          tripCaps.hasInboundTrips ? null : freight.unloadingLabourCost,
           body.handlingCostPercent != null ? Number(body.handlingCostPercent) : null,
           body.fuelCostPercent != null ? Number(body.fuelCostPercent) : null,
           body.gstPercent != null ? Number(body.gstPercent) : null,
@@ -861,6 +895,12 @@ export async function PATCH(request, context) {
           id,
         ]
       );
+
+      // After the header update, so a changed plate or date is what a new trip
+      // is created from.
+      if (tripCaps.hasInboundTrips) {
+        await assignShipmentToTrip(sql, { shipmentId: id, body });
+      }
 
       if (body.items && Array.isArray(body.items)) {
         const approvalCheck = await sql('SELECT approval_status, locked_at FROM stock_inbound_shipments WHERE id = $1', [id]);

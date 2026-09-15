@@ -64,8 +64,12 @@ export async function GET(request) {
          ORDER BY name`,
         []
       ),
-      sql('SELECT DISTINCT driver_name FROM stock_inbound_shipments WHERE driver_name IS NOT NULL ORDER BY driver_name', []),
-      sql('SELECT DISTINCT truck_license_plate FROM stock_inbound_shipments WHERE truck_license_plate IS NOT NULL ORDER BY truck_license_plate', []),
+      // The plain driver_name / truck_license_plate columns were replaced by the
+      // _snapshot ones, so these queries failed and both lists came back empty.
+      // With no suggestions every clerk typed the plate their own way, which is
+      // what trip matching depends on.
+      sql("SELECT DISTINCT driver_name_snapshot AS driver_name FROM stock_inbound_shipments WHERE driver_name_snapshot IS NOT NULL AND driver_name_snapshot <> '' ORDER BY driver_name", []),
+      sql("SELECT DISTINCT truck_license_plate_snapshot AS truck_license_plate FROM stock_inbound_shipments WHERE truck_license_plate_snapshot IS NOT NULL AND truck_license_plate_snapshot <> '' ORDER BY truck_license_plate", []),
       sql("SELECT DISTINCT payment_mode FROM stock_inbound_shipments WHERE payment_mode IS NOT NULL AND payment_mode <> '' ORDER BY payment_mode", []),
       schemaCaps.hasStockTypesCategory
         ? sql(`SELECT name AS bag_type FROM stock_types WHERE category = 'bag' AND is_active = true ORDER BY name`, [])

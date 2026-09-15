@@ -14,6 +14,7 @@ import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { computeInboundTotals } from '@/lib/stock-pricing';
 import { toPositiveSqft, sqftLineTotal } from '@/lib/stock-sqft';
+import { assignShipmentToTrip, findTrip, parseFreight } from '@/lib/stock-inbound-trips.mjs';
 
 function generateSku({ brandName, typeName, sizeLabel, itemName, grade }) {
   const parts = [itemName,grade, typeName, sizeLabel, brandName]
@@ -416,6 +417,17 @@ export async function POST(request) {
       );
     }
 
+    // Checked before the shipment exists, so a stale trip choice fails the save
+    // cleanly instead of leaving a purchase behind with no freight anywhere.
+    const tripCaps = await getStockSchemaCapabilities();
+    if (tripCaps.hasInboundTrips && body.tripId && !(await findTrip(sql, Number(body.tripId)))) {
+      return NextResponse.json(
+        { error: 'The truck trip picked for this purchase no longer exists. Pick the trip again.' },
+        { status: 409 }
+      );
+    }
+    const freight = parseFreight(body);
+
     const shipmentRows = await sql(
       `INSERT INTO stock_inbound_shipments (
         shipment_number,
@@ -508,8 +520,9 @@ export async function POST(request) {
         paymentMode,                                   // $22
         normalizeText(body.transporterBillNumber) || null, // $23
         body.transporterBillAmount || 0,               // $24
-        body.deliveryCost || body.transportCost || 0,  // $25
-        body.unloadingLabourCost || body.laborCost || 0, // $26
+        // With trips, freight belongs to the trip and the shipment carries 0.
+        tripCaps.hasInboundTrips ? 0 : freight.deliveryCost ?? 0,        // $25
+        tripCaps.hasInboundTrips ? 0 : freight.unloadingLabourCost ?? 0, // $26
         items.reduce((total, item) => item.itemCategory === 'bag' ? total : total + Number(item.wholeQty || 0), 0), // $27
         items.reduce((total, item) => item.itemCategory === 'bag' ? total : total + Number(item.brokenQty || 0), 0), // $28
         normalizeText(body.receivedBy) || session.user.name || session.user.email, // $29
@@ -525,7 +538,10 @@ export async function POST(request) {
     );
 
     const shipment = shipmentRows[0];
-    const schemaCaps = await getStockSchemaCapabilities();
+    if (tripCaps.hasInboundTrips) {
+      shipment.trip_id = await assignShipmentToTrip(sql, { shipmentId: shipment.id, body });
+    }
+    const schemaCaps = tripCaps;
     const insertedItems = [];
     const itemDivisionIds = [];
     const preparedItems = [];
