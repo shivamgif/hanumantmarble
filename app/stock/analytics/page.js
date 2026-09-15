@@ -229,6 +229,7 @@ export default function AnalyticsDashboard() {
           goal={goal}
           activeDays={salespersonAnalytics?.activeDays}
           today={salespersonAnalytics?.today}
+          daysOff={salespersonAnalytics?.daysOff}
         />
 
         {monthlyTrend.length > 0 && (

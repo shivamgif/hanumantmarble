@@ -3,6 +3,7 @@ import { ensureDatabaseAvailable, getStockContext, normalizeStockRole } from '@/
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { netRevenueExpr, ownershipFilter, shippedFilter } from '@/lib/stock-analytics-sql.mjs';
+import { normalizeSettings } from '@/lib/attendance.mjs';
 
 export async function GET(request) {
   const { session, appUser } = await getStockContext(request);
@@ -93,6 +94,20 @@ export async function GET(request) {
       ),
     ]);
 
+    // Days off for the streak: the same weekly off day and holidays attendance
+    // uses, so a quiet Wednesday is not a broken streak. A database without the
+    // attendance tables just gets no days off, as before.
+    const [settingsRows, holidayRows] = await Promise.all([
+      sql('SELECT weekly_off_dow FROM stock_attendance_settings ORDER BY id LIMIT 1', []).catch(() => []),
+      sql(
+        `SELECT TO_CHAR(holiday_date, 'YYYY-MM-DD') AS day
+           FROM stock_holidays
+          WHERE holiday_date >= (NOW() AT TIME ZONE 'Asia/Kolkata')::date - INTERVAL '120 days'
+            AND holiday_date <= (NOW() AT TIME ZONE 'Asia/Kolkata')::date`,
+        []
+      ).catch(() => []),
+    ]);
+
     const lastMonthRows = await sql(
       `SELECT COALESCE(SUM(${netRevenue}), 0) AS last_month_value,
               COUNT(DISTINCT s.id) AS last_month_count
@@ -107,6 +122,10 @@ export async function GET(request) {
 
     return NextResponse.json({
       activeDays: activeDayRows.map((r) => r.day),
+      daysOff: {
+        weeklyOffDow: settingsRows[0] ? normalizeSettings(settingsRows[0]).weekly_off_dow : null,
+        holidays: holidayRows.map((r) => r.day),
+      },
       today: currentMonthRows[0]?.today ?? null,
       monthlyTrend: monthlyRows.map((r) => ({
         month: r.month_label,

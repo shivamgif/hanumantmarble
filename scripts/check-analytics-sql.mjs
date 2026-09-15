@@ -13,6 +13,9 @@ import {
   ownershipFilter,
   shippedFilter,
   unitCostCte,
+  idleSinceExpr,
+  idleStockWhere,
+  IDLE_STOCK_DAYS,
 } from '../lib/stock-analytics-sql.mjs';
 
 const modern = { hasStoneSqft: true, hasOutboundSalespersonUserId: true };
@@ -105,5 +108,19 @@ assert.equal(monthEnd.elapsedFraction, 1);
 // February in a leap year, to catch a hardcoded 30 or 31.
 const leapFeb = monthProgress(new Date(Date.UTC(2028, 1, 14)), new Date(Date.UTC(2028, 1, 14)));
 assert.equal(Number(leapFeb.elapsedFraction.toFixed(6)), Number((14 / 29).toFixed(6)), '2028 February has 29 days');
+
+// --- dead stock ---------------------------------------------------------------
+// Idle time runs from the last real sale, or from first arrival when an item has
+// never sold. "No dispatch in 60 days" alone put last week's delivery on a
+// salesperson's "sell these first" list.
+const since = idleSinceExpr(modern);
+assert.match(since, /MAX\(idle_s\.dispatch_date\)/, 'idle time starts at the last dispatch');
+assert.match(since, /MIN\(idle_in\.arrival_date\)/, 'never-sold stock is idle from its first arrival, not forever');
+assert.match(since, /approval_status = 'approved'/, 'only approved receipts count as arrival');
+assert.match(since, /status NOT IN \('draft', 'cancelled'\)/, 'a draft or cancelled dispatch is not a sale');
+const idle = idleStockWhere(modern);
+assert.match(idle, new RegExp(`INTERVAL '${IDLE_STOCK_DAYS} days'`));
+assert.match(idle, /> 0/, 'out-of-stock items are not dead stock');
+assert.match(idle, /is_active = TRUE/);
 
 console.log('check-analytics-sql: all assertions passed');

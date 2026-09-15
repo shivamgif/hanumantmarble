@@ -73,8 +73,8 @@ const MILESTONES = [
 // The salesperson's own hero row. Same card recipe as StockHealthScorecard and
 // the dashboard HeroCard (glass-panel + tinted icon tile + watermark), with the
 // goal and streak carrying the colour ladder.
-export function MyPerformanceHero({ thisMonth, lastMonth, goal, activeDays, today }) {
-  const streak = useMemo(() => deriveStreak(activeDays, today), [activeDays, today]);
+export function MyPerformanceHero({ thisMonth, lastMonth, goal, activeDays, today, daysOff }) {
+  const streak = useMemo(() => deriveStreak(activeDays, today, daysOff), [activeDays, today, daysOff]);
   const tier = streakTier(streak.current);
 
   // `today` is the IST date from the API; fall back to the browser's own date so
@@ -219,8 +219,10 @@ function StreakCard({ streak, tier, className = '', wide = false }) {
           {streak.last7.map((d, i) => (
             <span
               key={d.date}
-              title={d.date}
-              className={`h-2 flex-1 rounded-full transition-colors duration-300 ${d.active ? tier.bar : 'bg-slate-200 dark:bg-slate-700'} ${i === 6 && !d.active ? 'opacity-60 ring-1 ring-inset ring-slate-300 dark:ring-slate-600' : ''}`}
+              title={d.off && !d.active ? `${d.date} · day off` : d.date}
+              // A quiet day off is a dashed outline, not a grey dot: grey reads
+              // as a miss, and a day off is not one.
+              className={`h-2 flex-1 rounded-full transition-colors duration-300 ${d.active ? tier.bar : d.off ? 'border border-dashed border-slate-300 dark:border-slate-600' : 'bg-slate-200 dark:bg-slate-700'} ${i === 6 && !d.active && !d.off ? 'opacity-60 ring-1 ring-inset ring-slate-300 dark:ring-slate-600' : ''}`}
             />
           ))}
         </div>

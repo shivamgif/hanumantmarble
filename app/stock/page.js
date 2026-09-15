@@ -1317,29 +1317,87 @@ export default function StockDashboard() {
         const atRisk = !achieved && pct < 50 && daysLeft < 10;
         const barColor = achieved ? 'bg-yellow-400' : atRisk ? 'bg-amber-500' : 'bg-brand-primary';
         const fmt = (v) => `₹${Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+        const label = `${fmt(value)} / ${fmt(goal)} — ${pct}%`;
+        const fill = Math.min(pct, 100);
         return (
-          <div className="p-6 rounded-3xl border border-slate-200/60 dark:border-slate-800/60 bg-white dark:bg-slate-900/50 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Monthly Sales Goal</p>
-                <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mt-0.5">{fmt(value)} / {fmt(goal)} — {pct}%</p>
-              </div>
-              {achieved && (
-                <span className="text-xs font-black text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30 px-3 py-1 rounded-full">Goal Achieved!</span>
-              )}
-              {atRisk && (
-                <span className="text-xs font-black text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-3 py-1 rounded-full">{daysLeft}d left</span>
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200/60 bg-white px-3 py-2 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50">
+            <p className="shrink-0 text-[9px] font-black uppercase leading-tight tracking-widest text-slate-400">Monthly<br />Sales Goal</p>
+            {/* The figure sits inside the bar, printed twice: dark over the empty
+                track, light over the fill. The light copy is as wide as the whole
+                track (100/fill of the fill's width), so the two line up exactly
+                and the text stays readable wherever the fill edge falls. */}
+            <div
+              role="progressbar"
+              aria-label="Monthly sales goal"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.min(pct, 100)}
+              aria-valuetext={label}
+              className="relative h-7 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
+            >
+              <span className="absolute inset-0 flex items-center justify-center whitespace-nowrap px-3 text-[11px] font-black tabular-nums text-slate-700 dark:text-slate-200">{label}</span>
+              {fill > 0 && (
+                <div className={`absolute inset-y-0 left-0 overflow-hidden rounded-full ${barColor}`} style={{ width: `${fill}%` }}>
+                  <span
+                    aria-hidden="true"
+                    className={`absolute inset-y-0 left-0 flex items-center justify-center whitespace-nowrap px-3 text-[11px] font-black tabular-nums ${achieved ? 'text-slate-900' : 'text-white'}`}
+                    style={{ width: `${10000 / fill}%` }}
+                  >
+                    {label}
+                  </span>
+                </div>
               )}
             </div>
-            <div className="h-3 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-700 ${barColor}`}
-                style={{ width: `${Math.min(pct, 100)}%` }}
-              />
-            </div>
+            {achieved && (
+              <span className="shrink-0 whitespace-nowrap rounded-full bg-yellow-100 px-2.5 py-1 text-[11px] font-black text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400">Goal Achieved!</span>
+            )}
+            {atRisk && (
+              <span className="shrink-0 whitespace-nowrap rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-black text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">{daysLeft}d left</span>
+            )}
           </div>
         );
       })()}
+
+      {/* Salespeople only: the five dead items in their divisions most worth a
+          sales call, biggest money first. The API never sends cost, so this
+          can't leak purchase prices. One row at every width; on a phone the
+          row scrolls sideways instead of stacking. */}
+      {accessRole === 'salesperson' && (data?.sellFirst?.items?.length ?? 0) > 0 && (
+        <section
+          aria-labelledby="sell-first-title"
+          title={t('sellFirstSubtitle')}
+          className="flex items-stretch gap-2 overflow-x-auto rounded-2xl border border-amber-500/30 bg-amber-500/5 p-2 dark:bg-amber-500/10 snap-x"
+        >
+          <div className="flex shrink-0 flex-col justify-center rounded-xl px-2 sm:px-3">
+            <p className="text-[9px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400">{t('sellFirstEyebrow')}</p>
+            <h2 id="sell-first-title" className="whitespace-nowrap text-sm font-black text-slate-900 dark:text-white">{t('sellFirstTitle')}</h2>
+          </div>
+          {data.sellFirst.items.map((item) => {
+            const unit = item.unitOfMeasure === 'sqft' ? 'sqft' : item.unitOfMeasure === 'bag' ? t('bagsUnit') : t('boxes');
+            const details = [item.brandName, item.sizeLabel, item.divisionName].filter(Boolean).join(' · ');
+            const soldLine = item.lastSoldOn
+              ? `${t('lastSoldOn')} ${item.lastSoldOn.split('-').reverse().join('/')}`
+              : t('neverSold');
+            return (
+              <div
+                key={item.id}
+                title={[item.name, details, soldLine].filter(Boolean).join('\n')}
+                className="min-w-[10rem] flex-1 snap-start rounded-xl bg-white/70 px-3 py-2 dark:bg-slate-900/50"
+              >
+                <p className="truncate text-xs font-bold text-slate-900 dark:text-slate-100">{item.name}</p>
+                <p className="mt-0.5 flex items-baseline justify-between gap-2 text-[11px] tabular-nums">
+                  <span className="font-black text-slate-700 dark:text-slate-200">
+                    {Number(item.availableQty).toLocaleString('en-IN', { maximumFractionDigits: 3 })} <span className="font-bold text-slate-500">{unit}</span>
+                  </span>
+                  <span className={`whitespace-nowrap font-black ${item.daysIdle >= 120 ? 'text-rose-600 dark:text-rose-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                    {item.daysIdle} {t('daysIdle')}
+                  </span>
+                </p>
+              </div>
+            );
+          })}
+        </section>
+      )}
 
       {activeTableView === 'items' && (
         <div className="space-y-6">

@@ -402,7 +402,14 @@
       "tripFoundHint": "One lorry is charged once, however many invoices it brings. If this invoice came on that truck, add it to the trip so the freight is not entered again.",
       "tripInvoices": "invoices",
       "tripSeparate": "This is a separate delivery",
-      "tripSharedFreightNote": "The freight below belongs to the whole trip. Changing it changes it for every invoice on this truck."
+      "tripSharedFreightNote": "The freight below belongs to the whole trip. Changing it changes it for every invoice on this truck.",
+      "sellFirstEyebrow": "Needs selling",
+      "sellFirstTitle": "Sell these first",
+      "sellFirstSubtitle": "Idle 90+ days, or idle 60+ days with more stock than the reorder level. Offer these before newer stock.",
+      "lastSoldOn": "Last sold",
+      "neverSold": "Never sold since it arrived",
+      "daysIdle": "days idle",
+      "bagsUnit": "bags"
     },
     "admin": {
       "loading": "Loading admin dashboard...",
@@ -594,7 +601,7 @@
       "daysCover": "Days cover",
       "sold30d": "30d sold",
       "deadStock": "Dead Stock",
-      "deadStockSubtitle": "No outbound 60 days",
+      "deadStockSubtitle": "Idle 60+ days since last sale or arrival",
       "unitsIdle": "units idle",
       "items": "items",
       "capitalIdle": "capital idle",

@@ -6,6 +6,8 @@ import {
   availableQtyExpr,
   netRevenueExpr,
   netUnitsExpr,
+  idleSinceExpr,
+  idleStockWhere,
   marginAggregates,
   marginColumns,
   shippedFilter,
@@ -268,20 +270,13 @@ export async function GET(request) {
            (${availableQty} * uc.cost_per_unit)::numeric(14,2) AS estimated_value,
            (SELECT MAX(o2.dispatch_date) FROM stock_outbound_shipment_items osi2
               JOIN stock_outbound_shipments o2 ON o2.id = osi2.outbound_shipment_id
-              WHERE osi2.item_id = i.id AND ${shippedFilter('o2')}) AS last_dispatch_date
+              WHERE osi2.item_id = i.id AND ${shippedFilter('o2')}) AS last_dispatch_date,
+           (CURRENT_DATE - (${idleSinceExpr(schemaCaps, 'i')})::date)::int AS days_idle
          FROM stock_items i
          LEFT JOIN stock_divisions d ON d.id = i.division_id
          LEFT JOIN unit_cost uc ON uc.item_id = i.id
-         WHERE i.is_active = TRUE
-           AND ${availableQty} > 0
-           AND NOT EXISTS (
-             SELECT 1 FROM stock_outbound_shipment_items osi
-             JOIN stock_outbound_shipments o ON o.id = osi.outbound_shipment_id
-             WHERE osi.item_id = i.id
-               AND o.dispatch_date > NOW() - INTERVAL '60 days'
-               AND ${outboundShippedO}
-           )
-         ORDER BY units_idle DESC`,
+         WHERE ${idleStockWhere(schemaCaps, 'i')}
+         ORDER BY estimated_value DESC NULLS LAST, units_idle DESC`,
         []
       );
       const headers = [
@@ -293,6 +288,7 @@ export async function GET(request) {
         { label: 'Unit Cost (INR)', accessor: (row) => row.unit_cost ?? 'unknown' },
         { label: 'Estimated Value (INR)', accessor: (row) => row.estimated_value ?? 'unknown' },
         { label: 'Last Dispatch', accessor: (row) => row.last_dispatch_date ? new Date(row.last_dispatch_date).toISOString().slice(0, 10) : 'never' },
+        { label: 'Days Idle', accessor: 'days_idle' },
       ];
       return csvResponse(`dead_stock_${stamp}.csv`, rowsToCsv(headers, rows));
     }

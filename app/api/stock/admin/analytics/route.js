@@ -7,6 +7,7 @@ import {
   netRevenueExpr,
   monthProgress,
   netUnitsExpr,
+  idleStockWhere,
   marginAggregates,
   marginColumns,
   shippedFilter,
@@ -444,15 +445,7 @@ export async function GET(request) {
            COUNT(*) FILTER (WHERE uc.cost_per_unit IS NULL)::int AS uncosted_items
          FROM stock_items i
          LEFT JOIN unit_cost uc ON uc.item_id = i.id
-         WHERE i.is_active = TRUE
-           AND ${availableQty} > 0
-           AND NOT EXISTS (
-             SELECT 1 FROM stock_outbound_shipment_items osi
-             JOIN stock_outbound_shipments o ON o.id = osi.outbound_shipment_id
-             WHERE osi.item_id = i.id
-               AND o.dispatch_date > NOW() - INTERVAL '60 days'
-               AND ${outboundShippedO}
-           )`,
+         WHERE ${idleStockWhere(schemaCaps, 'i')}`,
         []
       ),
       // Pending Queue: 5 oldest pending dispatches

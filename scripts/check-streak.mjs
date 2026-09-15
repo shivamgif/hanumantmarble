@@ -48,6 +48,37 @@ const one = deriveStreak(['2026-07-22'], '2026-07-22');
 assert.equal(one.current, 1);
 assert.equal(one.best, 1);
 
+// --- days off -------------------------------------------------------------------
+// Wednesday is the weekly off day (attendance settings weekly_off_dow = 3).
+// 2026-09-07 is a Monday; 2026-09-09 and 2026-09-16 are Wednesdays.
+const off = { weeklyOffDow: 3 };
+const noWednesday = ['2026-09-07', '2026-09-08', '2026-09-10', '2026-09-11'];
+
+// A quiet Wednesday neither breaks the run nor adds to it: Mon Tue Thu Fri = 4.
+assert.equal(deriveStreak(noWednesday, '2026-09-11', off).current, 4);
+assert.equal(deriveStreak(noWednesday, '2026-09-11', off).best, 4);
+// Without the setting the same days are two runs of two - the old behaviour.
+assert.equal(deriveStreak(noWednesday, '2026-09-11').current, 2);
+
+// Today is the day off and quiet: yesterday's run is still live.
+assert.equal(deriveStreak(['2026-09-14', '2026-09-15'], '2026-09-16', off).current, 2);
+// Tomorrow after a quiet day off, with nothing yet today: still live.
+assert.equal(deriveStreak(['2026-09-14', '2026-09-15'], '2026-09-17', off).current, 2);
+// A genuine working-day miss still breaks it: Thu 17 quiet, today Fri 18.
+assert.equal(deriveStreak(['2026-09-14', '2026-09-15'], '2026-09-18', off).current, 0);
+
+// Selling on the day off is extra credit, not ignored.
+assert.equal(deriveStreak(['2026-09-08', '2026-09-09', '2026-09-10'], '2026-09-10', off).current, 3);
+
+// Holidays count as days off too.
+assert.equal(deriveStreak(['2026-09-07', '2026-09-10'], '2026-09-10', { weeklyOffDow: 3, holidays: ['2026-09-08'] }).current, 2);
+
+// The dot row marks days off so a grey dot there doesn't read as a miss.
+assert.equal(deriveStreak(noWednesday, '2026-09-11', off).last7.find((d) => d.date === '2026-09-09').off, true);
+
+// No active days and every lookup a day off must still terminate.
+assert.equal(deriveStreak([], '2026-09-16', off).current, 0);
+
 // Tiers
 assert.equal(streakTier(0).label, 'No Streak Yet');
 assert.equal(streakTier(1).emoji, '🌱');

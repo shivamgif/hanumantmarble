@@ -2,7 +2,22 @@ import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getStockContext, normalizeStockRole } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
-import { netRevenueExpr, ownershipFilter, shippedFilter } from '@/lib/stock-analytics-sql.mjs';
+import {
+  availableQtyExpr,
+  idleSinceExpr,
+  idleStockWhere,
+  netRevenueExpr,
+  ownershipFilter,
+  shippedFilter,
+  unitCostCte,
+} from '@/lib/stock-analytics-sql.mjs';
+
+// A salesperson sees five items: enough to act on today, few enough to fit
+// one row. Of the dead stock, only what is worth a sales call makes the cut:
+// idle for SELL_FIRST_STALE_DAYS, or still holding more than its reorder level
+// (a couple of boxes left over is not worth pushing).
+const SELL_FIRST_LIMIT = 5;
+const SELL_FIRST_STALE_DAYS = 90;
 
 export async function GET(request) {
   const { session, appUser } = await getStockContext(request);
@@ -187,7 +202,44 @@ export async function GET(request) {
         )
       : Promise.resolve([{ current_month_dispatch_value: 0 }]);
 
-    const [dashboardResults, suggestionsResults, currentMonthValueRows] = await Promise.all([dashboardPromise, suggestionsPromise, currentMonthValuePromise]);
+    // Stock in this salesperson's divisions that has sat idle past the dead
+    // stock line (lib/stock-analytics-sql.mjs), biggest money first. Ranked by
+    // what it cost to buy, but the cost never leaves the server: a salesperson
+    // who can read purchase prices can read the margin on every quote.
+    const sellFirstPromise = isSalesperson
+      ? sql(
+          `WITH ${unitCostCte(schemaCaps)}
+           SELECT
+             i.id,
+             i.name,
+             i.unit_of_measure,
+             b.name AS brand_name,
+             d.name AS division_name,
+             sz.label AS size_label,
+             ${availableQtyExpr(schemaCaps, 'i')}::numeric(14,3) AS available_qty,
+             (SELECT TO_CHAR(MAX(o.dispatch_date), 'YYYY-MM-DD')
+                FROM stock_outbound_shipment_items osi
+                JOIN stock_outbound_shipments o ON o.id = osi.outbound_shipment_id
+               WHERE osi.item_id = i.id AND ${shippedFilter('o')}) AS last_sold_on,
+             (CURRENT_DATE - (${idleSinceExpr(schemaCaps, 'i')})::date)::int AS days_idle
+           FROM stock_items i
+           LEFT JOIN stock_brands b ON b.id = i.brand_id
+           LEFT JOIN stock_divisions d ON d.id = i.division_id
+           LEFT JOIN stock_sizes sz ON sz.id = i.size_id
+           LEFT JOIN unit_cost uc ON uc.item_id = i.id
+           WHERE ${idleStockWhere(schemaCaps, 'i')}
+             AND i.division_id = ANY($1::bigint[])
+             AND (
+               (${idleSinceExpr(schemaCaps, 'i')}) < NOW() - INTERVAL '${SELL_FIRST_STALE_DAYS} days'
+               OR ${availableQtyExpr(schemaCaps, 'i')} > COALESCE(i.reorder_level, 0)
+             )
+           ORDER BY (${availableQtyExpr(schemaCaps, 'i')} * uc.cost_per_unit) DESC NULLS LAST, days_idle DESC
+           LIMIT ${SELL_FIRST_LIMIT}`,
+          [salespersonDivisionIds]
+        )
+      : Promise.resolve([]);
+
+    const [dashboardResults, suggestionsResults, currentMonthValueRows, sellFirstRows] = await Promise.all([dashboardPromise, suggestionsPromise, currentMonthValuePromise, sellFirstPromise]);
     const [summaryRows, activeItems, pendingArrivalCountRows, pendingDispatchCountRows] = dashboardResults;
     const [suppliers, transporters, items, brands, divisions, finishes, grades, sizes, hsnCodes, originCities, warehouses, drivers, trucks, paymentModes, bagTypes, bagItems, salespersons] = suggestionsResults;
 
@@ -225,6 +277,20 @@ export async function GET(request) {
       pendingArrivalCount: Number(pendingArrivalCountRows[0]?.pending_arrival_count ?? 0),
       pendingDispatchCount: Number(pendingDispatchCountRows[0]?.pending_dispatch_count ?? 0),
       currentMonthDispatchValue: Number(currentMonthValueRows[0]?.current_month_dispatch_value ?? 0),
+      // Salespeople only; empty for every other role.
+      sellFirst: {
+        items: sellFirstRows.map((row) => ({
+          id: Number(row.id),
+          name: row.name,
+          unitOfMeasure: row.unit_of_measure,
+          brandName: row.brand_name,
+          divisionName: row.division_name,
+          sizeLabel: row.size_label,
+          availableQty: Number(row.available_qty),
+          lastSoldOn: row.last_sold_on,
+          daysIdle: Number(row.days_idle),
+        })),
+      },
     });
   } catch (error) {
     console.error('Failed to load stock dashboard:', error);

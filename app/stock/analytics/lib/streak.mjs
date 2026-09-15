@@ -9,11 +9,25 @@ const DAY_MS = 86400000;
 const toKey = (ms) => new Date(ms).toISOString().slice(0, 10);
 const toMs = (key) => Date.parse(`${key}T00:00:00Z`);
 
-export function deriveStreak(activeDays, today) {
+// Days off neither add to a streak nor break it: the weekly off day from the
+// attendance settings (weeklyOffDow, 0 = Sunday .. 6 = Saturday, UTC day of the
+// IST date key) and any listed holidays. A dispatch on a day off still counts.
+export function deriveStreak(activeDays, today, { weeklyOffDow = null, holidays = [] } = {}) {
   const days = [...new Set((activeDays || []).filter(Boolean).map(String))].sort();
   const set = new Set(days);
+  const holidaySet = new Set((holidays || []).filter(Boolean).map((d) => String(d).slice(0, 10)));
   const todayKey = today || toKey(Date.now());
   const todayMs = toMs(todayKey);
+  const isOff = (ms) =>
+    (weeklyOffDow != null && new Date(ms).getUTCDay() === Number(weeklyOffDow)) || holidaySet.has(toKey(ms));
+
+  // True when every day strictly between two active days was a day off.
+  const bridged = (fromKey, toKeyExclusive) => {
+    for (let t = toMs(fromKey) + DAY_MS; t < toMs(toKeyExclusive); t += DAY_MS) {
+      if (!isOff(t)) return false;
+    }
+    return true;
+  };
 
   // ponytail: best run is only the best inside the fetched window (120 days).
   // Widen the API interval if an all-time record is ever wanted.
@@ -21,18 +35,19 @@ export function deriveStreak(activeDays, today) {
   let run = 0;
   let prev = null;
   for (const d of days) {
-    run = prev !== null && toMs(d) - toMs(prev) === DAY_MS ? run + 1 : 1;
+    run = prev !== null && bridged(prev, d) ? run + 1 : 1;
     if (run > best) best = run;
     prev = d;
   }
 
   // Count back from today. A quiet today must not break the streak - the day
-  // isn't over yet - so the run is allowed to end on yesterday instead.
-  let cursor = set.has(todayKey) ? todayMs : todayMs - DAY_MS;
+  // isn't over yet - and a quiet day off is stepped over rather than ending it.
+  // The cap only guards against a holiday list covering months on end.
   let current = 0;
-  while (set.has(toKey(cursor))) {
-    current += 1;
-    cursor -= DAY_MS;
+  for (let cursor = todayMs, step = 0; step < 400; cursor -= DAY_MS, step += 1) {
+    if (set.has(toKey(cursor))) current += 1;
+    else if (isOff(cursor) || cursor === todayMs) continue;
+    else break;
   }
 
   const month = todayKey.slice(0, 7);
@@ -43,8 +58,9 @@ export function deriveStreak(activeDays, today) {
     activeThisMonth: days.filter((d) => d.startsWith(month)).length,
     // Last 7 days oldest-first, for the dot row on the streak card.
     last7: Array.from({ length: 7 }, (_, i) => {
-      const key = toKey(todayMs - (6 - i) * DAY_MS);
-      return { date: key, active: set.has(key) };
+      const ms = todayMs - (6 - i) * DAY_MS;
+      const key = toKey(ms);
+      return { date: key, active: set.has(key), off: isOff(ms) };
     }),
   };
 }
