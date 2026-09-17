@@ -51,7 +51,7 @@ function requestFix(enableHighAccuracy, timeoutMs) {
     // The API's own `timeout` excludes time spent on the permission prompt; this
     // outer one does not, so it is only a backstop for a browser that never calls
     // back (a dismissed prompt) and must stay well clear of a slow "Allow" tap.
-    const timer = setTimeout(() => done({ reason: GEO.timeout }), timeoutMs + 20000);
+    const timer = setTimeout(() => done({ reason: GEO.timeout, message: 'No response from browser' }), timeoutMs + 20000);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         clearTimeout(timer);
@@ -66,6 +66,9 @@ function requestFix(enableHighAccuracy, timeoutMs) {
               : err?.code === err?.TIMEOUT
                 ? GEO.timeout
                 : GEO.unavailable,
+          // The browser's own wording ("Only secure origins are allowed", "No
+          // response from network location provider"…) — the codes alone hide it.
+          message: `${err?.code}: ${err?.message || 'no message'}`,
         });
       },
       { enableHighAccuracy, timeout: timeoutMs, maximumAge: 60000 }
@@ -157,6 +160,7 @@ export function AttendanceClock({ onPunched }) {
   // Why location is standing in the way, or '' when it is not. Set either up
   // front from the Permissions API or after a punch the server refused.
   const [geoReason, setGeoReason] = useState('');
+  const [geoMessage, setGeoMessage] = useState('');
 
   // The elapsed counter ticks from a local reference rather than re-deriving
   // from the stored timestamp: the DB holds IST wall-clock, and re-parsing that
@@ -299,12 +303,14 @@ export function AttendanceClock({ onPunched }) {
         // instruction the employee can actually act on.
         if (json.locationRequired) {
           setGeoReason(fix.reason || GEO.unavailable);
+          setGeoMessage(fix.message || (fix.lat != null ? 'Position read but refused by server' : ''));
           haptic('error');
           return;
         }
         throw new Error(json.error || 'Punch failed');
       }
       setGeoReason('');
+      setGeoMessage('');
 
       applyState({ ...json, onBreak: Boolean(json.entry?.break_started_at) });
       haptic('success');
@@ -426,6 +432,9 @@ export function AttendanceClock({ onPunched }) {
           <p className="mt-1 text-[11px] font-bold leading-relaxed text-amber-700/80 dark:text-amber-400/80">
             {advice.detail}
           </p>
+          {geoMessage ? (
+            <p className="mt-1 font-mono text-[10px] text-amber-700/60 dark:text-amber-400/60">{geoMessage}</p>
+          ) : null}
           {advice.canRetry ? (
             <button
               type="button"
