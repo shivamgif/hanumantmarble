@@ -25,10 +25,21 @@ const GEO = {
  * to block this site will NEVER prompt again, so telling someone to "allow
  * location access and try again" sends them round a loop with no prompt in it.
  */
-function readPosition(timeoutMs = 2500) {
+async function readPosition() {
   if (typeof navigator === 'undefined' || !navigator.geolocation) {
-    return Promise.resolve({ reason: GEO.unsupported });
+    return { reason: GEO.unsupported };
   }
+  // Android's high-accuracy provider routinely needs well over a few seconds
+  // indoors, where iOS answers from Wi-Fi almost instantly. So: give GPS a
+  // realistic window, then settle for a network fix — easily inside a 200 m
+  // fence. A denial is final, so it is not worth a second ask.
+  const precise = await requestFix(true, 8000);
+  if (!precise.reason || precise.reason === GEO.denied) return precise;
+  const coarse = await requestFix(false, 8000);
+  return coarse.reason ? precise : coarse;
+}
+
+function requestFix(enableHighAccuracy, timeoutMs) {
   return new Promise((resolve) => {
     let settled = false;
     const done = (value) => {
@@ -37,7 +48,10 @@ function readPosition(timeoutMs = 2500) {
         resolve(value);
       }
     };
-    const timer = setTimeout(() => done({ reason: GEO.timeout }), timeoutMs);
+    // The API's own `timeout` excludes time spent on the permission prompt; this
+    // outer one does not, so it is only a backstop for a browser that never calls
+    // back (a dismissed prompt) and must stay well clear of a slow "Allow" tap.
+    const timer = setTimeout(() => done({ reason: GEO.timeout }), timeoutMs + 20000);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         clearTimeout(timer);
@@ -54,7 +68,7 @@ function readPosition(timeoutMs = 2500) {
                 : GEO.unavailable,
         });
       },
-      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 60000 }
+      { enableHighAccuracy, timeout: timeoutMs, maximumAge: 60000 }
     );
   });
 }
