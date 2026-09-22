@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getStockContext, normalizeStockRole } from '@/lib/stock-workflow';
+import { canSell, ensureDatabaseAvailable, getStockContext, normalizeStockRole } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import {
@@ -8,6 +8,7 @@ import {
   idleStockWhere,
   netRevenueExpr,
   ownershipFilter,
+  sellerFilter,
   shippedFilter,
   unitCostCte,
 } from '@/lib/stock-analytics-sql.mjs';
@@ -178,7 +179,7 @@ export async function GET(request) {
          FROM stock_app_users u
          LEFT JOIN stock_user_divisions ud ON ud.user_id = u.id
          LEFT JOIN stock_divisions d ON d.id = ud.division_id
-         WHERE u.role = 'salesperson'
+         WHERE ${sellerFilter(schemaCaps, 'u')}
            AND u.status = 'active'
          GROUP BY u.id
          ORDER BY u.name`,
@@ -186,7 +187,7 @@ export async function GET(request) {
       ),
     ]);
 
-    const currentMonthValuePromise = appUser?.role === 'salesperson' && appUser?.id
+    const currentMonthValuePromise = canSell(appUser) && appUser?.id
       ? sql(
           // The same month-to-date figure the analytics page and the admin goal
           // tracker report, so all three agree: shared revenue rule, shared

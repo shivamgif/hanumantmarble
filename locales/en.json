@@ -630,6 +630,7 @@
       "tabInventory": "Inventory & Risk",
       "tabTeam": "Team",
       "tabFreight": "Freight",
+      "tabMyPerformance": "My Performance",
       "freightTrips": "Truck Trips",
       "freightTripsSubtitle": "Each lorry charged once, however many invoices it carried. Rows are trucks that brought more than one invoice on a day",
       "freightBooked": "Freight",

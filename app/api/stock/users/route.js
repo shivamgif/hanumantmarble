@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getRoleFlags, getStockContext, hasAnyStockRole, normalizeStockRole, recordTimelineEvent, STOCK_ROLES } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
+import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { validateStockPassword } from '@/lib/password-policy';
 import { normalizeIdentity } from '@/lib/auth-server';
 import { auth as betterAuth } from '@/lib/auth';
@@ -139,6 +140,35 @@ async function resolveAndEnforceDivisions(body) {
   names = ['Adhesive', 'Stone', ...names];
 
   return resolveDivisionIds(names);
+}
+
+// can_sell is written on its own rather than threaded through the INSERT/UPDATE
+// column lists: those exist in two shapes each (with and without the external
+// auth columns), and the capability probe lets a deploy land before the
+// migration has run on production, where this is simply skipped.
+async function applyCanSell(userId, canSellValue) {
+  if (!userId || canSellValue === undefined) return;
+  const schemaCaps = await getStockSchemaCapabilities();
+  if (!schemaCaps.hasUserCanSell) return;
+  await sql(
+    `UPDATE stock_app_users SET can_sell = $2, updated_at = NOW() WHERE id = $1`,
+    [userId, Boolean(canSellValue)]
+  );
+
+  // A seller with no divisions is offered in the dispatch dropdown and then
+  // rejected on submit with salesperson_division_missing. Every route that
+  // flags someone passes through here, so the floor goes here rather than in
+  // each caller. Adhesive is the division every salesperson already carries.
+  if (canSellValue) {
+    await sql(
+      `INSERT INTO stock_user_divisions (user_id, division_id)
+       SELECT $1, d.id FROM stock_divisions d
+       WHERE d.name = 'Adhesive'
+         AND NOT EXISTS (SELECT 1 FROM stock_user_divisions ud WHERE ud.user_id = $1)
+       ON CONFLICT (user_id, division_id) DO NOTHING`,
+      [userId]
+    );
+  }
 }
 
 async function upsertUserDivisions(userId, divisionIds) {
@@ -306,10 +336,12 @@ export async function POST(request) {
   }
 
   try {
-    // Resolve divisions for salesperson (Adhesive always included)
+    // Resolve divisions for anyone who sells (Adhesive always included). An
+    // admin flagged to also sell needs these rows or their first dispatch is
+    // rejected with salesperson_division_missing.
     let divisionIds = [];
     let primaryDivisionId = null;
-    if (normalizedRole === 'salesperson') {
+    if (normalizedRole === 'salesperson' || body.canSell === true) {
       divisionIds = await resolveAndEnforceDivisions(body);
       // Primary division: first non-Adhesive, or Adhesive if only one
       const adhesiveRows = await sql(`SELECT id FROM stock_divisions WHERE name = 'Adhesive' LIMIT 1`, []);
@@ -458,9 +490,14 @@ export async function POST(request) {
 
     const savedUser = rows[0];
 
-    // Upsert junction table for salesperson divisions
-    if (normalizedRole === 'salesperson' && divisionIds.length) {
+    // Upsert junction table for a seller's divisions
+    if (divisionIds.length) {
       await upsertUserDivisions(savedUser.id, divisionIds);
+    }
+
+    if (body.canSell === true) {
+      await applyCanSell(savedUser.id, true);
+      savedUser.can_sell = true;
     }
 
     await recordTimelineEvent({
@@ -597,6 +634,11 @@ export async function PATCH(request) {
     // Replace junction table divisions when payload includes divisions
     if (divisionIds !== null && updatedUser) {
       await upsertUserDivisions(updatedUser.id, divisionIds);
+    }
+
+    if (updatedUser && Object.prototype.hasOwnProperty.call(body, 'canSell')) {
+      await applyCanSell(updatedUser.id, body.canSell);
+      updatedUser.can_sell = Boolean(body.canSell);
     }
 
     // Attach division_names for response

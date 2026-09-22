@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getStockContext, normalizeStockRole } from '@/lib/stock-workflow';
+import { canSell, ensureDatabaseAvailable, getStockContext } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { netRevenueExpr, ownershipFilter, shippedFilter } from '@/lib/stock-analytics-sql.mjs';
@@ -7,13 +7,15 @@ import { normalizeSettings } from '@/lib/attendance.mjs';
 
 export async function GET(request) {
   const { session, appUser } = await getStockContext(request);
-  const userRole = normalizeStockRole(appUser?.role);
 
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (userRole !== 'salesperson') {
+  // Own numbers only — every query below is bound to appUser.id, there is no
+  // ?userId= to widen it. Anyone a dispatch can be attributed to may read this,
+  // which now includes an admin flagged to also sell.
+  if (!appUser?.id || !canSell(appUser)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

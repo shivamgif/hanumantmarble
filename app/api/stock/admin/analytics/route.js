@@ -10,6 +10,7 @@ import {
   idleStockWhere,
   marginAggregates,
   marginColumns,
+  sellerFilter,
   shippedFilter,
   unitCostCte,
 } from '@/lib/stock-analytics-sql.mjs';
@@ -494,7 +495,7 @@ export async function GET(request) {
            COALESCE(a.shipments, 0)::int AS shipments
          FROM stock_app_users u
          LEFT JOIN actual a ON a.uid = u.id
-         WHERE u.role = 'salesperson' AND u.monthly_sales_goal IS NOT NULL AND u.monthly_sales_goal > 0
+         WHERE ${sellerFilter(schemaCaps, 'u')} AND u.monthly_sales_goal IS NOT NULL AND u.monthly_sales_goal > 0
          ORDER BY (COALESCE(a.rev,0) / u.monthly_sales_goal) DESC
          LIMIT 20`,
         []

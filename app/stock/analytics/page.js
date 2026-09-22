@@ -6,9 +6,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getTranslation } from '@/lib/translations';
 import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
-import { getRoleFlags } from '@/lib/stock-roles.mjs';
+import { canSell, getRoleFlags } from '@/lib/stock-roles.mjs';
 import { useRouter } from 'next/navigation';
-import { Boxes, ChevronRight, Download, LayoutGrid, TrendingUp, Truck, Users } from 'lucide-react';
+import { Boxes, ChevronRight, Download, LayoutGrid, TrendingUp, Truck, UserCheck, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CLASSES, paceAdjustedTarget } from '../components/dashboard-ui';
 import { PILL_BUTTON_CLASS, tabButtonClass } from '../lib/stock-utils';
@@ -29,7 +29,7 @@ import {
   DeadStockWidget,
   PendingQueueWidget,
   SalesPaceWidget,
-  MyPerformanceHero,
+  MyPerformancePanel,
   CustomerConcentrationWidget,
   PriceDispersionWidget,
   FreightTripsWidget,
@@ -44,6 +44,10 @@ const TABS = [
   { id: 'team', labelKey: 'tabTeam', icon: Users },
   { id: 'freight', labelKey: 'tabFreight', icon: Truck },
 ];
+
+// Only for someone who sees the company view AND sells: a pure salesperson gets
+// the standalone page instead, and an admin who does not sell never sees it.
+const MY_PERFORMANCE_TAB = { id: 'me', labelKey: 'tabMyPerformance', icon: UserCheck };
 
 export default function AnalyticsDashboard() {
   const { language } = useLanguage();
@@ -68,7 +72,15 @@ export default function AnalyticsDashboard() {
   const canViewAllAnalytics = roleFlags.canViewAllAnalytics;
   const canApprove = roleFlags.canApprove;
   const isSalesperson = accessRole === 'salesperson';
-  const isAuthorized = canViewAllAnalytics || isSalesperson;
+  // An admin or manager flagged to also sell. They keep the company view and
+  // gain a tab for their own numbers — nothing is taken away.
+  const sellsToo = canSell(accessUser);
+  const isAuthorized = canViewAllAnalytics || sellsToo;
+  const ownGoal = Number(accessUser?.monthly_sales_goal ?? 0);
+  const visibleTabs = useMemo(
+    () => (sellsToo && canViewAllAnalytics ? [...TABS, MY_PERFORMANCE_TAB] : TABS),
+    [sellsToo, canViewAllAnalytics]
+  );
 
   useEffect(() => {
     if (!accessLoading && hasResolvedAccessOnce && !isAuthorized) {
@@ -81,12 +93,15 @@ export default function AnalyticsDashboard() {
     async function loadData() {
       setLoading(true);
       try {
+        // Independent, not either/or: someone who sees the company view and
+        // also sells needs both payloads on the same page.
         if (canViewAllAnalytics) {
           const response = await fetch(`/api/stock/admin/analytics?months=${analyticsRangeMonths}`, { cache: 'no-store' });
           const json = await response.json();
           if (!response.ok) throw new Error(json.error || 'Failed to load analytics');
           if (mounted) setAdminAnalytics(json);
-        } else if (isSalesperson) {
+        }
+        if (sellsToo) {
           const response = await fetch('/api/stock/salesperson-analytics', { cache: 'no-store' });
           const json = await response.json();
           if (!response.ok) throw new Error(json.error || 'Failed to load analytics');
@@ -102,7 +117,7 @@ export default function AnalyticsDashboard() {
     return () => {
       mounted = false;
     };
-  }, [user, analyticsRangeMonths, canViewAllAnalytics, isSalesperson, isAuthorized]);
+  }, [user, analyticsRangeMonths, canViewAllAnalytics, sellsToo, isAuthorized]);
 
   const [pendingActionLoading, setPendingActionLoading] = useState(null);
 
@@ -197,14 +212,6 @@ export default function AnalyticsDashboard() {
   if (error) return <div className="p-8 text-rose-500 font-bold bg-rose-50 rounded-2xl border border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40">{error}</div>;
 
   if (isSalesperson) {
-    const monthlyTrend = salespersonAnalytics?.monthlyTrend || [];
-    const thisMonth = salespersonAnalytics?.thisMonth || { count: 0, value: 0 };
-    const lastMonth = salespersonAnalytics?.lastMonth || { count: 0, value: 0 };
-    const recentDispatches = salespersonAnalytics?.recentDispatches || [];
-    const goal = Number(accessUser?.monthly_sales_goal ?? 0);
-    const fmt = (v) => `₹${Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
-    const bestMonthValue = Math.max(...monthlyTrend.map((r) => r.totalValue), 0);
-
     return (
       <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-clip">
         <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
@@ -223,85 +230,7 @@ export default function AnalyticsDashboard() {
           </div>
         </header>
 
-        <MyPerformanceHero
-          thisMonth={thisMonth}
-          lastMonth={lastMonth}
-          goal={goal}
-          activeDays={salespersonAnalytics?.activeDays}
-          today={salespersonAnalytics?.today}
-          daysOff={salespersonAnalytics?.daysOff}
-        />
-
-        {monthlyTrend.length > 0 && (
-          <section className="space-y-6">
-            <div className="flex items-center gap-6">
-              <h2 className="text-sm font-bold text-slate-500 whitespace-nowrap">Dispatch Value Trend</h2>
-              <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
-            </div>
-            <div className="glass-panel rounded-2xl p-4 sm:p-6 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover">
-              <div className="space-y-4">
-                {monthlyTrend.map((row) => {
-                  const barPct = Math.round((row.totalValue / Math.max(bestMonthValue, 1)) * 100);
-                  const isBest = bestMonthValue > 0 && row.totalValue === bestMonthValue;
-                  const hitGoal = goal > 0 && row.totalValue >= goal;
-                  // Best month wins the crown colour; any other goal month stays green.
-                  const barColor = isBest ? 'bg-yellow-400' : hitGoal ? 'bg-emerald-500' : 'bg-brand-primary';
-                  return (
-                    /* ponytail: mobile wraps the bar onto its own line via order/basis, no duplicate markup. */
-                    <div key={row.month} className="flex flex-wrap items-center gap-x-2 gap-y-2 sm:flex-nowrap sm:gap-4">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 w-16 shrink-0">{row.month}</span>
-                      <div className="order-last basis-full h-6 sm:order-none sm:basis-auto sm:flex-1 sm:h-8 rounded-xl bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                        <div className={`h-full rounded-xl transition-all duration-700 ${barColor}`} style={{ width: `${barPct}%` }} />
-                      </div>
-                      <span className="w-6 shrink-0 text-center text-sm" aria-hidden="true">{isBest ? '🏆' : hitGoal ? '✅' : ''}</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 flex-1 sm:flex-none sm:w-28 text-right shrink-0 tabular-nums">{fmt(row.totalValue)}</span>
-                      <span className="text-[10px] text-slate-400 w-16 shrink-0 tabular-nums text-right sm:text-left">{row.dispatchCount} orders</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {recentDispatches.length > 0 && (
-          <section className="space-y-6">
-            <div className="flex items-center gap-6">
-              <h2 className="text-sm font-bold text-slate-500 whitespace-nowrap">Recent Dispatches</h2>
-              <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
-            </div>
-            <div className="glass-panel rounded-2xl overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-border/60">
-                      <th className="text-left p-4 font-black uppercase tracking-widest text-muted-foreground text-[9px]">Shipment</th>
-                      <th className="text-left p-4 font-black uppercase tracking-widest text-slate-400 text-[9px]">Date</th>
-                      <th className="text-left p-4 font-black uppercase tracking-widest text-slate-400 text-[9px]">Customer</th>
-                      <th className="text-left p-4 font-black uppercase tracking-widest text-slate-400 text-[9px]">Status</th>
-                      <th className="text-right p-4 font-black uppercase tracking-widest text-slate-400 text-[9px]">Value</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentDispatches.map((d) => (
-                      <tr key={d.id} className="border-b border-border/40 hover:bg-muted/50 transition-colors">
-                        <td className="p-4 font-bold text-slate-900 dark:text-slate-100">{d.shipmentNumber || `#${d.id}`}</td>
-                        <td className="p-4 text-slate-500">{d.dispatchDate ? new Date(d.dispatchDate).toLocaleDateString('en-IN') : '—'}</td>
-                        <td className="p-4 text-slate-700 dark:text-slate-300">{d.customerName || '—'}</td>
-                        <td className="p-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${d.status === 'delivered' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : d.status === 'cancelled' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
-                            {d.status}
-                          </span>
-                        </td>
-                        <td className="p-4 text-right font-bold text-slate-900 dark:text-slate-100">{fmt(d.totalValue)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </section>
-        )}
+        <MyPerformancePanel data={salespersonAnalytics} goal={ownGoal} />
       </div>
     );
   }
@@ -358,7 +287,7 @@ export default function AnalyticsDashboard() {
         {/* ponytail: below sm only the active tab shows its label, the rest collapse
             to icon circles, so four tabs fit without a horizontal scroll */}
         <div className="flex w-full min-w-0 items-center gap-1 overflow-hidden rounded-xl border border-border/60 bg-muted p-1 scrollbar-none sm:w-fit sm:gap-0 sm:overflow-x-auto">
-          {TABS.map((tab) => {
+          {visibleTabs.map((tab) => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
             const label = t(tab.labelKey);
@@ -445,6 +374,8 @@ export default function AnalyticsDashboard() {
           </div>
         </div>
       )}
+
+      {activeTab === 'me' && <MyPerformancePanel data={salespersonAnalytics} goal={ownGoal} />}
 
       {activeTab === 'freight' && (
         <div className="grid grid-cols-1 gap-6 items-start">

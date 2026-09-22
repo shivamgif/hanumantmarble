@@ -11,7 +11,7 @@ import { getTranslation } from '@/lib/translations';
 import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
 import { usePageSize } from '@/hooks/usePageSize';
 import { useStockAccess } from '@/hooks/useStockAccess';
-import { getRoleFlags } from '@/lib/stock-roles.mjs';
+import { canSell, getRoleFlags } from '@/lib/stock-roles.mjs';
 import { arrivalFormSchema, dispatchFormSchema } from '@/lib/forms/stock-forms';
 import { useStockFormStore } from '@/lib/stores/stock-form-store';
 import {
@@ -1306,7 +1306,7 @@ export default function StockDashboard() {
       </header>
 
 
-      {accessRole === 'salesperson' && accessUser?.monthly_sales_goal != null && (() => {
+      {canSell(accessUser) && accessUser?.monthly_sales_goal != null && (() => {
         const goal = Number(accessUser.monthly_sales_goal);
         const value = Number(data?.currentMonthDispatchValue ?? 0);
         const pct = goal > 0 ? Math.round((value / goal) * 100) : 0;

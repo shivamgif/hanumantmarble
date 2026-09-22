@@ -12,6 +12,7 @@ import {
 } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
+import { sellerFilter } from '@/lib/stock-analytics-sql.mjs';
 import { isPieceSale, totalPieces } from '@/lib/stock-piece-balance';
 import { toSqft, toPositiveSqft } from '@/lib/stock-sqft';
 import { showroomHint } from '@/lib/stock-showroom';
@@ -88,6 +89,9 @@ async function resolveDispatchSalespersonUser(body) {
     throw err;
   }
 
+  // Must match the dropdown in /api/stock/form-suggestions, or a name the form
+  // offered gets rejected on submit.
+  const schemaCaps = await getStockSchemaCapabilities();
   const rows = await sql(
     `SELECT u.id, u.name,
        ARRAY_AGG(ud.division_id) FILTER (WHERE ud.division_id IS NOT NULL) AS division_ids,
@@ -96,7 +100,7 @@ async function resolveDispatchSalespersonUser(body) {
      LEFT JOIN stock_user_divisions ud ON ud.user_id = u.id
      LEFT JOIN stock_divisions d ON d.id = ud.division_id
      WHERE u.id = $1
-       AND u.role = 'salesperson'
+       AND ${sellerFilter(schemaCaps, 'u')}
        AND u.status = 'active'
      GROUP BY u.id`,
     [salespersonUserId]

@@ -133,6 +133,10 @@ CREATE TABLE IF NOT EXISTS stock_app_users (
   can_manage_users BOOLEAN NOT NULL DEFAULT FALSE,
   can_approve_changes BOOLEAN NOT NULL DEFAULT FALSE,
   can_view_dashboard BOOLEAN NOT NULL DEFAULT TRUE,
+  -- Capability, not a role: a dispatch may be attributed to this user even
+  -- though role <> 'salesperson'. Grants nothing else and restricts nothing —
+  -- see canSell() in lib/stock-roles.mjs.
+  can_sell BOOLEAN NOT NULL DEFAULT FALSE,
   salary NUMERIC(12,2) DEFAULT NULL,
   monthly_sales_goal NUMERIC(12,2) DEFAULT NULL,
   last_login_at TIMESTAMP,
@@ -601,6 +605,7 @@ ALTER TABLE IF EXISTS stock_movements ADD COLUMN IF NOT EXISTS currency_code TEX
 
 ALTER TABLE IF EXISTS stock_items ADD COLUMN IF NOT EXISTS division_id BIGINT REFERENCES stock_divisions(id);
 ALTER TABLE IF EXISTS stock_app_users ADD COLUMN IF NOT EXISTS division_id BIGINT REFERENCES stock_divisions(id);
+ALTER TABLE IF EXISTS stock_app_users ADD COLUMN IF NOT EXISTS can_sell BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE IF EXISTS stock_app_users ADD COLUMN IF NOT EXISTS external_auth_provider TEXT;
 ALTER TABLE IF EXISTS stock_app_users ADD COLUMN IF NOT EXISTS external_auth_id TEXT;
 ALTER TABLE IF EXISTS stock_inbound_shipments ADD COLUMN IF NOT EXISTS invoice_date DATE;

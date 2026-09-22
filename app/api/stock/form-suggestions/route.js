@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
+import { sellerFilter } from '@/lib/stock-analytics-sql.mjs';
 
 export async function GET(request) {
   const { session, appUser } = await getStockContext(request);
@@ -92,7 +93,7 @@ export async function GET(request) {
          FROM stock_app_users u
          LEFT JOIN stock_user_divisions ud ON ud.user_id = u.id
          LEFT JOIN stock_divisions d ON d.id = ud.division_id
-         WHERE u.role = 'salesperson'
+         WHERE ${sellerFilter(schemaCaps, 'u')}
            AND u.status = 'active'
          GROUP BY u.id
          ORDER BY u.name`,

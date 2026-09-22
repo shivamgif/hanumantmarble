@@ -27,6 +27,7 @@
     "db:migrate-showroom-per-location": "node --env-file-if-exists=.env.local scripts/migrate-showroom-per-location.mjs",
     "db:check-showroom-reconcile": "node --env-file-if-exists=.env.local scripts/check-showroom-reconcile.mjs",
     "db:migrate-inbound-trips": "node --env-file-if-exists=.env.local scripts/migrate-inbound-trips.mjs",
+    "db:migrate-admin-can-sell": "node --env-file-if-exists=.env.local scripts/migrate-admin-can-sell.mjs",
     "check:analytics-sql": "node scripts/check-analytics-sql.mjs"
   },
   "dependencies": {

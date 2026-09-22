@@ -70,6 +70,105 @@ const MILESTONES = [
   { at: 100, emoji: '🏆' },
 ];
 
+// One person's own numbers: hero row, value trend, recent dispatches.
+//
+// Rendered in two places and deliberately identical in both — as the whole page
+// for a salesperson, and as the "My Performance" tab for an admin who also
+// sells. Both read /api/stock/salesperson-analytics, which is always scoped to
+// the caller, so neither can see anyone else here.
+export function MyPerformancePanel({ data, goal }) {
+  const monthlyTrend = data?.monthlyTrend || [];
+  const thisMonth = data?.thisMonth || { count: 0, value: 0 };
+  const lastMonth = data?.lastMonth || { count: 0, value: 0 };
+  const recentDispatches = data?.recentDispatches || [];
+  const fmt = (v) => `₹${Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+  const bestMonthValue = Math.max(...monthlyTrend.map((r) => r.totalValue), 0);
+
+  return (
+    <div className="space-y-6 lg:space-y-8">
+      <MyPerformanceHero
+        thisMonth={thisMonth}
+        lastMonth={lastMonth}
+        goal={goal}
+        activeDays={data?.activeDays}
+        today={data?.today}
+        daysOff={data?.daysOff}
+      />
+
+      {monthlyTrend.length > 0 && (
+        <section className="space-y-6">
+          <div className="flex items-center gap-6">
+            <h2 className="text-sm font-bold text-slate-500 whitespace-nowrap">Dispatch Value Trend</h2>
+            <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
+          </div>
+          <div className="glass-panel rounded-2xl p-4 sm:p-6 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover">
+            <div className="space-y-4">
+              {monthlyTrend.map((row) => {
+                const barPct = Math.round((row.totalValue / Math.max(bestMonthValue, 1)) * 100);
+                const isBest = bestMonthValue > 0 && row.totalValue === bestMonthValue;
+                const hitGoal = goal > 0 && row.totalValue >= goal;
+                // Best month wins the crown colour; any other goal month stays green.
+                const barColor = isBest ? 'bg-yellow-400' : hitGoal ? 'bg-emerald-500' : 'bg-brand-primary';
+                return (
+                  /* ponytail: mobile wraps the bar onto its own line via order/basis, no duplicate markup. */
+                  <div key={row.month} className="flex flex-wrap items-center gap-x-2 gap-y-2 sm:flex-nowrap sm:gap-4">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 w-16 shrink-0">{row.month}</span>
+                    <div className="order-last basis-full h-6 sm:order-none sm:basis-auto sm:flex-1 sm:h-8 rounded-xl bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                      <div className={`h-full rounded-xl transition-all duration-700 ${barColor}`} style={{ width: `${barPct}%` }} />
+                    </div>
+                    <span className="w-6 shrink-0 text-center text-sm" aria-hidden="true">{isBest ? '🏆' : hitGoal ? '✅' : ''}</span>
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 flex-1 sm:flex-none sm:w-28 text-right shrink-0 tabular-nums">{fmt(row.totalValue)}</span>
+                    <span className="text-[10px] text-slate-400 w-16 shrink-0 tabular-nums text-right sm:text-left">{row.dispatchCount} orders</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {recentDispatches.length > 0 && (
+        <section className="space-y-6">
+          <div className="flex items-center gap-6">
+            <h2 className="text-sm font-bold text-slate-500 whitespace-nowrap">Recent Dispatches</h2>
+            <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
+          </div>
+          <div className="glass-panel rounded-2xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border/60">
+                    <th className="text-left p-4 font-black uppercase tracking-widest text-muted-foreground text-[9px]">Shipment</th>
+                    <th className="text-left p-4 font-black uppercase tracking-widest text-slate-400 text-[9px]">Date</th>
+                    <th className="text-left p-4 font-black uppercase tracking-widest text-slate-400 text-[9px]">Customer</th>
+                    <th className="text-left p-4 font-black uppercase tracking-widest text-slate-400 text-[9px]">Status</th>
+                    <th className="text-right p-4 font-black uppercase tracking-widest text-slate-400 text-[9px]">Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentDispatches.map((d) => (
+                    <tr key={d.id} className="border-b border-border/40 hover:bg-muted/50 transition-colors">
+                      <td className="p-4 font-bold text-slate-900 dark:text-slate-100">{d.shipmentNumber || `#${d.id}`}</td>
+                      <td className="p-4 text-slate-500">{d.dispatchDate ? new Date(d.dispatchDate).toLocaleDateString('en-IN') : '—'}</td>
+                      <td className="p-4 text-slate-700 dark:text-slate-300">{d.customerName || '—'}</td>
+                      <td className="p-4">
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${d.status === 'delivered' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : d.status === 'cancelled' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
+                          {d.status}
+                        </span>
+                      </td>
+                      <td className="p-4 text-right font-bold text-slate-900 dark:text-slate-100">{fmt(d.totalValue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
 // The salesperson's own hero row. Same card recipe as StockHealthScorecard and
 // the dashboard HeroCard (glass-panel + tinted icon tile + watermark), with the
 // goal and streak carrying the colour ladder.

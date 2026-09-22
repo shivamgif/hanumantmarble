@@ -450,6 +450,22 @@ export async function fetchDispatches({ page = 1, pageSize = 25, search = '', so
   return json;
 }
 
+// Arrivals/dispatches are server-paginated, so the visible page is all the
+// client holds. Exports need every row, so walk the pages until total is met.
+// ponytail: 200 is the server's pageSize cap; a dedicated export endpoint if
+// the page count ever grows enough for the round trips to hurt.
+export async function fetchAllPages(fetchPage, key) {
+  const pageSize = 200;
+  const all = [];
+  for (let page = 1; ; page += 1) {
+    const result = await fetchPage({ page, pageSize });
+    const rows = result?.[key] || [];
+    all.push(...rows);
+    const total = Number(result?.total);
+    if (rows.length < pageSize || (Number.isFinite(total) && all.length >= total)) return all;
+  }
+}
+
 export function getSortedRows(rows, sortState, accessors) {
   const sortedRows = [...rows];
   sortedRows.sort((left, right) => {

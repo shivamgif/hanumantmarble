@@ -229,6 +229,7 @@ export default function AdminDashboard() {
       canManageUsers: false,
       canApproveChanges: false,
       canViewDashboard: false,
+      canSell: false,
       salary: '',
       monthlySalesGoal: '',
     },
@@ -921,6 +922,7 @@ export default function AdminDashboard() {
         canManageUsers: Boolean(updatedUser.can_manage_users),
         canApproveChanges: Boolean(updatedUser.can_approve_changes),
         canViewDashboard: Boolean(updatedUser.can_view_dashboard),
+        canSell: Boolean(updatedUser.can_sell),
         salary: updatedUser.salary != null ? String(updatedUser.salary) : '',
         monthlySalesGoal: updatedUser.monthly_sales_goal != null ? String(updatedUser.monthly_sales_goal) : '',
       });
@@ -1062,6 +1064,7 @@ export default function AdminDashboard() {
       canManageUsers: Boolean(previewState.record.can_manage_users),
       canApproveChanges: Boolean(previewState.record.can_approve_changes),
       canViewDashboard: Boolean(previewState.record.can_view_dashboard),
+      canSell: Boolean(previewState.record.can_sell),
       salary: previewState.record.salary != null ? String(previewState.record.salary) : '',
       monthlySalesGoal: previewState.record.monthly_sales_goal != null ? String(previewState.record.monthly_sales_goal) : '',
       defaultLocationId: previewState.record.default_location_id != null ? String(previewState.record.default_location_id) : '',
@@ -2587,7 +2590,7 @@ export default function AdminDashboard() {
                         </div>
                         <form onSubmit={(e) => {
                           e.preventDefault();
-                          const isSalesperson = previewUserForm.watch('role') === 'salesperson';
+                          const sells = previewUserForm.watch('role') === 'salesperson' || previewUserForm.watch('canSell') === true;
                           const salaryVal = previewUserForm.watch('salary');
                           const goalVal = previewUserForm.watch('monthlySalesGoal');
                           handleUpdateUser(
@@ -2598,9 +2601,10 @@ export default function AdminDashboard() {
                               canManageUsers: previewUserForm.watch('canManageUsers'),
                               canApproveChanges: previewUserForm.watch('canApproveChanges'),
                               canViewDashboard: previewUserForm.watch('canViewDashboard'),
+                              canSell: previewUserForm.watch('canSell') === true,
                               defaultLocationId: previewUserForm.watch('defaultLocationId') || null,
-                              ...(isSalesperson && { salary: salaryVal !== '' ? Number(salaryVal) : null }),
-                              ...(isSalesperson && { monthlySalesGoal: goalVal !== '' ? Number(goalVal) : null }),
+                              ...(sells && { salary: salaryVal !== '' ? Number(salaryVal) : null }),
+                              ...(sells && { monthlySalesGoal: goalVal !== '' ? Number(goalVal) : null }),
                             },
                             'User permissions updated successfully.'
                           );
@@ -2673,7 +2677,27 @@ export default function AdminDashboard() {
                             </div>
                           </div>
 
-                          {previewUserForm.watch('role') === 'salesperson' && (
+                          {/* Capability, not a role: the sales team always sells,
+                              and an admin or manager can be flagged to sell too
+                              without losing anything they already had. */}
+                          {previewUserForm.watch('role') !== 'salesperson' && (
+                            <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                checked={previewUserForm.watch('canSell') === true}
+                                onChange={(e) => previewUserForm.setValue('canSell', e.target.checked, { shouldDirty: true })}
+                                className="accent-brand-primary mt-0.5"
+                              />
+                              <span className="space-y-0.5">
+                                <span className="block text-xs font-bold text-slate-700 dark:text-slate-300">Also sells</span>
+                                <span className="block text-[10px] font-medium text-slate-400">
+                                  Can be picked as the salesperson on a dispatch and sees their own performance. Keeps every existing permission.
+                                </span>
+                              </span>
+                            </label>
+                          )}
+
+                          {(previewUserForm.watch('role') === 'salesperson' || previewUserForm.watch('canSell') === true) && (
                             <div className="space-y-4">
                               <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Salesperson Targets</p>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2761,6 +2785,7 @@ export default function AdminDashboard() {
                                 canManageUsers: Boolean(previewState.record?.can_manage_users),
                                 canApproveChanges: Boolean(previewState.record?.can_approve_changes),
                                 canViewDashboard: Boolean(previewState.record?.can_view_dashboard),
+                                canSell: Boolean(previewState.record?.can_sell),
                                 salary: previewState.record?.salary != null ? String(previewState.record.salary) : '',
                                 monthlySalesGoal: previewState.record?.monthly_sales_goal != null ? String(previewState.record.monthly_sales_goal) : '',
                               })}

@@ -11,6 +11,7 @@ import {
   netRevenueExpr,
   netUnitsExpr,
   ownershipFilter,
+  sellerFilter,
   shippedFilter,
   unitCostCte,
   idleSinceExpr,
@@ -88,6 +89,20 @@ const owned = ownershipFilter(modern, 's', '$1');
 assert.match(owned, /salesperson_user_id = \$1/);
 assert.match(owned, /submitted_by_user_id = \$1/, 'unassigned dispatches fall back to the filer');
 assert.doesNotMatch(ownershipFilter(legacy, 's', '$1'), /salesperson_user_id/);
+
+// --- who may be attributed a sale -------------------------------------------
+// The dropdown, the dispatch validator and the goal tracker share this set. If
+// they drift, a name offered in the dropdown 400s on submit, or someone sells
+// and never appears on the leaderboard.
+const sellers = sellerFilter({ hasUserCanSell: true });
+assert.match(sellers, /role = 'salesperson'/, 'the sales team always sells');
+assert.match(sellers, /can_sell = TRUE/, 'an explicitly flagged admin also sells');
+assert.match(sellers, /OR/, 'the flag widens the set, never narrows it');
+assert.match(sellerFilter({ hasUserCanSell: true }, 'x'), /x\.can_sell/, 'alias must be overridable');
+// A database that predates the can_sell migration has no column to read, so the
+// filter must degrade to today's behaviour rather than reference it.
+assert.doesNotMatch(sellerFilter({ hasUserCanSell: false }), /can_sell/, 'legacy schema must not reference can_sell');
+assert.match(sellerFilter({ hasUserCanSell: false }), /role = 'salesperson'/);
 
 // --- partial month -----------------------------------------------------------
 // Mid-month: the range's last bucket holds part of a month.

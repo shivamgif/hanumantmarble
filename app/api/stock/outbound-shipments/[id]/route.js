@@ -9,7 +9,7 @@ import {
   computePieceIncrement,
 } from '@/lib/stock-piece-balance';
 import { toSqft, toPositiveSqft, assertSqftAvailable } from '@/lib/stock-sqft';
-import { netRevenueExpr } from '@/lib/stock-analytics-sql.mjs';
+import { netRevenueExpr, sellerFilter } from '@/lib/stock-analytics-sql.mjs';
 import { showroomHint } from '@/lib/stock-showroom';
 
 async function loadShipmentWithItems(id) {
@@ -110,6 +110,9 @@ async function resolveDispatchSalespersonUserTx(tx, body) {
     throw createValidationError('Select a salesperson from the list.', 'salesperson_missing');
   }
 
+  // Must match the dropdown in /api/stock/form-suggestions, or a name the form
+  // offered gets rejected on save.
+  const schemaCaps = await getStockSchemaCapabilities();
   const rows = await tx(
     `SELECT u.id, u.name,
        ARRAY_AGG(ud.division_id) FILTER (WHERE ud.division_id IS NOT NULL) AS division_ids,
@@ -118,7 +121,7 @@ async function resolveDispatchSalespersonUserTx(tx, body) {
      LEFT JOIN stock_user_divisions ud ON ud.user_id = u.id
      LEFT JOIN stock_divisions d ON d.id = ud.division_id
      WHERE u.id = $1
-       AND u.role = 'salesperson'
+       AND ${sellerFilter(schemaCaps, 'u')}
        AND u.status = 'active'
      GROUP BY u.id
      LIMIT 1`,
