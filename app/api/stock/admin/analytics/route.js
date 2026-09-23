@@ -4,6 +4,8 @@ import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import {
   availableQtyExpr,
+  freightRepeatFlagExpr,
+  freightRepeatedAmountExpr,
   netRevenueExpr,
   monthProgress,
   netUnitsExpr,
@@ -14,6 +16,7 @@ import {
   shippedFilter,
   unitCostCte,
 } from '@/lib/stock-analytics-sql.mjs';
+import { findDuplicateItemPairs, summarizeDuplicateItems } from '@/lib/stock-duplicate-items.mjs';
 
 function toDateOnly(value) {
   return value.toISOString().slice(0, 10);
@@ -144,6 +147,7 @@ export async function GET(request) {
       priceDispersionRows,
       freightTripRows,
       freightSummaryRow,
+      duplicateItemRows,
     ] = await Promise.all([
       // Outbound activity per month: how many dispatches went out and what they
       // billed. Draft, cancelled and rejected shipments are excluded - a draft
@@ -702,12 +706,16 @@ export async function GET(request) {
       // Freight per truck. Freight lives on stock_inbound_trips, charged once
       // per lorry however many invoices it carried (scripts/migrate-inbound-trips.mjs).
       //
-      // Rows are one plate + driver + arrival date with more than one invoice.
-      // Normally that is a single trip whose invoices share one charge. When it
-      // is two or more trips, someone chose "separate trip" for the same truck
-      // on the same day; same_amount marks the ones whose freight figures are
-      // identical, which is what a charge keyed twice looks like, and
-      // repeated_amount is only claimed for those.
+      // Rows are one plate + arrival date with more than one invoice. Normally
+      // that is a single trip whose invoices share one charge. When it is two or
+      // more trips, someone chose "separate trip" for the same truck on the same
+      // day; has_repeat marks a truck-day where one figure appears on more than
+      // one of those trips, which is what a charge keyed twice looks like, and
+      // repeated_amount is everything booked less one of each distinct figure.
+      //
+      // The driver is aggregated, not grouped on: one lorry logged as "Amir" and
+      // "Unknown" is one delivery, and grouping by the name hid a sixth copy of
+      // a charge behind a row of its own.
       //
       // Before the migration there are no trips to read, so the tab is empty
       // rather than wrong.
@@ -748,23 +756,28 @@ export async function GET(request) {
              ), grouped AS (
                SELECT
                  MIN(plate) AS plate,
-                 driver,
+                 -- Every spelling of the driver on this truck-day, not one row
+                 -- per spelling: the same lorry logged as "Amir" on five trips
+                 -- and "Unknown" on the sixth is one delivery, and splitting it
+                 -- by driver hid the sixth copy of the charge.
+                 STRING_AGG(DISTINCT driver, ' / ') AS driver,
                  -- As text, not a date: the driver would hand back a JS Date at
                  -- local midnight, which serialises to the previous day for any
                  -- timezone behind UTC. The UI only ever prints this.
                  arrival_date::text AS arrival_date,
                  COUNT(*)::int AS trip_count,
                  SUM(shipments)::int AS shipments,
-                 MAX(freight)::numeric(14,2) AS freight_each,
+                 -- One of each distinct charge: what this truck-day comes to
+                 -- once the repeats are taken out.
+                 SUM(DISTINCT freight)::numeric(14,2) AS freight_expected,
                  SUM(freight)::numeric(14,2) AS freight_booked,
                  SUM(goods)::numeric(14,2) AS goods_value,
                  SUM(units)::int AS units,
-                 (COUNT(*) > 1 AND COUNT(DISTINCT freight) = 1 AND MAX(freight) > 0) AS same_amount,
-                 (CASE WHEN COUNT(*) > 1 AND COUNT(DISTINCT freight) = 1
-                       THEN SUM(freight) - MAX(freight) END)::numeric(14,2) AS repeated_amount,
+                 ${freightRepeatFlagExpr()} AS has_repeat,
+                 ${freightRepeatedAmountExpr()}::numeric(14,2) AS repeated_amount,
                  ARRAY_AGG(trip_id) AS trip_ids
                FROM per_trip
-               GROUP BY plate_key, driver, arrival_date
+               GROUP BY plate_key, arrival_date
                HAVING SUM(shipments) > 1 OR COUNT(*) > 1
              )
              SELECT
@@ -773,11 +786,11 @@ export async function GET(request) {
                g.arrival_date,
                g.trip_count,
                g.shipments,
-               g.freight_each,
+               g.freight_expected,
                g.freight_booked,
                g.goods_value,
                g.units,
-               g.same_amount,
+               g.has_repeat,
                g.repeated_amount,
                -- The invoices themselves, so expanding a row costs no round trip.
                -- Freight is shown once per trip, on its first invoice, because
@@ -825,9 +838,94 @@ export async function GET(request) {
             [startDate, endDate]
           )
         : Promise.resolve([]),
+
+      // Products that share a brand + type + size + grade with another product,
+      // which is the only place two rows can be the same tile typed twice. The
+      // pairing itself is findDuplicateItemPairs() below - this query just gets
+      // the candidates and the evidence, about 40 rows rather than all 629.
+      //
+      // Grade is in the bucket key deliberately: "Analya Marfil" Commercial and
+      // Premium are different products bought at Rs 612 and Rs 1,062, and a rule
+      // that called them one duplicate would be wrong about nearly every row.
+      //
+      // COALESCE in the key because a NULL size_id must still group with another
+      // NULL - a plain row-value IN () drops those, and that is how the Gresbond
+      // "Adhesive" pair went missing from an earlier count.
+      //
+      // Not date-ranged, unlike every other query here: a duplicate product is a
+      // fact about the catalogue, not about the months on screen, and a stray row
+      // last bought in April is exactly the one worth finding in September.
+      sql(
+        `WITH bucket AS (
+           SELECT i.id,
+                  COALESCE(i.brand_id, -1) AS brand_id,
+                  COALESCE(i.type_id, -1) AS type_id,
+                  COALESCE(i.size_id, -1) AS size_id,
+                  lower(COALESCE(NULLIF(TRIM(i.grade), ''), '-')) AS grade_key
+             FROM stock_items i
+         ), shared AS (
+           SELECT brand_id, type_id, size_id, grade_key
+             FROM bucket
+            GROUP BY 1, 2, 3, 4
+           HAVING COUNT(*) > 1
+         )
+         SELECT
+           i.id,
+           i.sku,
+           i.name,
+           i.grade,
+           i.is_active,
+           b.brand_id,
+           b.type_id,
+           b.size_id,
+           COALESCE(br.name, '-') AS brand,
+           COALESCE(ty.name, '-') AS type,
+           COALESCE(sz.label, '-') AS size,
+           i.current_whole_qty AS qty,
+           (SELECT COUNT(*) FROM stock_outbound_shipment_items so WHERE so.item_id = i.id)::int AS sells,
+           (SELECT MAX(s.arrival_date)::date::text
+              FROM stock_inbound_shipment_items si
+              JOIN stock_inbound_shipments s ON s.id = si.inbound_shipment_id
+             WHERE si.item_id = i.id) AS last_buy,
+           -- Average of what was actually paid per unit, which is the evidence
+           -- that two rows are one tile: a real duplicate was bought at the same
+           -- price on both rows.
+           (SELECT ROUND(AVG(si.total_cost / NULLIF(si.received_whole_qty, 0))::numeric, 2)
+              FROM stock_inbound_shipment_items si
+             WHERE si.item_id = i.id AND si.received_whole_qty > 0)::numeric(12,2) AS unit_cost,
+           COALESCE((SELECT ARRAY_AGG(DISTINCT si.inbound_shipment_id)
+                       FROM stock_inbound_shipment_items si
+                      WHERE si.item_id = i.id), '{}') AS shipment_ids,
+           -- The purchases behind each side, so expanding a row costs no round trip.
+           (SELECT JSONB_AGG(x ORDER BY x->>'arrival_date' DESC)
+              FROM (SELECT JSONB_BUILD_OBJECT(
+                             'shipment_number', s.shipment_number,
+                             'invoice_number', s.invoice_number,
+                             'arrival_date', s.arrival_date::date::text,
+                             'supplier', COALESCE(sup.name, '-'),
+                             'qty', si.received_whole_qty,
+                             'unit_cost', ROUND((si.total_cost / NULLIF(si.received_whole_qty, 0))::numeric, 2)
+                           ) AS x
+                      FROM stock_inbound_shipment_items si
+                      JOIN stock_inbound_shipments s ON s.id = si.inbound_shipment_id
+                      LEFT JOIN stock_suppliers sup ON sup.id = s.supplier_id
+                     WHERE si.item_id = i.id AND s.status <> 'cancelled') q) AS purchases
+         FROM stock_items i
+         JOIN bucket b ON b.id = i.id
+         JOIN shared sh ON sh.brand_id = b.brand_id
+                       AND sh.type_id = b.type_id
+                       AND sh.size_id = b.size_id
+                       AND sh.grade_key = b.grade_key
+         LEFT JOIN stock_brands br ON br.id = i.brand_id
+         LEFT JOIN stock_types ty ON ty.id = i.type_id
+         LEFT JOIN stock_sizes sz ON sz.id = i.size_id
+         ORDER BY i.id`,
+        []
+      ),
     ]);
 
     const approvalOpsRow = approvalOps[0] || {};
+    const duplicateItemPairs = findDuplicateItemPairs(duplicateItemRows);
     const stockRiskRow = stockRisk[0] || {};
     const deadStockData = deadStockRow[0] || {};
 
@@ -886,6 +984,10 @@ export async function GET(request) {
       freight: {
         trips: freightTripRows,
         summary: freightSummaryRow[0] || {},
+      },
+      duplicateItems: {
+        pairs: duplicateItemPairs,
+        summary: summarizeDuplicateItems(duplicateItemPairs),
       },
     };
 

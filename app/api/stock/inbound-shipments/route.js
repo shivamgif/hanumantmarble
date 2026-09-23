@@ -14,7 +14,7 @@ import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { computeInboundTotals } from '@/lib/stock-pricing';
 import { toPositiveSqft, sqftLineTotal } from '@/lib/stock-sqft';
-import { assignShipmentToTrip, findTrip, parseFreight } from '@/lib/stock-inbound-trips.mjs';
+import { assignShipmentToTrip, findDuplicateTripCandidates, findTrip, parseFreight, saysSeparateTrip } from '@/lib/stock-inbound-trips.mjs';
 
 function generateSku({ brandName, typeName, sizeLabel, itemName, grade }) {
   const parts = [itemName,grade, typeName, sizeLabel, brandName]
@@ -426,6 +426,27 @@ export async function POST(request) {
         { status: 409 }
       );
     }
+
+    // Same reason as above, and the one that matters for money: a purchase that
+    // would start a second trip for a lorry already charged that day is refused
+    // here, before the row exists, unless the save says it meant to. The guard
+    // in assignShipmentToTrip catches every other caller; this one keeps the
+    // common path from leaving a purchase behind on a failed save.
+    if (tripCaps.hasInboundTrips && !body.tripId && !saysSeparateTrip(body)) {
+      const duplicateTrips = await findDuplicateTripCandidates(sql, {
+        plate: body.truckLicensePlate,
+        arrivalDate: body.purchaseDate || body.arrivalDate || null,
+      });
+      if (duplicateTrips.length > 0) {
+        return NextResponse.json(
+          {
+            error: 'This truck already has freight recorded for that day. Add this invoice to that trip, or confirm it is a separate delivery.',
+            trips: duplicateTrips,
+          },
+          { status: 409 }
+        );
+      }
+    }
     const freight = parseFreight(body);
 
     const shipmentRows = await sql(
@@ -709,6 +730,12 @@ export async function POST(request) {
 
     return NextResponse.json({ shipment }, { status: 201 });
   } catch (error) {
+    // A trip conflict is the operator's to resolve, not a server fault: it must
+    // reach the form as 409 with the trips in question, not as a 500 that says
+    // only "failed to submit".
+    if (error.statusCode === 409) {
+      return NextResponse.json({ error: error.message, trips: error.trips || [] }, { status: 409 });
+    }
     console.error('Failed to create inbound shipment:', error);
     return NextResponse.json({ error: 'Failed to submit purchase', detail: error.message }, { status: 500 });
   }

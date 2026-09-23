@@ -45,10 +45,18 @@ import {
   X,
   Clock,
   Pencil,
-  Building2
+  Building2,
+  Truck,
+  Copy
 } from 'lucide-react';
 
 import { AnalyticsCard, CLASSES, formatCompactNumber } from '@/app/stock/components/dashboard-ui';
+import { DuplicateItemsWidget, FreightTripsWidget } from '@/app/stock/analytics/components/widgets';
+
+// How far back the review tab looks. Freight is per truck-day and six months is
+// the same window the analytics page defaulted to; duplicate products are not
+// date-ranged at all, so this does not narrow them.
+const REVIEW_MONTHS = 6;
 
 function formatDateTime(value) {
   if (!value) {
@@ -124,6 +132,10 @@ export default function AdminDashboard() {
   const searchParams = useSearchParams();
   const t = (key) => getTranslation(`stock.admin.${key}`, language);
   const td = (key) => getTranslation(`stock.dashboard.${key}`, language);
+  // The freight and duplicate widgets read every string they render from
+  // stock.analytics, so their tab labels come from there too rather than being
+  // translated a second time under stock.admin and left to drift.
+  const ta = (key) => getTranslation(`stock.analytics.${key}`, language);
   const tc = {
     inventoryHub: td('inventoryHub'), stockLedger: td('stockLedger'), dispatches: td('dispatches'),
     purchases: td('purchases'), filter: td('filter'), sort: td('sort'), search: td('search'),
@@ -164,6 +176,9 @@ export default function AdminDashboard() {
   const canViewAnalytics = viewerFlags.canViewAllAnalytics;
   const canManageUsers = viewerFlags.canManageUsers;
   const [analyticsData, setAnalyticsData] = useState(null);
+  // Freight and duplicate-product review, from the admin analytics endpoint.
+  // Kept apart from analyticsData, which is the operational dashboard feed.
+  const [reviewData, setReviewData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
@@ -310,12 +325,22 @@ export default function AdminDashboard() {
           fetch('/api/stock/admin/dashboard'),
           canViewAnalytics ? fetch('/api/stock/dashboard') : Promise.resolve(null),
           fetch('/api/stock/change-requests', { cache: 'no-store' }),
+          // Not gated on canViewAnalytics: at this point `data` is null, so the
+          // role falls back to the session's, which is null for accounts whose
+          // stock role lives only in stock_app_users - and the fetch would be
+          // skipped for exactly the managers it is meant for. The endpoint does
+          // its own role check; a 401 here just leaves the tabs empty.
+          fetch(`/api/stock/admin/analytics?months=${REVIEW_MONTHS}`),
         ];
-        const [dashboardResponse, analyticsResponse, changeRequestResponse] = await Promise.all(fetchPromises);
+        const [dashboardResponse, analyticsResponse, changeRequestResponse, reviewResponse] = await Promise.all(fetchPromises);
 
         const dashboardJson = await dashboardResponse.json();
         const analyticsJson = analyticsResponse ? await analyticsResponse.json() : null;
         const changeRequestJson = await changeRequestResponse.json();
+        // The review tab is a side errand. An approver waiting on the queue must
+        // not be shown an error page because the freight query had a bad day, so
+        // this one failing leaves the tab empty and nothing else.
+        const reviewJson = reviewResponse?.ok ? await reviewResponse.json() : null;
 
         if (!dashboardResponse.ok) {
           throw new Error(dashboardJson.error || 'Fetch failed');
@@ -333,6 +358,7 @@ export default function AdminDashboard() {
           setData(dashboardJson);
           if (analyticsJson) setAnalyticsData(analyticsJson);
           setChangeRequests(changeRequestJson.requests || []);
+          if (reviewJson) setReviewData(reviewJson);
         }
       } catch (err) {
         if (mounted) setError(err.message);
@@ -416,15 +442,18 @@ export default function AdminDashboard() {
   }
 
   async function refreshDashboard() {
-    const [refreshResponse, analyticsResponse, changeRequestResponse] = await Promise.all([
+    const [refreshResponse, analyticsResponse, changeRequestResponse, reviewResponse] = await Promise.all([
       fetch('/api/stock/admin/dashboard'),
       canViewAnalytics ? fetch('/api/stock/dashboard') : Promise.resolve(null),
       fetch('/api/stock/change-requests', { cache: 'no-store' }),
+      // fresh=1: an approval just changed the books, so the cached copy is stale.
+      fetch(`/api/stock/admin/analytics?months=${REVIEW_MONTHS}&fresh=1`),
     ]);
 
     const refreshJson = await refreshResponse.json();
     const analyticsJson = analyticsResponse ? await analyticsResponse.json() : null;
     const changeRequestJson = await changeRequestResponse.json();
+    const reviewJson = reviewResponse?.ok ? await reviewResponse.json() : null;
 
     if (!refreshResponse.ok) {
       throw new Error(refreshJson.error || 'Failed to refresh dashboard');
@@ -441,6 +470,7 @@ export default function AdminDashboard() {
     setData(refreshJson);
     if (analyticsJson) setAnalyticsData(analyticsJson);
     setChangeRequests(changeRequestJson.requests || []);
+    if (reviewJson) setReviewData(reviewJson);
   }
 
   function closePreview() {
@@ -667,6 +697,9 @@ export default function AdminDashboard() {
           // Always sent, null included: null means "a delivery of its own",
           // while a missing key would keep the purchase on its current trip.
           tripId: values.tripId || null,
+          // The operator's answer, which the server needs before it will start
+          // a second trip for a lorry already charged that day.
+          tripChoice: values.tripChoice || undefined,
           deliveryCost: toNumber(values.transportCost),
           unloadingLabourCost: toNumber(values.laborCost),
           handlingCostPercent: values.handlingCostPercent === '' ? undefined : toNumber(values.handlingCostPercent),
@@ -1532,6 +1565,13 @@ export default function AdminDashboard() {
           { id: 'approvals', label: t('approvals'), icon: ShieldCheck },
           { id: 'changes', label: t('changes'), icon: Clock },
           { id: 'users', label: t('users'), icon: UsersRound },
+          // Freight charged twice, and the same tile entered as two products.
+          // Both are things to go and fix, which is what this page is for, and
+          // they keep the names they had on the analytics page.
+          ...(canViewAnalytics ? [
+            { id: 'freight', label: ta('tabFreight'), icon: Truck },
+            { id: 'duplicates', label: ta('tabDuplicates'), icon: Copy },
+          ] : []),
           // Branches are company setup, not user admin — its own tab rather
           // than buried in the users section.
           ...(canManageUsers ? [{ id: 'branches', label: language === 'hi' ? 'शाखाएँ' : 'Branches', icon: Building2 }] : []),
@@ -2150,6 +2190,27 @@ export default function AdminDashboard() {
             anchor. The same component renders in Attendance → Settings, so the
             two can never drift. onChanged refreshes the home-branch dropdowns
             on the user form and preview. */}
+        {/* Money already on the books that looks wrong: a lorry charged more
+            than once, and one tile carrying two product rows. Read-only - both
+            widgets list what to go and check, and neither changes anything. */}
+        <section id="freight-review" className={`space-y-6 ${mobileSection === 'freight' ? '' : 'hidden'}`}>
+          {canViewAnalytics && (
+            <FreightTripsWidget
+              trips={reviewData?.freight?.trips || []}
+              summary={reviewData?.freight?.summary || {}}
+            />
+          )}
+        </section>
+
+        <section id="duplicate-products" className={`space-y-6 ${mobileSection === 'duplicates' ? '' : 'hidden'}`}>
+          {canViewAnalytics && (
+            <DuplicateItemsWidget
+              pairs={reviewData?.duplicateItems?.pairs || []}
+              summary={reviewData?.duplicateItems?.summary || {}}
+            />
+          )}
+        </section>
+
         <section id="branches" className={`space-y-6 ${mobileSection === 'branches' ? '' : 'hidden'}`}>
           {canManageUsers && <BranchesPanel onChanged={loadBranches} />}
         </section>

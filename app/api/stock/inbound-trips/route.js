@@ -2,12 +2,7 @@ import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getStockContext } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
-import { normalizePlate } from '@/lib/stock-inbound-trips.mjs';
-
-// How far either side of the entered date a trip still counts as "this truck".
-// Invoices on one lorry are not always dated the day it arrives, and bag and
-// stone purchases are stamped with the entry date rather than the invoice date.
-const TRIP_WINDOW_DAYS = 3;
+import { normalizePlate, TRIP_WINDOW_DAYS } from '@/lib/stock-inbound-trips.mjs';
 
 // Trips this truck already made around a date, so the purchase form can offer
 // "add this invoice to that trip" before a second freight figure is keyed.

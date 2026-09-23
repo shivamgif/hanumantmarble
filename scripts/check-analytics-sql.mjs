@@ -7,6 +7,8 @@
 import assert from 'node:assert/strict';
 import {
   availableQtyExpr,
+  freightRepeatFlagExpr,
+  freightRepeatedAmountExpr,
   monthProgress,
   netRevenueExpr,
   netUnitsExpr,
@@ -137,5 +139,25 @@ const idle = idleStockWhere(modern);
 assert.match(idle, new RegExp(`INTERVAL '${IDLE_STOCK_DAYS} days'`));
 assert.match(idle, /> 0/, 'out-of-stock items are not dead stock');
 assert.match(idle, /is_active = TRUE/);
+
+// --- repeated freight ---------------------------------------------------------
+// The old rule asked whether the whole truck-day carried one figure
+// (COUNT(DISTINCT freight) = 1), so one odd invoice on the lorry silenced the
+// row: Rs 38,665 keyed five times next to a Rs 14,275 reported nothing.
+// Comparing the two counts is what catches a repeat inside a mixed group.
+const repeatFlag = freightRepeatFlagExpr();
+assert.match(repeatFlag, /COUNT\(\*\) > COUNT\(DISTINCT freight\)/, 'a repeat is more trips than distinct figures');
+assert.doesNotMatch(repeatFlag, /COUNT\(DISTINCT freight\) = 1/, 'a mixed truck-day must not silence its repeats');
+assert.match(repeatFlag, /MAX\(freight\) > 0/, 'trips that were never charged are not a repeat');
+
+// Everything booked less one of each distinct figure, so a figure keyed three
+// times gives back two of it. MAX() would only ever give back one.
+const repeatAmount = freightRepeatedAmountExpr();
+assert.match(repeatAmount, /SUM\(DISTINCT freight\)/, 'one of each distinct charge is what the day should cost');
+assert.doesNotMatch(repeatAmount, /MAX\(freight\)/, 'three copies of a charge lose two of it, not one');
+assert.match(repeatAmount, /^NULLIF\(/, 'no repeat must be NULL, so the row sorts last and reads as "not flagged"');
+
+// Both go into a GROUP BY, so they must aggregate rather than name a column.
+assert.match(freightRepeatFlagExpr('f'), /COUNT\(DISTINCT f\)/, 'the freight column is injectable');
 
 console.log('check-analytics-sql: all assertions passed');

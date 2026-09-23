@@ -29,6 +29,7 @@ import {
   Wallet,
   Tags,
   ChevronDown,
+  Copy,
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
@@ -1090,12 +1091,13 @@ export function PriceDispersionWidget({ rows }) {
 }
 
 // What a truck-day row says about its freight. One trip means its invoices
-// share a single charge, which is the healthy case. Several trips with the same
-// figure is the charge keyed twice. Several with different figures might be
-// two real deliveries, so nothing is claimed.
+// share a single charge, which is the healthy case. A figure that appears more
+// than once among the trips is the charge keyed twice, even when another
+// invoice on the same lorry carries a different one. Trips whose figures are
+// all different might be two real deliveries, so nothing is claimed.
 function tripFreightStatus(trip) {
   if (Number(trip.trip_count || 1) <= 1) return 'shared';
-  return trip.same_amount ? 'repeated' : 'mixed';
+  return trip.has_repeat ? 'repeated' : 'mixed';
 }
 
 // The shipments behind one trip. Rendered under the table row and inside the
@@ -1139,15 +1141,16 @@ function TripShipments({ shipments, t }) {
 // The books do not have a "trip" - they have inbound shipments, and one lorry
 // that arrives carrying four invoices is entered four times. Whoever keys the
 // second shipment keys the freight again, so the charge is counted as many
-// times as the load was split. Plate + driver + arrival date is the closest
-// thing the schema has to a trip identity.
+// times as the load was split. Plate + arrival date is the closest thing the
+// schema has to a trip identity; the driver name is shown but not part of it,
+// because one misspelling used to split a lorry into two innocent-looking rows.
 export function FreightTripsWidget({ trips, summary }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   // One row open at a time: the expanded block is a table of its own, and two
   // of them stacked makes the page unreadable on a phone.
   const [openTrip, setOpenTrip] = useState(null);
-  const tripKey = (trip) => `${trip.plate}-${trip.driver}-${trip.arrival_date}`;
+  const tripKey = (trip) => `${trip.plate}-${trip.arrival_date}`;
 
   const freightTotal = Number(summary?.freight_total || 0);
   const goodsTotal = Number(summary?.goods_total || 0);
@@ -1201,7 +1204,7 @@ export function FreightTripsWidget({ trips, summary }) {
               <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('driverName')}</th>
               <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('arrivedOn')}</th>
               <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('shipmentsLabel')}</th>
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('freightEach')}</th>
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('freightExpected')}</th>
               <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('freightBooked')}</th>
               <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('goodsValue')}</th>
               <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('repeatedFreight')}</th>
@@ -1235,7 +1238,7 @@ export function FreightTripsWidget({ trips, summary }) {
                     <span className="block text-[10px] font-bold text-slate-400">{trip.trip_count} {t('tripsLabel')}</span>
                   ) : null}
                 </td>
-                <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-500">{formatINR(trip.freight_each)}</td>
+                <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-500">{formatINR(trip.freight_expected)}</td>
                 <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-900 dark:text-white">{formatCompactINR(trip.freight_booked)}</td>
                 <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-500">{formatCompactINR(trip.goods_value)}</td>
                 <td className="px-5 py-4 text-right">
@@ -1302,8 +1305,8 @@ export function FreightTripsWidget({ trips, summary }) {
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('freightEach')}</p>
-                <p className="text-xs font-black text-slate-500">{formatINR(trip.freight_each)}</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('freightExpected')}</p>
+                <p className="text-xs font-black text-slate-500">{formatINR(trip.freight_expected)}</p>
               </div>
               <div className="text-right">
                 <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('freightBooked')}</p>
@@ -1321,6 +1324,232 @@ export function FreightTripsWidget({ trips, summary }) {
       </div>
 
       <p className="mt-4 text-[10px] text-slate-500 leading-relaxed">{t('freightNote')}</p>
+    </AnalyticsCard>
+  );
+}
+
+// How sure the pair is, and how it reads on screen. Certain is not a promise -
+// it is "the names differ by a slip and both were bought at the same price",
+// which is as far as the catalogue can argue on its own.
+const DUPLICATE_TONES = {
+  certain: 'text-rose-600 dark:text-rose-400',
+  likely: 'text-amber-600 dark:text-amber-400',
+  check: 'text-slate-500',
+};
+
+// The two product rows behind one pair, side by side, with the purchases that
+// built each of them. This is what settles it: the same tile bought twice at
+// one price under two spellings looks nothing like two products that happen to
+// read alike.
+function DuplicateItemSides({ pair, t }) {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      {pair.items.map((side) => (
+        <div key={side.id} className="rounded-xl border border-border/60 bg-background/60 p-4 space-y-2">
+          <p className="text-xs font-black text-slate-900 dark:text-white break-words">{side.name}</p>
+          <p className="text-[10px] font-mono text-slate-500 break-all">{side.sku}</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500">
+            <span>{t('stockLabel')}: <b className="text-slate-900 dark:text-white">{formatCompactNumber(side.qty)}</b></span>
+            <span>{t('salesLabel')}: <b className="text-slate-900 dark:text-white">{formatCompactNumber(side.sells)}</b></span>
+            <span>{t('avgCost')}: <b className="text-slate-900 dark:text-white">{side.unit_cost ? formatINR(side.unit_cost) : '—'}</b></span>
+            {side.is_active ? null : (
+              <span className="font-black uppercase tracking-widest text-slate-400">{t('inactiveLabel')}</span>
+            )}
+          </div>
+          {(side.purchases || []).length ? (
+            <ul className="space-y-1 pt-1 border-t border-border/40">
+              {side.purchases.map((buy) => (
+                <li key={buy.shipment_number} className="text-[10px] text-slate-500 flex flex-wrap gap-x-2">
+                  <span className="tabular-nums">{formatTripDate(buy.arrival_date)}</span>
+                  <span className="font-bold text-slate-700 dark:text-slate-300">{buy.invoice_number || buy.shipment_number}</span>
+                  <span className="tabular-nums">{formatCompactNumber(buy.qty)} @ {buy.unit_cost ? formatINR(buy.unit_cost) : '—'}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[10px] text-slate-400 pt-1 border-t border-border/40">{t('noPurchases')}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// The same tile, entered twice as two products.
+//
+// A product row is minted by its generated SKU, so a name typed a shade
+// differently becomes a second product and the tile's stock splits across both
+// - invisible to whoever searches the other spelling. Rows here are candidate
+// pairs, ranked by how hard the catalogue argues for them; the judgement is
+// still the reader's, which is why nothing here merges anything.
+//
+// Grade is part of the identity, so a Commercial and a Premium of one design
+// never appear. They are different products at different prices, and reading
+// them as duplicates would bury the handful of real ones.
+export function DuplicateItemsWidget({ pairs, summary }) {
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+  const [openPair, setOpenPair] = useState(null);
+
+  if (!pairs || pairs.length === 0) {
+    return (
+      <AnalyticsCard title={t('duplicateItems')} subtitle={t('duplicateItemsSubtitle')}>
+        <EmptyState label={t('noData')} />
+      </AnalyticsCard>
+    );
+  }
+
+  const strandedValue = Number(summary?.strandedValue || 0);
+
+  return (
+    <AnalyticsCard
+      title={t('duplicateItems')}
+      subtitle={t('duplicateItemsSubtitle')}
+      topRight={
+        <div className="flex items-center gap-2">
+          <Copy className="w-3.5 h-3.5 text-rose-500" />
+          <span className="font-sans text-sm font-black text-rose-600 dark:text-rose-400 tabular-nums">
+            {summary?.pairCount ?? pairs.length}
+          </span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('duplicatePairs')}</span>
+        </div>
+      }
+    >
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-5">
+        <div className="p-4 rounded-2xl border border-border/60 bg-muted/20">
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('confidentPairs')}</p>
+          <p className="font-sans text-base font-black text-rose-600 dark:text-rose-400">{summary?.certainCount ?? 0}</p>
+        </div>
+        <div className="p-4 rounded-2xl border border-border/60 bg-muted/20">
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('productsInvolved')}</p>
+          <p className="font-sans text-base font-black text-slate-900 dark:text-white">{summary?.productCount ?? 0}</p>
+        </div>
+        <div className="p-4 rounded-2xl border border-border/60 bg-muted/20">
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('strandedStock')}</p>
+          <p className="font-sans text-base font-black text-amber-600 dark:text-amber-400">{formatCompactINR(strandedValue)}</p>
+        </div>
+      </div>
+
+      <div className="hidden md:block overflow-x-auto rounded-xl border border-border/60">
+        <table className="w-full text-left text-sm min-w-[720px]">
+          <thead>
+            <tr className="border-b border-border/60">
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('productPair')}</th>
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('specLabel')}</th>
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('costRatio')}</th>
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('strandedStock')}</th>
+              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('confidenceLabel')}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/40">
+            {pairs.map((pair) => {
+              const isOpen = openPair === pair.key;
+              const [a, b] = pair.items;
+              return (
+                <Fragment key={pair.key}>
+                  <tr
+                    className="group hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => setOpenPair(isOpen ? null : pair.key)}
+                    aria-expanded={isOpen}
+                  >
+                    <td className="px-5 py-4 text-xs">
+                      <span className="flex items-start gap-2">
+                        <ChevronDown
+                          className={`w-3.5 h-3.5 mt-0.5 shrink-0 text-slate-400 transition-transform ${isOpen ? '' : '-rotate-90'}`}
+                          aria-label={t('expandPair')}
+                        />
+                        <span className="min-w-0">
+                          <span className="block font-bold text-slate-900 dark:text-slate-100 break-words">{a.name}</span>
+                          <span className="block text-slate-500 break-words">{b.name}</span>
+                          {pair.sharesPurchase ? (
+                            <span className="inline-block mt-1 text-[9px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                              {t('samePurchaseFlag')}
+                            </span>
+                          ) : null}
+                        </span>
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-xs text-slate-500 whitespace-nowrap">
+                      {a.brand} · {a.size}{a.grade ? ` · ${a.grade}` : ''}
+                    </td>
+                    <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-500 tabular-nums">
+                      {pair.costRatio == null ? '—' : `×${pair.costRatio.toFixed(2)}`}
+                    </td>
+                    <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-900 dark:text-white">
+                      {formatCompactINR(pair.strandedValue)}
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${DUPLICATE_TONES[pair.confidence]}`}>
+                        {t(`duplicate_${pair.confidence}`)}
+                      </span>
+                    </td>
+                  </tr>
+                  {isOpen ? (
+                    <tr>
+                      <td colSpan={5} className="px-5 pb-5 pt-0 bg-muted/30">
+                        <DuplicateItemSides pair={pair} t={t} />
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="md:hidden space-y-4">
+        {pairs.map((pair) => {
+          const isOpen = openPair === pair.key;
+          const [a, b] = pair.items;
+          return (
+            <div key={`dup-mob-${pair.key}`} className="p-5 rounded-2xl border border-border/60 bg-muted/20 space-y-4">
+              <button
+                type="button"
+                className="flex w-full justify-between items-start gap-3 text-left focus-ring"
+                onClick={() => setOpenPair(isOpen ? null : pair.key)}
+                aria-expanded={isOpen}
+              >
+                <span className="min-w-0">
+                  <span className="text-sm font-black text-slate-900 dark:text-white flex items-start gap-2">
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 mt-0.5 shrink-0 text-slate-400 transition-transform ${isOpen ? '' : '-rotate-90'}`}
+                      aria-label={t('expandPair')}
+                    />
+                    <span className="min-w-0 break-words">{a.name}</span>
+                  </span>
+                  <span className="block text-[11px] text-slate-500 mt-0.5 ml-5 break-words">{b.name}</span>
+                  <span className="block text-[10px] text-slate-400 mt-0.5 ml-5">
+                    {a.brand} · {a.size}{a.grade ? ` · ${a.grade}` : ''}
+                  </span>
+                </span>
+                <span className={`text-[10px] font-black uppercase tracking-widest shrink-0 ${DUPLICATE_TONES[pair.confidence]}`}>
+                  {t(`duplicate_${pair.confidence}`)}
+                </span>
+              </button>
+              <div className="grid grid-cols-3 gap-4 pt-2 border-t border-border/60">
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('costRatio')}</p>
+                  <p className="text-xs font-black text-slate-500 tabular-nums">
+                    {pair.costRatio == null ? '—' : `×${pair.costRatio.toFixed(2)}`}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('strandedStock')}</p>
+                  <p className="text-xs font-black text-slate-900 dark:text-white">{formatCompactINR(pair.strandedValue)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('samePurchaseShort')}</p>
+                  <p className="text-xs font-black text-slate-900 dark:text-white">{pair.sharesPurchase ? t('yes') : t('no')}</p>
+                </div>
+              </div>
+              {isOpen ? <DuplicateItemSides pair={pair} t={t} /> : null}
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="mt-4 text-[10px] text-slate-500 leading-relaxed">{t('duplicateItemsNote')}</p>
     </AnalyticsCard>
   );
 }

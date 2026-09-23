@@ -8,7 +8,7 @@ import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { canSell, getRoleFlags } from '@/lib/stock-roles.mjs';
 import { useRouter } from 'next/navigation';
-import { Boxes, ChevronRight, Download, LayoutGrid, TrendingUp, Truck, UserCheck, Users } from 'lucide-react';
+import { Boxes, ChevronRight, Download, LayoutGrid, TrendingUp, UserCheck, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CLASSES, paceAdjustedTarget } from '../components/dashboard-ui';
 import { PILL_BUTTON_CLASS, tabButtonClass } from '../lib/stock-utils';
@@ -32,7 +32,6 @@ import {
   MyPerformancePanel,
   CustomerConcentrationWidget,
   PriceDispersionWidget,
-  FreightTripsWidget,
   ActivityFeedWidget,
   RiskInventoryTable,
 } from './components/widgets';
@@ -42,7 +41,6 @@ const TABS = [
   { id: 'sales', labelKey: 'tabSales', icon: TrendingUp },
   { id: 'inventory', labelKey: 'tabInventory', icon: Boxes },
   { id: 'team', labelKey: 'tabTeam', icon: Users },
-  { id: 'freight', labelKey: 'tabFreight', icon: Truck },
 ];
 
 // Only for someone who sees the company view AND sells: a pure salesperson gets
@@ -253,8 +251,6 @@ export default function AnalyticsDashboard() {
   const salespersonGoals = salespersonGoalsAll;
   const customerConcentration = adminAnalytics?.customerConcentration || [];
   const priceDispersion = adminAnalytics?.priceDispersion || [];
-  const freightTrips = adminAnalytics?.freight?.trips || [];
-  const freightSummary = adminAnalytics?.freight?.summary || {};
   const activityFeed = adminAnalytics?.activityFeed || [];
   const abcItems = adminAnalytics?.abcItems || [];
 
@@ -376,14 +372,6 @@ export default function AnalyticsDashboard() {
       )}
 
       {activeTab === 'me' && <MyPerformancePanel data={salespersonAnalytics} goal={ownGoal} />}
-
-      {activeTab === 'freight' && (
-        <div className="grid grid-cols-1 gap-6 items-start">
-          <div className="min-w-0">
-            <FreightTripsWidget trips={freightTrips} summary={freightSummary} />
-          </div>
-        </div>
-      )}
 
       {activeTab === 'inventory' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

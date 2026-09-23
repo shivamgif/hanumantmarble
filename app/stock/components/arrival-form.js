@@ -20,6 +20,7 @@ import {
 import { FORM_CARD_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS, parseSizeLabelSqm, round3, toNumber } from '../lib/stock-utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
+import { normalizePlate } from '@/lib/stock-inbound-trips.mjs';
 
 // Transporter, truck and driver, plus the escape hatch for the rare delivery
 // that shows up with no transport paperwork at all. Shared by the tile form and
@@ -161,7 +162,15 @@ const inr = (value) => `\u20b9${Math.round(Number(value || 0)).toLocaleString('e
 // When the truck typed here already has a trip within a few days of this
 // invoice, offer to add the invoice to it: the freight fields then show that
 // trip's charge, shared by every invoice on it, instead of inviting a second
-// copy of the same charge. Choosing "separate trip" keeps the old behaviour.
+// copy of the same charge.
+//
+// Nothing is pre-selected. "Separate delivery" used to be ticked from the
+// start, so an operator who never looked at this card booked the lorry again
+// with the freight they had already typed - which is how RJ 10 GC 0916 was
+// charged Rs 1,87,660 twice for 15 Sep. The choice is now the operator's to
+// make, and tripChoice stays "" until they make it, which blocks the save.
+// Separate is still allowed; it just has to be said out loud, and when the
+// amount matches a trip already on the truck it has to be said twice.
 function TripPicker({ form }) {
   const { language } = useLanguage();
   const tt = (key) => getTranslation(`stock.dashboard.${key}`, language);
@@ -170,19 +179,28 @@ function TripPicker({ form }) {
   // last form.reset() - which clears that list. The purchase sheet resets the
   // form every time it opens or closes, so after that, typing a plate never
   // reached this component and the trip was never looked up.
-  const [plate, date, watchedTripId] = useWatch({
+  const [plate, date, watchedTripId, watchedChoice, typedTransport, typedLabour] = useWatch({
     control: form.control,
-    name: ['truckLicensePlate', 'invoiceDate', 'tripId'],
+    name: ['truckLicensePlate', 'invoiceDate', 'tripId', 'tripChoice', 'transportCost', 'laborCost'],
   });
   const tripId = watchedTripId || '';
+  const choice = watchedChoice || '';
   const [trips, setTrips] = useState([]);
+  // The radio the operator actually clicked, kept apart from tripChoice: while
+  // a matching amount is waiting to be confirmed, "separate" is selected on
+  // screen but is not yet an answer the save will accept.
+  const [pickedSeparate, setPickedSeparate] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
 
   // On edit, the purchase's own trip comes back too. Alone on it, that is not
   // "another delivery by this truck", so it is not offered.
   const ownTripId = String(form.formState.defaultValues?.tripId || '');
 
   useEffect(() => {
-    const plateKey = String(plate || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    // normalizePlate, not a copy of it: this has to key the truck exactly the
+    // way the plate_key generated column does, or the form offers a trip the
+    // server will not match, or misses one it would.
+    const plateKey = normalizePlate(plate);
     if (plateKey.length < 4 || !/^\d{4}-\d{2}-\d{2}$/.test(date || '')) {
       setTrips([]);
       return undefined;
@@ -209,9 +227,40 @@ function TripPicker({ form }) {
   }, [plate, date, form]);
 
   const offered = trips.filter((trip) => !(String(trip.id) === ownTripId && (trip.shipments?.length || 0) <= 1));
+
+  // The freight being typed is already on one of this truck's trips. That is
+  // not a coincidence worth waving through - it is what the same lorry keyed
+  // twice looks like, down to the rupee.
+  const amountMatch = offered.find(
+    (trip) =>
+      Number(typedTransport || 0) > 0 &&
+      Number(typedTransport || 0) === Number(trip.delivery_cost || 0) &&
+      Number(typedLabour || 0) === Number(trip.unloading_labour_cost || 0)
+  );
+  const needsConfirm = Boolean(amountMatch) && !tripId && pickedSeparate;
+
+  // tripChoice is what the schema refuses to save while empty, so every path
+  // through this card has to end by setting it. Derived in one place rather
+  // than in each handler: the amounts can change after "separate" is picked,
+  // and the answer has to follow them.
+  useEffect(() => {
+    const next = offered.length === 0
+      ? 'none'
+      : tripId
+        ? String(tripId)
+        : pickedSeparate && (!needsConfirm || confirmed)
+          ? 'separate'
+          : '';
+    if (form.getValues('tripChoice') !== next) {
+      form.setValue('tripChoice', next, { shouldDirty: false });
+    }
+  }, [offered.length, tripId, pickedSeparate, needsConfirm, confirmed, form]);
+
   if (offered.length === 0) return null;
 
   const join = (trip) => {
+    setPickedSeparate(false);
+    setConfirmed(false);
     form.setValue('tripId', String(trip.id), { shouldDirty: true });
     // Same lorry, same route. Overwritten rather than filled-if-empty: an origin
     // typed before picking the trip is the one that disagrees with the truck.
@@ -230,6 +279,8 @@ function TripPicker({ form }) {
   };
   const separate = () => {
     const joined = offered.find((trip) => String(trip.id) === String(tripId));
+    setPickedSeparate(true);
+    setConfirmed(false);
     form.setValue('tripId', '', { shouldDirty: true });
     // Leaving a trip with its charge still in the boxes is how the charge got
     // keyed twice in the first place, so it goes with the trip.
@@ -241,6 +292,9 @@ function TripPicker({ form }) {
     }
   };
   const selected = offered.find((trip) => String(trip.id) === String(tripId));
+  // Not `!tripId`: that was true before the operator had answered anything,
+  // which is exactly how the duplicate got saved without a decision.
+  const separateChecked = pickedSeparate && !tripId;
 
   return (
     <div className="sm:col-span-2 lg:col-span-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
@@ -270,13 +324,39 @@ function TripPicker({ form }) {
             </label>
           );
         })}
-        <label className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${!tripId ? 'border-brand-primary bg-brand-primary/5' : 'border-border hover:bg-muted/40'}`}>
-          <input type="radio" name="trip-choice" className="accent-brand-primary" checked={!tripId} onChange={separate} />
+        <label className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${separateChecked ? 'border-brand-primary bg-brand-primary/5' : 'border-border hover:bg-muted/40'}`}>
+          <input type="radio" name="trip-choice" className="accent-brand-primary" checked={separateChecked} onChange={separate} />
           <span className="text-xs font-bold text-foreground">{tt('tripSeparate')}</span>
         </label>
       </div>
       {selected ? (
         <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">{tt('tripSharedFreightNote')}</p>
+      ) : null}
+      {needsConfirm ? (
+        <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 space-y-2">
+          <p className="text-[11px] font-bold text-rose-700 dark:text-rose-400">
+            {tt('tripSameAmountWarning')}
+          </p>
+          <p className="text-[11px] text-rose-700/90 dark:text-rose-400/90">
+            {String(amountMatch.arrival_date).split('-').reverse().join('/')} · {amountMatch.truck_license_plate} ·{' '}
+            {tt('transportCost')} {inr(amountMatch.delivery_cost)} · {tt('laborCost')} {inr(amountMatch.unloading_labour_cost)}
+            {(amountMatch.shipments || []).length
+              ? ` — ${(amountMatch.shipments || []).map((ship) => ship.invoice_number || ship.shipment_number).filter(Boolean).join(', ')}`
+              : ''}
+          </p>
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-0.5 accent-rose-600"
+              checked={confirmed}
+              onChange={(event) => setConfirmed(event.target.checked)}
+            />
+            <span className="text-[11px] font-bold text-rose-700 dark:text-rose-400">{tt('tripSameAmountConfirm')}</span>
+          </label>
+        </div>
+      ) : null}
+      {choice === '' ? (
+        <p className="text-[11px] font-bold text-rose-700 dark:text-rose-400">{tt('tripChoiceRequired')}</p>
       ) : null}
     </div>
   );

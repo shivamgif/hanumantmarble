@@ -708,6 +708,9 @@ export default function StockDashboard() {
           // Always sent, null included: null means "a delivery of its own",
           // while a missing key would keep the purchase on its current trip.
           tripId: values.tripId || null,
+          // The operator's answer, which the server needs before it will start
+          // a second trip for a lorry already charged that day.
+          tripChoice: values.tripChoice || undefined,
           deliveryCost: toNumber(values.transportCost),
           unloadingLabourCost: toNumber(values.laborCost),
           handlingCostPercent: values.handlingCostPercent === '' ? undefined : toNumber(values.handlingCostPercent),

@@ -229,6 +229,10 @@ export function PurchasesPanel({
       const payload = {
         ...values,
         items,
+        // Without this the arrival date is the moment the form was submitted,
+        // which can be days after the lorry came - and a trip is matched on
+        // plate and date, so the other invoices off that truck never find it.
+        purchaseDate: values.invoiceDate || undefined,
         transportCost: values.transportCost === '' ? 0 : toNumber(values.transportCost),
         laborCost: values.laborCost === '' ? 0 : toNumber(values.laborCost),
         handlingCostPercent: values.handlingCostPercent === '' ? 0 : toNumber(values.handlingCostPercent),
@@ -289,6 +293,10 @@ export function PurchasesPanel({
       const payload = {
         ...values,
         items,
+        // Without this the arrival date is the moment the form was submitted,
+        // which can be days after the lorry came - and a trip is matched on
+        // plate and date, so the other invoices off that truck never find it.
+        purchaseDate: values.invoiceDate || undefined,
         transportCost: values.transportCost === '' ? 0 : toNumber(values.transportCost),
         laborCost: values.laborCost === '' ? 0 : toNumber(values.laborCost),
         handlingCostPercent: values.handlingCostPercent === '' ? 0 : toNumber(values.handlingCostPercent),

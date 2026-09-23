@@ -1230,6 +1230,11 @@ export async function PATCH(request, context) {
 
     return NextResponse.json({ shipment: recomputedShipment || rows[0] });
   } catch (error) {
+    // A trip conflict is the operator's to resolve: the form needs the message
+    // and the trips in question, not the generic failure text.
+    if (error.statusCode === 409) {
+      return NextResponse.json({ error: error.message, trips: error.trips || [] }, { status: 409 });
+    }
     console.error('Failed to update inbound shipment:', error);
     const status = Number.isInteger(error?.statusCode) ? error.statusCode : 500;
     return NextResponse.json({ error: 'Failed to update shipment', detail: error.message }, { status });
