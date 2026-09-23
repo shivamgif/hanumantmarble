@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import { useCallback, useEffect, useState } from 'react';
@@ -27,13 +26,10 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  ArrowRightLeft,
-  BarChart2,
   ChevronDown,
   ChevronRight,
   Eye,
   EyeOff,
-  PackageSearch,
   ShieldAlert,
   UsersRound,
   Activity,
@@ -50,7 +46,7 @@ import {
   Copy
 } from 'lucide-react';
 
-import { AnalyticsCard, CLASSES, formatCompactNumber } from '@/app/stock/components/dashboard-ui';
+import { AnalyticsCard } from '@/app/stock/components/dashboard-ui';
 import { DuplicateItemsWidget, FreightTripsWidget } from '@/app/stock/analytics/components/widgets';
 
 // How far back the review tab looks. Freight is per truck-day and six months is
@@ -175,9 +171,7 @@ export default function AdminDashboard() {
   const viewerFlags = getRoleFlags(viewerRole);
   const canViewAnalytics = viewerFlags.canViewAllAnalytics;
   const canManageUsers = viewerFlags.canManageUsers;
-  const [analyticsData, setAnalyticsData] = useState(null);
   // Freight and duplicate-product review, from the admin analytics endpoint.
-  // Kept apart from analyticsData, which is the operational dashboard feed.
   const [reviewData, setReviewData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -323,7 +317,6 @@ export default function AdminDashboard() {
       try {
         const fetchPromises = [
           fetch('/api/stock/admin/dashboard'),
-          canViewAnalytics ? fetch('/api/stock/dashboard') : Promise.resolve(null),
           fetch('/api/stock/change-requests', { cache: 'no-store' }),
           // Not gated on canViewAnalytics: at this point `data` is null, so the
           // role falls back to the session's, which is null for accounts whose
@@ -332,10 +325,9 @@ export default function AdminDashboard() {
           // its own role check; a 401 here just leaves the tabs empty.
           fetch(`/api/stock/admin/analytics?months=${REVIEW_MONTHS}`),
         ];
-        const [dashboardResponse, analyticsResponse, changeRequestResponse, reviewResponse] = await Promise.all(fetchPromises);
+        const [dashboardResponse, changeRequestResponse, reviewResponse] = await Promise.all(fetchPromises);
 
         const dashboardJson = await dashboardResponse.json();
-        const analyticsJson = analyticsResponse ? await analyticsResponse.json() : null;
         const changeRequestJson = await changeRequestResponse.json();
         // The review tab is a side errand. An approver waiting on the queue must
         // not be shown an error page because the freight query had a bad day, so
@@ -346,17 +338,12 @@ export default function AdminDashboard() {
           throw new Error(dashboardJson.error || 'Fetch failed');
         }
 
-        if (analyticsResponse && !analyticsResponse.ok) {
-          throw new Error(analyticsJson?.error || 'Failed to load analytics');
-        }
-
         if (!changeRequestResponse.ok) {
           throw new Error(changeRequestJson.error || 'Failed to load change requests');
         }
 
         if (mounted) {
           setData(dashboardJson);
-          if (analyticsJson) setAnalyticsData(analyticsJson);
           setChangeRequests(changeRequestJson.requests || []);
           if (reviewJson) setReviewData(reviewJson);
         }
@@ -442,16 +429,14 @@ export default function AdminDashboard() {
   }
 
   async function refreshDashboard() {
-    const [refreshResponse, analyticsResponse, changeRequestResponse, reviewResponse] = await Promise.all([
+    const [refreshResponse, changeRequestResponse, reviewResponse] = await Promise.all([
       fetch('/api/stock/admin/dashboard'),
-      canViewAnalytics ? fetch('/api/stock/dashboard') : Promise.resolve(null),
       fetch('/api/stock/change-requests', { cache: 'no-store' }),
       // fresh=1: an approval just changed the books, so the cached copy is stale.
       fetch(`/api/stock/admin/analytics?months=${REVIEW_MONTHS}&fresh=1`),
     ]);
 
     const refreshJson = await refreshResponse.json();
-    const analyticsJson = analyticsResponse ? await analyticsResponse.json() : null;
     const changeRequestJson = await changeRequestResponse.json();
     const reviewJson = reviewResponse?.ok ? await reviewResponse.json() : null;
 
@@ -459,16 +444,11 @@ export default function AdminDashboard() {
       throw new Error(refreshJson.error || 'Failed to refresh dashboard');
     }
 
-    if (analyticsResponse && !analyticsResponse.ok) {
-      throw new Error(analyticsJson?.error || 'Failed to refresh analytics');
-    }
-
     if (!changeRequestResponse.ok) {
       throw new Error(changeRequestJson.error || 'Failed to refresh change requests');
     }
 
     setData(refreshJson);
-    if (analyticsJson) setAnalyticsData(analyticsJson);
     setChangeRequests(changeRequestJson.requests || []);
     if (reviewJson) setReviewData(reviewJson);
   }
@@ -1170,183 +1150,11 @@ export default function AdminDashboard() {
     return () => clearTimeout(timeoutId);
   }, [highlightedChangeRequestId]);
 
-  const pendingReviews = Number(analyticsData?.summary?.pending_inbound_reviews || 0) + Number(analyticsData?.summary?.pending_outbound_reviews || 0);
-  const totalIncoming = Number(analyticsData?.summary?.total_incoming || 0);
-  const totalOutgoing = Number(analyticsData?.summary?.total_outgoing || 0);
-  const totalUsers = Number(data?.users?.length || 0);
-  const activeUsers = (data?.users || []).filter((entry) => Boolean(entry?.is_active)).length;
-  const pendingUsers = Math.max(totalUsers - activeUsers, 0);
-
-  const summaryTiles = [
-    {
-      label: t('teamAccounts'),
-      value: totalUsers,
-      href: '/stock?view=items',
-      icon: UsersRound,
-      trend: activeUsers - pendingUsers,
-      iconAccent: 'bg-[#1A1A54]/10 text-[#1A1A54]',
-      subMetrics: [
-        { label: t('active'), value: activeUsers },
-        { label: t('pending'), value: pendingUsers },
-      ],
-    },
-    {
-      label: t('approvalQueue'),
-      value: pendingReviews,
-      href: '#approval-queue',
-      icon: ShieldAlert,
-      trend: pendingReviews > 0 ? -pendingReviews : 1,
-      iconAccent: 'bg-[#F59E0B]/15 text-[#E07A00]',
-      subMetrics: [
-        { label: language === 'hi' ? 'आवक' : 'Inbound', value: Number(analyticsData?.summary?.pending_inbound_reviews || 0) },
-        { label: language === 'hi' ? 'जावक' : 'Outbound', value: Number(analyticsData?.summary?.pending_outbound_reviews || 0) },
-      ],
-    },
-    {
-      label: t('storedUnits'),
-      value: Number(analyticsData?.summary?.total_whole_stored || 0) + Number(analyticsData?.summary?.total_broken_stored || 0),
-      href: '/stock?view=items',
-      icon: PackageSearch,
-      trend: Number(analyticsData?.summary?.total_whole_stored || 0) - Number(analyticsData?.summary?.total_broken_stored || 0),
-      iconAccent: 'bg-[#E07A00]/10 text-[#E07A00]',
-      subMetrics: [
-        { label: t('whole'), value: Number(analyticsData?.summary?.total_whole_stored || 0) },
-        { label: t('broken'), value: Number(analyticsData?.summary?.total_broken_stored || 0) },
-      ],
-    },
-    {
-      label: t('netMovement'),
-      value: totalIncoming - totalOutgoing,
-      href: '/stock?view=arrivals',
-      icon: ArrowRightLeft,
-      trend: totalIncoming - totalOutgoing,
-      iconAccent: 'bg-[#1A1A54]/10 text-[#1A1A54]',
-      subMetrics: [
-        { label: language === 'hi' ? 'आवक' : 'Incoming', value: totalIncoming },
-        { label: language === 'hi' ? 'जावक' : 'Outgoing', value: totalOutgoing },
-      ],
-    },
-  ];
-
-  const movementByDate = new Map();
-
-  (analyticsData?.recentArrivals || []).forEach((shipment) => {
-    const dateSource = shipment.arrival_date || shipment.created_at;
-    const date = new Date(dateSource);
-    if (Number.isNaN(date.getTime())) {
-      return;
-    }
-
-    const dateKey = date.toISOString().slice(0, 10);
-    const current = movementByDate.get(dateKey) || { inbound: 0, outbound: 0, date: dateKey };
-    current.inbound += Number(shipment.total_whole_qty || 0) + Number(shipment.total_broken_qty || 0);
-    movementByDate.set(dateKey, current);
-  });
-
-  (analyticsData?.recentDispatches || []).forEach((shipment) => {
-    const dateSource = shipment.dispatch_date || shipment.created_at;
-    const date = new Date(dateSource);
-    if (Number.isNaN(date.getTime())) {
-      return;
-    }
-
-    const dateKey = date.toISOString().slice(0, 10);
-    const current = movementByDate.get(dateKey) || { inbound: 0, outbound: 0, date: dateKey };
-    current.outbound += Number(shipment.total_whole_qty || 0) + Number(shipment.total_broken_qty || 0);
-    movementByDate.set(dateKey, current);
-  });
-
-  const movementTrend = Array.from(movementByDate.values())
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(-8);
-
-  const movementPeak = movementTrend.reduce((peak, point) => {
-    const total = Number(point.inbound || 0) + Number(point.outbound || 0);
-    if (!peak || total > peak.total) {
-      return { ...point, total };
-    }
-    return peak;
-  }, null);
-
-  const movementSummary = movementPeak
-    ? `${language === 'hi' ? 'उच्च मात्रा वाला दिन' : 'High-volume day detected on'} ${new Date(movementPeak.date).toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-IN', { day: 'numeric', month: 'long', year: 'numeric' })} ${language === 'hi' ? 'को' : 'with'} ${movementPeak.total} ${t('units')} ${language === 'hi' ? 'के साथ पाया गया।' : 'moved.'}`
-    : language === 'hi' ? 'उच्च मात्रा वाले दिन की पहचान करने के लिए पर्याप्त गतिविधि इतिहास की प्रतीक्षा की जा रही है।' : 'Waiting for enough movement history to identify a high-volume day.';
-
-  const lowStockCount = (analyticsData?.activeItems || []).filter((item) => {
-    const available = item.unit_of_measure === 'sqft'
-      ? Number(item.current_sqft || 0)
-      : Number(item.current_whole_qty || 0) + Number(item.current_broken_qty || 0);
-    const reorder = Number(item.reorder_level || 0);
-    return reorder > 0 && available <= reorder;
-  }).length;
-
-  const totalStored = Number(analyticsData?.summary?.total_whole_stored || 0) + Number(analyticsData?.summary?.total_broken_stored || 0);
-  const brokenRatio = totalStored > 0 ? Number(analyticsData?.summary?.total_broken_stored || 0) / totalStored : 0;
-  const latestTrendPoint = movementTrend[movementTrend.length - 1] || null;
-
-  const operationalAlerts = [
-    pendingReviews > 0
-      ? {
-        level: 'critical',
-        title: t('pendingApprovalsAction'),
-        message: `${pendingReviews} ${language === 'hi' ? 'शिपमेंट समीक्षा कतार में प्रतीक्षा कर रहे हैं।' : `shipment${pendingReviews > 1 ? 's' : ''} waiting in review queue.`}`,
-        href: '#approval-queue',
-      }
-      : null,
-    lowStockCount > 0
-      ? {
-        level: 'warning',
-        title: t('lowStockRisk'),
-        message: `${lowStockCount} ${language === 'hi' ? 'आइटम पुन: क्रय स्तर पर या उससे नीचे हैं।' : `item${lowStockCount > 1 ? 's are' : ' is'} at or below reorder level.`}`,
-        href: '/stock?view=items',
-      }
-      : null,
-    brokenRatio >= 0.08
-      ? {
-        level: 'warning',
-        title: t('brokenStockRatioHigh'),
-        message: `${(brokenRatio * 100).toFixed(1)}% ${language === 'hi' ? 'स्टॉक को टूटा हुआ चिह्नित किया गया है। क्षति स्रोतों की जाँच करें।' : 'of stock is marked broken. Investigate damage sources.'}`,
-        href: '/stock?view=items',
-      }
-      : null,
-    latestTrendPoint && latestTrendPoint.outbound > latestTrendPoint.inbound
-      ? {
-        level: 'info',
-        title: t('outflowAboveInflow'),
-        message: `${language === 'hi' ? 'आज जावक' : 'Outgoing'} ${latestTrendPoint.outbound} ${language === 'hi' ? 'बनाम आवक' : 'vs incoming'} ${latestTrendPoint.inbound} ${language === 'hi' ? 'है।' : 'on latest trend day.'}`,
-        href: '/stock?view=dispatches',
-      }
-      : null,
-  ].filter(Boolean);
-
-  const recentActivity = [
-    ...(analyticsData?.recentArrivals || []).map((shipment) => ({
-      id: `arrival-${shipment.id}`,
-      kind: 'arrival',
-      title: `${language === 'hi' ? 'आगमन' : 'Arrival'} ${shipment.shipment_number}`,
-      subtitle: Number(shipment.total_sqft_qty || 0) > 0
-        ? `${Number(shipment.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sqft`
-        : `${Number(shipment.total_whole_qty || 0)} whole + ${Number(shipment.total_broken_qty || 0)} broken`,
-      by: shipment.generated_by || '—',
-      at: shipment.arrival_date || shipment.created_at,
-      status: shipment.approval_status || shipment.status,
-      href: `/stock?view=arrivals&entityType=inbound_shipment&entityId=${shipment.id}`,
-    })),
-    ...(analyticsData?.recentDispatches || []).map((shipment) => ({
-      id: `dispatch-${shipment.id}`,
-      kind: 'dispatch',
-      title: `${language === 'hi' ? 'डिस्पैच' : 'Dispatch'} ${shipment.shipment_number}`,
-      subtitle: Number(shipment.total_sqft_qty || 0) > 0
-        ? `${Number(shipment.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sqft`
-        : `${Number(shipment.total_whole_qty || 0)} whole + ${Number(shipment.total_broken_qty || 0)} broken`,
-      by: shipment.generated_by || '—',
-      at: shipment.dispatch_date || shipment.created_at,
-      status: shipment.approval_status || shipment.status,
-      href: `/stock?view=dispatches&entityType=outbound_shipment&entityId=${shipment.id}`,
-    })),
-  ]
-    .sort((left, right) => new Date(right.at || 0).getTime() - new Date(left.at || 0).getTime())
-    .slice(0, 8);
+  // Counts behind the tab badges. The approval queue and the change queue are
+  // the only two things on this page that need chasing, so they are the only
+  // two that carry a number.
+  const pendingApprovals = Number(data?.pendingArrivals?.length || 0) + Number(data?.pendingDispatches?.length || 0);
+  const pendingChangeRequests = (changeRequests || []).filter((request) => String(request?.status || '').toLowerCase() === 'pending').length;
 
   if (loading) {
     return (
@@ -1354,11 +1162,6 @@ export default function AdminDashboard() {
         <div className="flex flex-col gap-4">
           <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 animate-pulse rounded" />
           <div className="h-16 sm:h-20 w-full sm:w-3/4 max-w-lg bg-slate-200 dark:bg-slate-800 animate-pulse rounded-2xl sm:rounded-[2.5rem]" />
-        </div>
-        <div className={CLASSES.heroGrid}>
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div key={`hero-skeleton-${index}`} className="animate-pulse rounded-3xl sm:rounded-[2.5rem] bg-slate-200 dark:bg-slate-800 h-40 sm:h-48" />
-          ))}
         </div>
         <div className="grid grid-cols-1 gap-6">
           <div className="animate-pulse rounded-3xl sm:rounded-[2.5rem] bg-slate-200 dark:bg-slate-800 h-96" />
@@ -1418,152 +1221,12 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {canViewAnalytics && <>
-      <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
-        {summaryTiles.map((m, i) => {
-          const Icon = m.icon;
-          const isPositive = m.trend >= 0;
-          return (
-            <div className="glass-panel rounded-xl p-3 sm:rounded-2xl sm:p-6 relative overflow-hidden transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group" key={m.label}>
-              <div className="relative z-10">
-                <div className="flex items-center justify-between gap-2 mb-3 sm:mb-5">
-                  <div className={`w-10 h-10 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center rounded-lg sm:rounded-xl border ${m.iconAccent.split(' ')[0]} bg-opacity-20 border-opacity-20`}>
-                    <Icon className={`h-5 w-5 sm:h-8 sm:w-8 ${m.iconAccent.split(' ')[1]}`} />
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <span className="hidden sm:inline text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{t('systemMetric')}</span>
-                    <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-black sm:mt-2 sm:px-3 sm:py-1 sm:text-[10px] ${isPositive ? 'text-emerald-600 bg-emerald-500/10' : 'text-rose-600 bg-rose-500/10'}`}>
-                      {isPositive ? '+' : ''}{m.trend} {t('units')}
-                    </span>
-                  </div>
-                </div>
-                <div className="space-y-1 sm:space-y-2">
-                  <div className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.15em]">{m.label}</div>
-                  <div className="text-2xl sm:text-4xl lg:text-5xl font-black font-sans tracking-tighter text-slate-900 dark:text-white leading-none">{formatCompactNumber(m.value)}</div>
-
-                  {showInsights && (
-                    <div className="mt-6 p-3 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50 animate-scale-in">
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-loose mb-2">{t('deepLogic')}</p>
-                      <p className="text-[10px] leading-relaxed text-slate-500 dark:text-slate-400 font-medium">
-                        {i === 0 ? t('insightSummary') :
-                          i === 1 ? t('insightQueue') :
-                            i === 2 ? t('insightSnapshot') :
-                              t('insightFlow')}
-                      </p>
-                      <div className="mt-3 flex gap-4 border-t border-slate-100 dark:border-slate-800 pt-2">
-                        {m.subMetrics.map((sm) => (
-                          <div key={sm.label} className="flex flex-col">
-                            <span className="text-[8px] uppercase tracking-widest text-slate-400 font-black">{sm.label}</span>
-                            <span className="text-[11px] font-black text-slate-700 dark:text-slate-200">{formatCompactNumber(sm.value)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="absolute -right-6 -bottom-6 w-24 h-24 sm:w-40 sm:h-40 opacity-[0.04] transition-all duration-700 pointer-events-none group-hover:scale-110 group-hover:opacity-[0.08]">
-                <Icon className="w-full h-full" />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <section className="space-y-6">
-        <div className="flex items-center gap-6">
-          <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400 whitespace-nowrap">{t('operationalOverview')}</h2>
-          <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-          <AnalyticsCard
-            title={t('operationalAlerts')}
-            subtitle={t('criticalEventsSubtitle')}
-            insight={t('criticalEventsInsight')}
-            showInsight={showInsights}
-            className="lg:col-span-2"
-            topRight={
-              <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-slate-500">
-                {operationalAlerts.length || 0} {t('active')}
-              </span>
-            }
-          >
-            {operationalAlerts.length ? (
-              <div className="space-y-4">
-                {operationalAlerts.map((alert) => (
-                  <Link
-                    key={alert.title}
-                    href={alert.href}
-                    className={`block rounded-2xl border px-5 py-4 transition-[box-shadow] duration-200 hover:shadow-card-hover focus-ring ${alert.level === 'critical'
-                      ? 'border-rose-200 bg-rose-50/50 text-rose-800 dark:border-rose-500/20 dark:bg-rose-500/5 dark:text-rose-400'
-                      : alert.level === 'warning'
-                        ? 'border-amber-200 bg-amber-50/50 text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/5 dark:text-amber-400'
-                        : 'border-sky-200 bg-sky-50/50 text-sky-800 dark:border-sky-500/20 dark:bg-sky-500/5 dark:text-sky-400'
-                      }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-black tracking-tight">{alert.title}</p>
-                      <span className={`w-2 h-2 rounded-full ${alert.level === 'critical' ? 'bg-rose-500 animate-pulse' : 'bg-current opacity-60'}`} />
-                    </div>
-                    <p className="mt-1.5 text-[11px] leading-relaxed opacity-75 font-bold">{alert.message}</p>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-[2rem] border border-dashed border-emerald-200 bg-emerald-50/30 px-4 py-8 text-center">
-                <p className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-[0.2em] italic">All systems clear</p>
-              </div>
-            )}
-          </AnalyticsCard>
-
-          <AnalyticsCard
-            title={t('recentActivity')}
-            subtitle={t('adminActivitySubtitle')}
-            insight={t('adminActivitySubtitle')}
-            showInsight={showInsights}
-            className="lg:col-span-3"
-          >
-            {recentActivity.length ? (
-              <div className="space-y-2">
-                {recentActivity.map((event) => (
-                  <Link
-                    key={event.id}
-                    href={event.href}
-                    className="flex items-center justify-between gap-4 p-4 rounded-2xl border border-transparent hover:border-slate-100 hover:bg-slate-50 dark:hover:border-slate-800 dark:hover:bg-slate-800/40 transition-all group"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-black text-slate-900 dark:text-white group-hover:text-brand-primary transition-colors tracking-tight">{event.title}</p>
-                      <p className="truncate text-[10px] font-black text-slate-500 uppercase tracking-widest mt-1 opacity-70">{event.subtitle}</p>
-                      <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
-                        <UsersRound className="h-3 w-3" /> {event.by} <span className="opacity-30">•</span> <Clock className="h-3 w-3" /> {formatDateTime(event.at)}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className={`rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest shadow-sm ${event.kind === 'arrival' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-brand-primary/10 text-brand-primary'}`}>
-                        {event.status || event.kind}
-                      </span>
-                      <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-brand-primary transition-colors" />
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-[2rem] border border-dashed border-slate-200 px-4 py-8 text-center">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">No recent log entries</p>
-              </div>
-            )}
-          </AnalyticsCard>
-        </div>
-      </section>
-      </>}
-
       {/* Same strip as the dashboard and analytics: below sm only the active tab
           keeps its label, the rest collapse to icon circles. */}
       <div className="flex w-full min-w-0 items-center gap-1 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 p-1 scrollbar-none dark:border-white/5 dark:bg-slate-900/40 sm:w-fit sm:gap-0 sm:overflow-x-auto">
         {[
-          { id: 'approvals', label: t('approvals'), icon: ShieldCheck },
-          { id: 'changes', label: t('changes'), icon: Clock },
+          { id: 'approvals', label: t('approvals'), icon: ShieldCheck, badge: pendingApprovals },
+          { id: 'changes', label: t('changes'), icon: Clock, badge: pendingChangeRequests },
           { id: 'users', label: t('users'), icon: UsersRound },
           // Freight charged twice, and the same tile entered as two products.
           // Both are things to go and fix, which is what this page is for, and
@@ -1583,14 +1246,22 @@ export default function AdminDashboard() {
               key={tab.id}
               type="button"
               onClick={() => setMobileSection(tab.id)}
-              aria-label={tab.label}
+              aria-label={tab.badge ? `${tab.label} (${tab.badge})` : tab.label}
               aria-current={isActive ? 'true' : undefined}
-              className={tabButtonClass(isActive)}
+              className={`${tabButtonClass(isActive)} relative`}
             >
               <Icon className="h-4 w-4 shrink-0 sm:hidden" />
               <span className={`overflow-hidden transition-all duration-300 ease-out sm:max-w-none sm:opacity-100 ${isActive ? 'max-w-[12rem] opacity-100' : 'max-w-0 opacity-0'}`}>
                 {tab.label}
               </span>
+              {/* Waiting work, shown as a count where there is room and a dot
+                  where the tab has collapsed to an icon. */}
+              {tab.badge ? (
+                <>
+                  <span className="ml-1.5 hidden rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] leading-none text-amber-600 dark:text-amber-400 sm:inline-block">{tab.badge}</span>
+                  <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 sm:hidden" />
+                </>
+              ) : null}
             </button>
           );
         })}
