@@ -9,7 +9,11 @@ import {
   availableQtyExpr,
   freightRepeatFlagExpr,
   freightRepeatedAmountExpr,
+  goalProgressSql,
+  lastMonthToDateFilter,
   monthProgress,
+  rankAmong,
+  sellFirstSql,
   netRevenueExpr,
   netUnitsExpr,
   ownershipFilter,
@@ -159,5 +163,50 @@ assert.match(repeatAmount, /^NULLIF\(/, 'no repeat must be NULL, so the row sort
 
 // Both go into a GROUP BY, so they must aggregate rather than name a column.
 assert.match(freightRepeatFlagExpr('f'), /COUNT\(DISTINCT f\)/, 'the freight column is injectable');
+
+// --- goal progress & rank -------------------------------------------------------
+// One query feeds the admin goal tracker and a salesperson's rank card.
+for (const caps of [{ ...modern, hasUserCanSell: true }, { ...legacy, hasUserCanSell: false }]) {
+  const goals = goalProgressSql(caps);
+  assert.ok(goals.includes(ownershipFilter(caps, 'o', 'u.id')), 'ownership must match the salesperson page');
+  assert.ok(goals.includes(sellerFilter(caps, 'u')), 'only sellers are ranked');
+  assert.ok(goals.includes(shippedFilter('o')), 'drafts and rejections never count');
+  assert.match(goals, /last_mtd_rev/);
+  assert.doesNotMatch(goals, /LIMIT/, 'the admin route adds its own LIMIT; the rank needs everyone');
+}
+// Month-so-far is compared with the same days of last month, not all of it.
+assert.match(lastMonthToDateFilter('s.dispatch_date'), /EXTRACT\(DAY FROM s\.dispatch_date\) <= EXTRACT\(DAY FROM/);
+
+const team = [
+  { id: 1, goal: 100000, actual: 80000, last_mtd_rev: 70000 }, // 80%
+  { id: 2, goal: 200000, actual: 100000, last_mtd_rev: 20000 }, // 50%, 5x growth
+  { id: 3, goal: 100000, actual: 30000, last_mtd_rev: 60000 }, // 30%
+  { id: 4, goal: 50000, actual: 25000, last_mtd_rev: 0 }, // 50%, tie with #2
+];
+const mid = rankAmong(team, 2);
+assert.equal(mid.position, 2);
+assert.equal(mid.total, 4);
+assert.equal(mid.gapToNext, 60000, '30 points short of 80%, in their own 2L goal');
+assert.equal(mid.leadOverNext, null);
+assert.equal(mid.mostImproved, true);
+assert.equal(rankAmong(team, 4).position, 2, 'a tie shares the position');
+const top = rankAmong(team, 1);
+assert.equal(top.position, 1);
+assert.equal(top.gapToNext, null);
+assert.equal(top.leadOverNext, 30000, '80% vs 50% of a 1L goal');
+assert.equal(rankAmong(team, 3).mostImproved, false, 'shrinking is not improving');
+assert.equal(rankAmong(team, 99), null, 'no goal, no rank');
+assert.deepEqual(Object.keys(mid).sort(), ['gapToNext', 'leadOverNext', 'mostImproved', 'position', 'total'], 'nothing about other people leaks');
+assert.equal(rankAmong([team[0]], 1).mostImproved, false, 'alone is not "most improved"');
+
+// --- sell first ---------------------------------------------------------------
+const sellFirst = sellFirstSql(modern);
+assert.match(sellFirst, /division_id = ANY\(\$1::bigint\[\]\)/, 'scoped to the caller\'s divisions');
+const sellFirstColumns = sellFirst.slice(sellFirst.indexOf('i.id,'), sellFirst.indexOf('FROM stock_items i'));
+assert.doesNotMatch(sellFirstColumns, /cost/i, 'purchase cost is ranked on but never selected');
+assert.match(sellFirst, /LIMIT 5/);
+const tuned = sellFirstSql(legacy, { limit: 3, staleDays: 30 });
+assert.match(tuned, /LIMIT 3$/);
+assert.match(tuned, /INTERVAL '30 days'/);
 
 console.log('check-analytics-sql: all assertions passed');

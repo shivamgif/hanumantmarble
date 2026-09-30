@@ -84,7 +84,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
   }
 
   if (!settings) {
-    return <p className="py-10 text-center text-xs font-bold text-slate-400">{error || 'Loading…'}</p>;
+    return <p className="py-10 text-center text-xs font-bold text-slate-500">{error || 'Loading…'}</p>;
   }
 
   return (
@@ -285,13 +285,13 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
                 onClick={() =>
                   post(`/api/stock/attendance/holidays?id=${holiday.id}`, { method: 'DELETE' }, load, 'holidays')
                 }
-                className="text-slate-400 hover:text-rose-500"
+                className="text-slate-500 hover:text-rose-500"
               >
                 <Trash2 className="h-3 w-3" />
               </button>
             </span>
           ))}
-          {!holidays.length ? <p className="text-xs font-bold text-slate-400">No holidays configured.</p> : null}
+          {!holidays.length ? <p className="text-xs font-bold text-slate-500">No holidays configured.</p> : null}
         </div>
         <Feedback scope="holidays" />
       </div>
@@ -312,13 +312,13 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
                 <p className="text-xs font-black">
                   {emp.name}
                   {!emp.hasLogin ? (
-                    <span className="ml-1.5 text-[9px] font-black uppercase tracking-wider text-slate-400">no login</span>
+                    <span className="ml-1.5 text-[11px] font-black uppercase tracking-wider text-slate-500">no login</span>
                   ) : null}
                   {emp.hasPin ? (
-                    <span className="ml-1.5 text-[9px] font-black uppercase tracking-wider text-emerald-600">pin</span>
+                    <span className="ml-1.5 text-[11px] font-black uppercase tracking-wider text-emerald-600">pin</span>
                   ) : null}
                 </p>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{emp.role}</p>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{emp.role}</p>
               </div>
 
               <select
@@ -349,7 +349,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
                 ))}
               </select>
 
-              <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-500">
+              <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-slate-500">
                 <input
                   type="checkbox"
                   checked={emp.tracksAttendance}
@@ -373,7 +373,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
               </label>
             </div>
           ))}
-          {!employees.length ? <p className="text-xs font-bold text-slate-400">No active employees.</p> : null}
+          {!employees.length ? <p className="text-xs font-bold text-slate-500">No active employees.</p> : null}
         </div>
         <Feedback scope="staff" />
       </div>
@@ -472,13 +472,13 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
                 type="button"
                 aria-label={`Revoke ${device.label}`}
                 onClick={() => post(`/api/stock/attendance/devices?id=${device.id}`, { method: 'DELETE' }, load, 'devices')}
-                className="text-slate-400 hover:text-rose-500"
+                className="text-slate-500 hover:text-rose-500"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>
           ))}
-          {!devices.length ? <p className="text-xs font-bold text-slate-400">No kiosk devices paired.</p> : null}
+          {!devices.length ? <p className="text-xs font-bold text-slate-500">No kiosk devices paired.</p> : null}
         </div>
         <Feedback scope="devices" />
       </div>

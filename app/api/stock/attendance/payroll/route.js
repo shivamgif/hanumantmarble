@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getRoleFlags, getStockContext } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
-import { summarizeMonth, workingDaysInMonth } from '@/lib/attendance.mjs';
+import { istMonth, istToday, summarizeMonth, workingDaysInMonth } from '@/lib/attendance.mjs';
 import { MONTH_RE, loadSettings } from '@/lib/attendance-db';
 
 /**
@@ -23,7 +23,7 @@ export async function GET(request) {
 
   const flags = getRoleFlags(appUser.role);
   const { searchParams } = new URL(request.url);
-  const month = searchParams.get('month') || new Date().toISOString().slice(0, 7);
+  const month = searchParams.get('month') || istMonth();
   const selfOnly = searchParams.get('scope') === 'self' || !flags.canViewAllAttendance;
 
   if (!MONTH_RE.test(month)) {
@@ -83,6 +83,7 @@ export async function GET(request) {
       leaveByUser.get(key).push(row);
     }
 
+    const today = istToday();
     const rows = users.map((user) => {
       const id = Number(user.id);
       const summary = summarizeMonth({
@@ -92,10 +93,12 @@ export async function GET(request) {
         holidays,
         entries: entriesByUser.get(id) || [],
         leaveRequests: leaveByUser.get(id) || [],
+        // A month in progress must not count the days still to come as absent.
+        today,
       });
 
-      // days[] is 30ish objects per person — useful for one timesheet, wasteful
-      // for a 40-row payroll table. The client asks /attendance for detail.
+      // days[] is 30ish objects per person — useful for one person's month
+      // calendar, wasteful for a 40-row payroll table. Only self scope keeps it.
       const { days, ...totals } = summary;
       return {
         userId: id,
@@ -105,6 +108,7 @@ export async function GET(request) {
         hasLogin: user.has_login !== false,
         salary: user.salary === null ? null : Number(user.salary),
         ...totals,
+        ...(selfOnly ? { days } : {}),
       };
     });
 

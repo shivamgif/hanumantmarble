@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getRoleFlags, getStockContext } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
-import { classifyDay, entryMinutes } from '@/lib/attendance.mjs';
+import { AUTO_CLOSED_NOTE, classifyDay, entryMinutes, istMonth } from '@/lib/attendance.mjs';
 import { DATE_RE, IST_NOW, MONTH_RE, loadSettings, serializeEntry } from '@/lib/attendance-db';
 
 /**
@@ -22,7 +22,7 @@ export async function GET(request) {
   const flags = getRoleFlags(appUser.role);
   const { searchParams } = new URL(request.url);
   const date = searchParams.get('date');
-  const month = searchParams.get('month') || new Date().toISOString().slice(0, 7);
+  const month = searchParams.get('month') || istMonth();
   const requestedUserId = searchParams.get('userId');
 
   if (date && !DATE_RE.test(date)) {
@@ -94,27 +94,47 @@ export async function GET(request) {
     // "Who is in right now" for the team view — a single extra query rather
     // than making the client diff the list.
     let onDuty = [];
+    let needsReview = [];
     if (scopeAll) {
-      onDuty = (
-        await sql(
-          `SELECT e.id, e.user_id, u.name AS user_name, e.clock_in_at, e.break_started_at,
+      const [openRows, reviewRows] = await Promise.all([
+        sql(
+          `SELECT e.id, e.user_id, e.work_date, u.name AS user_name, e.clock_in_at, e.break_started_at,
                   e.break_seconds, ${IST_NOW} AS server_now
              FROM stock_attendance_entries e
              JOIN stock_app_users u ON u.id = e.user_id
             WHERE e.clock_out_at IS NULL AND e.is_active
             ORDER BY e.clock_in_at`,
           []
-        )
-      ).map((row) => ({
+        ),
+        // Punches the system auto-closed that no manager has corrected yet
+        // (any manager edit stamps edited_by). Same test as needsReview().
+        sql(
+          `SELECT e.*, u.name AS user_name
+             FROM stock_attendance_entries e
+             JOIN stock_app_users u ON u.id = e.user_id
+            WHERE e.is_active AND e.edited_by IS NULL
+              AND e.note LIKE '%' || $1 || '%'
+              AND e.work_date >= ${IST_NOW}::date - INTERVAL '60 days'
+            ORDER BY e.work_date DESC`,
+          [AUTO_CLOSED_NOTE]
+        ),
+      ]);
+      onDuty = openRows.map((row) => ({
         ...serializeEntry(row),
         user_name: row.user_name,
         onBreak: Boolean(row.break_started_at),
+      }));
+      needsReview = reviewRows.map((row) => ({
+        ...serializeEntry(row),
+        user_name: row.user_name,
+        workedMinutes: entryMinutes(row),
       }));
     }
 
     return NextResponse.json({
       entries,
       onDuty,
+      needsReview,
       settings,
       scope: scopeAll ? 'all' : String(scopeUserId),
       canViewAll: flags.canViewAllAttendance,

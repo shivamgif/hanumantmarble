@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,6 +13,7 @@ import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
 import { usePageSize } from '@/hooks/usePageSize';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { canSell, getRoleFlags } from '@/lib/stock-roles.mjs';
+import { goalTier } from './analytics/lib/streak.mjs';
 import { arrivalFormSchema, dispatchFormSchema } from '@/lib/forms/stock-forms';
 import { useStockFormStore } from '@/lib/stores/stock-form-store';
 import {
@@ -1316,15 +1318,18 @@ export default function StockDashboard() {
         const achieved = value >= goal && goal > 0;
         const now = new Date();
         const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-        const daysLeft = daysInMonth - now.getDate();
-        const atRisk = !achieved && pct < 50 && daysLeft < 10;
-        const barColor = achieved ? 'bg-yellow-400' : atRisk ? 'bg-amber-500' : 'bg-brand-primary';
+        // Same standing rule as the My Performance page, so the two never disagree.
+        const standing = goalTier(pct, (now.getDate() / daysInMonth) * 100);
+        const barColor = standing.bar;
         const fmt = (v) => `₹${Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
         const label = `${fmt(value)} / ${fmt(goal)} — ${pct}%`;
         const fill = Math.min(pct, 100);
         return (
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-200/60 bg-white px-3 py-2 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50">
-            <p className="shrink-0 text-[9px] font-black uppercase leading-tight tracking-widest text-slate-400">Monthly<br />Sales Goal</p>
+          <Link
+            href="/stock/analytics"
+            className="flex items-center gap-3 rounded-2xl border border-slate-200/60 bg-white px-3 py-2 shadow-sm transition-shadow hover:shadow-md dark:border-slate-800/60 dark:bg-slate-900/50"
+          >
+            <p className="w-16 shrink-0 text-[9px] font-black uppercase leading-tight tracking-widest text-slate-500">{getTranslation('stock.analytics.me.monthlyGoal', language)}</p>
             {/* The figure sits inside the bar, printed twice: dark over the empty
                 track, light over the fill. The light copy is as wide as the whole
                 track (100/fill of the fill's width), so the two line up exactly
@@ -1351,13 +1356,14 @@ export default function StockDashboard() {
                 </div>
               )}
             </div>
-            {achieved && (
-              <span className="shrink-0 whitespace-nowrap rounded-full bg-yellow-100 px-2.5 py-1 text-[11px] font-black text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400">Goal Achieved!</span>
+            {/* Quiet while on track; speaks up when the goal is hit or the month slips. */}
+            {(achieved || (goal > 0 && standing.behind)) && (
+              <span className={`shrink-0 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-black ${standing.color} ${standing.bg} ${standing.border}`}>
+                <span aria-hidden="true">{standing.emoji}</span> {getTranslation(`stock.analytics.me.${standing.key}`, language)}
+              </span>
             )}
-            {atRisk && (
-              <span className="shrink-0 whitespace-nowrap rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-black text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">{daysLeft}d left</span>
-            )}
-          </div>
+            <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+          </Link>
         );
       })()}
 

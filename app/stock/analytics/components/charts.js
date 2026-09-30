@@ -353,39 +353,91 @@ export function SalespersonTrendChart({ trend }) {
   );
 }
 
-export function AbcItemsWidget({ items }) {
+// Days of stock left below which a best seller is flagged. ponytail: flat
+// thresholds; per-item lead times would be the upgrade if suppliers differ a lot.
+const DAYS_LEFT_URGENT = 15;
+const DAYS_LEFT_SOON = 30;
+
+export function TopSellersWidget({ items }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   if (!items || items.length === 0) {
     return (
-      <AnalyticsCard title={t('abcItems')} subtitle={t('abcSubtitle')}>
+      <AnalyticsCard title={t('topSellers')} subtitle={t('topSellersSubtitle')}>
         <EmptyState label={t('noData')} />
       </AnalyticsCard>
     );
   }
   const totalItems = Number(items[0]?.total_items_with_sales || items.length);
   const top80Count = Number(items[0]?.rank_at_80 || 0);
-  const chartData = items.slice(0, 30).map((it) => ({
-    rank: it.rank,
-    revenue: Number(it.revenue),
-    cumulative: Number(it.cumulative_pct),
-  }));
+  const maxRev = Number(items[0]?.revenue || 1);
+  const headCell = 'text-[10px] font-black uppercase tracking-widest text-slate-400';
+  const cols = 'md:grid md:grid-cols-[1.5rem_minmax(0,2fr)_minmax(0,1.6fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,1fr)] md:items-center md:gap-4';
   return (
     <AnalyticsCard
-      title={t('abcItems')}
-      subtitle={t('abcSubtitle')}
+      title={t('topSellers')}
+      subtitle={t('topSellersSubtitle')}
       contextBar={top80Count > 0 ? `${top80Count} ${t('ofLabel')} ${totalItems} ${t('itemsEqual80')}` : null}
     >
-      <div className="h-44">
-        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
-          <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200/80 dark:stroke-slate-800" />
-            <XAxis dataKey="rank" tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactNumber} width={36} />
-            <RechartsTooltip content={<ChartTooltip formatter={(v, e) => e.dataKey === 'cumulative' ? `${v}%` : formatCompactINR(v)} labelFormatter={(l) => `${t('rank')} ${l}`} />} cursor={{ fill: 'rgba(148,163,184,0.08)' }} />
-            <Bar dataKey="revenue" name={t('revenue')} fill={CHART_ORANGE} radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+      <div className={`hidden ${cols} px-1 pb-2 border-b border-border/60`}>
+        <span />
+        <span className={headCell}>{t('item')}</span>
+        <span className={headCell}>{t('revenue')}</span>
+        <span className={`${headCell} text-right`}>{t('sold')}</span>
+        <span className={`${headCell} text-right`}>{t('profit')}</span>
+        <span className={`${headCell} text-right`}>{t('stockLeft')}</span>
+      </div>
+      <div className="max-h-[32rem] overflow-y-auto pr-1">
+        {items.map((it) => {
+          const revenue = Number(it.revenue || 0);
+          const profit = Number(it.gross_profit || 0);
+          const margin = it.margin_pct != null ? Number(it.margin_pct) : null;
+          const daysLeft = it.days_left != null ? Number(it.days_left) : null;
+          const daysTone = daysLeft == null
+            ? 'text-slate-400'
+            : daysLeft <= DAYS_LEFT_URGENT
+              ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'
+              : daysLeft <= DAYS_LEFT_SOON
+                ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400'
+                : 'text-slate-500 dark:text-slate-400';
+          return (
+            <div key={it.id} className={`${cols} grid grid-cols-2 gap-x-3 gap-y-1.5 py-2.5 px-1 border-b border-slate-100 dark:border-slate-800/40 last:border-b-0`}>
+              <span className="hidden md:block text-xs font-black text-slate-400 text-right tabular-nums">{it.rank}.</span>
+              <div className="col-span-2 md:col-span-1 min-w-0">
+                <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate" title={it.name}>
+                  <span className="md:hidden text-slate-400 tabular-nums">{it.rank}. </span>{it.name}
+                </p>
+                <p className="text-[10px] font-bold text-slate-400 truncate">{it.division}{it.sku ? ` · ${it.sku}` : ''}</p>
+              </div>
+              <div className="col-span-2 md:col-span-1 min-w-0">
+                <div className="flex items-baseline justify-between gap-2 tabular-nums">
+                  <span className="text-xs font-black text-slate-900 dark:text-white">{formatCompactINR(revenue)}</span>
+                  <span className="text-[10px] font-bold text-slate-400">{Number(it.share_pct || 0).toFixed(1)}% {t('ofSales')}</span>
+                </div>
+                <div className="mt-1 h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-brand-secondary rounded-full" style={{ width: `${Math.min(100, (revenue / maxRev) * 100)}%` }} />
+                </div>
+              </div>
+              <div className="md:text-right tabular-nums">
+                <span className="md:hidden text-[9px] font-black uppercase tracking-widest text-slate-400">{t('sold')} </span>
+                <span className="text-xs font-black text-slate-900 dark:text-white">{formatCompactNumber(it.units)}</span>
+              </div>
+              <div className="text-right tabular-nums">
+                <p className={`text-xs font-black ${profit < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                  <span className="md:hidden text-[9px] uppercase tracking-widest text-slate-400">{t('profit')} </span>
+                  {formatCompactINR(profit)}
+                </p>
+                {margin != null ? <p className="text-[10px] font-bold text-slate-400">{margin.toFixed(1)}% {t('margin')}</p> : null}
+              </div>
+              <div className="col-span-2 md:col-span-1 flex items-center justify-between md:justify-end gap-2 tabular-nums">
+                <span className="text-[10px] font-bold text-slate-400">{formatCompactNumber(it.in_stock)} {t('onHandShort')}</span>
+                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${daysTone}`}>
+                  {daysLeft != null ? `${daysLeft}${t('daysShort')}` : '—'}
+                </span>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </AnalyticsCard>
   );

@@ -1,8 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Building2, Camera, Coffee, LogIn, LogOut, MapPinOff, Play } from 'lucide-react';
+import { AlertTriangle, Building2, Camera, Coffee, LogIn, LogOut, MapPinOff, Play } from 'lucide-react';
 import { formatMinutes } from '@/lib/attendance.mjs';
+import { useAttendanceText } from '@/lib/attendance-i18n';
+import { clockTime } from './attendance-timesheet';
 import { haptic } from '@/lib/haptics';
 import { CLASSES, PILL_BUTTON_CLASS } from '../lib/stock-utils';
 
@@ -86,27 +88,10 @@ function requestFix(enableHighAccuracy, timeoutMs) {
  * simply retrying, which re-triggers the prompt when it has never been answered.
  */
 function locationAdvice(reason) {
-  if (reason === GEO.denied) {
-    return {
-      title: 'Location is blocked for this site',
-      detail:
-        'Your browser will not ask again until you change it: tap the padlock or ⓘ beside the web address, set Location to Allow, then try again.',
-      canRetry: true,
-    };
-  }
-  if (reason === GEO.unsupported) {
-    return {
-      title: 'This browser cannot share a location',
-      detail: 'Punch from your phone, or use the kiosk tablet at your branch.',
-      canRetry: false,
-    };
-  }
-  return {
-    title: 'Could not get your location',
-    detail:
-      'The signal may be weak indoors. Step near a window or door, make sure location is switched on for your device, and try again.',
-    canRetry: true,
-  };
+  // Keys into stock.attendance.* — the wording lives in locales/{en,hi}.json.
+  if (reason === GEO.denied) return { title: 'geoDeniedTitle', detail: 'geoDeniedDetail', canRetry: true };
+  if (reason === GEO.unsupported) return { title: 'geoUnsupportedTitle', detail: 'geoUnsupportedDetail', canRetry: false };
+  return { title: 'geoFailTitle', detail: 'geoFailDetail', canRetry: true };
 }
 
 /**
@@ -143,7 +128,8 @@ function shrinkToJpeg(file, maxEdge = 640, quality = 0.7) {
 }
 
 export function AttendanceClock({ onPunched }) {
-  const [state, setState] = useState({ entry: null, elapsedMinutes: 0, onBreak: false, homeBranch: null, currentBranch: null });
+  const t = useAttendanceText();
+  const [state, setState] = useState({ entry: null, elapsedMinutes: 0, onBreak: false, staleOpen: false, homeBranch: null, currentBranch: null });
   const [requireSelfie, setRequireSelfie] = useState(false);
 
   // The camera is opened by clicking a hidden file input, and the punch is sent
@@ -169,7 +155,12 @@ export function AttendanceClock({ onPunched }) {
   const baseRef = useRef({ minutes: 0, at: Date.now(), running: false });
 
   const applyState = useCallback((json) => {
+    // Open since an earlier day = a forgotten clock-out, not a 26-hour shift.
+    // The server closes it at shift end on the next punch, so the screen treats
+    // them as clocked out and offers Clock in.
+    const staleOpen = Boolean(json.staleOpen);
     setState((prev) => ({
+      staleOpen,
       entry: json.entry || null,
       elapsedMinutes: json.elapsedMinutes || 0,
       onBreak: Boolean(json.onBreak ?? json.entry?.break_started_at),
@@ -182,9 +173,9 @@ export function AttendanceClock({ onPunched }) {
         json.currentBranch !== undefined ? json.currentBranch : json.location !== undefined ? json.location : prev.currentBranch,
     }));
     baseRef.current = {
-      minutes: json.elapsedMinutes || 0,
+      minutes: staleOpen ? 0 : json.elapsedMinutes || 0,
       at: Date.now(),
-      running: Boolean(json.entry && !json.entry.clock_out_at && !(json.onBreak ?? json.entry?.break_started_at)),
+      running: !staleOpen && Boolean(json.entry && !json.entry.clock_out_at && !(json.onBreak ?? json.entry?.break_started_at)),
     };
     setTicks(0);
   }, []);
@@ -314,14 +305,15 @@ export function AttendanceClock({ onPunched }) {
 
       applyState({ ...json, onBreak: Boolean(json.entry?.break_started_at) });
       haptic('success');
-      setFlash(
-        {
-          in: 'Clocked in',
-          out: 'Clocked out',
-          break_start: 'Break started',
-          break_end: 'Back from break',
-        }[action]
-      );
+      const stale = json.staleClosed;
+      const staleNote = stale ? t('staleClosed', { date: stale.work_date, time: clockTime(stale.clock_out_at) }) : '';
+      if (stale && action !== 'in') {
+        // Only the old shift was closed; nothing was punched today.
+        setFlash(`${staleNote} ${t('notInToday')}`);
+      } else {
+        const done = t({ in: 'flashIn', out: 'flashOut', break_start: 'flashBreakStart', break_end: 'flashBreakEnd' }[action]);
+        setFlash(staleNote ? `${done}. ${staleNote}` : done);
+      }
       onPunched?.();
     } catch (err) {
       setError(err.message);
@@ -331,7 +323,7 @@ export function AttendanceClock({ onPunched }) {
     }
   }
 
-  const isIn = Boolean(state.entry && !state.entry.clock_out_at);
+  const isIn = Boolean(state.entry && !state.entry.clock_out_at && !state.staleOpen);
   const onBreak = state.onBreak;
   const branch = (isIn && state.currentBranch) || state.homeBranch || null;
 
@@ -345,8 +337,8 @@ export function AttendanceClock({ onPunched }) {
     <div className={CLASSES.topCard}>
       <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-center sm:text-left">
-          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-600 dark:text-slate-400">
-            {isIn ? (onBreak ? 'On break' : 'Clocked in') : 'Not clocked in'}
+          <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
+            {isIn ? (onBreak ? t('onBreak') : t('clockedIn')) : t('notClockedIn')}
           </p>
           <p className="mt-1 text-4xl font-black tabular-nums text-slate-900 dark:text-white">
             {loading ? '—' : formatMinutes(liveMinutes)}
@@ -359,32 +351,40 @@ export function AttendanceClock({ onPunched }) {
             <p className="mt-1 flex items-center justify-center gap-1.5 text-[11px] font-bold text-slate-500 sm:justify-start">
               <Building2 className="h-3.5 w-3.5" />
               {branch.name}
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                {isIn && state.currentBranch ? 'punched here' : 'your branch'}
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+                {isIn && state.currentBranch ? t('punchedHere') : t('yourBranch')}
               </span>
             </p>
           ) : null}
           {needsBranch ? (
             <p className="mt-1 flex items-center justify-center gap-1.5 text-[11px] font-bold text-amber-600 sm:justify-start">
               <Building2 className="h-3.5 w-3.5" />
-              No branch assigned — ask a manager to set yours before clocking in
+              {t('noBranch')}
             </p>
           ) : null}
           {requireSelfie && !busy ? (
             <p className="mt-1 flex items-center justify-center gap-1.5 text-[11px] font-bold text-slate-500 sm:justify-start">
               <Camera className="h-3.5 w-3.5" />
-              A photo is taken when you clock {isIn ? 'out' : 'in'}
+              {isIn ? t('photoOut') : t('photoIn')}
             </p>
           ) : null}
-          {state.entry?.is_outside_geofence ? (
+          {state.staleOpen ? (
+            <p className="mt-1 flex items-start justify-center gap-1.5 text-[11px] font-bold text-amber-600 sm:justify-start">
+              <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" />
+              {t('staleOpen', { date: state.entry.work_date })}
+            </p>
+          ) : null}
+          {!state.staleOpen && state.entry?.is_outside_geofence ? (
             <p className="mt-1 flex items-center justify-center gap-1.5 text-[11px] font-bold text-amber-600 sm:justify-start">
               <MapPinOff className="h-3.5 w-3.5" />
-              {branch ? `Punched away from ${branch.name}` : 'Punched away from your branch'}
+              {branch ? t('awayFrom', { branch: branch.name }) : t('awayFromYours')}
             </p>
           ) : null}
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+        {/* Full-width on a phone: this is the one tap staff make every day, often
+            one-handed at the showroom door. */}
+        <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto sm:gap-3">
           {isIn ? (
             <>
               <button
@@ -394,16 +394,16 @@ export function AttendanceClock({ onPunched }) {
                 className={PILL_BUTTON_CLASS}
               >
                 {onBreak ? <Play className="h-4 w-4" /> : <Coffee className="h-4 w-4" />}
-                {onBreak ? 'End break' : 'Break'}
+                {onBreak ? t('endBreak') : t('break')}
               </button>
               <button
                 type="button"
                 onClick={() => startPunch('out')}
                 disabled={Boolean(busy) || needsBranch}
-                className="flex shrink-0 items-center gap-2 rounded-full bg-rose-600 px-6 py-3 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-rose-600/20 transition-all hover:scale-105 hover:bg-rose-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex flex-1 shrink-0 items-center justify-center gap-2 rounded-full bg-rose-600 px-6 py-4 text-sm font-black sm:flex-none sm:py-3 sm:text-xs uppercase tracking-widest text-white shadow-lg shadow-rose-600/20 transition-all hover:scale-105 hover:bg-rose-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <LogOut className="h-4 w-4" />
-                {busy === 'out' ? 'Saving…' : 'Clock out'}
+                {busy === 'out' ? t('saving') : t('clockOut')}
               </button>
             </>
           ) : (
@@ -411,10 +411,10 @@ export function AttendanceClock({ onPunched }) {
               type="button"
               onClick={() => startPunch('in')}
               disabled={Boolean(busy) || loading || needsBranch}
-              className="flex shrink-0 items-center gap-2 rounded-full bg-emerald-600 px-8 py-3.5 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-600/20 transition-all hover:scale-105 hover:bg-emerald-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full shrink-0 items-center justify-center gap-2 rounded-full bg-emerald-600 px-8 py-4 text-sm font-black sm:w-auto sm:py-3.5 sm:text-xs uppercase tracking-widest text-white shadow-lg shadow-emerald-600/20 transition-all hover:scale-105 hover:bg-emerald-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <LogIn className="h-4 w-4" />
-              {busy === 'in' ? 'Saving…' : 'Clock in'}
+              {busy === 'in' ? t('saving') : t('clockIn')}
             </button>
           )}
         </div>
@@ -427,22 +427,22 @@ export function AttendanceClock({ onPunched }) {
         <div className="mt-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
           <p className="flex items-center gap-1.5 text-xs font-black text-amber-700 dark:text-amber-400">
             <MapPinOff className="h-3.5 w-3.5 shrink-0" />
-            {advice.title}
+            {t(advice.title)}
           </p>
           <p className="mt-1 text-[11px] font-bold leading-relaxed text-amber-700/80 dark:text-amber-400/80">
-            {advice.detail}
+            {t(advice.detail)}
           </p>
           {geoMessage ? (
-            <p className="mt-1 font-mono text-[10px] text-amber-700/60 dark:text-amber-400/60">{geoMessage}</p>
+            <p className="mt-1 font-mono text-[11px] text-amber-700/60 dark:text-amber-400/60">{geoMessage}</p>
           ) : null}
           {advice.canRetry ? (
             <button
               type="button"
               onClick={() => startPunch(isIn ? 'out' : 'in')}
               disabled={Boolean(busy) || needsBranch}
-              className="mt-2.5 rounded-full bg-amber-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-amber-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-2.5 rounded-full bg-amber-600 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-white transition-all hover:bg-amber-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {busy ? 'Checking…' : 'Try again'}
+              {busy ? t('checking') : t('tryAgain')}
             </button>
           ) : null}
         </div>

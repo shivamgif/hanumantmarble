@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable } from '@/lib/stock-workflow';
 import { sql, withTransaction } from '@/lib/db';
 import { openEntryMinutes } from '@/lib/attendance.mjs';
-import { IST_NOW, KIOSK_COOKIE, logTimeline, serializeEntry } from '@/lib/attendance-db';
+import { IST_NOW, KIOSK_COOKIE, closeStaleEntry, isoDate, loadSettings, logTimeline, serializeEntry } from '@/lib/attendance-db';
 
 /**
  * Shared-tablet punching. This is the ONE route in the stock app that runs
@@ -175,6 +175,8 @@ export async function POST(request) {
 
     // Toggle: whichever state they are in, do the other. A kiosk user should
     // not have to choose "in" or "out" — the system knows.
+    const settings = await loadSettings();
+    let stale = null;
     const result = await withTransaction(async (tx) => {
       const openRows = await tx(
         `SELECT * FROM stock_attendance_entries
@@ -183,7 +185,11 @@ export async function POST(request) {
           FOR UPDATE`,
         [userId]
       );
-      const open = openRows[0] || null;
+      // A shift forgotten open on an earlier day is closed at its shift end, and
+      // this tap becomes today's clock-in — someone at the kiosk the next
+      // morning is arriving, not leaving a 24-hour shift.
+      stale = await closeStaleEntry(tx, openRows[0] || null, settings);
+      const open = stale ? null : openRows[0] || null;
 
       if (open) {
         const closed = await tx(
@@ -210,6 +216,17 @@ export async function POST(request) {
       );
       return { action: 'in', entry: opened[0] };
     });
+
+    if (stale) {
+      await logTimeline({
+        eventType: 'other',
+        entityType: 'attendance',
+        entityId: stale.id,
+        summary: `${user.name}'s punch from ${isoDate(stale.work_date)} was auto-closed (no clock-out)`,
+        details: { action: 'auto_close', source: 'kiosk', deviceId: Number(device.id) },
+        userId: null,
+      });
+    }
 
     await logTimeline({
       eventType: 'other',

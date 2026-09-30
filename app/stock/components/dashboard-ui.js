@@ -23,7 +23,7 @@ export const SERIES_COLORS = ['#C96E00', '#2563EB', '#059669', '#7C3AED', '#DC26
 export const CLASSES = {
   heroGrid: 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 lg:gap-6',
   card: 'rounded-2xl p-5 sm:p-6 bg-card border border-border shadow-card transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover',
-  title: 'text-[10px] font-black uppercase tracking-[0.25em] text-slate-600 dark:text-slate-400',
+  title: 'text-[11px] font-black uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400',
   value: 'mt-2 text-3xl font-extrabold text-slate-900 dark:text-slate-100 font-sans tracking-tight',
   grid: 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
   mobileScroll: 'flex overflow-x-auto scrollbar-none gap-2 pb-2 snap-x snap-mandatory overscroll-x-contain',

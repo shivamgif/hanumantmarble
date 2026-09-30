@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getStockContext } from '@/lib/stock-workflow';
 import { sql, withTransaction } from '@/lib/db';
-import { isMissingRequiredPosition, isOutsideGeofence, openEntryMinutes } from '@/lib/attendance.mjs';
+import { isMissingRequiredPosition, isOutsideGeofence, istToday, openEntryMinutes } from '@/lib/attendance.mjs';
 import {
   IST_NOW,
+  closeStaleEntry,
+  isoDate,
   getOpenEntry,
   locationSummary,
   logTimeline,
@@ -109,6 +111,7 @@ export async function POST(request) {
       );
     }
 
+    let staleClosed = null;
     const entry = await withTransaction(async (tx) => {
       // FOR UPDATE serialises two taps from the same person; the partial unique
       // index idx_attendance_one_open is the backstop that cannot be raced.
@@ -119,7 +122,16 @@ export async function POST(request) {
          FOR UPDATE`,
         [appUser.id]
       );
-      const open = openRows[0] || null;
+      let open = openRows[0] || null;
+
+      // A shift left open from an earlier day is closed at its shift end first.
+      // Clocking in then opens today's as normal; any other action was aimed at
+      // that old shift, which is now closed, so report it rather than guess.
+      staleClosed = await closeStaleEntry(tx, open, settings);
+      if (staleClosed) {
+        if (action !== 'in') return staleClosed;
+        open = null;
+      }
 
       if (action === 'in') {
         if (open) throw Object.assign(new Error('Already clocked in'), { status: 409 });
@@ -188,6 +200,26 @@ export async function POST(request) {
     // hold a database lock open across a call to the blob store. A failed
     // upload leaves the punch standing with a null key — losing the photo is
     // our problem, not a reason to reject somebody's shift.
+    if (staleClosed) {
+      await logTimeline({
+        eventType: 'other',
+        entityType: 'attendance',
+        entityId: staleClosed.id,
+        summary: `${appUser.name}'s punch from ${isoDate(staleClosed.work_date)} was auto-closed (no clock-out)`,
+        details: { action: 'auto_close', source: 'web' },
+        userId: appUser.id,
+      });
+    }
+
+    // Nothing was punched: the tap only closed yesterday's forgotten shift.
+    if (staleClosed && entry === staleClosed) {
+      return NextResponse.json({
+        entry: serializeEntry(staleClosed),
+        elapsedMinutes: 0,
+        staleClosed: serializeEntry(staleClosed),
+      });
+    }
+
     let saved = entry;
     if (selfie) {
       const key = await putSelfie(selfie, { userId: appUser.id, action });
@@ -224,6 +256,7 @@ export async function POST(request) {
         elapsedMinutes: openEntryMinutes(saved),
         outsideGeofence: outsideFence,
         location: location ? { id: Number(location.id), name: location.name } : null,
+        staleClosed: staleClosed ? serializeEntry(staleClosed) : null,
       },
       { status: action === 'in' ? 201 : 200 }
     );
@@ -261,8 +294,12 @@ export async function GET(request) {
       open?.location_id ? locationSummary(open.location_id) : null,
     ]);
 
+    const entry = serializeEntry(open);
     return NextResponse.json({
-      entry: serializeEntry(open),
+      entry,
+      // Still open from an earlier day: the clock warns before the next tap
+      // closes it at shift end (see closeStaleEntry).
+      staleOpen: Boolean(entry && entry.work_date < istToday()),
       elapsedMinutes: open ? openEntryMinutes(open) : 0,
       onBreak: Boolean(open?.break_started_at),
       tracksAttendance: appUser.tracks_attendance !== false,

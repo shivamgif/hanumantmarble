@@ -1,17 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Coffee, MapPinOff } from 'lucide-react';
-import { formatMinutes } from '@/lib/attendance.mjs';
+import { Skeleton } from '@/components/ui/skeleton';
+import { AlertTriangle, Coffee, MapPinOff } from 'lucide-react';
+import { formatMinutes, istToday } from '@/lib/attendance.mjs';
 import { CLASSES } from '../lib/stock-utils';
 import { clockTime } from './attendance-timesheet';
-
-const today = () => {
-  // The business day in IST, which is what work_date holds — not the browser's
-  // idea of today, which is a day off for anyone travelling.
-  const ist = new Date(Date.now() + (330 + new Date().getTimezoneOffset()) * 60000);
-  return `${ist.getFullYear()}-${String(ist.getMonth() + 1).padStart(2, '0')}-${String(ist.getDate()).padStart(2, '0')}`;
-};
 
 /**
  * The clock-in / clock-out photos for one punch, when there are any.
@@ -51,11 +45,11 @@ function PunchSelfies({ row }) {
   );
 }
 
-export function AttendanceTeam({ employees = [] }) {
-  const [data, setData] = useState({ entries: [], onDuty: [] });
+export function AttendanceTeam({ employees = [], reloadKey, onEdit }) {
+  const [data, setData] = useState({ entries: [], onDuty: [], needsReview: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [date, setDate] = useState(today);
+  const [date, setDate] = useState(istToday);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,14 +73,51 @@ export function AttendanceTeam({ employees = [] }) {
     return () => {
       cancelled = true;
     };
-  }, [date]);
+  }, [date, reloadKey]);
 
   const punchedIds = new Set(data.entries.map((e) => Number(e.user_id)));
   const tracked = employees.filter((emp) => emp.tracksAttendance);
   const missing = tracked.filter((emp) => !punchedIds.has(emp.id));
+  const today = istToday();
+  const review = data.needsReview || [];
 
   return (
     <div className="space-y-4">
+      {/* Shifts nobody clocked out of. The system closed them at shift end so
+          they cannot run into a 30-hour day; the real time is a manager's call. */}
+      {review.length ? (
+        <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 sm:p-6">
+          <h2 className="flex items-center gap-2 text-xs font-black text-amber-800 dark:text-amber-300">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            {review.length} forgotten clock-out{review.length === 1 ? '' : 's'} to review
+          </h2>
+          <p className="mt-1 text-[11px] font-bold text-amber-800/80 dark:text-amber-300/80">
+            Closed automatically at shift end. Set the real clock-out time, or open and save to confirm.
+          </p>
+          <div className="mt-3 space-y-2">
+            {review.map((row) => (
+              <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-background/70 p-3">
+                <p className="text-xs font-bold">
+                  <span className="font-black">{row.user_name}</span>
+                  <span className="ml-2 tabular-nums text-slate-500">
+                    {row.work_date} · {clockTime(row.clock_in_at)} → {clockTime(row.clock_out_at)} · {formatMinutes(row.workedMinutes)}
+                  </span>
+                </p>
+                {onEdit ? (
+                  <button
+                    type="button"
+                    onClick={() => onEdit(row)}
+                    className="rounded-full bg-amber-600 px-4 py-2 text-[11px] font-black uppercase tracking-wider text-white transition hover:bg-amber-700 active:scale-95"
+                  >
+                    Review
+                  </button>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <div className={CLASSES.card}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -98,7 +129,7 @@ export function AttendanceTeam({ employees = [] }) {
           <input
             type="date"
             value={date}
-            max={today()}
+            max={istToday()}
             onChange={(e) => setDate(e.target.value)}
             aria-label="Attendance date"
             className="rounded-xl border border-border/60 bg-background px-3 py-2 text-xs font-bold outline-none focus:border-brand-primary/50"
@@ -106,17 +137,35 @@ export function AttendanceTeam({ employees = [] }) {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {(data.onDuty || []).map((row) => (
-            <span
-              key={row.id}
-              className="flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1.5 text-[11px] font-black text-emerald-700"
-            >
-              {row.user_name}
-              <span className="tabular-nums opacity-70">since {clockTime(row.clock_in_at)}</span>
-              {row.onBreak ? <Coffee className="h-3 w-3" aria-label="On break" /> : null}
-            </span>
-          ))}
-          {!data.onDuty?.length ? <p className="text-xs font-bold text-slate-400">Nobody is clocked in.</p> : null}
+          {(data.onDuty || []).map((row) =>
+            // Open since an earlier day: they forgot to clock out. Their next
+            // punch closes it at shift end; a manager can fix it now instead.
+            row.work_date < today ? (
+              <button
+                key={row.id}
+                type="button"
+                onClick={() => onEdit?.(row)}
+                disabled={!onEdit}
+                className="flex items-center gap-2 rounded-full bg-amber-500/15 px-3 py-1.5 text-[11px] font-black text-amber-800 transition enabled:hover:bg-amber-500/25 dark:text-amber-300"
+              >
+                <AlertTriangle className="h-3 w-3" />
+                {row.user_name}
+                <span className="tabular-nums opacity-80">
+                  no clock-out since {row.work_date} {clockTime(row.clock_in_at)}
+                </span>
+              </button>
+            ) : (
+              <span
+                key={row.id}
+                className="flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1.5 text-[11px] font-black text-emerald-700 dark:text-emerald-400"
+              >
+                {row.user_name}
+                <span className="tabular-nums opacity-70">since {clockTime(row.clock_in_at)}</span>
+                {row.onBreak ? <Coffee className="h-3 w-3" aria-label="On break" /> : null}
+              </span>
+            )
+          )}
+          {!data.onDuty?.length ? <p className="text-xs font-bold text-slate-500">Nobody is clocked in.</p> : null}
         </div>
       </div>
 
@@ -126,7 +175,9 @@ export function AttendanceTeam({ employees = [] }) {
 
         <div className="mt-4 space-y-2">
           {loading ? (
-            <p className="py-8 text-center text-xs font-bold text-slate-400">Loading…</p>
+            <div className="space-y-2" aria-busy="true">
+              {[0, 1, 2].map((i) => <Skeleton key={i} className="h-14 rounded-xl" />)}
+            </div>
           ) : (
             <>
               {data.entries.map((row) => (
@@ -155,7 +206,7 @@ export function AttendanceTeam({ employees = [] }) {
 
               {missing.length ? (
                 <div className="pt-2">
-                  <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                  <p className="mb-2 text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">
                     No punch ({missing.length})
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -169,7 +220,7 @@ export function AttendanceTeam({ employees = [] }) {
               ) : null}
 
               {!data.entries.length && !missing.length ? (
-                <p className="py-8 text-center text-xs font-bold text-slate-400">Nothing recorded for this day.</p>
+                <p className="py-8 text-center text-xs font-bold text-slate-500">Nothing recorded for this day.</p>
               ) : null}
             </>
           )}

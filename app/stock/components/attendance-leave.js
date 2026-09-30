@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Check, X } from 'lucide-react';
+import { useAttendanceText } from '@/lib/attendance-i18n';
 import { CLASSES, FORM_INPUT_CLASS, FORM_LABEL_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../lib/stock-utils';
 
 const LEAVE_TYPES = ['paid', 'unpaid', 'sick', 'casual'];
@@ -12,7 +14,8 @@ const STATUS_STYLE = {
   rejected: 'bg-rose-500/10 text-rose-600',
 };
 
-export function AttendanceLeave({ canManage = false, employees = [] }) {
+export function AttendanceLeave({ canManage = false, employees = [], currentUserId = null }) {
+  const t = useAttendanceText();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -73,21 +76,34 @@ export function AttendanceLeave({ canManage = false, employees = [] }) {
     }
   }
 
+  async function withdraw(req) {
+    if (!window.confirm(t('withdrawConfirm', { date: req.from_date }))) return;
+    setError('');
+    try {
+      const res = await fetch(`/api/stock/attendance/leave/${req.id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to withdraw');
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <form onSubmit={submit} className={CLASSES.card}>
-        <h2 className={CLASSES.title}>{canManage ? 'Record leave' : 'Request leave'}</h2>
+        <h2 className={CLASSES.title}>{canManage ? t('recordLeave') : t('requestLeave')}</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {canManage ? (
             <div>
-              <label className={FORM_LABEL_CLASS} htmlFor="leave-employee">Employee</label>
+              <label className={FORM_LABEL_CLASS} htmlFor="leave-employee">{t('employee')}</label>
               <select
                 id="leave-employee"
                 value={form.userId}
                 onChange={(e) => setForm((f) => ({ ...f, userId: e.target.value }))}
                 className={FORM_INPUT_CLASS}
               >
-                <option value="">Myself</option>
+                <option value="">{t('myself')}</option>
                 {employees.map((emp) => (
                   <option key={emp.id} value={emp.id}>{emp.name}</option>
                 ))}
@@ -95,7 +111,7 @@ export function AttendanceLeave({ canManage = false, employees = [] }) {
             </div>
           ) : null}
           <div>
-            <label className={FORM_LABEL_CLASS} htmlFor="leave-from">From</label>
+            <label className={FORM_LABEL_CLASS} htmlFor="leave-from">{t('from')}</label>
             {/* Native date input: no picker library needed, and it is the
                 better mobile experience on the phones staff actually use. */}
             <input
@@ -108,7 +124,7 @@ export function AttendanceLeave({ canManage = false, employees = [] }) {
             />
           </div>
           <div>
-            <label className={FORM_LABEL_CLASS} htmlFor="leave-to">To</label>
+            <label className={FORM_LABEL_CLASS} htmlFor="leave-to">{t('to')}</label>
             <input
               id="leave-to"
               type="date"
@@ -120,7 +136,7 @@ export function AttendanceLeave({ canManage = false, employees = [] }) {
             />
           </div>
           <div>
-            <label className={FORM_LABEL_CLASS} htmlFor="leave-type">Type</label>
+            <label className={FORM_LABEL_CLASS} htmlFor="leave-type">{t('type')}</label>
             <select
               id="leave-type"
               value={form.leaveType}
@@ -128,36 +144,38 @@ export function AttendanceLeave({ canManage = false, employees = [] }) {
               className={FORM_INPUT_CLASS}
             >
               {LEAVE_TYPES.map((type) => (
-                <option key={type} value={type}>{type}</option>
+                <option key={type} value={type}>{t(`leave_${type}`)}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className={FORM_LABEL_CLASS} htmlFor="leave-reason">Reason</label>
+            <label className={FORM_LABEL_CLASS} htmlFor="leave-reason">{t('reason')}</label>
             <input
               id="leave-reason"
               value={form.reason}
               onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
               className={FORM_INPUT_CLASS}
-              placeholder="Optional"
+              placeholder={t('optional')}
             />
           </div>
         </div>
         <div className="mt-4 flex justify-end">
           <button type="submit" disabled={saving} className={PILL_PRIMARY_BUTTON_CLASS}>
-            {saving ? 'Saving…' : 'Submit'}
+            {saving ? t('saving') : t('submit')}
           </button>
         </div>
         {error ? <p className="mt-3 text-xs font-bold text-rose-500">{error}</p> : null}
       </form>
 
       <div className={CLASSES.card}>
-        <h2 className={CLASSES.title}>{canManage ? 'All requests' : 'My requests'}</h2>
+        <h2 className={CLASSES.title}>{canManage ? t('allRequests') : t('myRequests')}</h2>
         <div className="mt-4 space-y-2">
           {loading ? (
-            <p className="py-8 text-center text-xs font-bold text-slate-400">Loading…</p>
+            <div className="space-y-2" aria-busy="true">
+              {[0, 1, 2].map((i) => <Skeleton key={i} className="h-14 rounded-xl" />)}
+            </div>
           ) : !requests.length ? (
-            <p className="py-8 text-center text-xs font-bold text-slate-400">No leave requests yet.</p>
+            <p className="py-8 text-center text-xs font-bold text-slate-500">{t('noRequests')}</p>
           ) : (
             requests.map((req) => (
               <article
@@ -167,7 +185,7 @@ export function AttendanceLeave({ canManage = false, employees = [] }) {
                 <div>
                   <p className="text-xs font-black">
                     {req.user_name}
-                    <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">{req.leave_type}</span>
+                    <span className="ml-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">{t(`leave_${req.leave_type}`)}</span>
                   </p>
                   <p className="mt-0.5 text-[11px] font-bold tabular-nums text-slate-500">
                     {req.from_date} → {req.to_date}
@@ -176,12 +194,21 @@ export function AttendanceLeave({ canManage = false, employees = [] }) {
                 </div>
                 <div className="flex items-center gap-2">
                   <span
-                    className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-black uppercase tracking-wider ${
                       STATUS_STYLE[req.status] || STATUS_STYLE.pending
                     }`}
                   >
-                    {req.status}
+                    {t(`status_${req.status}`)}
                   </span>
+                  {req.status === 'pending' && currentUserId != null && Number(req.user_id) === Number(currentUserId) ? (
+                    <button
+                      type="button"
+                      onClick={() => withdraw(req)}
+                      className="rounded-full px-2 py-1 text-[11px] font-black uppercase tracking-wider text-slate-500 transition hover:text-rose-600"
+                    >
+                      {t('withdraw')}
+                    </button>
+                  ) : null}
                   {canManage && req.status === 'pending' ? (
                     <>
                       <button

@@ -2,7 +2,16 @@ import { NextResponse } from 'next/server';
 import { canSell, ensureDatabaseAvailable, getStockContext } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
-import { netRevenueExpr, ownershipFilter, shippedFilter } from '@/lib/stock-analytics-sql.mjs';
+import {
+  goalProgressSql,
+  lastMonthToDateFilter,
+  netRevenueExpr,
+  ownershipFilter,
+  rankAmong,
+  sellFirstItem,
+  sellFirstSql,
+  shippedFilter,
+} from '@/lib/stock-analytics-sql.mjs';
 import { normalizeSettings } from '@/lib/attendance.mjs';
 
 export async function GET(request) {
@@ -32,20 +41,37 @@ export async function GET(request) {
     const shipped = shippedFilter('s');
 
     const [monthlyRows, currentMonthRows, recentRows, activeDayRows] = await Promise.all([
+      // Exactly six calendar months, the current one last. generate_series keeps
+      // a month with no dispatches as a zero bar instead of dropping it, and a
+      // month-aligned start stops the oldest bar from holding a stray few days.
       sql(
-        `SELECT
-           TO_CHAR(DATE_TRUNC('month', s.dispatch_date), 'Mon YYYY') AS month_label,
-           DATE_TRUNC('month', s.dispatch_date) AS month_start,
-           COUNT(DISTINCT s.id) AS dispatch_count,
-           COALESCE(SUM(${netRevenue}), 0) AS total_value
-         FROM stock_outbound_shipments s
-         JOIN stock_outbound_shipment_items soi ON soi.outbound_shipment_id = s.id
-       JOIN stock_items i ON i.id = soi.item_id
-         WHERE ${owned}
-           AND ${shipped}
-           AND s.dispatch_date >= NOW() - INTERVAL '6 months'
-         GROUP BY DATE_TRUNC('month', s.dispatch_date)
-         ORDER BY month_start ASC`,
+        `WITH months AS (
+           SELECT generate_series(
+             DATE_TRUNC('month', (NOW() AT TIME ZONE 'Asia/Kolkata')) - INTERVAL '5 months',
+             DATE_TRUNC('month', (NOW() AT TIME ZONE 'Asia/Kolkata')),
+             INTERVAL '1 month'
+           ) AS month_start
+         ),
+         agg AS (
+           SELECT
+             DATE_TRUNC('month', s.dispatch_date) AS month_start,
+             COUNT(DISTINCT s.id) AS dispatch_count,
+             COALESCE(SUM(${netRevenue}), 0) AS total_value
+           FROM stock_outbound_shipments s
+           JOIN stock_outbound_shipment_items soi ON soi.outbound_shipment_id = s.id
+           JOIN stock_items i ON i.id = soi.item_id
+           WHERE ${owned}
+             AND ${shipped}
+             AND s.dispatch_date >= DATE_TRUNC('month', (NOW() AT TIME ZONE 'Asia/Kolkata')) - INTERVAL '5 months'
+           GROUP BY 1
+         )
+         SELECT
+           TO_CHAR(m.month_start, 'YYYY-MM') AS month_key,
+           COALESCE(a.dispatch_count, 0) AS dispatch_count,
+           COALESCE(a.total_value, 0) AS total_value
+         FROM months m
+         LEFT JOIN agg a ON a.month_start = m.month_start
+         ORDER BY m.month_start ASC`,
         [appUser.id]
       ),
       sql(
@@ -110,9 +136,14 @@ export async function GET(request) {
       ).catch(() => []),
     ]);
 
+    // Full last month for reference, plus the same days of it (1st..today's
+    // day-of-month): the month-so-far is only ever compared with the latter.
+    const lastMtd = lastMonthToDateFilter('s.dispatch_date');
     const lastMonthRows = await sql(
       `SELECT COALESCE(SUM(${netRevenue}), 0) AS last_month_value,
-              COUNT(DISTINCT s.id) AS last_month_count
+              COUNT(DISTINCT s.id) AS last_month_count,
+              COALESCE(SUM(${netRevenue}) FILTER (WHERE ${lastMtd}), 0) AS last_mtd_value,
+              COUNT(DISTINCT s.id) FILTER (WHERE ${lastMtd}) AS last_mtd_count
        FROM stock_outbound_shipments s
        JOIN stock_outbound_shipment_items soi ON soi.outbound_shipment_id = s.id
        JOIN stock_items i ON i.id = soi.item_id
@@ -122,6 +153,42 @@ export async function GET(request) {
       [appUser.id]
     );
 
+    // The "close the gap" lists and the anonymous rank. Each degrades to empty
+    // on its own so a failure here never takes the page down.
+    const isSalesperson = appUser.role === 'salesperson';
+    const [sellFirstRows, followUpRows, goalRows] = await Promise.all([
+      // Same list the /stock home strip shows, from the same query. Only the
+      // salesperson role has divisions to draw it from.
+      isSalesperson
+        ? sql(sellFirstSql(schemaCaps), [appUser.division_ids?.length ? appUser.division_ids : [-1]]).catch(() => [])
+        : Promise.resolve([]),
+      // Customers who bought from this person before but have gone quiet for
+      // 45-180 days: the cheapest money to win back. Past 180 days they are
+      // probably gone, and a list of those only discourages.
+      // ponytail: "quiet" means quiet with this salesperson; a customer who
+      // moved to a colleague still shows. Fine for a nudge list.
+      sql(
+        `SELECT
+           c.id,
+           c.name,
+           TO_CHAR(MAX(s.dispatch_date), 'YYYY-MM-DD') AS last_order_on,
+           COALESCE(SUM(${netRevenue}), 0) AS lifetime_value
+         FROM stock_outbound_shipments s
+         JOIN stock_customers c ON c.id = s.customer_id
+         JOIN stock_outbound_shipment_items soi ON soi.outbound_shipment_id = s.id
+         JOIN stock_items i ON i.id = soi.item_id
+         WHERE ${owned}
+           AND ${shipped}
+         GROUP BY c.id, c.name
+         HAVING MAX(s.dispatch_date) < NOW() - INTERVAL '45 days'
+            AND MAX(s.dispatch_date) >= NOW() - INTERVAL '180 days'
+         ORDER BY lifetime_value DESC
+         LIMIT 5`,
+        [appUser.id]
+      ).catch(() => []),
+      sql(goalProgressSql(schemaCaps), []).catch(() => []),
+    ]);
+
     return NextResponse.json({
       activeDays: activeDayRows.map((r) => r.day),
       daysOff: {
@@ -129,10 +196,11 @@ export async function GET(request) {
         holidays: holidayRows.map((r) => r.day),
       },
       today: currentMonthRows[0]?.today ?? null,
-      monthlyTrend: monthlyRows.map((r) => ({
-        month: r.month_label,
+      monthlyTrend: monthlyRows.map((r, index) => ({
+        monthKey: r.month_key,
         dispatchCount: Number(r.dispatch_count),
         totalValue: Number(r.total_value),
+        isCurrent: index === monthlyRows.length - 1,
       })),
       thisMonth: {
         count: Number(currentMonthRows[0]?.this_month_count ?? 0),
@@ -141,7 +209,18 @@ export async function GET(request) {
       lastMonth: {
         count: Number(lastMonthRows[0]?.last_month_count ?? 0),
         value: Number(lastMonthRows[0]?.last_month_value ?? 0),
+        mtdCount: Number(lastMonthRows[0]?.last_mtd_count ?? 0),
+        mtdValue: Number(lastMonthRows[0]?.last_mtd_value ?? 0),
       },
+      // Never anyone else's name, id or figure - see rankAmong().
+      rank: rankAmong(goalRows, appUser.id),
+      sellFirst: sellFirstRows.map(sellFirstItem),
+      followUps: followUpRows.map((r) => ({
+        id: Number(r.id),
+        name: r.name,
+        lastOrderOn: r.last_order_on,
+        lifetimeValue: Number(r.lifetime_value),
+      })),
       recentDispatches: recentRows.map((r) => ({
         id: r.id,
         shipmentNumber: r.shipment_number,

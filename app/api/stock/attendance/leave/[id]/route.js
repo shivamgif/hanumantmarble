@@ -54,3 +54,47 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'Failed to update leave request', detail: error.message }, { status: 500 });
   }
 }
+
+/**
+ * Withdraw your own request while it is still pending. A pending request has
+ * no effect on payroll, so it is removed outright (the table has no cancelled
+ * status); once decided it stays on record and only a manager can change it.
+ */
+export async function DELETE(request, { params }) {
+  const { session, appUser } = await getStockContext(request);
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!(await ensureDatabaseAvailable())) {
+    return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+  }
+  if (!appUser) return NextResponse.json({ error: 'No employee record for this account' }, { status: 403 });
+
+  const id = Number((await params)?.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
+  }
+
+  try {
+    const rows = await sql(
+      `DELETE FROM stock_leave_requests
+        WHERE id = $1 AND user_id = $2 AND status = 'pending'
+        RETURNING id, from_date, to_date`,
+      [id, appUser.id]
+    );
+    if (!rows[0]) {
+      return NextResponse.json({ error: 'Only your own pending requests can be withdrawn' }, { status: 404 });
+    }
+
+    await logTimeline({
+      eventType: 'other',
+      entityType: 'leave_request',
+      entityId: id,
+      summary: `${appUser.name} withdrew a leave request`,
+      details: serializeLeave(rows[0]),
+      userId: appUser.id,
+    });
+
+    return NextResponse.json({ success: true, id });
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to withdraw leave request', detail: error.message }, { status: 500 });
+  }
+}

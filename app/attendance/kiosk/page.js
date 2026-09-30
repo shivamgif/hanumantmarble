@@ -4,6 +4,8 @@ import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Delete, LogIn, LogOut } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useAttendanceText } from '@/lib/attendance-i18n';
 
 /**
  * Shared showroom tablet. No session — the device is authorised by a paired
@@ -14,6 +16,8 @@ import { haptic } from '@/lib/haptics';
 function KioskInner() {
   const searchParams = useSearchParams();
   const pairToken = searchParams.get('pair');
+  const t = useAttendanceText();
+  const { language, toggleLanguage } = useLanguage();
 
   const [device, setDevice] = useState(null);
   const [employees, setEmployees] = useState([]);
@@ -96,7 +100,7 @@ function KioskInner() {
       setStatus({
         kind: 'success',
         action: json.action === 'in' ? 'in' : 'out',
-        message: `${json.name} clocked ${json.action === 'in' ? 'in' : 'out'}`,
+        message: t(json.action === 'in' ? 'successIn' : 'successOut', { name: json.name }),
       });
       haptic('success');
     } catch (err) {
@@ -127,16 +131,16 @@ function KioskInner() {
       : employees;
 
   if (loading) {
-    return <p className="p-10 text-center text-sm font-bold text-slate-400">Loading…</p>;
+    return <p className="p-10 text-center text-sm font-bold text-slate-500">{t('loading')}</p>;
   }
 
   if (!device) {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
         <div className="max-w-sm text-center">
-          <h1 className="text-xl font-black">Kiosk not paired</h1>
+          <h1 className="text-xl font-black">{t('notPaired')}</h1>
           <p className="mt-2 text-sm font-bold text-slate-500">
-            {status.message || 'Ask a manager to pair this device from Attendance → Settings.'}
+            {status.message || t('pairHint')}
           </p>
         </div>
       </div>
@@ -156,17 +160,26 @@ function KioskInner() {
 
   return (
     <div className="mx-auto min-h-screen w-full max-w-3xl p-5 sm:p-8">
-      <header className="mb-6 text-center">
+      <header className="relative mb-6 text-center">
         <h1 className="text-lg font-black tracking-tight">{device.label}</h1>
         <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
-          {device.locationName || 'Attendance kiosk'}
+          {device.locationName || t('kioskTitle')}
         </p>
+        {/* A shared tablet never sees the stock sidebar's language switch. */}
+        <button
+          type="button"
+          onClick={toggleLanguage}
+          aria-label={language === 'hi' ? 'Switch to English' : 'हिंदी में बदलें'}
+          className="absolute right-0 top-0 rounded-full border border-border/60 px-3 py-1.5 text-xs font-black transition active:scale-95"
+        >
+          {language === 'hi' ? 'EN' : 'हिं'}
+        </button>
       </header>
 
       {!selected ? (
         <>
-          <p className="mb-3 text-center text-xs font-black uppercase tracking-[0.2em] text-slate-500">
-            Tap your name
+          <p className="mb-3 text-center text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+            {t('tapName')}
           </p>
 
           {/* Staff cover other branches, so everyone with a PIN can punch here.
@@ -176,8 +189,8 @@ function KioskInner() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search for a name…"
-              aria-label="Search for a name"
+              placeholder={t('searchName')}
+              aria-label={t('searchName')}
               className="mb-4 w-full rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm outline-none focus:border-brand-primary/50"
             />
           ) : null}
@@ -199,29 +212,25 @@ function KioskInner() {
                 }`}
               >
                 {emp.name}
-                <span className="mt-1 block text-[10px] font-bold uppercase tracking-wider opacity-70">
-                  {emp.isClockedIn ? 'Clocked in' : 'Clocked out'}
+                <span className="mt-1 block text-[11px] font-bold uppercase tracking-wider opacity-70">
+                  {emp.isClockedIn ? t('clockedIn') : t('clockedOut')}
                 </span>
               </button>
             ))}
           </div>
           {!employees.length ? (
-            <p className="py-10 text-center text-sm font-bold text-slate-400">
-              Nobody has a kiosk PIN yet. A manager sets these in Attendance → Settings.
-            </p>
+            <p className="py-10 text-center text-sm font-bold text-slate-500">{t('noPins')}</p>
           ) : !shown.length ? (
-            <p className="py-10 text-center text-sm font-bold text-slate-400">No name matches “{search}”.</p>
+            <p className="py-10 text-center text-sm font-bold text-slate-500">{t('noMatch', { query: search })}</p>
           ) : !query && visitors.length ? (
-            <p className="mt-4 text-center text-[11px] font-bold text-slate-400">
-              Visiting from another branch? Search for your name above.
-            </p>
+            <p className="mt-4 text-center text-xs font-bold text-slate-500">{t('visiting')}</p>
           ) : null}
         </>
       ) : (
         <div className="mx-auto max-w-xs">
           <p className="text-center text-lg font-black">{selected.name}</p>
           <p className="mb-4 text-center text-[11px] font-bold uppercase tracking-widest text-slate-500">
-            Enter your PIN to clock {selected.isClockedIn ? 'out' : 'in'}
+            {selected.isClockedIn ? t('enterPinOut') : t('enterPinIn')}
           </p>
 
           <div className="mb-5 flex justify-center gap-2" aria-live="polite">
@@ -251,9 +260,9 @@ function KioskInner() {
                 setPin('');
                 setStatus({ kind: '', message: '' });
               }}
-              className="rounded-2xl border border-border/60 py-5 text-[10px] font-black uppercase tracking-wider transition active:scale-95"
+              className="rounded-2xl border border-border/60 py-5 text-xs font-black uppercase tracking-wider transition active:scale-95"
             >
-              Back
+              {t('back')}
             </button>
             <button
               type="button"
@@ -265,7 +274,7 @@ function KioskInner() {
             <button
               type="button"
               onClick={() => setPin((p) => p.slice(0, -1))}
-              aria-label="Delete last digit"
+              aria-label={t('deleteDigit')}
               className="flex items-center justify-center rounded-2xl border border-border/60 py-5 transition active:scale-95"
             >
               <Delete className="h-5 w-5" />
@@ -281,7 +290,7 @@ function KioskInner() {
               disabled={busy}
               className="mt-3 w-full rounded-2xl bg-primary py-4 text-xs font-black uppercase tracking-widest text-primary-foreground disabled:opacity-50"
             >
-              {busy ? 'Checking…' : 'Confirm'}
+              {busy ? t('checking') : t('confirm')}
             </button>
           ) : null}
         </div>
@@ -296,7 +305,7 @@ function KioskInner() {
 
 export default function KioskPage() {
   return (
-    <Suspense fallback={<p className="p-10 text-center text-sm font-bold text-slate-400">Loading…</p>}>
+    <Suspense fallback={<p className="p-10 text-center text-sm font-bold text-slate-500">Loading…</p>}>
       <KioskInner />
     </Suspense>
   );

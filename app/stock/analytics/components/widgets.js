@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
   ResponsiveContainer,
@@ -30,6 +31,8 @@ import {
   Tags,
   ChevronDown,
   Copy,
+  PhoneCall,
+  Trophy,
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
@@ -51,7 +54,7 @@ import {
   formatHours,
 } from '../../components/dashboard-ui';
 import { deriveSpotlight } from '../lib/spotlight.mjs';
-import { deriveStreak, streakTier, goalTier } from '../lib/streak.mjs';
+import { deriveStreak, streakTier, goalTier, projectMonth } from '../lib/streak.mjs';
 
 // Bars animate from 0 on mount so the hero visibly "fills in" - purely cosmetic,
 // so it degrades to the final width if the effect never runs.
@@ -71,98 +74,145 @@ const MILESTONES = [
   { at: 100, emoji: '🏆' },
 ];
 
-// One person's own numbers: hero row, value trend, recent dispatches.
+const KNOWN_STATUSES = ['draft', 'dispatched', 'delivered', 'cancelled'];
+
+// stock.analytics.me.* with {slots} filled from vars, the same shape as
+// useAttendanceText(). Returns the language too, for dates and month names.
+function useMeText() {
+  const { language } = useLanguage();
+  const t = (key, vars) =>
+    String(getTranslation(`stock.analytics.me.${key}`, language)).replace(/\{(\w+)\}/g, (_, name) => vars?.[name] ?? '');
+  return { t, locale: language === 'hi' ? 'hi-IN' : 'en-IN' };
+}
+
+// "2026-09" -> "Sep 2026" / "सित॰ 2026".
+function formatMonthKey(key, locale) {
+  const [y, m] = String(key || '').split('-').map(Number);
+  if (!y || !m) return key || '—';
+  return new Intl.DateTimeFormat(locale, { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(Date.UTC(y, m - 1, 1));
+}
+
+function formatDay(value, locale) {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+}
+
+// One person's own numbers: hero row, value trend, what to do next, recent
+// dispatches.
 //
 // Rendered in two places and deliberately identical in both — as the whole page
 // for a salesperson, and as the "My Performance" tab for an admin who also
 // sells. Both read /api/stock/salesperson-analytics, which is always scoped to
 // the caller, so neither can see anyone else here.
 export function MyPerformancePanel({ data, goal }) {
+  const { t, locale } = useMeText();
   const monthlyTrend = data?.monthlyTrend || [];
   const thisMonth = data?.thisMonth || { count: 0, value: 0 };
-  const lastMonth = data?.lastMonth || { count: 0, value: 0 };
   const recentDispatches = data?.recentDispatches || [];
-  const fmt = (v) => `₹${Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
-  const bestMonthValue = Math.max(...monthlyTrend.map((r) => r.totalValue), 0);
+
+  // `today` is the IST date from the API; fall back to the browser's own date so
+  // the page still renders while the payload is in flight.
+  const [year, month, dayOfMonth] = (data?.today || new Date().toISOString().slice(0, 10)).split('-').map(Number);
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+  // Without a goal, the best finished month is the target: something to beat
+  // beats a page with no finish line.
+  const pastMonths = monthlyTrend.filter((r) => !r.isCurrent);
+  const bestPast = Math.max(0, ...pastMonths.map((r) => r.totalValue));
+  const target = Number(goal || 0) > 0 ? Number(goal) : bestPast;
+  const targetKind = Number(goal || 0) > 0 ? 'goal' : bestPast > 0 ? 'best' : null;
+
+  const value = Number(thisMonth?.value || 0);
+  const pct = target > 0 ? (value / target) * 100 : 0;
+  const expectedPct = (dayOfMonth / daysInMonth) * 100;
+  const standing = target > 0 ? goalTier(pct, expectedPct) : null;
+  const projection = projectMonth({ value, target, dayOfMonth, daysInMonth });
 
   return (
     <div className="space-y-6 lg:space-y-8">
       <MyPerformanceHero
-        thisMonth={thisMonth}
-        lastMonth={lastMonth}
-        goal={goal}
-        activeDays={data?.activeDays}
-        today={data?.today}
-        daysOff={data?.daysOff}
+        data={data}
+        target={target}
+        targetKind={targetKind}
+        pct={pct}
+        expectedPct={expectedPct}
+        standing={standing}
+        projection={projection}
+        pastMonths={pastMonths}
       />
 
-      {monthlyTrend.length > 0 && (
-        <section className="space-y-6">
-          <div className="flex items-center gap-6">
-            <h2 className="text-sm font-bold text-slate-500 whitespace-nowrap">Dispatch Value Trend</h2>
-            <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
-          </div>
-          <div className="glass-panel rounded-2xl p-4 sm:p-6 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover">
-            <div className="space-y-4">
-              {monthlyTrend.map((row) => {
-                const barPct = Math.round((row.totalValue / Math.max(bestMonthValue, 1)) * 100);
-                const isBest = bestMonthValue > 0 && row.totalValue === bestMonthValue;
-                const hitGoal = goal > 0 && row.totalValue >= goal;
-                // Best month wins the crown colour; any other goal month stays green.
-                const barColor = isBest ? 'bg-yellow-400' : hitGoal ? 'bg-emerald-500' : 'bg-brand-primary';
-                return (
-                  /* ponytail: mobile wraps the bar onto its own line via order/basis, no duplicate markup. */
-                  <div key={row.month} className="flex flex-wrap items-center gap-x-2 gap-y-2 sm:flex-nowrap sm:gap-4">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 w-16 shrink-0">{row.month}</span>
-                    <div className="order-last basis-full h-6 sm:order-none sm:basis-auto sm:flex-1 sm:h-8 rounded-xl bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                      <div className={`h-full rounded-xl transition-all duration-700 ${barColor}`} style={{ width: `${barPct}%` }} />
-                    </div>
-                    <span className="w-6 shrink-0 text-center text-sm" aria-hidden="true">{isBest ? '🏆' : hitGoal ? '✅' : ''}</span>
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 flex-1 sm:flex-none sm:w-28 text-right shrink-0 tabular-nums">{fmt(row.totalValue)}</span>
-                    <span className="text-[10px] text-slate-400 w-16 shrink-0 tabular-nums text-right sm:text-left">{row.dispatchCount} orders</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
+      <CloseTheGap
+        sellFirst={data?.sellFirst || []}
+        followUps={data?.followUps || []}
+        gap={standing?.behind ? projection.remaining : 0}
+        today={data?.today}
+      />
+
+      {monthlyTrend.some((r) => r.totalValue > 0) && (
+        <MyTrend
+          rows={monthlyTrend}
+          goal={targetKind === 'goal' ? target : 0}
+          projected={projection.projected}
+        />
       )}
 
       {recentDispatches.length > 0 && (
         <section className="space-y-6">
-          <div className="flex items-center gap-6">
-            <h2 className="text-sm font-bold text-slate-500 whitespace-nowrap">Recent Dispatches</h2>
-            <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
-          </div>
-          <div className="glass-panel rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-border/60">
-                    <th className="text-left p-4 font-black uppercase tracking-widest text-muted-foreground text-[9px]">Shipment</th>
-                    <th className="text-left p-4 font-black uppercase tracking-widest text-slate-400 text-[9px]">Date</th>
-                    <th className="text-left p-4 font-black uppercase tracking-widest text-slate-400 text-[9px]">Customer</th>
-                    <th className="text-left p-4 font-black uppercase tracking-widest text-slate-400 text-[9px]">Status</th>
-                    <th className="text-right p-4 font-black uppercase tracking-widest text-slate-400 text-[9px]">Value</th>
+          <SectionTitle>{t('recentDispatches')}</SectionTitle>
+          {/* Phone: stacked cards. Wider: the table. */}
+          <ul className="space-y-2 sm:hidden">
+            {recentDispatches.map((d) => (
+              <li key={d.id}>
+                <Link
+                  href={`/stock?entityType=outbound_shipment&entityId=${d.id}`}
+                  className="glass-panel flex items-center justify-between gap-3 rounded-2xl p-4 transition-colors hover:bg-muted/50"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-slate-900 dark:text-slate-100">{d.customerName || '—'}</p>
+                    <p className="mt-0.5 text-xs text-slate-500 tabular-nums">
+                      {d.shipmentNumber || `#${d.id}`} · {formatDay(d.dispatchDate, locale)}
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      <DispatchStatus d={d} t={t} />
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-sm font-black text-slate-900 dark:text-slate-100 tabular-nums">{formatINR(d.totalValue)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div className="glass-panel hidden overflow-hidden rounded-2xl sm:block">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border/60 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  <th className="p-4 text-left">{t('colShipment')}</th>
+                  <th className="p-4 text-left">{t('colDate')}</th>
+                  <th className="p-4 text-left">{t('colCustomer')}</th>
+                  <th className="p-4 text-left">{t('colStatus')}</th>
+                  <th className="p-4 text-right">{t('colValue')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentDispatches.map((d) => (
+                  <tr key={d.id} className="border-b border-border/40 transition-colors hover:bg-muted/50">
+                    <td className="p-4 font-bold text-slate-900 dark:text-slate-100">
+                      <Link href={`/stock?entityType=outbound_shipment&entityId=${d.id}`} className="hover:text-brand-primary hover:underline">
+                        {d.shipmentNumber || `#${d.id}`}
+                      </Link>
+                    </td>
+                    <td className="p-4 text-slate-500 tabular-nums">{formatDay(d.dispatchDate, locale)}</td>
+                    <td className="p-4 text-slate-700 dark:text-slate-300">{d.customerName || '—'}</td>
+                    <td className="p-4">
+                      <div className="flex flex-wrap gap-1">
+                        <DispatchStatus d={d} t={t} />
+                      </div>
+                    </td>
+                    <td className="p-4 text-right font-bold text-slate-900 dark:text-slate-100 tabular-nums">{formatINR(d.totalValue)}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {recentDispatches.map((d) => (
-                    <tr key={d.id} className="border-b border-border/40 hover:bg-muted/50 transition-colors">
-                      <td className="p-4 font-bold text-slate-900 dark:text-slate-100">{d.shipmentNumber || `#${d.id}`}</td>
-                      <td className="p-4 text-slate-500">{d.dispatchDate ? new Date(d.dispatchDate).toLocaleDateString('en-IN') : '—'}</td>
-                      <td className="p-4 text-slate-700 dark:text-slate-300">{d.customerName || '—'}</td>
-                      <td className="p-4">
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${d.status === 'delivered' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : d.status === 'cancelled' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
-                          {d.status}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right font-bold text-slate-900 dark:text-slate-100">{fmt(d.totalValue)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
       )}
@@ -170,35 +220,67 @@ export function MyPerformancePanel({ data, goal }) {
   );
 }
 
+function SectionTitle({ children }) {
+  return (
+    <div className="flex items-center gap-6">
+      <h2 className="text-sm font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">{children}</h2>
+      <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
+    </div>
+  );
+}
+
+function DispatchStatus({ d, t }) {
+  const tone =
+    d.status === 'delivered'
+      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+      : d.status === 'cancelled'
+        ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
+        : 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400';
+  return (
+    <>
+      <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${tone}`}>
+        {KNOWN_STATUSES.includes(d.status) ? t(`status_${d.status}`) : d.status}
+      </span>
+      {/* Counted in the month already (see shippedFilter); the pill just says an approver hasn't looked yet. */}
+      {d.approvalStatus === 'pending' ? (
+        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+          {t('awaitingApproval')}
+        </span>
+      ) : null}
+    </>
+  );
+}
+
 // The salesperson's own hero row. Same card recipe as StockHealthScorecard and
 // the dashboard HeroCard (glass-panel + tinted icon tile + watermark), with the
 // goal and streak carrying the colour ladder.
-export function MyPerformanceHero({ thisMonth, lastMonth, goal, activeDays, today, daysOff }) {
-  const streak = useMemo(() => deriveStreak(activeDays, today, daysOff), [activeDays, today, daysOff]);
+export function MyPerformanceHero({ data, target, targetKind, pct, expectedPct, standing, projection, pastMonths }) {
+  const { t } = useMeText();
+  const streak = useMemo(() => deriveStreak(data?.activeDays, data?.today, data?.daysOff), [data?.activeDays, data?.today, data?.daysOff]);
   const tier = streakTier(streak.current);
-
-  // `today` is the IST date from the API; fall back to the browser's own date so
-  // the card still renders while the payload is in flight.
-  const [year, month, dayOfMonth] = (today || new Date().toISOString().slice(0, 10)).split('-').map(Number);
-  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const daysLeft = daysInMonth - dayOfMonth;
-
-  const target = Number(goal || 0);
-  const value = Number(thisMonth?.value || 0);
-  const pct = target > 0 ? (value / target) * 100 : 0;
-  const expectedPct = (dayOfMonth / daysInMonth) * 100;
-  const standing = goalTier(pct, expectedPct);
-  const remaining = Math.max(0, target - value);
-  const perDayNeeded = daysLeft > 0 ? remaining / daysLeft : remaining;
+  const thisMonth = data?.thisMonth || { count: 0, value: 0 };
+  const lastMonth = data?.lastMonth || {};
+  const value = Number(thisMonth.value || 0);
+  const { remaining, daysLeft, perDayNeeded, projected, projectedPct } = projection;
 
   const goalWidth = useGrowth(Math.min(100, Math.round(pct)));
 
-  const countChange = Number(lastMonth?.count || 0) > 0
-    ? ((Number(thisMonth?.count || 0) - lastMonth.count) / lastMonth.count) * 100
-    : null;
-  const valueChange = Number(lastMonth?.value || 0) > 0
-    ? ((value - lastMonth.value) / lastMonth.value) * 100
-    : null;
+  // Month so far against the same days of last month. Against all of last
+  // month, a strong start reads as -85% on the 5th.
+  const change = (now, then) => (Number(then || 0) > 0 ? ((now - then) / then) * 100 : null);
+  const countChange = change(Number(thisMonth.count || 0), lastMonth.mtdCount);
+  const valueChange = change(value, lastMonth.mtdValue);
+
+  // ponytail: judged against today's goal - goal history isn't stored, so a
+  // month is "hit" if it would clear the goal as it stands now.
+  const hitMonths = targetKind === 'goal' ? pastMonths.filter((r) => r.totalValue >= target).length : 0;
+
+  const headline =
+    remaining <= 0
+      ? t('goalCleared', { days: daysLeft })
+      : standing?.behind
+        ? t('perDayHeadline', { amount: formatCompactINR(perDayNeeded) })
+        : t('remainingLine', { amount: formatCompactINR(remaining), days: daysLeft });
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 items-start">
@@ -210,28 +292,37 @@ export function MyPerformanceHero({ thisMonth, lastMonth, goal, activeDays, toda
                 <Target className={`h-7 w-7 sm:h-8 sm:w-8 ${standing.color}`} />
               </div>
               <div className="flex flex-col items-end gap-2">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Monthly Goal</span>
-                <span className={`flex items-center gap-1.5 text-[10px] font-black px-3 py-1 rounded-full ${standing.color} ${standing.bg} border ${standing.border}`}>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                  {targetKind === 'goal' ? t('monthlyGoal') : t('beatYourBest')}
+                </span>
+                <span className={`flex items-center gap-1.5 text-[11px] font-black px-3 py-1 rounded-full ${standing.color} ${standing.bg} border ${standing.border}`}>
                   <span aria-hidden="true">{standing.emoji}</span>
-                  {standing.label}
+                  {t(standing.key)}
                 </span>
               </div>
             </div>
 
             <div className="space-y-2">
-              <div className="text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.15em]">This Month vs Goal</div>
               <div className="flex flex-wrap items-baseline gap-3">
                 <span className="text-3xl sm:text-4xl lg:text-5xl font-black font-sans tracking-tighter text-slate-900 dark:text-white leading-none tabular-nums">
                   {formatCompactINR(value)}
                 </span>
-                <span className="text-sm font-black text-slate-400 tabular-nums">/ {formatCompactINR(target)}</span>
+                <span className="text-sm font-black text-slate-500 tabular-nums">/ {formatCompactINR(target)}</span>
                 <span className={`text-sm font-black tabular-nums ${standing.color}`}>{Math.round(pct)}%</span>
               </div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight pt-1">
-                {remaining > 0
-                  ? `${formatCompactINR(remaining)} to go · ${daysLeft} days left · ${formatCompactINR(perDayNeeded)}/day`
-                  : `Goal cleared with ${daysLeft} days to spare`}
-              </div>
+              {/* The way forward, big enough to read at a glance: the daily figure
+                  when behind, what is left otherwise. */}
+              <p className="pt-1 text-base font-bold text-slate-800 dark:text-slate-100">{headline}</p>
+              {remaining > 0 && (
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                  {[
+                    standing.behind ? t('remainingLine', { amount: formatCompactINR(remaining), days: daysLeft }) : null,
+                    value > 0 ? t('atPace', { amount: formatCompactINR(projected), pct: Math.round(projectedPct) }) : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+              )}
             </div>
 
             <div className="mt-6 space-y-2">
@@ -244,7 +335,7 @@ export function MyPerformanceHero({ thisMonth, lastMonth, goal, activeDays, toda
                 <div
                   className="absolute top-0 h-full w-0.5 bg-slate-900 dark:bg-slate-100 opacity-60"
                   style={{ left: `${Math.min(100, expectedPct)}%` }}
-                  title={`Pace target: ${Math.round(expectedPct)}%`}
+                  title={t('paceMarker', { pct: Math.round(expectedPct) })}
                 />
               </div>
               <div className="flex justify-between">
@@ -253,7 +344,7 @@ export function MyPerformanceHero({ thisMonth, lastMonth, goal, activeDays, toda
                   return (
                     <span
                       key={m.at}
-                      className={`flex items-center gap-1 text-[10px] font-black tabular-nums transition-opacity duration-500 ${hit ? 'opacity-100 text-slate-700 dark:text-slate-200' : 'opacity-30 text-slate-400 grayscale'}`}
+                      className={`flex items-center gap-1 text-[10px] font-black tabular-nums transition-opacity duration-500 ${hit ? 'opacity-100 text-slate-700 dark:text-slate-200' : 'opacity-40 text-slate-500 grayscale'}`}
                     >
                       <span aria-hidden="true">{m.emoji}</span>
                       {m.at}%
@@ -261,6 +352,11 @@ export function MyPerformanceHero({ thisMonth, lastMonth, goal, activeDays, toda
                   );
                 })}
               </div>
+              {targetKind === 'goal' && pastMonths.length > 0 ? (
+                <p className="pt-2 text-xs font-bold text-slate-500 dark:text-slate-400">
+                  {t('goalHistory', { hit: hitMonths, total: pastMonths.length })}
+                </p>
+              ) : null}
             </div>
           </div>
           <div className="absolute -right-6 -bottom-6 w-32 h-32 sm:w-40 sm:h-40 opacity-[0.04] transition-opacity duration-200 pointer-events-none group-hover:opacity-[0.08]">
@@ -271,20 +367,21 @@ export function MyPerformanceHero({ thisMonth, lastMonth, goal, activeDays, toda
         <StreakCard streak={streak} tier={tier} className="lg:col-span-2" wide />
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4 sm:gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 sm:gap-5">
+        {data?.rank ? <RankCard rank={data.rank} /> : null}
         {target > 0 ? <StreakCard streak={streak} tier={tier} /> : null}
         <MiniStat
           icon={Truck}
-          label="Dispatches"
-          value={Number(thisMonth?.count || 0).toLocaleString('en-IN')}
-          sub={`${streak.activeThisMonth} active days this month`}
+          label={t('dispatches')}
+          value={Number(thisMonth.count || 0).toLocaleString('en-IN')}
+          sub={t('activeDays', { n: streak.activeThisMonth })}
           change={countChange}
         />
         <MiniStat
           icon={Wallet}
-          label="Dispatch Value"
+          label={t('dispatchValue')}
           value={formatCompactINR(value)}
-          sub={lastMonth?.value > 0 ? `vs ${formatCompactINR(lastMonth.value)} last month` : 'No last-month baseline'}
+          sub={Number(lastMonth.mtdValue || 0) > 0 ? t('vsLastMonthSoFar', { amount: formatCompactINR(lastMonth.mtdValue) }) : t('noBaseline')}
           change={valueChange}
         />
       </div>
@@ -292,7 +389,180 @@ export function MyPerformanceHero({ thisMonth, lastMonth, goal, activeDays, toda
   );
 }
 
+// Where they stand among everyone with a goal, by % of goal. Anonymous by
+// design: the API sends only a position and gaps in their own rupees.
+function RankCard({ rank }) {
+  const { t } = useMeText();
+  const leading = rank.position === 1;
+  const line = leading
+    ? rank.leadOverNext != null
+      ? t('rankLead', { amount: formatCompactINR(rank.leadOverNext) })
+      : t('rankAlone')
+    : t('rankGap', { amount: formatCompactINR(rank.gapToNext), next: rank.position - 1 });
+  return (
+    <div
+      className="glass-panel rounded-2xl p-4 sm:p-5 flex items-center gap-4 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover"
+      title={t('rankHint')}
+    >
+      <div className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border ${leading ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-brand-primary/10 border-brand-primary/20'}`}>
+        <Trophy className={`h-5 w-5 ${leading ? 'text-yellow-600 dark:text-yellow-400' : 'text-brand-primary'}`} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">{t('teamRank')}</div>
+        <div className="flex items-baseline gap-1.5 mt-0.5">
+          <span className="text-2xl font-black font-sans tracking-tighter text-slate-900 dark:text-white leading-none tabular-nums">#{rank.position}</span>
+          <span className="text-xs font-bold text-slate-500 tabular-nums">{t('ofTotal', { total: rank.total })}</span>
+        </div>
+        <div className="text-xs font-bold text-slate-600 dark:text-slate-300 mt-1">{line}</div>
+      </div>
+      {rank.mostImproved ? (
+        <span className="shrink-0 self-start rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+          📈 {t('mostImproved')}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+// Six calendar months, the current one flagged as in progress with a faint
+// extension to where it lands at today's rate, so a month that is a third done
+// doesn't read as the worst month on the chart.
+function MyTrend({ rows, goal, projected }) {
+  const { t, locale } = useMeText();
+  const best = Math.max(...rows.map((r) => r.totalValue), 0);
+  const scale = Math.max(best, goal, projected, 1);
+  return (
+    <section className="space-y-6">
+      <SectionTitle>{t('trendTitle')}</SectionTitle>
+      <div className="glass-panel rounded-2xl p-4 sm:p-6 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover">
+        <div className="space-y-4">
+          {rows.map((row) => {
+            const isBest = best > 0 && row.totalValue === best;
+            const hitGoal = goal > 0 && row.totalValue >= goal;
+            // Best month wins the crown colour; any other goal month stays green.
+            const barColor = isBest ? 'bg-yellow-400' : hitGoal ? 'bg-emerald-500' : 'bg-brand-primary';
+            return (
+              /* ponytail: mobile wraps the bar onto its own line via order/basis, no duplicate markup. */
+              <div key={row.monthKey} className="flex flex-wrap items-center gap-x-2 gap-y-2 sm:flex-nowrap sm:gap-4">
+                <span className="w-20 shrink-0 leading-tight">
+                  <span className="block text-[10px] font-black uppercase tracking-widest text-slate-500">{formatMonthKey(row.monthKey, locale)}</span>
+                  {row.isCurrent ? <span className="block text-[10px] font-bold text-brand-primary">{t('inProgress')}</span> : null}
+                </span>
+                <div className="relative order-last basis-full h-6 sm:order-none sm:basis-auto sm:flex-1 sm:h-8 rounded-xl bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                  {row.isCurrent && projected > row.totalValue ? (
+                    <div
+                      className={`absolute inset-y-0 left-0 rounded-xl opacity-25 ${barColor}`}
+                      style={{ width: `${Math.min(100, (projected / scale) * 100)}%` }}
+                      title={t('atPace', { amount: formatCompactINR(projected), pct: goal > 0 ? Math.round((projected / goal) * 100) : '—' })}
+                    />
+                  ) : null}
+                  <div className={`relative h-full rounded-xl transition-all duration-700 ${barColor}`} style={{ width: `${(row.totalValue / scale) * 100}%` }} />
+                  {goal > 0 ? (
+                    <div className="absolute inset-y-0 w-0.5 bg-slate-900/50 dark:bg-slate-100/50" style={{ left: `${(goal / scale) * 100}%` }} title={t('goalLine')} />
+                  ) : null}
+                </div>
+                <span className="w-6 shrink-0 text-center text-sm" aria-hidden="true">{isBest ? '🏆' : hitGoal ? '✅' : ''}</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200 flex-1 sm:flex-none sm:w-28 text-right shrink-0 tabular-nums">{formatINR(row.totalValue)}</span>
+                <span className="text-[11px] text-slate-500 w-20 shrink-0 tabular-nums text-right sm:text-left">{t('orders', { n: row.dispatchCount })}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// What to do about the gap: dead stock in their divisions and customers who
+// have gone quiet. Titled with the gap when behind, "easy wins" otherwise.
+function CloseTheGap({ sellFirst, followUps, gap, today }) {
+  const { t, locale } = useMeText();
+  if (!sellFirst.length && !followUps.length) return null;
+  const todayMs = Date.parse(`${today || new Date().toISOString().slice(0, 10)}T00:00:00Z`);
+  const unit = (u) => (u === 'sqft' ? 'sqft' : u === 'bag' ? t('unitBags') : t('unitBoxes'));
+  return (
+    <section className="space-y-6">
+      <SectionTitle>{gap > 0 ? t('closeGapTitle', { amount: formatCompactINR(gap) }) : t('easyWinsTitle')}</SectionTitle>
+      <div className={`grid grid-cols-1 gap-4 sm:gap-6 ${sellFirst.length && followUps.length ? 'lg:grid-cols-2' : ''}`}>
+        {sellFirst.length > 0 && (
+          <div className="glass-panel rounded-2xl p-4 sm:p-5">
+            <div className="flex items-center gap-2">
+              <Package className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <h3 className="text-sm font-black text-slate-900 dark:text-white">{t('sellFirstTitle')}</h3>
+            </div>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('sellFirstHint')}</p>
+            <ul className="mt-3 divide-y divide-border/50">
+              {sellFirst.map((item) => (
+                <li key={item.id} className="flex items-center justify-between gap-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-slate-900 dark:text-slate-100">{item.name}</p>
+                    <p className="truncate text-xs text-slate-500">{[item.brandName, item.sizeLabel, item.divisionName].filter(Boolean).join(' · ')}</p>
+                  </div>
+                  <div className="shrink-0 text-right text-xs tabular-nums">
+                    <p className="font-black text-slate-700 dark:text-slate-200">
+                      {Number(item.availableQty).toLocaleString('en-IN', { maximumFractionDigits: 3 })} {unit(item.unitOfMeasure)}
+                    </p>
+                    <p className={`font-bold ${item.daysIdle >= 120 ? 'text-rose-600 dark:text-rose-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                      {t('daysIdle', { n: item.daysIdle })}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {followUps.length > 0 && (
+          <div className="glass-panel rounded-2xl p-4 sm:p-5">
+            <div className="flex items-center gap-2">
+              <PhoneCall className="h-4 w-4 text-brand-primary" />
+              <h3 className="text-sm font-black text-slate-900 dark:text-white">{t('followUpTitle')}</h3>
+            </div>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('followUpHint')}</p>
+            <ul className="mt-3 divide-y divide-border/50">
+              {followUps.map((c) => {
+                const quietDays = Math.round((todayMs - Date.parse(`${c.lastOrderOn}T00:00:00Z`)) / 86400000);
+                return (
+                  <li key={c.id} className="flex items-center justify-between gap-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-slate-900 dark:text-slate-100">{c.name}</p>
+                      <p className="text-xs text-slate-500 tabular-nums">
+                        {t('lastOrder', { date: formatDay(c.lastOrderOn, locale), days: quietDays })}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-sm font-black text-slate-700 dark:text-slate-200 tabular-nums">{formatCompactINR(c.lifetimeValue)}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{t('lifetime')}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// One look per day state on the streak card. A day off is a dashed outline,
+// not a grey cell: grey reads as a miss, and a day off is not one.
+const STREAK_DAY = {
+  active: { icon: Check, label: 'legendActive', className: 'bg-emerald-500 text-white' },
+  missed: { icon: X, label: 'legendMissed', className: 'bg-rose-100 text-rose-600 ring-1 ring-inset ring-rose-300 dark:bg-rose-950/40 dark:text-rose-400 dark:ring-rose-800' },
+  off: { icon: null, label: 'legendOff', className: 'border border-dashed border-slate-300 dark:border-slate-600' },
+  today: { icon: Clock, label: 'legendToday', className: 'bg-amber-50 text-amber-600 ring-1 ring-inset ring-amber-300 dark:bg-amber-950/30 dark:text-amber-400 dark:ring-amber-800' },
+};
+
+// "2026-09-15" -> "Tue", or "Tue, 15 Sept" with `withDate`. The key is an IST
+// calendar date, so it is read as UTC to keep the weekday from shifting.
+function formatWeekday(key, locale, withDate = false) {
+  const [y, m, d] = String(key).split('-').map(Number);
+  const opts = withDate ? { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' } : { weekday: 'short', timeZone: 'UTC' };
+  return new Intl.DateTimeFormat(locale, opts).format(Date.UTC(y, m - 1, d));
+}
+
 function StreakCard({ streak, tier, className = '', wide = false }) {
+  const { t, locale } = useMeText();
   return (
     <div className={`glass-panel rounded-2xl p-5 sm:p-6 relative overflow-hidden transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group ${className}`}>
       <div className="relative z-10">
@@ -301,36 +571,62 @@ function StreakCard({ streak, tier, className = '', wide = false }) {
             <span aria-hidden="true">{tier.emoji}</span>
           </div>
           <div className="min-w-0">
-            <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Sales Streak</div>
+            <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">{t('salesStreak')}</div>
             <div className="flex items-baseline gap-1.5">
               <span className={`text-3xl ${wide ? 'sm:text-4xl lg:text-5xl' : ''} font-black font-sans tracking-tighter leading-none tabular-nums ${tier.color}`}>
                 {streak.current}
               </span>
-              <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">
-                {streak.current === 1 ? 'day' : 'days'}
+              <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">
+                {streak.current === 1 ? t('day') : t('days')}
               </span>
             </div>
-            <div className={`text-[9px] font-black uppercase tracking-[0.15em] mt-1 ${tier.color}`}>{tier.label}</div>
+            <div className={`text-[10px] font-black uppercase tracking-[0.15em] mt-1 ${tier.color}`}>{t(tier.key)}</div>
           </div>
         </div>
 
-        {/* Last 7 days, oldest first - a dispatch today keeps the run alive. */}
-        <div className="mt-4 flex items-center justify-between gap-1.5">
-          {streak.last7.map((d, i) => (
-            <span
-              key={d.date}
-              title={d.off && !d.active ? `${d.date} · day off` : d.date}
-              // A quiet day off is a dashed outline, not a grey dot: grey reads
-              // as a miss, and a day off is not one.
-              className={`h-2 flex-1 rounded-full transition-colors duration-300 ${d.active ? tier.bar : d.off ? 'border border-dashed border-slate-300 dark:border-slate-600' : 'bg-slate-200 dark:bg-slate-700'} ${i === 6 && !d.active && !d.off ? 'opacity-60 ring-1 ring-inset ring-slate-300 dark:ring-slate-600' : ''}`}
-            />
+        {/* Last 7 days, oldest first, each labelled with its weekday and one
+            unmistakable state. Dispatched days stay green whatever the tier,
+            so an old run doesn't turn grey and read as misses once it ends. */}
+        <ol className="mt-4 grid grid-cols-7 gap-1.5">
+          {streak.last7.map((d) => {
+            const cell = STREAK_DAY[d.state];
+            const Icon = cell.icon;
+            return (
+              <li key={d.date} className="flex flex-col items-center gap-1" title={`${formatWeekday(d.date, locale, true)} · ${t(cell.label)}`}>
+                <span className={`text-[10px] font-bold ${d.state === 'today' ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>
+                  {d.state === 'today' ? t('today') : formatWeekday(d.date, locale)}
+                </span>
+                <span className={`flex h-7 w-full items-center justify-center rounded-md ${cell.className}`}>
+                  {Icon ? <Icon className="h-3.5 w-3.5" aria-hidden="true" /> : null}
+                  <span className="sr-only">{t(cell.label)}</span>
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-bold text-slate-500" aria-hidden="true">
+          {['active', 'missed', 'off'].map((state) => (
+            <span key={state} className="flex items-center gap-1">
+              <span className={`inline-block h-2.5 w-2.5 rounded-sm ${STREAK_DAY[state].className}`} />
+              {t(STREAK_DAY[state].label)}
+            </span>
           ))}
         </div>
-        <div className="mt-2 text-[9px] font-bold uppercase tracking-tight text-slate-400">
-          Best run {streak.best} {streak.best === 1 ? 'day' : 'days'}
-          {streak.current > 0 && streak.current >= streak.best ? ' · personal record 🏅' : ''}
-          {streak.current === 0 ? ' · dispatch today to start one' : ''}
-        </div>
+
+        {/* What happened and what to do about it, in words. */}
+        <p className={`mt-3 text-xs font-bold ${streak.current > 0 && !streak.activeToday ? 'text-amber-700 dark:text-amber-400' : 'text-slate-700 dark:text-slate-200'}`}>
+          {streak.current === 0
+            ? streak.brokenOn
+              ? t('streakBroke', { date: formatWeekday(streak.brokenOn, locale, true) })
+              : t('startStreak')
+            : streak.activeToday
+              ? t('safeToday')
+              : t('keepAlive', { n: streak.current + 1 })}
+        </p>
+        <p className="mt-1 text-[10px] font-bold text-slate-500">
+          {t('bestRun', { n: streak.best })}
+          {streak.current > 0 && streak.current >= streak.best ? ` · ${t('personalRecord')} 🏅` : ''}
+        </p>
       </div>
       <div className="absolute -right-6 -bottom-6 w-32 h-32 opacity-[0.04] transition-opacity duration-200 pointer-events-none group-hover:opacity-[0.08]">
         <Flame className="w-full h-full" />
@@ -348,7 +644,7 @@ function MiniStat({ icon: Icon, label, value, sub, change }) {
       <div className="min-w-0 flex-1">
         <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400 truncate">{label}</div>
         <div className="text-2xl font-black font-sans tracking-tighter text-slate-900 dark:text-white leading-none mt-0.5 tabular-nums">{value}</div>
-        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-tight mt-1 truncate">{sub}</div>
+        <div className="text-[11px] font-bold text-slate-500 mt-1 truncate">{sub}</div>
       </div>
       {change === null || change === undefined ? null : (
         <div className="shrink-0">
@@ -611,7 +907,7 @@ export function SalespersonSpotlight({ trend, ranking, goals, selected, onSelect
   );
 }
 
-function LeaderboardRow({ row, i, maxVal, onSelect, isSelected, blendedMargin }) {
+function LeaderboardRow({ row, i, maxVal, onSelect, isSelected, blendedMargin, goalRow }) {
   const growthRatio = row.growth_ratio != null ? Number(row.growth_ratio) : null;
   const margin = row.margin_pct != null ? Number(row.margin_pct) : null;
   // Red means this person sells at a worse margin than the business as a whole,
@@ -627,71 +923,135 @@ function LeaderboardRow({ row, i, maxVal, onSelect, isSelected, blendedMargin })
     ? { type: 'button', onClick: () => onSelect(name) }
     : {};
 
+  // revenue = profit + cost + uncosted. A loss has no segment of its own; the
+  // header shows the negative figure and the bar is just cost + uncosted.
+  const profit = Number(row.gross_profit || 0);
+  const cost = Number(row.cost || 0);
+  const uncosted = Number(row.uncosted_revenue || 0);
+  const barTotal = Math.max(0, profit) + cost + uncosted;
+
+  // This month vs goal, independent of the range selector above it.
+  const goal = Number(goalRow?.goal || 0);
+  const actual = Number(goalRow?.actual || 0);
+  const goalPct = goal > 0 ? (actual / goal) * 100 : 0;
+  const expectedPct = goal > 0 ? (paceAdjustedTarget(goal) / goal) * 100 : 0;
+  const behindPace = goalPct < expectedPct;
+
   return (
     <Wrapper
       {...interactiveProps}
-      className={`flex w-full items-center gap-3 py-2.5 border-b border-slate-100 dark:border-slate-800/40 last:border-b-0 ${onSelect ? 'text-left cursor-pointer focus-ring' : ''} ${isSelected ? 'bg-brand-primary/5 ring-1 ring-brand-primary/40 rounded-lg px-2 -mx-2 border-b-transparent' : ''}`}
+      className={`flex w-full items-start gap-3 py-2.5 border-b border-slate-100 dark:border-slate-800/40 last:border-b-0 ${onSelect ? 'text-left cursor-pointer focus-ring' : ''} ${isSelected ? 'bg-brand-primary/5 ring-1 ring-brand-primary/40 rounded-lg px-2 -mx-2 border-b-transparent' : ''}`}
     >
       <span className="w-6 text-xs font-black text-slate-400 text-right tabular-nums">{i + 1}.</span>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-3 mb-1">
-          <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{row.name || row.salesperson}</p>
-          <div className="flex items-center gap-2 shrink-0">
-            <p className="text-xs font-black font-sans text-slate-900 dark:text-white tabular-nums">{formatCompactINR(row.revenue)}</p>
+      <div className="flex-1 min-w-0 space-y-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
+          <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{name}</p>
+          <div className="flex items-center gap-2 shrink-0 tabular-nums">
+            <p className="text-xs font-black font-sans text-slate-900 dark:text-white">{formatCompactINR(row.revenue)}</p>
+            <span className={`text-[10px] font-black ${profit < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+              {formatCompactINR(profit)} {t('profit')}
+            </span>
             {margin != null ? (
-              <span
-                className={`text-[10px] font-black tabular-nums ${marginLags ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}
-                title={`${formatCompactINR(row.gross_profit)} ${t('profit')}`}
-              >
-                {margin.toFixed(1)}% {t('margin')}
+              <span className={`text-[10px] font-black ${marginLags ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}>
+                {margin.toFixed(1)}%
               </span>
             ) : null}
             {growthRatio != null ? (
-              <span className={`text-[10px] font-black tabular-nums ${growthRatio >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+              <span className={`text-[10px] font-black ${growthRatio >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                 {growthRatio >= 0 ? '+' : ''}{(growthRatio * 100).toFixed(0)}%
               </span>
             ) : null}
           </div>
         </div>
-        <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-brand-secondary rounded-full"
-            style={{ width: `${Math.min(100, ((row.revenue || 0) / (maxVal || 1)) * 100)}%` }}
-          />
+        <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+          <div className="flex h-full" style={{ width: `${Math.min(100, (barTotal / (maxVal || 1)) * 100)}%` }}>
+            <div className="h-full bg-emerald-500" style={{ flexGrow: Math.max(0, profit) }} title={`${t('profit')} ${formatCompactINR(profit)}`} />
+            <div className="h-full bg-slate-400 dark:bg-slate-500" style={{ flexGrow: cost }} title={`${t('cost')} ${formatCompactINR(cost)}`} />
+            <div className="h-full bg-slate-200 dark:bg-slate-700" style={{ flexGrow: uncosted }} title={`${t('uncostedRevenue')} ${formatCompactINR(uncosted)}`} />
+          </div>
         </div>
+        {goal > 0 ? (
+          <div className="flex items-center gap-2">
+            <div className="relative h-1 flex-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div
+                className={`absolute top-0 left-0 h-full rounded-full ${behindPace ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                style={{ width: `${Math.min(100, goalPct)}%` }}
+              />
+              <div
+                className="absolute top-0 h-full w-0.5 bg-slate-900 dark:bg-slate-100 opacity-60"
+                style={{ left: `${Math.min(100, expectedPct)}%` }}
+                title={`${t('expectedPace')} ${Math.round(expectedPct)}%`}
+              />
+            </div>
+            <span className="shrink-0 text-[10px] font-bold text-slate-400 tabular-nums">
+              <span className={behindPace ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}>{Math.round(goalPct)}%</span>
+              {' '}{formatCompactINR(actual)} / {formatCompactINR(goal)} · {goalRow.shipments} {t('dispatchesShort')}
+            </span>
+          </div>
+        ) : (
+          <p className="text-[10px] font-bold text-slate-400">{t('thisMonthVsGoal')}: {t('noGoal')}</p>
+        )}
       </div>
     </Wrapper>
   );
 }
 
-export function Leaderboard({ ranking, months, onSelect, selected }) {
+export function Leaderboard({ ranking, goals = [], months, onSelect, selected }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
-  const maxRev = Math.max(...ranking.map(r => Number(r.revenue || 0)), 1);
+  // ponytail: joined by name - ranking rows only carry the salesperson label.
+  // Two users sharing a name would collide; key both queries by user id if so.
+  const goalsByName = new Map(goals.map((g) => [g.name, g]));
+  const ranked = new Set(ranking.map((r) => r.salesperson || r.name));
+  // Goal holders with nothing sold in the range still get a row.
+  const rows = [
+    ...ranking,
+    ...goals.filter((g) => !ranked.has(g.name)).map((g) => ({ salesperson: g.name, revenue: 0, cost: 0, uncosted_revenue: 0, gross_profit: 0 })),
+  ];
+  const maxVal = Math.max(...rows.map((r) => Math.max(0, Number(r.gross_profit || 0)) + Number(r.cost || 0) + Number(r.uncosted_revenue || 0)), 1);
   // The whole range's margin, not the average of the per-person margins, so a
   // small seller cannot drag the bar the big sellers are measured against.
   const costedRevenue = ranking.reduce((sum, r) => sum + Number(r.revenue || 0) - Number(r.uncosted_revenue || 0), 0);
   const totalProfit = ranking.reduce((sum, r) => sum + Number(r.gross_profit || 0), 0);
   const blendedMargin = costedRevenue > 0 ? (totalProfit / costedRevenue) * 100 : null;
+  const now = new Date();
+  const day = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   return (
     <AnalyticsCard
       title={t('salesPerformance')}
       subtitle={t('personnelRanking')}
       topRight={<CsvExportButton type="leaderboard" months={months} label={t('exportCsv')} />}
+      contextBar={`${t('thisMonthVsGoal')}: ${t('dayLabel')} ${day} ${t('ofLabel')} ${daysInMonth} · ${t('expectedPace')} ${Math.round((day / daysInMonth) * 100)}%`}
     >
-      <div>
-        {ranking.slice(0, 8).map((row, i) => (
-          <LeaderboardRow
-            key={row.name || row.salesperson}
-            row={row}
-            i={i}
-            maxVal={maxRev}
-            blendedMargin={blendedMargin}
-            onSelect={onSelect}
-            isSelected={selected != null && selected === (row.salesperson || row.name)}
-          />
-        ))}
-      </div>
+      {rows.length === 0 ? (
+        <EmptyState label={t('noData')} />
+      ) : (
+        <>
+          <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold text-slate-400">
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-emerald-500" />{t('profit')}</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-slate-400 dark:bg-slate-500" />{t('cost')}</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-slate-200 dark:bg-slate-700" />{t('uncostedRevenue')}</span>
+          </div>
+          <div className="max-h-[28rem] overflow-y-auto pr-1">
+            {rows.map((row, i) => {
+              const name = row.salesperson || row.name;
+              return (
+                <LeaderboardRow
+                  key={name}
+                  row={row}
+                  i={i}
+                  maxVal={maxVal}
+                  blendedMargin={blendedMargin}
+                  goalRow={goalsByName.get(name)}
+                  onSelect={onSelect}
+                  isSelected={selected != null && selected === name}
+                />
+              );
+            })}
+          </div>
+        </>
+      )}
     </AnalyticsCard>
   );
 }
@@ -832,65 +1192,6 @@ export function PendingQueueWidget({ items, onApprove, onReject, actionLoading }
           })}
         </div>
       )}
-    </AnalyticsCard>
-  );
-}
-
-export function SalesPaceWidget({ rows }) {
-  const { language } = useLanguage();
-  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
-  if (!rows || rows.length === 0) {
-    return (
-      <AnalyticsCard title={t('salesPace')} subtitle={t('salesPaceSubtitle')}>
-        <EmptyState label={t('noData')} />
-      </AnalyticsCard>
-    );
-  }
-  const now = new Date();
-  const day = now.getDate();
-  const total = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const pacePct = Math.round((day / total) * 100);
-  return (
-    <AnalyticsCard
-      title={t('salesPace')}
-      subtitle={t('salesPaceSubtitle')}
-      contextBar={`${t('dayLabel')} ${day} ${t('ofLabel')} ${total} · ${t('expectedPace')} ${pacePct}%`}
-    >
-      <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
-        {rows.map((row) => {
-          const goal = Number(row.goal || 0);
-          const actual = Number(row.actual || 0);
-          const pct = goal > 0 ? (actual / goal) * 100 : 0;
-          const expected = paceAdjustedTarget(goal);
-          const expectedPct = goal > 0 ? (expected / goal) * 100 : 0;
-          const behindPace = actual < expected;
-          return (
-            <div key={row.id} className="space-y-1">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate flex-1">{row.name}</p>
-                <span className={`text-xs font-black tabular-nums shrink-0 ${behindPace ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                  {Math.round(pct)}%
-                </span>
-              </div>
-              <div className="relative h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div
-                  className={`absolute top-0 left-0 h-full rounded-full ${behindPace ? 'bg-rose-500' : 'bg-emerald-500'}`}
-                  style={{ width: `${Math.min(100, pct)}%` }}
-                />
-                <div
-                  className="absolute top-0 h-full w-0.5 bg-slate-900 dark:bg-slate-100 opacity-60"
-                  style={{ left: `${Math.min(100, expectedPct)}%` }}
-                  title={`${t('expectedPace')} ${Math.round(expectedPct)}%`}
-                />
-              </div>
-              <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 tabular-nums">
-                <span>{formatCompactINR(actual)} / {formatCompactINR(goal)}</span>
-                <span>{row.shipments} {t('dispatchesShort')}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
     </AnalyticsCard>
   );
 }

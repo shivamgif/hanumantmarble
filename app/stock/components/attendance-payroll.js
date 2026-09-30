@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, Download } from 'lucide-react';
 import { MonthPicker } from '@/components/ui/month-picker';
-import { formatMinutes } from '@/lib/attendance.mjs';
+import { formatMinutes, istMonth } from '@/lib/attendance.mjs';
 import { CLASSES, PILL_BUTTON_CLASS, exportToCSV } from '../lib/stock-utils';
 
-const currentMonth = () => new Date().toISOString().slice(0, 7);
 const rupees = (v) => `₹${Number(v || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 
 const CSV_COLUMNS = [
@@ -29,7 +29,7 @@ const CSV_COLUMNS = [
 ];
 
 export function AttendancePayroll() {
-  const [month, setMonth] = useState(currentMonth);
+  const [month, setMonth] = useState(istMonth);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -70,7 +70,7 @@ export function AttendancePayroll() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <MonthPicker value={month} onChange={setMonth} max={currentMonth()} />
+          <MonthPicker value={month} onChange={setMonth} max={istMonth()} />
           <button
             type="button"
             onClick={() => exportToCSV(`payroll-${month}.csv`, rows, CSV_COLUMNS)}
@@ -99,7 +99,7 @@ export function AttendancePayroll() {
               {['Employee', 'Present', 'Half', 'Leave', 'Absent', 'OT', 'Per day', 'Earned', 'OT pay', 'Net pay'].map((label) => (
                 <th
                   key={label}
-                  className={`px-3 py-2 text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 ${
+                  className={`px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-slate-500 ${
                     label === 'Employee' ? 'text-left' : 'text-right'
                   }`}
                 >
@@ -111,13 +111,13 @@ export function AttendancePayroll() {
           <tbody className="divide-y divide-border/40">
             {loading ? (
               <tr>
-                <td colSpan={10} className="px-4 py-10 text-center text-xs font-bold text-slate-400">
-                  Loading…
+                <td colSpan={10} className="px-4 py-4">
+                  <div className="space-y-2" aria-busy="true">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-8 rounded-lg" />)}</div>
                 </td>
               </tr>
             ) : !rows.length ? (
               <tr>
-                <td colSpan={10} className="px-4 py-10 text-center text-xs font-bold text-slate-400">
+                <td colSpan={10} className="px-4 py-10 text-center text-xs font-bold text-slate-500">
                   No tracked employees.
                 </td>
               </tr>
@@ -127,7 +127,7 @@ export function AttendancePayroll() {
                   <td className="px-3 py-3 text-xs font-bold">
                     {row.name}
                     {!row.hasLogin ? (
-                      <span className="ml-1.5 text-[9px] font-black uppercase tracking-wider text-slate-400">no login</span>
+                      <span className="ml-1.5 text-[11px] font-black uppercase tracking-wider text-slate-500">no login</span>
                     ) : null}
                   </td>
                   <td className="px-3 py-3 text-right text-xs tabular-nums">{row.presentDays}</td>

@@ -1,6 +1,6 @@
 // Asserts the sales-streak derivation. Run: node scripts/check-streak.mjs
 import assert from 'node:assert/strict';
-import { deriveStreak, streakTier, goalTier } from '../app/stock/analytics/lib/streak.mjs';
+import { deriveStreak, streakTier, goalTier, projectMonth } from '../app/stock/analytics/lib/streak.mjs';
 
 // Ran Mon-Fri, quiet weekend, back at it Mon..Wed (today).
 const days = [
@@ -79,6 +79,16 @@ assert.equal(deriveStreak(noWednesday, '2026-09-11', off).last7.find((d) => d.da
 // No active days and every lookup a day off must still terminate.
 assert.equal(deriveStreak([], '2026-09-16', off).current, 0);
 
+// Where the streak was lost, and one state per day.
+const broke = deriveStreak(days, '2026-07-24');
+assert.equal(broke.brokenOn, '2026-07-23', 'the quiet Thursday broke it');
+assert.equal(broke.last7.find((d) => d.date === '2026-07-23').state, 'missed');
+assert.equal(broke.last7[6].state, 'today', 'a quiet today is still open, not missed');
+assert.equal(deriveStreak(days, '2026-07-22').last7[6].state, 'active');
+assert.equal(deriveStreak([], '2026-07-22').brokenOn, null, 'nothing to lose without any activity');
+// Live streak: brokenOn is the gap before this run.
+assert.equal(deriveStreak(days, '2026-07-22').brokenOn, '2026-07-19', 'Sunday before the Mon-Wed run (no days off set)');
+
 // Tiers
 assert.equal(streakTier(0).label, 'No Streak Yet');
 assert.equal(streakTier(1).emoji, '🌱');
@@ -91,8 +101,37 @@ assert.equal(streakTier(undefined).label, 'No Streak Yet', 'missing streak falls
 assert.equal(goalTier(120, 70).emoji, '🏆');
 assert.equal(goalTier(80, 70).label, 'Ahead Of Pace');
 assert.equal(goalTier(60, 70).label, 'On Track', '60 of an expected 70 is still on track');
-assert.equal(goalTier(40, 70).label, 'Behind Pace');
-assert.equal(goalTier(5, 70).emoji, '🆘');
+assert.equal(goalTier(40, 70).label, 'Catching Up');
+assert.equal(goalTier(40, 70).behind, true);
+assert.equal(goalTier(5, 70).key, 'goal_comeback');
+assert.equal(goalTier(60, 70).behind, undefined, 'on track is not behind');
 assert.equal(goalTier(0, 0).label, 'Ahead Of Pace', 'day 1 of the month: any progress beats a 0 expectation');
+
+// Every tier carries a translation key.
+for (const t of [goalTier(120, 0), goalTier(80, 70), goalTier(60, 70), goalTier(40, 70), goalTier(5, 70), streakTier(0), streakTier(14)]) {
+  assert.ok(t.key, `tier ${t.label} needs a key`);
+}
+
+// Month projection
+const day1 = projectMonth({ value: 0, target: 300000, dayOfMonth: 1, daysInMonth: 30 });
+assert.equal(day1.projected, 0);
+assert.equal(day1.perDayNeeded, 300000 / 29, 'day 1: the gap spreads over the 29 days left');
+
+const midBehind = projectMonth({ value: 60000, target: 300000, dayOfMonth: 15, daysInMonth: 30 });
+assert.equal(midBehind.perDaySoFar, 4000);
+assert.equal(midBehind.projected, 120000, '4000/day for 30 days');
+assert.equal(midBehind.projectedPct, 40);
+assert.equal(midBehind.perDayNeeded, 16000, '240000 left over 15 days');
+
+const hit = projectMonth({ value: 350000, target: 300000, dayOfMonth: 20, daysInMonth: 30 });
+assert.equal(hit.remaining, 0);
+assert.equal(hit.perDayNeeded, 0, 'goal cleared: nothing more needed');
+
+const lastDay = projectMonth({ value: 250000, target: 300000, dayOfMonth: 30, daysInMonth: 30 });
+assert.equal(lastDay.daysLeft, 0);
+assert.equal(lastDay.perDayNeeded, 50000, 'last day: today carries the whole gap, no divide by zero');
+
+const noGoal = projectMonth({ value: 1000, target: 0, dayOfMonth: 10, daysInMonth: 30 });
+assert.equal(noGoal.projectedPct, 0, 'no goal: no percentage, never Infinity');
 
 console.log('check-streak: all assertions passed');

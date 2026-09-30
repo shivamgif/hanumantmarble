@@ -1,30 +1,41 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Download, MapPinOff, Pencil } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Download, MapPinOff, Pencil, Plus } from 'lucide-react';
 import { MonthPicker } from '@/components/ui/month-picker';
-import { formatMinutes } from '@/lib/attendance.mjs';
-import { CLASSES, FORM_INPUT_CLASS, PILL_BUTTON_CLASS, exportToCSV } from '../lib/stock-utils';
+import { formatMinutes, istMonth, needsReview } from '@/lib/attendance.mjs';
+import { CLASSES, FORM_INPUT_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS, exportToCSV } from '../lib/stock-utils';
 
-const currentMonth = () => new Date().toISOString().slice(0, 7);
-
-const STATUS_STYLE = {
-  present: 'bg-emerald-500/10 text-emerald-600',
-  half_day: 'bg-amber-500/10 text-amber-600',
-  absent: 'bg-rose-500/10 text-rose-600',
-  paid_leave: 'bg-sky-500/10 text-sky-600',
-  unpaid_leave: 'bg-slate-500/10 text-slate-500',
-  weekly_off: 'bg-slate-500/10 text-slate-500',
+export const STATUS_STYLE = {
+  present: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  half_day: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+  absent: 'bg-rose-500/10 text-rose-700 dark:text-rose-400',
+  paid_leave: 'bg-sky-500/10 text-sky-700 dark:text-sky-400',
+  unpaid_leave: 'bg-slate-500/10 text-slate-600 dark:text-slate-400',
+  weekly_off: 'bg-slate-500/10 text-slate-600 dark:text-slate-400',
+  holiday: 'bg-violet-500/10 text-violet-700 dark:text-violet-400',
+  upcoming: 'text-slate-500 ring-1 ring-inset ring-border/60',
 };
 
 export function StatusPill({ status }) {
   return (
     <span
-      className={`inline-block rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+      className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-black uppercase tracking-wider ${
         STATUS_STYLE[status] || STATUS_STYLE.absent
       }`}
     >
-      {String(status || '').replace('_', ' ')}
+      {String(status || '').replaceAll('_', ' ')}
+    </span>
+  );
+}
+
+/** Marks a punch the system auto-closed that no manager has confirmed yet. */
+export function ReviewChip({ entry }) {
+  if (!needsReview(entry)) return null;
+  return (
+    <span className="ml-1.5 inline-block rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
+      Review
     </span>
   );
 }
@@ -46,8 +57,8 @@ const COLUMNS = [
   { id: 'source', label: 'Source' },
 ];
 
-export function AttendanceTimesheet({ scope = 'self', employees = [], canManage = false, onEdit, reloadKey }) {
-  const [month, setMonth] = useState(currentMonth);
+export function AttendanceTimesheet({ scope = 'self', employees = [], canManage = false, onEdit, onAdd, reloadKey }) {
+  const [month, setMonth] = useState(istMonth);
   const [userId, setUserId] = useState(scope === 'all' ? 'all' : '');
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -105,7 +116,7 @@ export function AttendanceTimesheet({ scope = 'self', employees = [], canManage 
               ))}
             </select>
           ) : null}
-          <MonthPicker value={month} onChange={setMonth} max={currentMonth()} />
+          <MonthPicker value={month} onChange={setMonth} max={istMonth()} />
           <button
             type="button"
             onClick={() => exportToCSV(`attendance-${month}.csv`, rows, COLUMNS)}
@@ -115,6 +126,12 @@ export function AttendanceTimesheet({ scope = 'self', employees = [], canManage 
             <Download className="h-3.5 w-3.5" />
             Export
           </button>
+          {onAdd ? (
+            <button type="button" onClick={onAdd} className={PILL_PRIMARY_BUTTON_CLASS}>
+              <Plus />
+              Add entry
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -128,7 +145,7 @@ export function AttendanceTimesheet({ scope = 'self', employees = [], canManage 
               {COLUMNS.map((col) => (
                 <th
                   key={col.id}
-                  className="px-4 py-2 text-left text-[9px] font-black uppercase tracking-[0.2em] text-slate-500"
+                  className="px-4 py-2 text-left text-[11px] font-black uppercase tracking-[0.12em] text-slate-500"
                 >
                   {col.label}
                 </th>
@@ -139,13 +156,13 @@ export function AttendanceTimesheet({ scope = 'self', employees = [], canManage 
           <tbody className="divide-y divide-border/40">
             {loading ? (
               <tr>
-                <td colSpan={COLUMNS.length + 1} className="px-4 py-10 text-center text-xs font-bold text-slate-400">
-                  Loading…
+                <td colSpan={COLUMNS.length + 1} className="px-4 py-4">
+                  <div className="space-y-2" aria-busy="true">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-8 rounded-lg" />)}</div>
                 </td>
               </tr>
             ) : !rows.length ? (
               <tr>
-                <td colSpan={COLUMNS.length + 1} className="px-4 py-10 text-center text-xs font-bold text-slate-400">
+                <td colSpan={COLUMNS.length + 1} className="px-4 py-10 text-center text-xs font-bold text-slate-500">
                   No attendance recorded for this month.
                 </td>
               </tr>
@@ -161,18 +178,19 @@ export function AttendanceTimesheet({ scope = 'self', employees = [], canManage 
                   </td>
                   <td className="px-4 py-3 text-xs tabular-nums">
                     {clockTime(row.clock_in_at)}
-                    {row.isLate ? <span className="ml-1 text-[9px] font-bold text-rose-500">+{row.lateMinutes}</span> : null}
+                    {row.isLate ? <span className="ml-1 text-[11px] font-bold text-rose-500">+{row.lateMinutes}</span> : null}
                   </td>
                   <td className="px-4 py-3 text-xs tabular-nums">
                     {row.isOpen ? <span className="font-black text-emerald-600">In now</span> : clockTime(row.clock_out_at)}
+                    <ReviewChip entry={row} />
                   </td>
                   <td className="px-4 py-3 text-xs tabular-nums">{Math.round((row.break_seconds || 0) / 60)}</td>
                   <td className="px-4 py-3 text-xs font-black tabular-nums">{formatMinutes(row.workedMinutes)}</td>
                   <td className="px-4 py-3 text-xs tabular-nums">{row.lateMinutes || '—'}</td>
-                  <td className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">{row.source}</td>
+                  <td className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">{row.source}</td>
                   {canManage ? (
                     <td className="px-4 py-3 text-right">
-                      <button type="button" onClick={() => onEdit?.(row)} className="text-slate-400 hover:text-brand-primary">
+                      <button type="button" onClick={() => onEdit?.(row)} aria-label={`Edit entry for ${row.user_name} on ${row.work_date}`} className="text-slate-500 hover:text-brand-primary">
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                     </td>
@@ -187,9 +205,11 @@ export function AttendanceTimesheet({ scope = 'self', employees = [], canManage 
       {/* Mobile cards */}
       <div className="space-y-2 md:hidden">
         {loading ? (
-          <p className="py-8 text-center text-xs font-bold text-slate-400">Loading…</p>
+          <div className="space-y-2" aria-busy="true">
+              {[0, 1, 2].map((i) => <Skeleton key={i} className="h-14 rounded-xl" />)}
+            </div>
         ) : !rows.length ? (
-          <p className="py-8 text-center text-xs font-bold text-slate-400">No attendance recorded for this month.</p>
+          <p className="py-8 text-center text-xs font-bold text-slate-500">No attendance recorded for this month.</p>
         ) : (
           rows.map((row) => (
             <article key={row.id} className="rounded-xl border border-border/60 p-3">
@@ -201,9 +221,10 @@ export function AttendanceTimesheet({ scope = 'self', employees = [], canManage 
               <p className="mt-1 text-[11px] tabular-nums text-slate-500">
                 {clockTime(row.clock_in_at)} → {row.isOpen ? 'in now' : clockTime(row.clock_out_at)}
                 {row.isLate ? <span className="ml-1.5 font-bold text-rose-500">late {row.lateMinutes}m</span> : null}
+                <ReviewChip entry={row} />
               </p>
               {canManage ? (
-                <button type="button" onClick={() => onEdit?.(row)} className="mt-2 text-[10px] font-black uppercase tracking-wider text-brand-primary">
+                <button type="button" onClick={() => onEdit?.(row)} className="mt-2 text-[11px] font-black uppercase tracking-wider text-brand-primary">
                   Edit
                 </button>
               ) : null}

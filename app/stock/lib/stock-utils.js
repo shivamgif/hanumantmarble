@@ -489,7 +489,7 @@ export function getSortedRows(rows, sortState, accessors) {
   return sortedRows;
 }
 
-export const FORM_LABEL_CLASS = 'block text-[10px] font-black uppercase tracking-[0.2em] text-foreground/40 mb-1.5';
+export const FORM_LABEL_CLASS = 'block text-[11px] font-black uppercase tracking-[0.12em] text-foreground/60 mb-1.5';
 export const FORM_INPUT_CLASS = 'w-full rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10';
 export const FORM_CARD_CLASS = 'glass-panel rounded-2xl p-4 sm:p-5 transition-[box-shadow,border-color] duration-200';
 
@@ -512,12 +512,12 @@ export const CLASSES = {
   interactiveCard: 'glass-panel rounded-2xl transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover',
   card: 'glass-panel rounded-2xl p-4 sm:p-6 lg:p-8 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group/card',
   cardCompact: 'glass-panel rounded-2xl p-3 sm:p-4 lg:p-6 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group/card',
-  title: 'text-[10px] font-black uppercase tracking-[0.25em] text-slate-600 dark:text-slate-400 group-hover/card:text-brand-primary transition-colors',
+  title: 'text-[11px] font-black uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400 group-hover/card:text-brand-primary transition-colors',
   grid: 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
   heroGrid: 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 lg:gap-6',
   statGrid: 'grid grid-cols-2 gap-3 lg:grid-cols-4',
   statCard: 'min-w-0 glass-panel rounded-2xl p-4 sm:p-5 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover',
-  statLabel: 'text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400',
+  statLabel: 'text-[11px] font-black uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400',
   statValue: 'mt-1.5 text-2xl font-black text-slate-900 sm:text-3xl dark:text-slate-100 leading-none tracking-tighter',
   mobileScroll: 'flex overflow-x-auto scrollbar-none gap-2 pb-2 snap-x snap-mandatory overscroll-x-contain',
 };

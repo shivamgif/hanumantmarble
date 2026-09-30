@@ -6,6 +6,7 @@ import {
   availableQtyExpr,
   freightRepeatFlagExpr,
   freightRepeatedAmountExpr,
+  goalProgressSql,
   netRevenueExpr,
   monthProgress,
   netUnitsExpr,
@@ -107,12 +108,6 @@ export async function GET(request) {
     const salespersonUserJoin = schemaCaps.hasOutboundSalespersonUserId
       ? `LEFT JOIN stock_app_users spu ON spu.id = s.salesperson_user_id`
       : '';
-    // A salesperson owns a dispatch when they are named on it, or when nobody
-    // is named and they filed it. Matches /api/stock/salesperson-analytics so
-    // the goal tracker and a salesperson's own page agree.
-    const goalOwnership = schemaCaps.hasOutboundSalespersonUserId
-      ? `(o.salesperson_user_id = u.id OR (o.salesperson_user_id IS NULL AND o.submitted_by_user_id = u.id))`
-      : `o.submitted_by_user_id = u.id`;
 
     const netRevenue = netRevenueExpr(schemaCaps, 'osi', 'i');
     const netUnits = netUnitsExpr(schemaCaps, 'osi', 'i');
@@ -476,34 +471,8 @@ export async function GET(request) {
       // ownership and the excluded statuses all match
       // /api/stock/salesperson-analytics so the two pages report the same
       // number for the same person.
-      sql(
-        `WITH actual AS (
-           SELECT
-             u.id AS uid,
-             COALESCE(SUM(${netRevenue}), 0) AS rev,
-             COUNT(DISTINCT o.id) AS shipments
-           FROM stock_app_users u
-           JOIN stock_outbound_shipments o ON ${goalOwnership}
-           LEFT JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = o.id
-           LEFT JOIN stock_items i ON i.id = osi.item_id
-           WHERE date_trunc('month', o.dispatch_date)
-                 = date_trunc('month', (NOW() AT TIME ZONE 'Asia/Kolkata'))
-             AND ${outboundShippedO}
-           GROUP BY u.id
-         )
-         SELECT
-           u.id,
-           u.name,
-           u.monthly_sales_goal::numeric(14,2) AS goal,
-           COALESCE(a.rev, 0)::numeric(14,2) AS actual,
-           COALESCE(a.shipments, 0)::int AS shipments
-         FROM stock_app_users u
-         LEFT JOIN actual a ON a.uid = u.id
-         WHERE ${sellerFilter(schemaCaps, 'u')} AND u.monthly_sales_goal IS NOT NULL AND u.monthly_sales_goal > 0
-         ORDER BY (COALESCE(a.rev,0) / u.monthly_sales_goal) DESC
-         LIMIT 20`,
-        []
-      ),
+      sql(`${goalProgressSql(schemaCaps)}
+         LIMIT 20`, []),
       // Customer concentration. share_pct is measured against every customer in
       // the range, not just the eight returned, so the shares do not sum to 100
       // and the widget renders the remainder as its own slice.
@@ -558,29 +527,35 @@ export async function GET(request) {
          LIMIT 12`,
         []
       ),
-      // ABC / Pareto. Only 50 rows are returned for the chart, but rank_at_80
-      // is computed over every item with sales so the "N items make 80%"
-      // caption stays true when the answer lies past rank 50.
+      // Top sellers. Only 50 rows are returned, but rank_at_80 is computed
+      // over every item with sales so the "N items make 80%" caption stays
+      // true when the answer lies past rank 50.
+      //
+      // days_left is today's stock divided by the range's average daily sales:
+      // a best seller with a small number here is the one to reorder first.
+      // Units and stock are in the item's own unit, so compare within a row.
       sql(
-        `WITH item_rev AS (
+        `WITH ${unitCostCte(schemaCaps)}, item_rev AS (
            SELECT
              i.id,
              i.name,
              i.sku,
-             SUM(${netRevenue}) AS revenue
+             COALESCE(d.name, 'Uncategorized') AS division,
+             SUM(${netRevenue}) AS revenue,
+             COALESCE(SUM(${netUnits}), 0) AS units,
+             ${marginAggregates(schemaCaps)}
            FROM stock_outbound_shipment_items osi
            JOIN stock_outbound_shipments o ON o.id = osi.outbound_shipment_id
            JOIN stock_items i ON i.id = osi.item_id
+           LEFT JOIN stock_divisions d ON d.id = i.division_id
+           LEFT JOIN unit_cost uc ON uc.item_id = i.id
            WHERE o.dispatch_date::date BETWEEN $1::date AND $2::date
              AND ${outboundShippedO}
-           GROUP BY i.id, i.name, i.sku
+           GROUP BY i.id, i.name, i.sku, d.name
            HAVING SUM(${netRevenue}) > 0
          ), ranked AS (
            SELECT
-             id,
-             name,
-             sku,
-             revenue,
+             *,
              ROW_NUMBER() OVER (ORDER BY revenue DESC) AS rank,
              SUM(revenue) OVER (ORDER BY revenue DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cum_revenue,
              SUM(revenue) OVER () AS total_revenue,
@@ -596,11 +571,23 @@ export async function GET(request) {
            r.id,
            r.name,
            r.sku,
+           r.division,
            r.revenue::numeric(14,2) AS revenue,
+           r.units::numeric(14,2) AS units,
+           r.uncosted_revenue,
+           r.cost,
+           ${marginColumns('r.revenue', 'r.uncosted_revenue', 'r.cost')},
+           ROUND((r.revenue / NULLIF(r.total_revenue, 0)) * 100, 1)::numeric(5,1) AS share_pct,
            ROUND((r.cum_revenue / NULLIF(r.total_revenue,0)) * 100, 2)::numeric(6,2) AS cumulative_pct,
+           ${availableQty}::numeric(14,2) AS in_stock,
+           CASE WHEN r.units > 0
+             THEN ROUND(GREATEST(${availableQty}, 0) / (r.units / ($2::date - $1::date + 1)), 0)::int
+           END AS days_left,
            r.total_items::int AS total_items_with_sales,
            p.rank_at_80
-         FROM ranked r, pareto p
+         FROM ranked r
+         JOIN stock_items i ON i.id = r.id
+         CROSS JOIN pareto p
          ORDER BY r.rank
          LIMIT 50`,
         [startDate, endDate]

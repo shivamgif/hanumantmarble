@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getRoleFlags, getStockContext } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getRoleFlags, getStockContext, queueNotification } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { DATE_RE, serializeLeave } from '@/lib/attendance-db';
 
@@ -118,6 +118,24 @@ export async function POST(request) {
         selfFiled ? null : new Date(),
       ]
     );
+
+    // Tell the managers, who otherwise only find it by opening the Leave tab.
+    // In-app only (channel 'internal') and without the reason: the feed is
+    // visible to every stock role. A failed notice must not fail the request.
+    if (selfFiled) {
+      try {
+        await queueNotification({
+          channel: 'internal',
+          eventType: 'other',
+          messageText: `${appUser.name} requested leave: ${fromDate}${toDate !== fromDate ? ` to ${toDate}` : ''}. Review in Attendance → Leave.`,
+          sourceTable: 'stock_leave_requests',
+          sourceId: rows[0].id,
+          createdBy: session.user?.email || null,
+        });
+      } catch (error) {
+        console.error('[attendance] leave notification failed:', error.message);
+      }
+    }
 
     return NextResponse.json({ leaveRequest: serializeLeave(rows[0]) }, { status: 201 });
   } catch (error) {
