@@ -44,10 +44,10 @@ export function Branches() {
               <div
                 key={branch.key}
                 className={cn(
-                  "group flex flex-col overflow-hidden rounded-xl bg-card border border-border/60 hover:border-primary/40 hover:shadow-lg transition-all duration-300 animate-on-scroll",
+                  "group flex flex-col overflow-hidden rounded-xl bg-card border border-border/60 hover:border-primary/40 hover:shadow-lg transition duration-300 animate-on-scroll",
                   inView && "in-view"
                 )}
-                style={{ transitionDelay: `${Math.min(index, 3) * 70}ms` }}
+                style={{ transitionDelay: `${Math.min(index, 3) * 90}ms` }}
               >
                 <div className="relative h-44 overflow-hidden">
                   <Image
@@ -55,7 +55,7 @@ export function Branches() {
                     alt={name}
                     fill
                     sizes="(max-width: 768px) 100vw, 25vw"
-                    className="object-cover transition-transform duration-700 group-hover:scale-105"
+                    className="object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
                   <h3 className="absolute bottom-4 left-4 right-4 font-display text-xl text-white leading-tight">
@@ -87,7 +87,7 @@ export function Branches() {
                     href={directions}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-border py-2.5 text-sm font-semibold hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-300"
+                    className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-border py-2.5 text-sm font-semibold hover:bg-primary hover:text-primary-foreground hover:border-primary transition duration-300"
                   >
                     <Navigation className="h-4 w-4" />
                     Get Directions

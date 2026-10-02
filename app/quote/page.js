@@ -34,21 +34,21 @@ export default function Quote() {
           <h1 className={cn(
             "font-semibold tracking-tight text-3xl sm:text-4xl md:text-5xl lg:text-5xl animate-on-scroll",
             isHeaderInView ? "in-view" : ""
-          )} style={{ transitionDelay: "100ms" }}>
+          )} style={{ transitionDelay: "80ms" }}>
             {getTranslation('quote.title', language)}
           </h1>
 
           <p className={cn(
             "text-xl text-muted-foreground leading-relaxed animate-on-scroll",
             isHeaderInView ? "in-view" : ""
-          )} style={{ transitionDelay: "200ms" }}>
+          )} style={{ transitionDelay: "160ms" }}>
             {getTranslation('quote.subtitle', language)}
           </p>
 
           <div className={cn(
             "flex flex-wrap items-center justify-center gap-3 animate-on-scroll",
             isHeaderInView ? "in-view" : ""
-          )} style={{ transitionDelay: "300ms" }}>
+          )} style={{ transitionDelay: "240ms" }}>
             {badges.map((badge, index) => (
               <Badge 
                 key={index}
@@ -66,7 +66,7 @@ export default function Quote() {
         <div className={cn(
           "max-w-3xl mx-auto animate-on-scroll",
           isHeaderInView ? "in-view" : ""
-        )} style={{ transitionDelay: "400ms" }}>
+        )} style={{ transitionDelay: "320ms" }}>
           <div className="rounded-xl border border-border bg-card p-5 sm:p-8 md:p-10 shadow-card">
             <ProductForm />
           </div>

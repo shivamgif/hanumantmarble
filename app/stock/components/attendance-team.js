@@ -107,7 +107,7 @@ export function AttendanceTeam({ employees = [], reloadKey, onEdit }) {
                   <button
                     type="button"
                     onClick={() => onEdit(row)}
-                    className="rounded-lg bg-amber-600 px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-amber-700 active:scale-95"
+                    className="rounded-lg bg-amber-600 px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-amber-700 active:scale-[0.96]"
                   >
                     Review
                   </button>

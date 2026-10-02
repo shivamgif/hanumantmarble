@@ -21,7 +21,7 @@ export default function StockNotificationsSheet({
 }) {
   return (
     <Sheet open={notificationOpen} onOpenChange={setNotificationOpen}>
-      <SheetContent side="right" className="w-full max-w-none overflow-y-auto md:w-[460px] p-0 bg-card border-l border-border">
+      <SheetContent side="right" className="w-full max-w-none overflow-y-auto md:w-[460px] p-0 border-l">
         <div className="p-6 space-y-5">
           <SheetHeader className="text-left space-y-1">
             <div className="flex items-center gap-3">

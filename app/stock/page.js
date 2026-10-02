@@ -1109,7 +1109,7 @@ export default function StockDashboard() {
             aria-current={isActive ? 'true' : undefined}
             className={tabButtonClass(isActive, tableViewTabs.length)}
           >
-            <Icon className="h-4 w-4 shrink-0 sm:hidden" />
+            <Icon className="h-4 w-4 shrink-0" />
             <span className="line-clamp-2 min-w-0 text-center sm:whitespace-nowrap">
               {tab.label}
             </span>
@@ -1281,17 +1281,17 @@ export default function StockDashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-10 lg:space-y-12 p-4 sm:p-6 lg:p-8 animate-pulse">
+      <div className="space-y-10 lg:space-y-12 p-4 sm:p-6 lg:p-8" aria-busy="true">
         <div className="flex flex-col gap-4">
-          <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 rounded" />
-          <div className="h-16 sm:h-20 w-full sm:w-3/4 max-w-lg bg-slate-200 dark:bg-slate-800 rounded-xl" />
+          <div className="h-4 w-32 skeleton rounded" />
+          <div className="h-16 sm:h-20 w-full sm:w-3/4 max-w-lg skeleton rounded-xl" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={`op-stat-skeleton-${index}`} className="h-40 rounded-xl bg-slate-200 dark:bg-slate-800" />
+            <div key={`op-stat-skeleton-${index}`} className="h-40 rounded-xl skeleton" />
           ))}
         </div>
-        <div className="h-96 rounded-xl bg-slate-200 dark:bg-slate-800" />
+        <div className="h-96 rounded-xl skeleton" />
       </div>
     );
   }
@@ -1299,7 +1299,7 @@ export default function StockDashboard() {
   if (!data) return null;
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
+    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-rise font-sans selection:bg-brand-primary/20 overflow-x-hidden">
       <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
         <div className="space-y-2">
           <nav className="flex items-center flex-wrap gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">

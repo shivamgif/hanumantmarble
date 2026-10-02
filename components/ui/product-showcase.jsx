@@ -64,7 +64,7 @@ export function ProductShowcase() {
                 index > 1 && "border-t md:border-t-0",
                 isStatsInView && "in-view"
               )}
-              style={{ transitionDelay: `${Math.min(index, 3) * 70}ms` }}
+              style={{ transitionDelay: `${Math.min(index, 3) * 90}ms` }}
             >
               <div className="text-primary shrink-0">{stat.icon}</div>
               <div>
@@ -91,9 +91,9 @@ export function ProductShowcase() {
             <div
               key={b.brand}
               className={cn("animate-on-scroll", isProductsInView && "in-view")}
-              style={{ transitionDelay: `${Math.min(index, 3) * 70}ms` }}
+              style={{ transitionDelay: `${Math.min(index, 3) * 90}ms` }}
             >
-              <Card className="group overflow-hidden h-full flex flex-col border border-border/60 bg-card shadow-none hover:border-primary/40 hover:shadow-lg transition-all duration-300">
+              <Card className="group overflow-hidden h-full flex flex-col border border-border/60 bg-card shadow-none hover:border-primary/40 hover:shadow-lg transition duration-300">
                 <CardHeader className="p-0">
                   <div className="relative h-40 bg-muted/40 overflow-hidden">
                     <img

@@ -24,7 +24,7 @@ export function WhatsAppButton() {
       {/* Tooltip */}
       <div
         className={cn(
-          "bg-white dark:bg-card text-foreground text-sm font-medium px-4 py-2.5 rounded-xl shadow-lg border border-border/50 whitespace-nowrap transition-all duration-300 pointer-events-none",
+          "bg-white dark:bg-card text-foreground text-sm font-medium px-4 py-2.5 rounded-xl shadow-lg border border-border/50 whitespace-nowrap transition duration-300 pointer-events-none",
           showTooltip
             ? "opacity-100 translate-x-0"
             : "opacity-0 -translate-x-2"
@@ -47,7 +47,7 @@ export function WhatsAppButton() {
         className={cn(
           "w-14 h-14 rounded-full shadow-lg flex items-center justify-center",
           "bg-[#25D366] hover:bg-[#20BD5A] text-white",
-          "transition-all duration-300 hover:scale-110 active:scale-95",
+          "transition duration-300 hover:-translate-y-1 active:scale-[0.96]",
           "focus:outline-none focus:ring-4 focus:ring-[#25D366]/30"
         )}
       >
@@ -63,7 +63,6 @@ export function WhatsAppButton() {
         </svg>
 
         {/* Pulse ring animation */}
-        <span className="absolute inline-flex h-full w-full rounded-full bg-[#25D366] opacity-25 animate-ping pointer-events-none" aria-hidden="true" />
       </button>
     </div>
   );

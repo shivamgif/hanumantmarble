@@ -34,7 +34,7 @@ export default function SuccessPage() {
         <div className={cn(
           "inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm font-medium mb-6 animate-on-scroll",
           isContentInView ? "in-view" : ""
-        )} style={{ transitionDelay: "100ms" }}>
+        )} style={{ transitionDelay: "80ms" }}>
           Order Confirmed
         </div>
 
@@ -42,7 +42,7 @@ export default function SuccessPage() {
         <h1 className={cn(
           "font-semibold tracking-tight text-3xl sm:text-4xl md:text-5xl lg:text-5xl mb-4 animate-on-scroll",
           isContentInView ? "in-view" : ""
-        )} style={{ transitionDelay: "200ms" }}>
+        )} style={{ transitionDelay: "160ms" }}>
           Payment Successful!
         </h1>
 
@@ -50,7 +50,7 @@ export default function SuccessPage() {
         <p className={cn(
           "text-base sm:text-lg md:text-xl text-muted-foreground mb-8 sm:mb-10 max-w-lg mx-auto animate-on-scroll px-4",
           isContentInView ? "in-view" : ""
-        )} style={{ transitionDelay: "300ms" }}>
+        )} style={{ transitionDelay: "240ms" }}>
           Thank you for your purchase. Your order is being processed and you'll receive a confirmation email shortly.
         </p>
 
@@ -58,7 +58,7 @@ export default function SuccessPage() {
         <div className={cn(
           "flex flex-col sm:flex-row gap-4 justify-center animate-on-scroll",
           isContentInView ? "in-view" : ""
-        )} style={{ transitionDelay: "400ms" }}>
+        )} style={{ transitionDelay: "320ms" }}>
           <Button asChild size="lg" className="px-6">
             <Link href="/" className="flex items-center gap-2">
               <ShoppingBag className="w-5 h-5" />

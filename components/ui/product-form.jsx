@@ -29,7 +29,7 @@ const Input = React.forwardRef(
               "border border-input",
               "text-sm text-foreground",
               "placeholder:text-muted-foreground",
-              "transition-all duration-300",
+              "transition duration-300",
               "focus:outline-none focus:ring-2",
               error && "border-destructive focus:ring-destructive/20",
               !error && "focus:ring-primary/20",
@@ -73,7 +73,7 @@ const Select = React.forwardRef(
               "bg-background",
               "border border-input",
               "text-sm text-foreground",
-              "transition-all duration-300",
+              "transition duration-300",
               "focus:outline-none focus:ring-2",
               error && "border-destructive focus:ring-destructive/20",
               !error && "focus:ring-primary/20",
@@ -275,7 +275,7 @@ export function ProductForm({ className, ...props }) {
           className={cn(
             "flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl",
             "bg-primary text-primary-foreground font-semibold text-sm",
-            "transition-all duration-300 hover:bg-primary/90 hover:scale-[1.02]",
+            "transition duration-300 hover:bg-primary/90 hover:scale-[1.02]",
             "focus:outline-none focus:ring-2 focus:ring-primary/30",
             "disabled:opacity-50 disabled:cursor-not-allowed",
           )}
@@ -290,7 +290,7 @@ export function ProductForm({ className, ...props }) {
           className={cn(
             "flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl",
             "bg-[#25D366] hover:bg-[#20BD5A] text-white font-semibold text-sm",
-            "transition-all duration-300 hover:scale-[1.02]",
+            "transition duration-300 hover:scale-[1.02]",
             "focus:outline-none focus:ring-2 focus:ring-[#25D366]/30",
           )}
         >

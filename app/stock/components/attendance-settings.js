@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Copy, KeyRound, Plus, Trash2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { CLASSES, FORM_INPUT_CLASS, FORM_LABEL_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../lib/stock-utils';
 import { BranchesPanel } from './branches-panel';
 import { SelectField } from '@/components/ui/select';
@@ -85,7 +86,20 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
   }
 
   if (!settings) {
-    return <p className="py-10 text-center text-xs font-bold text-slate-500">{error || 'Loading…'}</p>;
+    return error ? (
+      <p className="py-10 text-center text-sm text-rose-600 dark:text-rose-400">{error}</p>
+    ) : (
+      <div className="space-y-4" aria-busy="true">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className={`${CLASSES.card} space-y-3`}>
+            <Skeleton className="h-4 w-40 rounded-md" />
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[0, 1, 2].map((j) => <Skeleton key={j} className="h-10 rounded-lg" />)}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   }
 
   return (

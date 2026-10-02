@@ -122,7 +122,7 @@ function SearchDropdown({ query, onSelect, activeIndex, setActiveIndex }) {
 
   if (results.length === 0) {
     return (
-      <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[320px] rounded-xl border border-border bg-popover p-4 shadow-card-hover">
+      <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[320px] glass rounded-xl border p-4 animate-in fade-in-0 zoom-in-[0.98] slide-in-from-top-1 duration-150">
         <p className="text-center text-xs text-slate-400 dark:text-slate-500">No commands found for &ldquo;{query}&rdquo;</p>
       </div>
     );
@@ -130,7 +130,7 @@ function SearchDropdown({ query, onSelect, activeIndex, setActiveIndex }) {
 
   return (
     <div
-      className="absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[320px] overflow-hidden rounded-xl border border-border bg-popover shadow-card-hover"
+      className="absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[320px] glass overflow-hidden rounded-xl border animate-in fade-in-0 zoom-in-[0.98] slide-in-from-top-1 duration-150"
       role="listbox"
       aria-label="Search suggestions"
     >
@@ -327,7 +327,7 @@ export default function StockTopbar({
 }) {
 
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-card/90 backdrop-blur">
+    <header className="glass-bar sticky top-0 z-20">
       <div className="mx-auto w-full max-w-[1600px]">
         {/* Desktop bar */}
         <div className="hidden h-14 items-center justify-between gap-4 xl:gap-8 px-8 lg:flex">

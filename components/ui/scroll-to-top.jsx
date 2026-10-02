@@ -26,7 +26,7 @@ export function ScrollToTop() {
         "w-12 h-12 rounded-full shadow-lg",
         "bg-primary text-primary-foreground",
         "flex items-center justify-center",
-        "transition-all duration-300 hover:scale-110 active:scale-95",
+        "transition duration-300 hover:-translate-y-1 active:scale-[0.96]",
         "focus:outline-none focus:ring-4 focus:ring-primary/30",
         visible ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-4 pointer-events-none"
       )}

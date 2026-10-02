@@ -1160,12 +1160,12 @@ export default function AdminDashboard() {
     return (
       <div className="space-y-10 lg:space-y-12 p-4 sm:p-6 lg:p-8">
         <div className="flex flex-col gap-4">
-          <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 animate-pulse rounded" />
-          <div className="h-16 sm:h-20 w-full sm:w-3/4 max-w-lg bg-slate-200 dark:bg-slate-800 animate-pulse rounded-xl" />
+          <div className="h-4 w-32 skeleton rounded" />
+          <div className="h-16 sm:h-20 w-full sm:w-3/4 max-w-lg skeleton rounded-xl" />
         </div>
         <div className="grid grid-cols-1 gap-6">
-          <div className="animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800 h-96" />
-          <div className="animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800 h-96" />
+          <div className="skeleton rounded-xl h-96" />
+          <div className="skeleton rounded-xl h-96" />
         </div>
       </div>
     );
@@ -1190,7 +1190,7 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
+    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-rise font-sans selection:bg-brand-primary/20 overflow-x-hidden">
       <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
         <div className="space-y-2">
           <nav className="flex items-center flex-wrap gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -1252,7 +1252,7 @@ export default function AdminDashboard() {
               aria-current={isActive ? 'true' : undefined}
               className={tabButtonClass(isActive, adminTabs.length)}
             >
-              <Icon className="h-4 w-4 shrink-0 sm:hidden" />
+              <Icon className="h-4 w-4 shrink-0" />
               <span className="line-clamp-2 min-w-0 text-center sm:whitespace-nowrap">
                 {tab.label}
               </span>
@@ -1325,7 +1325,7 @@ export default function AdminDashboard() {
                                 event.stopPropagation();
                                 handleEditArrival(item);
                               }}
-                              className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 hover:bg-blue-500 hover:text-white transition-all"
+                              className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 hover:bg-blue-500 hover:text-white transition"
                               title="Edit"
                             >
                               <Pencil className="h-3.5 w-3.5" />
@@ -1337,7 +1337,7 @@ export default function AdminDashboard() {
                                 promptApproveShipment('inbound-shipments', item);
                               }}
                               disabled={actionLoading === `inbound-shipments-${item.id}-approve`}
-                              className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all disabled:opacity-50"
+                              className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white transition disabled:opacity-50"
                               title="Approve"
                             >
                               <ShieldCheck className="h-3.5 w-3.5" />
@@ -1349,7 +1349,7 @@ export default function AdminDashboard() {
                                 promptRejectShipment('inbound-shipments', item);
                               }}
                               disabled={actionLoading === `inbound-shipments-${item.id}-reject`}
-                              className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500 hover:text-white transition-all disabled:opacity-50"
+                              className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500 hover:text-white transition disabled:opacity-50"
                               title="Reject"
                             >
                               <X className="h-3.5 w-3.5" />
@@ -1503,7 +1503,7 @@ export default function AdminDashboard() {
                                 promptDeleteShipment('inbound-shipments', item);
                               }}
                               disabled={actionLoading === `inbound-shipments-${item.id}-delete`}
-                              className="p-1.5 rounded-lg bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white transition-all disabled:opacity-50"
+                              className="p-1.5 rounded-lg bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white transition disabled:opacity-50"
                               title="Delete"
                             >
                               <X className="h-3.5 w-3.5" />
@@ -1626,7 +1626,7 @@ export default function AdminDashboard() {
                                 event.stopPropagation();
                                 handleEditDispatch(item);
                               }}
-                              className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 hover:bg-blue-500 hover:text-white transition-all"
+                              className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 hover:bg-blue-500 hover:text-white transition"
                               title="Edit"
                             >
                               <Pencil className="h-3.5 w-3.5" />
@@ -1638,7 +1638,7 @@ export default function AdminDashboard() {
                                 promptApproveShipment('outbound-shipments', item);
                               }}
                               disabled={actionLoading === `outbound-shipments-${item.id}-approve`}
-                              className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all disabled:opacity-50"
+                              className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white transition disabled:opacity-50"
                               title="Approve"
                             >
                               <ShieldCheck className="h-3.5 w-3.5" />
@@ -1650,7 +1650,7 @@ export default function AdminDashboard() {
                                 promptRejectShipment('outbound-shipments', item);
                               }}
                               disabled={actionLoading === `outbound-shipments-${item.id}-reject`}
-                              className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500 hover:text-white transition-all disabled:opacity-50"
+                              className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500 hover:text-white transition disabled:opacity-50"
                               title="Reject"
                             >
                               <X className="h-3.5 w-3.5" />
@@ -1809,7 +1809,7 @@ export default function AdminDashboard() {
                 <div
                   key={`cr-mob-${item.id}`}
                   onClick={() => openChangeRequestPreview(item)}
-                  className={`p-5 rounded-xl border transition-all active:scale-[0.98] ${highlightedChangeRequestId === item.id
+                  className={`p-5 rounded-xl border transition active:scale-[0.98] ${highlightedChangeRequestId === item.id
                       ? 'border-brand-primary bg-brand-primary/5 ring-1 ring-brand-primary/20'
                       : 'border-slate-100 dark:border-white/5 bg-slate-50/30'
                     }`}
@@ -1899,7 +1899,7 @@ export default function AdminDashboard() {
                 <button
                   type="button"
                   onClick={() => setShowUserForm((current) => !current)}
-                  className="px-6 py-2 rounded-lg bg-brand-primary text-white text-[13px] font-semibold hover:brightness-110 active:scale-95 transition-all outline-none border-none"
+                  className="px-6 py-2 rounded-lg bg-brand-primary text-white text-[13px] font-semibold hover:brightness-110 active:scale-[0.96] transition outline-none border-none"
                 >
                   {showUserForm ? (language === 'hi' ? 'फॉर्म बंद करें' : 'Close Form') : t('addUserContact')}
                 </button>
@@ -2032,7 +2032,7 @@ export default function AdminDashboard() {
                     <button
                       type="submit"
                       disabled={actionLoading === 'user-save'}
-                      className="flex-1 h-14 rounded-lg bg-slate-900 transition-all hover:bg-black text-white text-sm font-semibold disabled:opacity-50"
+                      className="flex-1 h-14 rounded-lg bg-slate-900 transition hover:bg-black text-white text-sm font-semibold disabled:opacity-50"
                     >
                        {actionLoading === 'user-save' ? (language === 'hi' ? 'प्रसंस्करण...' : 'Processing...') : (language === 'hi' ? 'पहचान अधिकृत करें' : 'Authorize Identity')}
                     </button>
@@ -2046,7 +2046,7 @@ export default function AdminDashboard() {
                         setShowPrimaryPassword(false);
                         setShowConfirmPassword(false);
                       }}
-                      className="px-8 h-14 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 text-sm font-semibold transition-all"
+                      className="px-8 h-14 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 text-sm font-semibold transition"
                     >
                        {language === 'hi' ? 'रद्द करें' : 'Cancel'}
                     </button>
@@ -2108,7 +2108,7 @@ export default function AdminDashboard() {
                             }}
                             disabled={actionLoading === `user-${u.id}-update`}
                             title={u.is_active ? 'Suspend Access' : 'Restore Access'}
-                            className={`p-1.5 rounded-lg transition-all disabled:opacity-50 ${u.is_active
+                            className={`p-1.5 rounded-lg transition disabled:opacity-50 ${u.is_active
                               ? 'bg-amber-500/10 text-amber-600 hover:bg-amber-500 hover:text-white'
                               : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white'
                               }`}
@@ -2124,7 +2124,7 @@ export default function AdminDashboard() {
                               }}
                               disabled={actionLoading === `user-${u.id}-delete`}
                               title="Remove User"
-                              className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500 hover:text-white transition-all disabled:opacity-50"
+                              className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500 hover:text-white transition disabled:opacity-50"
                             >
                               <X className="h-3.5 w-3.5" />
                             </button>
@@ -2176,7 +2176,7 @@ export default function AdminDashboard() {
                           promptToggleUser(u);
                         }}
                         disabled={actionLoading === `user-${u.id}-update`}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border transition-all text-[13px] font-semibold ${u.is_active
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border transition text-[13px] font-semibold ${u.is_active
                             ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
                             : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
                           }`}
@@ -2221,14 +2221,14 @@ export default function AdminDashboard() {
       </div>
 
       {confirmModal.open && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-950/40 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full p-6 sm:p-8 animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/25 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full p-6 sm:p-8 animate-in fade-in-0 zoom-in-95 duration-200">
             <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">{confirmModal.title}</h3>
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">{confirmModal.message}</p>
             <div className="flex items-center justify-end gap-3">
               <button
                 onClick={() => setConfirmModal({ ...confirmModal, open: false })}
-                className="px-6 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
+                className="px-6 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition active:scale-[0.96]"
               >
                 Cancel
               </button>
@@ -2257,7 +2257,11 @@ export default function AdminDashboard() {
         description={previewState.description}
         summary={
           previewState.loading ? (
-            <div className="text-xs font-medium text-slate-400 animate-pulse">{t('loadingPreview')}</div>
+            <div className="space-y-2" aria-busy="true" aria-label={t('loadingPreview')}>
+              <div className="skeleton h-5 w-1/2 rounded-md" />
+              <div className="skeleton h-4 w-3/4 rounded-md" />
+              <div className="skeleton h-4 w-2/3 rounded-md" />
+            </div>
           ) : previewState.error ? (
             <div className="text-xs font-semibold text-rose-500">{previewState.error}</div>
           ) : null
@@ -2489,7 +2493,7 @@ export default function AdminDashboard() {
                             <button
                               type="submit"
                               disabled={actionLoading === `user-${previewState.record?.id}-update`}
-                              className="flex-1 py-3 rounded-lg bg-brand-primary text-white text-[13px] font-semibold disabled:opacity-50 hover:brightness-110 transition-all"
+                              className="flex-1 py-3 rounded-lg bg-brand-primary text-white text-[13px] font-semibold disabled:opacity-50 hover:brightness-110 transition"
                             >
                               {actionLoading === `user-${previewState.record?.id}-update` ? 'Saving...' : 'Save Permissions'}
                             </button>
@@ -2506,7 +2510,7 @@ export default function AdminDashboard() {
                                 salary: previewState.record?.salary != null ? String(previewState.record.salary) : '',
                                 monthlySalesGoal: previewState.record?.monthly_sales_goal != null ? String(previewState.record.monthly_sales_goal) : '',
                               })}
-                              className="px-6 py-3 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-300 text-[13px] font-semibold transition-all"
+                              className="px-6 py-3 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-300 text-[13px] font-semibold transition"
                             >
                               Reset
                             </button>
@@ -2619,7 +2623,7 @@ export default function AdminDashboard() {
       />
 
       {resetPasswordModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/25 p-4">
           <div className="w-full max-w-sm rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 shadow-2xl">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1">Reset Password</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">{resetPasswordModal.email}</p>

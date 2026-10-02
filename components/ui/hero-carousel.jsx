@@ -161,10 +161,10 @@ export function HeroCarousel({
         </p>
 
         {/* CTAs */}
-        <div className="flex flex-wrap gap-4 items-center animate-scale-in" style={{ animationDelay: '400ms' }}>
+        <div className="flex flex-wrap gap-4 items-center animate-rise" style={{ animationDelay: '240ms' }}>
           <Button
             size="lg"
-            className="rounded-full h-[52px] px-8 text-base font-bold hover:scale-105 transition-transform duration-100 ease-out"
+            className="rounded-full h-[52px] px-8 text-base font-bold transition"
             style={{
               background: '#e07a00',
               color: '#fff',
@@ -181,7 +181,7 @@ export function HeroCarousel({
           <Button
             size="lg"
             variant="outline"
-            className="rounded-full h-[52px] px-8 text-base font-medium hover:scale-105 transition-transform duration-100 ease-out"
+            className="rounded-full h-[52px] px-8 text-base font-medium transition"
             style={{
               background: 'rgba(255,255,255,0.1)',
               color: '#fff',
@@ -252,7 +252,7 @@ export function HeroCarousel({
             aria-label={`Go to slide ${index + 1}`}
             onClick={() => scrollTo(index)}
             className={cn(
-              "rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white/60",
+              "rounded-full transition duration-300 focus:outline-none focus:ring-2 focus:ring-white/60",
               index === selectedIndex ? "w-7 h-[3px] bg-[#e07a00]" : "w-2 h-[3px] bg-white/30 hover:bg-white/60"
             )}
           />

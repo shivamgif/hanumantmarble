@@ -78,6 +78,23 @@ module.exports = {
         card: "0 1px 2px 0 rgb(15 23 42 / 0.06), 0 1px 3px 0 rgb(15 23 42 / 0.04)",
         "card-hover": "0 1px 2px 0 rgb(15 23 42 / 0.06), 0 8px 24px -12px rgb(15 23 42 / 0.20)",
       },
+      // Motion system. One curve for nearly everything: a fast start that
+      // settles softly (ease-out quint), so UI answers immediately and lands
+      // without a bump. Bare `transition` classes and every Radix
+      // menu/sheet/dialog animation (tailwindcss-animate reads these) inherit it.
+      transitionTimingFunction: {
+        DEFAULT: "cubic-bezier(0.22, 1, 0.36, 1)",
+        out: "cubic-bezier(0.22, 1, 0.36, 1)",
+        "in-out": "cubic-bezier(0.65, 0, 0.35, 1)",
+        in: "cubic-bezier(0.55, 0, 1, 0.45)",
+      },
+      // Named, not arbitrary: duration-[400ms] is ambiguous between this and
+      // tailwindcss-animate's animation duration, and Tailwind drops it.
+      transitionDuration: {
+        DEFAULT: "200ms",
+        250: "250ms",
+        400: "400ms",
+      },
       keyframes: {
         "accordion-down": {
           from: { height: 0 },
@@ -87,12 +104,8 @@ module.exports = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: 0 },
         },
-        float: {
-          "0%, 100%": { transform: "translateY(0px)" },
-          "50%": { transform: "translateY(-15px)" },
-        },
         "slide-up": {
-          from: { transform: "translateY(50px)", opacity: "0" },
+          from: { transform: "translateY(24px)", opacity: "0" },
           to: { transform: "translateY(0)", opacity: "1" },
         },
         "scale-in": {
@@ -103,25 +116,20 @@ module.exports = {
           from: { opacity: "0" },
           to: { opacity: "1" },
         },
-        "gradient-shift": {
-          "0%": { backgroundPosition: "0% 50%" },
-          "50%": { backgroundPosition: "100% 50%" },
-          "100%": { backgroundPosition: "0% 50%" },
-        },
-        shimmer: {
-          "0%": { backgroundPosition: "-1000px 0" },
-          "100%": { backgroundPosition: "1000px 0" },
+        // Page and panel arrival: a short rise with the fade.
+        rise: {
+          from: { transform: "translateY(12px)", opacity: "0" },
+          to: { transform: "translateY(0)", opacity: "1" },
         },
       },
       animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
-        float: "float 6s ease-in-out infinite",
-        "slide-up": "slide-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both",
-        "scale-in": "scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both",
-        "fade-in": "fade-in 0.3s ease-out both",
-        "gradient-shift": "gradient-shift 4s ease infinite",
-        shimmer: "shimmer 3s linear infinite",
+        "accordion-down": "accordion-down 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
+        "accordion-up": "accordion-up 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
+        "slide-up": "slide-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "scale-in": "scale-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "fade-in": "fade-in 0.25s cubic-bezier(0.22, 1, 0.36, 1) both",
+        // Not "enter": tailwindcss-animate owns that keyframe name.
+        rise: "rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both",
       },
     },
   },

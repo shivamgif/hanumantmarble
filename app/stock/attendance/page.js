@@ -17,6 +17,7 @@ import { AttendanceEntrySheet } from '../components/attendance-entry-sheet';
 import { AttendanceMonth } from '../components/attendance-month';
 import { CLASSES, tabButtonClass, tabTrackClass } from '../lib/stock-utils';
 import { useAttendanceText } from '@/lib/attendance-i18n';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Plain pill buttons rather than a Tabs primitive — components/ui has no
 // tabs.jsx, and the dashboard uses this same pattern at app/stock/page.js.
@@ -63,7 +64,7 @@ function AttendancePageInner() {
   }
 
   if (accessLoading) {
-    return <p className="py-20 text-center text-xs font-bold text-slate-500">{t('loading')}</p>;
+    return <AttendancePageSkeleton />;
   }
 
   return (
@@ -101,7 +102,7 @@ function AttendancePageInner() {
                 aria-current={isActive ? 'true' : undefined}
                 className={tabButtonClass(isActive, tabs.length)}
               >
-                <Icon className="h-4 w-4 shrink-0 sm:hidden" />
+                <Icon className="h-4 w-4 shrink-0" />
                 <span className="line-clamp-2 min-w-0 text-center sm:whitespace-nowrap">
                   {label}
                 </span>
@@ -158,10 +159,39 @@ function AttendancePageInner() {
   );
 }
 
+// Same frame as the loaded page (crumb, title, tabs, punch card, month,
+// timesheet), so nothing jumps when the real content lands.
+function AttendancePageSkeleton() {
+  return (
+    <div className={CLASSES.contentWrap} aria-busy="true" aria-label="Loading attendance">
+      <div className="space-y-2">
+        <Skeleton className="h-3.5 w-40 rounded-md" />
+        <Skeleton className="h-8 w-56 rounded-lg" />
+        <Skeleton className="h-4 w-full max-w-xl rounded-md" />
+      </div>
+      <Skeleton className="h-11 w-full rounded-lg sm:w-[32rem]" />
+      <div className={CLASSES.topCard}>
+        <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-between">
+          <div className="flex flex-col items-center gap-2 sm:items-start">
+            <Skeleton className="h-3.5 w-28 rounded-md" />
+            <Skeleton className="h-10 w-36 rounded-lg" />
+            <Skeleton className="h-3.5 w-32 rounded-md" />
+          </div>
+          <Skeleton className="h-12 w-full rounded-full sm:w-44" />
+        </div>
+      </div>
+      <Skeleton className="h-64" />
+      <div className="space-y-2">
+        {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-12 rounded-lg" />)}
+      </div>
+    </div>
+  );
+}
+
 export default function AttendancePage() {
   // useSearchParams needs a Suspense boundary in the app router.
   return (
-    <Suspense fallback={<p className="py-20 text-center text-xs font-bold text-slate-500">Loading…</p>}>
+    <Suspense fallback={<AttendancePageSkeleton />}>
       <AttendancePageInner />
     </Suspense>
   );

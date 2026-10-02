@@ -55,7 +55,7 @@ export function ProductsGrid() {
                 "animate-on-scroll",
                 isGridInView ? "in-view" : ""
               )}
-              style={{ transitionDelay: `${Math.min(index, 3) * 70}ms` }}
+              style={{ transitionDelay: `${Math.min(index, 3) * 90}ms` }}
             >
               <ProductCard product={product} />
             </div>

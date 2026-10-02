@@ -74,7 +74,7 @@ function WishlistPage() {
         <div className="text-center mb-12">
           <Badge
             variant="outline"
-            className="mb-4 px-4 py-2 bg-primary/10 backdrop-blur-md text-primary border-primary/20 hover:bg-primary/20 transition-all"
+            className="mb-4 px-4 py-2 bg-primary/10 backdrop-blur-md text-primary border-primary/20 hover:bg-primary/20 transition"
           >
             <Heart className="w-4 h-4 mr-2 fill-current" />
             {language === 'hi' ? 'सेव किए गए आइटम' : 'Saved Items'}
@@ -130,7 +130,7 @@ function WishlistPage() {
                 key={item.id} 
                 className={cn(
                   "group bg-card border border-border shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden",
-                  removingId === item.id ? "scale-95 opacity-0" : "hover:-translate-y-2"
+                  removingId === item.id ? "scale-[0.98] opacity-0" : "hover:-translate-y-1"
                 )}
                 style={{ animationDelay: `${index * 100}ms` }}
               >
@@ -168,7 +168,7 @@ function WishlistPage() {
                       </div>
 
                       {/* Quick Actions on Hover */}
-                      <div className="absolute bottom-3 left-3 right-3 flex gap-2 translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+                      <div className="absolute bottom-3 left-3 right-3 flex gap-2 translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition duration-300">
                         <Button 
                           size="sm" 
                           className="flex-1 rounded-full bg-white text-black hover:bg-white/90 shadow-lg"

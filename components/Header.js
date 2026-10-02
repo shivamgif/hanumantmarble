@@ -74,7 +74,7 @@ export function Header() {
                   <NavigationMenuLink asChild>
                     <Link
                       href={item.href}
-                      className="group inline-flex h-10 w-max items-center justify-center rounded-full bg-transparent px-5 py-2 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary focus:outline-none"
+                      className="group inline-flex h-10 w-max items-center justify-center rounded-full bg-transparent px-5 py-2 text-sm font-medium transition hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary focus:outline-none"
                     >
                       {item.label}
                     </Link>
@@ -108,8 +108,8 @@ export function Header() {
               aria-label="Toggle theme"
               className="rounded-full p-0 hover:bg-primary/10"
             >
-              <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+              <Sun className="h-5 w-5 rotate-0 scale-100 transition dark:-rotate-90 dark:scale-0" />
+              <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition dark:rotate-0 dark:scale-100" />
             </Button>
           </div>
 
@@ -121,7 +121,7 @@ export function Header() {
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] sm:w-[400px] bg-card">
+              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
                 <SheetHeader>
                   <SheetTitle>
                     <Link href="/" className="flex items-center gap-3" onClick={() => setOpen(false)}>
@@ -210,7 +210,7 @@ export function Header() {
                   <div className="flex flex-col space-y-2 mb-6 pb-6 border-b border-border/50">
                     <Link
                       href="/#products"
-                      className="group flex justify-between items-center py-3 px-4 rounded-xl text-foreground hover:bg-primary/10 hover:text-primary transition-all"
+                      className="group flex justify-between items-center py-3 px-4 rounded-xl text-foreground hover:bg-primary/10 hover:text-primary transition"
                       onClick={() => setOpen(false)}
                     >
                       <span className="flex items-center gap-3 text-lg font-medium">
@@ -222,7 +222,7 @@ export function Header() {
                           </span>
                         )}
                       </span>
-                      <ArrowRight className="h-5 w-5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                      <ArrowRight className="h-5 w-5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition" />
                     </Link>
                   </div>
 
@@ -232,11 +232,11 @@ export function Header() {
                       <Link
                         key={item.href}
                         href={item.href}
-                        className="group flex justify-between items-center py-3 px-4 rounded-xl text-foreground hover:bg-primary/10 hover:text-primary transition-all"
+                        className="group flex justify-between items-center py-3 px-4 rounded-xl text-foreground hover:bg-primary/10 hover:text-primary transition"
                         onClick={() => setOpen(false)}
                       >
                         <span className="text-lg font-medium">{item.label}</span>
-                        <ArrowRight className="h-5 w-5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                        <ArrowRight className="h-5 w-5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition" />
                       </Link>
                     ))}
                   </div>
@@ -246,14 +246,14 @@ export function Header() {
                     <div className="mt-6 pt-6 border-t border-border/50">
                       <a
                         href={getLogoutHref('/')}
-                        className="group flex justify-between items-center py-3 px-4 rounded-xl text-red-500 hover:bg-red-500/10 transition-all"
+                        className="group flex justify-between items-center py-3 px-4 rounded-xl text-red-500 hover:bg-red-500/10 transition"
                         onClick={() => setOpen(false)}
                       >
                         <span className="flex items-center gap-3 text-lg font-medium">
                           <LogOut className="h-5 w-5" />
                           {getTranslation('nav.logout', language) || 'Logout'}
                         </span>
-                        <ArrowRight className="h-5 w-5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                        <ArrowRight className="h-5 w-5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition" />
                       </a>
                     </div>
                   )}

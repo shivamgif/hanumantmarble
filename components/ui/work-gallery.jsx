@@ -80,14 +80,14 @@ export function WorkGallery() {
                 shot.height,
                 isGridInView && "in-view"
               )}
-              style={{ transitionDelay: `${Math.min(index, 3) * 70}ms` }}
+              style={{ transitionDelay: `${Math.min(index, 3) * 90}ms` }}
             >
               <Image
                 src={shot.src}
                 alt={`Hanumant Marble project ${index + 1}`}
                 fill
                 sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-cover transition-transform duration-[900ms] ease-out group-hover:scale-105"
+                className="object-cover transition-transform duration-500 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent opacity-70 group-hover:opacity-40 transition-opacity duration-500" />
             </div>

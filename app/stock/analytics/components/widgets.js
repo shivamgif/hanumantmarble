@@ -324,7 +324,7 @@ export function MyPerformanceHero({ data, target, targetKind, pct, expectedPct, 
             <div className="mt-6 space-y-2">
               <div className="relative h-2.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-[width] duration-1000 ease-out ${standing.bar}`}
+                  className={`h-full rounded-full transition-[width] duration-700 ease-out ${standing.bar}`}
                   style={{ width: `${goalWidth}%` }}
                 />
                 {/* Where they should be by today - the bar is only "behind" relative to this. */}
@@ -452,7 +452,7 @@ function MyTrend({ rows, goal, projected }) {
                       title={t('atPace', { amount: formatCompactINR(projected), pct: goal > 0 ? Math.round((projected / goal) * 100) : '—' })}
                     />
                   ) : null}
-                  <div className={`relative h-full rounded-xl transition-all duration-700 ${barColor}`} style={{ width: `${(row.totalValue / scale) * 100}%` }} />
+                  <div className={`relative h-full rounded-xl transition-[width] duration-700 ${barColor}`} style={{ width: `${(row.totalValue / scale) * 100}%` }} />
                   {goal > 0 ? (
                     <div className="absolute inset-y-0 w-0.5 bg-slate-900/50 dark:bg-slate-100/50" style={{ left: `${(goal / scale) * 100}%` }} title={t('goalLine')} />
                   ) : null}
@@ -1172,7 +1172,7 @@ export function PendingQueueWidget({ items, onApprove, onReject, actionLoading }
                         type="button"
                         disabled={isLoading || !onApprove}
                         onClick={() => onApprove?.(item)}
-                        className="p-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition-all disabled:opacity-50 focus-ring"
+                        className="p-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition disabled:opacity-50 focus-ring"
                       >
                         {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                       </button>
@@ -1185,7 +1185,7 @@ export function PendingQueueWidget({ items, onApprove, onReject, actionLoading }
                         type="button"
                         disabled={isLoading || !onReject}
                         onClick={() => onReject?.(item)}
-                        className="p-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white transition-all disabled:opacity-50 focus-ring"
+                        className="p-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white transition disabled:opacity-50 focus-ring"
                       >
                         <X className="h-3 w-3" />
                       </button>

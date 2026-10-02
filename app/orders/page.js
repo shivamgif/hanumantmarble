@@ -106,7 +106,7 @@ function OrdersPage() {
         <div className="text-center mb-12">
           <Badge
             variant="outline"
-            className="mb-4 px-4 py-2 bg-primary/10 backdrop-blur-md text-primary border-primary/20 hover:bg-primary/20 transition-all"
+            className="mb-4 px-4 py-2 bg-primary/10 backdrop-blur-md text-primary border-primary/20 hover:bg-primary/20 transition"
           >
             <ShoppingBag className="w-4 h-4 mr-2" />
             Order History
@@ -206,7 +206,7 @@ function OrdersPage() {
 
                     {/* Expanded Content */}
                     <div className={cn(
-                      "overflow-hidden transition-all duration-300",
+                      "overflow-hidden transition duration-300",
                       isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
                     )}>
                       <div className="px-6 pb-6 pt-2 border-t border-border/50">

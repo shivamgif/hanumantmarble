@@ -112,7 +112,7 @@ export function CatalogueViewer({ brand }) {
             key={cat.path}
             className={cn(
               "group relative cursor-pointer rounded-xl overflow-hidden border border-border/50 bg-muted/30",
-              "hover:border-primary/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300",
+              "hover:border-primary/50 hover:shadow-card-hover hover:-translate-y-1 transition duration-300",
               "aspect-[3/4]"
             )}
             onClick={() => {
@@ -369,9 +369,9 @@ export function CatalogueViewer({ brand }) {
       <Dialog.Trigger asChild>
         <Button 
           variant="outline" 
-          className="w-full group border border-primary/20 hover:border-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300 rounded-xl h-11"
+          className="w-full group border border-primary/20 hover:border-primary hover:bg-primary hover:text-primary-foreground transition duration-300 rounded-xl h-11"
         >
-          <BookOpen className="mr-2 h-4 w-4 transition-transform group-hover:scale-110" />
+          <BookOpen className="mr-2 h-4 w-4" />
           {getTranslation('catalogue.viewButton', language)} 
         </Button>
       </Dialog.Trigger>

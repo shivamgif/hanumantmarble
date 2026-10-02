@@ -296,7 +296,7 @@ export function BagDispatchFormContent({
             <button
               type="button"
               onClick={onAddItem}
-              className="inline-flex mt-4 mb-4 items-center gap-2 rounded-lg bg-amber-500/10 px-4 py-2 text-[13px] font-semibold text-amber-700 dark:text-amber-400 transition-all hover:bg-amber-500/20 active:scale-95"
+              className="inline-flex mt-4 mb-4 items-center gap-2 rounded-lg bg-amber-500/10 px-4 py-2 text-[13px] font-semibold text-amber-700 dark:text-amber-400 transition hover:bg-amber-500/20 active:scale-[0.96]"
             >
               <Plus className="h-3.5 w-3.5" />
               {tc?.addBagItem ?? 'Add Bag Item'}
@@ -470,7 +470,7 @@ export function DispatchFormContent({
             <button
               type="button"
               onClick={onAddItem}
-              className="inline-flex mt-4 mb-4 items-center gap-2 rounded-lg bg-brand-primary/10 px-4 py-2 text-[13px] font-semibold text-brand-primary transition-all hover:bg-brand-primary/20 active:scale-95"
+              className="inline-flex mt-4 mb-4 items-center gap-2 rounded-lg bg-brand-primary/10 px-4 py-2 text-[13px] font-semibold text-brand-primary transition hover:bg-brand-primary/20 active:scale-[0.96]"
             >
               <Plus className="h-3.5 w-3.5" />
               {t('addItem')}

@@ -228,7 +228,7 @@ function AnalyticsDashboardInner() {
 
   if (isSalesperson) {
     return (
-      <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-clip">
+      <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-rise font-sans selection:bg-brand-primary/20 overflow-x-clip">
         <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
           <div className="space-y-2">
             <nav className="flex items-center flex-wrap gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -272,7 +272,7 @@ function AnalyticsDashboardInner() {
   const abcItems = adminAnalytics?.abcItems || [];
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-clip">
+    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-rise font-sans selection:bg-brand-primary/20 overflow-x-clip">
       <header>
         <div className="space-y-2">
           <nav className="flex items-center flex-wrap gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -309,7 +309,7 @@ function AnalyticsDashboardInner() {
                 aria-current={isActive ? 'true' : undefined}
                 className={tabButtonClass(isActive, visibleTabs.length)}
               >
-                <Icon className="h-4 w-4 shrink-0 sm:hidden" />
+                <Icon className="h-4 w-4 shrink-0" />
                 <span className="line-clamp-2 min-w-0 text-center sm:whitespace-nowrap">
                   {label}
                 </span>
@@ -324,7 +324,7 @@ function AnalyticsDashboardInner() {
               <button
                 key={m}
                 onClick={() => setAnalyticsRangeMonths(m)}
-                className={`flex h-[30px] items-center rounded-full px-3 text-xs font-semibold transition-all sm:h-9 sm:px-4 sm:text-[11px] ${analyticsRangeMonths === m
+                className={`flex h-[30px] items-center rounded-full px-3 text-xs font-semibold transition sm:h-9 sm:px-4 sm:text-[11px] ${analyticsRangeMonths === m
                   ? 'bg-white dark:bg-slate-800 text-brand-primary shadow-sm'
                   : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                   }`}

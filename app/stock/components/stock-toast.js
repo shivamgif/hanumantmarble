@@ -28,7 +28,7 @@ export function StockToast({ toast, onDismiss }) {
 
   return (
     <div
-      className={`fixed bottom-6 right-6 z-[9999] flex items-start gap-3 rounded-xl border bg-card text-card-foreground px-5 py-4 shadow-card-hover transition-all duration-200 max-w-sm ${COLORS[toast.type] ?? COLORS.success}`}
+      className={`fixed bottom-6 right-6 z-[9999] flex items-start gap-3 glass rounded-xl border text-card-foreground px-5 py-4 animate-in fade-in-0 slide-in-from-bottom-3 duration-300 max-w-sm ${COLORS[toast.type] ?? COLORS.success}`}
       role={toast.type === 'error' ? 'alert' : 'status'}
       aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
     >

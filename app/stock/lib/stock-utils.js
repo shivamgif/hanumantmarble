@@ -495,7 +495,7 @@ export const FORM_CARD_CLASS = 'glass-panel rounded-xl p-4 sm:p-5';
 
 // Panel header action pills. Smaller text, padding and gap below sm so three of
 // them still fit one line on a 360px viewport; the row holding them is flex-wrap.
-const PILL_BASE = 'flex min-h-[36px] sm:min-h-[38px] shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 sm:px-3.5 text-[13px] font-medium [&>svg]:h-4 [&>svg]:w-4 transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50';
+const PILL_BASE = 'flex min-h-[36px] sm:min-h-[38px] shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 sm:px-3.5 text-[13px] font-medium [&>svg]:h-4 [&>svg]:w-4 transition hover:-translate-y-px hover:shadow-card-hover active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50';
 export const PILL_BUTTON_CLASS = `${PILL_BASE} border border-border bg-card text-slate-700 hover:bg-muted dark:text-slate-200`;
 export const PILL_PRIMARY_BUTTON_CLASS = `${PILL_BASE} bg-primary font-semibold text-primary-foreground hover:bg-primary/90`;
 
@@ -507,14 +507,14 @@ export const PILL_PRIMARY_BUTTON_CLASS = `${PILL_BASE} bg-primary font-semibold 
 // a row of text tabs.
 export const tabTrackClass = (count) => `grid w-full min-w-0 gap-0.5 rounded-lg bg-muted p-1 scrollbar-none sm:flex sm:w-fit sm:items-center sm:overflow-x-auto ${count > 4 ? 'grid-cols-3' : 'auto-cols-[minmax(0,1fr)] grid-flow-col'}`;
 
-export const tabButtonClass = (isActive, count = 4) => `relative flex min-w-0 items-center justify-center rounded-md text-[11px] leading-tight transition-colors sm:h-8 sm:flex-none sm:flex-row sm:gap-1.5 sm:px-3.5 sm:py-0 sm:text-[13px] ${count > 4
+export const tabButtonClass = (isActive, count = 4) => `relative flex min-w-0 items-center justify-center rounded-md text-[11px] leading-tight transition duration-300 sm:h-8 sm:flex-none sm:flex-row sm:gap-1.5 sm:px-3.5 sm:py-0 sm:text-[13px] ${count > 4
   ? 'h-9 flex-row gap-1.5 px-1.5'
   : 'flex-col gap-0.5 px-0.5 py-1.5'} ${isActive
-  ? 'bg-card font-semibold text-slate-900 shadow-card ring-1 ring-border dark:text-slate-50 [&>svg]:text-brand-primary'
+  ? 'glass-chip font-semibold text-slate-900 dark:text-slate-50 [&>svg]:text-brand-primary'
   : 'font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'}`;
 
 export const CLASSES = {
-  contentWrap: 'mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6',
+  contentWrap: 'mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 animate-rise',
   topCard: 'glass-panel rounded-xl p-4 sm:p-6 lg:p-8',
   interactiveCard: 'glass-panel rounded-xl transition-[box-shadow,border-color] duration-200 hover:border-slate-300 dark:hover:border-slate-600',
   card: 'glass-panel rounded-xl p-4 sm:p-6 lg:p-8 group/card',

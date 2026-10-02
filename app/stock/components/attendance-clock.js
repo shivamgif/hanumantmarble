@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Building2, Camera, Coffee, LogIn, LogOut, MapPinOff, Play } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { formatMinutes } from '@/lib/attendance.mjs';
 import { useAttendanceText } from '@/lib/attendance-i18n';
 import { clockTime } from './attendance-timesheet';
@@ -337,12 +338,21 @@ export function AttendanceClock({ onPunched }) {
     <div className={CLASSES.topCard}>
       <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-center sm:text-left">
-          <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
-            {isIn ? (onBreak ? t('onBreak') : t('clockedIn')) : t('notClockedIn')}
-          </p>
-          <p className="mt-1 text-4xl font-bold tabular-nums text-slate-900 dark:text-white">
-            {loading ? '—' : formatMinutes(liveMinutes)}
-          </p>
+          {loading ? (
+            <div className="flex flex-col items-center gap-2 sm:items-start" aria-busy="true">
+              <Skeleton className="h-3.5 w-28 rounded-md" />
+              <Skeleton className="h-10 w-36 rounded-lg" />
+            </div>
+          ) : (
+            <>
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                {isIn ? (onBreak ? t('onBreak') : t('clockedIn')) : t('notClockedIn')}
+              </p>
+              <p className="mt-1 text-4xl font-bold tabular-nums text-slate-900 dark:text-white">
+                {formatMinutes(liveMinutes)}
+              </p>
+            </>
+          )}
           {/* While clocked in, show where the punch was actually attributed —
               someone covering another branch needs to see that, not their usual
               one. Otherwise show their home branch. Show nothing at all rather
@@ -400,7 +410,7 @@ export function AttendanceClock({ onPunched }) {
                 type="button"
                 onClick={() => startPunch('out')}
                 disabled={Boolean(busy) || needsBranch}
-                className="flex flex-1 shrink-0 items-center justify-center gap-2 rounded-lg bg-rose-600 px-6 py-4 text-sm font-semibold sm:flex-none sm:py-3 sm:text-sm text-white transition-all hover:bg-rose-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex flex-1 shrink-0 items-center justify-center gap-2 rounded-lg bg-rose-600 px-6 py-4 text-sm font-semibold sm:flex-none sm:py-3 sm:text-sm text-white transition hover:bg-rose-700 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <LogOut className="h-4 w-4" />
                 {busy === 'out' ? t('saving') : t('clockOut')}
@@ -411,7 +421,7 @@ export function AttendanceClock({ onPunched }) {
               type="button"
               onClick={() => startPunch('in')}
               disabled={Boolean(busy) || loading || needsBranch}
-              className="flex w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-8 py-4 text-sm font-semibold sm:w-auto sm:py-3.5 sm:text-sm text-white transition-all hover:bg-emerald-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-8 py-4 text-sm font-semibold sm:w-auto sm:py-3.5 sm:text-sm text-white transition hover:bg-emerald-700 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <LogIn className="h-4 w-4" />
               {busy === 'in' ? t('saving') : t('clockIn')}
@@ -440,7 +450,7 @@ export function AttendanceClock({ onPunched }) {
               type="button"
               onClick={() => startPunch(isIn ? 'out' : 'in')}
               disabled={Boolean(busy) || needsBranch}
-              className="mt-2.5 rounded-lg bg-amber-600 px-4 py-2 text-[13px] font-semibold text-white transition-all hover:bg-amber-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-2.5 rounded-lg bg-amber-600 px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-amber-700 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? t('checking') : t('tryAgain')}
             </button>

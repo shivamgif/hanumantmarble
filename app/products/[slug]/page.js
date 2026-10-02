@@ -122,7 +122,7 @@ export default function ProductPage() {
                   <button
                     onClick={() => setIsWishlisted(!isWishlisted)}
                     className={cn(
-                      "absolute top-4 right-4 h-10 w-10 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg",
+                      "absolute top-4 right-4 h-10 w-10 rounded-full flex items-center justify-center transition duration-300 shadow-lg",
                       isWishlisted 
                         ? "bg-pink-500 text-white" 
                         : "bg-white/90 dark:bg-black/70 text-foreground hover:bg-pink-50 dark:hover:bg-pink-500/20"
@@ -142,7 +142,7 @@ export default function ProductPage() {
                     key={variant.id}
                     onClick={() => setSelectedVariant(variant)}
                     className={cn(
-                      "relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition-all duration-300",
+                      "relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition duration-300",
                       selectedVariant?.id === variant.id
                         ? "border-primary shadow-lg scale-105"
                         : "border-border/50 hover:border-primary/50"
@@ -172,7 +172,7 @@ export default function ProductPage() {
                     key={variant.id}
                     onClick={() => setSelectedVariant(variant)}
                     className={cn(
-                      "px-4 py-2 rounded-full text-sm font-medium transition-all duration-300",
+                      "px-4 py-2 rounded-full text-sm font-medium transition duration-300",
                       selectedVariant?.id === variant.id
                         ? "bg-primary text-primary-foreground shadow-lg"
                         : "bg-muted hover:bg-muted/80"
@@ -249,7 +249,7 @@ export default function ProductPage() {
                 onClick={handleAddToCart}
                 size="lg"
                 className={cn(
-                  "flex-1 rounded-full h-14 text-lg transition-all duration-300",
+                  "flex-1 rounded-full h-14 text-lg transition duration-300",
                   addedToCart 
                     ? "bg-green-500 hover:bg-green-600" 
                     : "bg-primary hover:bg-primary/90"
@@ -319,7 +319,7 @@ export default function ProductPage() {
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   className={cn(
-                    "px-6 py-3 font-medium capitalize whitespace-nowrap transition-all duration-300 border-b-2",
+                    "px-6 py-3 font-medium capitalize whitespace-nowrap transition duration-300 border-b-2",
                     activeTab === tab
                       ? "border-primary text-primary"
                       : "border-transparent text-muted-foreground hover:text-foreground"

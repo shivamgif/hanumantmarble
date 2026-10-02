@@ -5,6 +5,7 @@ import Footer from './Footer';
 import { WhatsAppButton } from './ui/whatsapp-button';
 import { ScrollToTop } from './ui/scroll-to-top';
 import { usePathname } from 'next/navigation';
+import { useEffect } from 'react';
 
 const Layout = ({ children }) => {
   const pathname = usePathname();
@@ -12,6 +13,13 @@ const Layout = ({ children }) => {
   // that layout is the auth gate, but it is an app screen, not a storefront
   // page — no marketing header or footer on a showroom tablet.
   const isAppRoute = pathname?.startsWith('/stock') || pathname?.startsWith('/attendance');
+
+  // Menus, sheets and dialogs portal into <body>, outside the wrapper below, so
+  // without this they'd take the storefront's tokens and font in the app.
+  useEffect(() => {
+    document.body.classList.toggle('stock-scope', Boolean(isAppRoute));
+    return () => document.body.classList.remove('stock-scope');
+  }, [isAppRoute]);
 
   if (isAppRoute) {
     // stock-scope mutes the color tokens for /stock only — see styles/globals.css

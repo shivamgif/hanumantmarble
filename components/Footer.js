@@ -65,7 +65,7 @@ const Footer = () => {
                     href={link.href}
                     className="group inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    <ArrowRight className="h-3 w-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                    <ArrowRight className="h-3 w-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition" />
                     <span className="group-hover:translate-x-1 transition-transform">{link.label}</span>
                   </Link>
                 </li>

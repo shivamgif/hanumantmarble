@@ -170,7 +170,7 @@ function KioskInner() {
           type="button"
           onClick={toggleLanguage}
           aria-label={language === 'hi' ? 'Switch to English' : 'हिंदी में बदलें'}
-          className="absolute right-0 top-0 rounded-full border border-border/60 px-3 py-1.5 text-xs font-bold transition active:scale-95"
+          className="absolute right-0 top-0 rounded-full border border-border/60 px-3 py-1.5 text-xs font-bold transition active:scale-[0.96]"
         >
           {language === 'hi' ? 'EN' : 'हिं'}
         </button>
@@ -205,7 +205,7 @@ function KioskInner() {
                   setPin('');
                   setStatus({ kind: '', message: '' });
                 }}
-                className={`rounded-xl border-2 p-5 text-sm font-bold transition active:scale-95 ${
+                className={`rounded-xl border-2 p-5 text-sm font-bold transition active:scale-[0.96] ${
                   emp.isClockedIn
                     ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700'
                     : 'border-border/60 hover:border-brand-primary/50'
@@ -248,7 +248,7 @@ function KioskInner() {
                 key={digit}
                 type="button"
                 onClick={() => press(digit)}
-                className="rounded-xl border border-border/60 py-5 text-xl font-bold transition active:scale-95 hover:bg-slate-500/5"
+                className="rounded-xl border border-border/60 py-5 text-xl font-bold transition active:scale-[0.96] hover:bg-slate-500/5"
               >
                 {digit}
               </button>
@@ -260,14 +260,14 @@ function KioskInner() {
                 setPin('');
                 setStatus({ kind: '', message: '' });
               }}
-              className="rounded-lg border border-border/60 py-5 text-sm font-semibold transition active:scale-95"
+              className="rounded-lg border border-border/60 py-5 text-sm font-semibold transition active:scale-[0.96]"
             >
               {t('back')}
             </button>
             <button
               type="button"
               onClick={() => press(0)}
-              className="rounded-xl border border-border/60 py-5 text-xl font-bold transition active:scale-95 hover:bg-slate-500/5"
+              className="rounded-xl border border-border/60 py-5 text-xl font-bold transition active:scale-[0.96] hover:bg-slate-500/5"
             >
               0
             </button>
@@ -275,7 +275,7 @@ function KioskInner() {
               type="button"
               onClick={() => setPin((p) => p.slice(0, -1))}
               aria-label={t('deleteDigit')}
-              className="flex items-center justify-center rounded-xl border border-border/60 py-5 transition active:scale-95"
+              className="flex items-center justify-center rounded-xl border border-border/60 py-5 transition active:scale-[0.96]"
             >
               <Delete className="h-5 w-5" />
             </button>
