@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Copy, KeyRound, Plus, Trash2 } from 'lucide-react';
 import { CLASSES, FORM_INPUT_CLASS, FORM_LABEL_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../lib/stock-utils';
 import { BranchesPanel } from './branches-panel';
+import { SelectField } from '@/components/ui/select';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -122,7 +123,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
           ))}
           <div>
             <label className={FORM_LABEL_CLASS} htmlFor="setting-weekly-off">Weekly off</label>
-            <select
+            <SelectField
               id="setting-weekly-off"
               value={settings.weekly_off_dow}
               onChange={(e) => setSettings((s) => ({ ...s, weekly_off_dow: Number(e.target.value) }))}
@@ -131,7 +132,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
               {DAYS.map((day, index) => (
                 <option key={day} value={index}>{day}</option>
               ))}
-            </select>
+            </SelectField>
           </div>
         </div>
 
@@ -146,7 +147,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
             className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600"
           />
           <span>
-            <span className="block text-xs font-black">Require a selfie to clock in and out</span>
+            <span className="block text-xs font-bold">Require a selfie to clock in and out</span>
             <span className="mt-0.5 block text-[11px] font-bold text-slate-500">
               A geofence proves a phone was at the branch, not a person. Photos are kept for 90 days,
               then deleted automatically. Breaks are never photographed.
@@ -183,7 +184,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <div>
             <label className={FORM_LABEL_CLASS} htmlFor="pin-employee">Employee</label>
-            <select
+            <SelectField
               id="pin-employee"
               value={pinForm.userId}
               onChange={(e) => setPinForm((f) => ({ ...f, userId: e.target.value }))}
@@ -195,7 +196,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
                   {emp.name}{emp.hasPin ? ' (has PIN)' : ''}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </div>
           <div>
             <label className={FORM_LABEL_CLASS} htmlFor="pin-value">New PIN</label>
@@ -309,19 +310,19 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
           {employees.map((emp) => (
             <div key={emp.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 p-3">
               <div className="min-w-[10rem] flex-1">
-                <p className="text-xs font-black">
+                <p className="text-xs font-bold">
                   {emp.name}
                   {!emp.hasLogin ? (
-                    <span className="ml-1.5 text-[11px] font-black uppercase tracking-wider text-slate-500">no login</span>
+                    <span className="ml-1.5 text-xs font-medium text-slate-500">no login</span>
                   ) : null}
                   {emp.hasPin ? (
-                    <span className="ml-1.5 text-[11px] font-black uppercase tracking-wider text-emerald-600">pin</span>
+                    <span className="ml-1.5 text-xs font-semibold text-emerald-600">pin</span>
                   ) : null}
                 </p>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{emp.role}</p>
+                <p className="text-xs font-medium text-slate-500">{emp.role}</p>
               </div>
 
-              <select
+              <SelectField
                 value={emp.defaultLocationId ?? ''}
                 aria-label={`Home branch for ${emp.name}`}
                 onChange={(e) =>
@@ -347,9 +348,9 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
                 {locations.map((loc) => (
                   <option key={loc.id} value={loc.id}>{loc.name}</option>
                 ))}
-              </select>
+              </SelectField>
 
-              <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-slate-500">
+              <label className="flex items-center gap-2 text-xs font-medium text-slate-500">
                 <input
                   type="checkbox"
                   checked={emp.tracksAttendance}
@@ -419,7 +420,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
           </div>
           <div>
             <label className={FORM_LABEL_CLASS} htmlFor="device-location">Location</label>
-            <select
+            <SelectField
               id="device-location"
               value={deviceForm.locationId}
               onChange={(e) => setDeviceForm((f) => ({ ...f, locationId: e.target.value }))}
@@ -429,7 +430,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
               {locations.map((loc) => (
                 <option key={loc.id} value={loc.id}>{loc.name}</option>
               ))}
-            </select>
+            </SelectField>
           </div>
           <button type="submit" className={PILL_BUTTON_CLASS}>
             <Plus className="h-3.5 w-3.5" />
@@ -439,7 +440,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
 
         {newToken ? (
           <div className="mt-4 rounded-xl bg-amber-500/10 p-3">
-            <p className="text-[11px] font-black uppercase tracking-wider text-amber-700">
+            <p className="text-xs font-semibold text-amber-700">
               Open this on the tablet now — it is shown only once
             </p>
             <div className="mt-2 flex items-center gap-2">
@@ -462,7 +463,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
           {devices.map((device) => (
             <div key={device.id} className="flex items-center justify-between rounded-xl border border-border/60 p-3">
               <div>
-                <p className="text-xs font-black">{device.label}</p>
+                <p className="text-xs font-bold">{device.label}</p>
                 <p className="text-[11px] font-bold text-slate-500">
                   {device.location_name || 'No location'}
                   {device.last_seen_at ? ` · last used ${device.last_seen_at.replace('T', ' ').slice(0, 16)}` : ' · never used'}

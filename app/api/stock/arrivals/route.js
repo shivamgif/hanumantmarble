@@ -6,6 +6,7 @@ import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 const SORT_COLS = {
   datetime: 'arrival_date',
   shipment: 'shipment_number',
+  supplier: 'supplier_name',
   products: 'product_names',
   quantities: 'total_whole_qty',
   status: 'status',
@@ -67,6 +68,7 @@ export async function GET(request) {
         OR s.invoice_number ILIKE ${sp}
         OR s.origin_city ILIKE ${sp}
         OR loc.name ILIKE ${sp}
+        OR sup.name ILIKE ${sp}
         OR s.id IN (
           SELECT isi3.inbound_shipment_id
           FROM stock_inbound_shipment_items isi3
@@ -91,6 +93,7 @@ export async function GET(request) {
          s.invoice_number,
          s.invoice_date,
          s.origin_city,
+         sup.name AS supplier_name,
          loc.name AS destination_warehouse_name,
          s.payment_status,
          s.paid_amount,
@@ -123,6 +126,7 @@ export async function GET(request) {
        LEFT JOIN stock_app_users submitter ON submitter.id = s.submitted_by_user_id
        LEFT JOIN stock_app_users approver ON approver.id = s.approved_by_user_id
        LEFT JOIN stock_locations loc ON loc.id = s.destination_location_id
+       LEFT JOIN stock_suppliers sup ON sup.id = s.supplier_id
        WHERE 1=1 ${salespersonFilter} ${searchFilter}
        GROUP BY s.id, s.shipment_number, s.truck_license_plate_snapshot, s.driver_name_snapshot,
                 s.arrival_date, s.invoice_number, s.invoice_date, s.origin_city,
@@ -131,7 +135,7 @@ export async function GET(request) {
                 s.grand_total, s.freight_weight_kg, s.created_by,
                 submitter.name, submitter.email, submitter.role,
                 approver.name, approver.email,
-                loc.name
+                loc.name, sup.name
        ORDER BY ${sortCol} ${sortDir} NULLS LAST
        LIMIT ${limitParam} OFFSET ${offsetParam}`,
       params

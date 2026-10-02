@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { BarChart2, Clock, Home, Users } from 'lucide-react';
 import { getLogoutHref, useAuthUser } from '@/lib/auth-client';
 import { usePathname, useRouter } from 'next/navigation';
@@ -20,12 +19,13 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import StockSidebar from '@/components/stock/layout/StockSidebar';
 import StockTopbar from '@/components/stock/layout/StockTopbar';
 import StockNotificationsSheet from '@/components/stock/layout/StockNotificationsSheet';
+import { BrandMark } from '@/components/ui/brand-mark';
 
 function FullScreenSpinner({ label }) {
   return (
     <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-[#0b0f1a]">
       <div className="flex flex-col items-center gap-4" role="status" aria-live="polite">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-[#E07A00] dark:border-slate-700 dark:border-t-[#E07A00]" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-brand-primary" />
         <p className="text-sm text-slate-400 dark:text-slate-500">{label}</p>
       </div>
     </div>
@@ -34,7 +34,7 @@ function FullScreenSpinner({ label }) {
 
 const CLASSES = {
   shell: 'relative min-h-screen bg-slate-50/80 font-sans text-slate-900 dark:bg-[#0b0f1a] dark:text-slate-100',
-  sidebar: 'fixed inset-y-0 left-0 z-30 hidden h-screen bg-white lg:flex lg:flex-col dark:border-white/8 dark:bg-slate-950 transition-[width] duration-200',
+  sidebar: 'fixed inset-y-0 left-0 z-30 hidden h-screen bg-white lg:flex lg:flex-col dark:bg-slate-900 transition-[width] duration-200',
 };
 
 export default function StockLayout({ children }) {
@@ -203,34 +203,21 @@ export default function StockLayout({ children }) {
   if (!accessApproved) {
     return (
       <div className="relative min-h-screen overflow-hidden bg-background px-4 py-10 text-foreground">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
-          <div className="absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-secondary/60 blur-3xl" />
-        </div>
         <div className="relative z-10 flex min-h-[calc(100vh-5rem)] items-center justify-center">
-          <div className="max-w-xl rounded-3xl border border-border bg-card p-8 shadow-sm">
+          <div className="max-w-xl rounded-xl border border-border bg-card p-8 shadow-card">
             <div className="mb-5 flex items-center gap-3">
-              <div className="relative h-12 w-12 overflow-hidden ">
-                <Image
-                  src="/logo.png"
-                  alt="Hanumant Marble logo"
-                  fill
-                  sizes="48px"
-                  className="object-contain"
-                  priority
-                />
-              </div>
+              <BrandMark size={40} priority />
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{language === 'hi' ? 'हनुमंत मार्बल' : 'Hanumant Marble'}</p>
+                <p className="text-sm font-semibold text-foreground">{language === 'hi' ? 'हनुमंत मार्बल' : 'Hanumant Marble'}</p>
                 <p className="text-sm text-muted-foreground">{getTranslation('stock.layout.stockAccess', language)}</p>
               </div>
             </div>
-            <h1 className="text-2xl font-bold text-foreground">{t('waitingApproval')}</h1>
+            <h1 className="page-title">{t('waitingApproval')}</h1>
             <p className="mt-3 text-muted-foreground">{accessMessage}</p>
             <p className="mt-3 text-sm text-muted-foreground">{t('waitingDetails')}</p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <button type="button" onClick={handleStockLogout} className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted/60">{t('logout')}</button>
-              <Link href="/" className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90">{t('goWebsite')}</Link>
+              <button type="button" onClick={handleStockLogout} className="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted">{t('logout')}</button>
+              <Link href="/" className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">{t('goWebsite')}</Link>
             </div>
           </div>
         </div>
@@ -241,11 +228,6 @@ export default function StockLayout({ children }) {
   return (
     <TooltipProvider delayDuration={200}>
     <div className={CLASSES.shell}>
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -left-24 top-16 h-72 w-72 rounded-full bg-[#E07A00]/10 blur-3xl" />
-        <div className="absolute -right-24 bottom-24 h-72 w-72 rounded-full bg-blue-500/10 blur-3xl" />
-      </div>
-
       <StockSidebar
         classes={{ ...CLASSES, sidebar: `${CLASSES.sidebar} ${sidebarCollapsed ? 'w-[4.5rem]' : 'w-60'}` }}
         collapsed={sidebarCollapsed}
@@ -290,14 +272,12 @@ export default function StockLayout({ children }) {
           </div>
         </main>
 
-        <footer className="mx-auto mb-8 w-full max-w-[1600px] px-3 sm:px-8 lg:px-12">
-          <div className="rounded-2xl border border-border/60 bg-card/60 px-5 py-4 sm:px-8 sm:py-5 text-center text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-600 shadow-card">
-            <p className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-              <span className="text-brand-primary opacity-60">Operational Protocol</span>
-              <span className="hidden sm:inline opacity-20">•</span>
-              <span>{t('footerTitle')}</span>
-            </p>
-          </div>
+        <footer className="mx-auto w-full max-w-[1600px] px-4 pb-6 pt-2 sm:px-6 lg:px-8">
+          <p className="flex flex-wrap items-center gap-x-2 border-t border-border pt-4 text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">{tc.brandFull}</span>
+            <span aria-hidden="true">·</span>
+            <span>{t('footerTitle')}</span>
+          </p>
         </footer>
       </div>
 

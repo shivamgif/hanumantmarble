@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Crosshair, MapPin, Plus, RotateCcw } from 'lucide-react';
 import { CLASSES, FORM_INPUT_CLASS, FORM_LABEL_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../lib/stock-utils';
+import { SelectField } from '@/components/ui/select';
 
 /**
  * Branches — add a site, set its geofence anchor, retire it.
@@ -92,14 +93,14 @@ function BranchRow({ branch, onSave, onRetire, onRestore }) {
           <label className={FORM_LABEL_CLASS} htmlFor={`name-${branch.id}`}>
             Name
             <span
-              className={`ml-2 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+              className={`ml-2 rounded-full px-2 py-0.5 text-xs font-semibold ${
                 configured ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'
               }`}
             >
               {configured ? 'Fenced' : 'No fence'}
             </span>
             {!branch.isActive ? (
-              <span className="ml-2 rounded-full bg-slate-500/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-slate-500">
+              <span className="ml-2 rounded-full bg-slate-500/10 px-2 py-0.5 text-xs font-medium text-slate-500">
                 Retired
               </span>
             ) : null}
@@ -116,7 +117,7 @@ function BranchRow({ branch, onSave, onRetire, onRestore }) {
 
         <div>
           <label className={FORM_LABEL_CLASS} htmlFor={`type-${branch.id}`}>Type</label>
-          <select
+          <SelectField
             id={`type-${branch.id}`}
             value={locationType}
             onChange={(e) => setLocationType(e.target.value)}
@@ -129,7 +130,7 @@ function BranchRow({ branch, onSave, onRetire, onRestore }) {
             {!BRANCH_TYPES.includes(locationType) ? (
               <option value={locationType}>{TYPE_LABELS[locationType] || locationType}</option>
             ) : null}
-          </select>
+          </SelectField>
         </div>
 
         <div className="w-32">
@@ -275,7 +276,7 @@ export function BranchesPanel({ onChanged }) {
           </div>
           <div>
             <label className={FORM_LABEL_CLASS} htmlFor="branch-type">Type</label>
-            <select
+            <SelectField
               id="branch-type"
               value={form.locationType}
               onChange={(e) => setForm((f) => ({ ...f, locationType: e.target.value }))}
@@ -284,7 +285,7 @@ export function BranchesPanel({ onChanged }) {
               {BRANCH_TYPES.map((type) => (
                 <option key={type} value={type}>{TYPE_LABELS[type]}</option>
               ))}
-            </select>
+            </SelectField>
           </div>
           <div className="w-32">
             <label className={FORM_LABEL_CLASS} htmlFor="branch-lat">Latitude</label>

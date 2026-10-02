@@ -6,6 +6,7 @@ import { Download, MapPinOff, Pencil, Plus } from 'lucide-react';
 import { MonthPicker } from '@/components/ui/month-picker';
 import { formatMinutes, istMonth, needsReview } from '@/lib/attendance.mjs';
 import { CLASSES, FORM_INPUT_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS, exportToCSV } from '../lib/stock-utils';
+import { SelectField } from '@/components/ui/select';
 
 export const STATUS_STYLE = {
   present: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
@@ -21,7 +22,7 @@ export const STATUS_STYLE = {
 export function StatusPill({ status }) {
   return (
     <span
-      className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-black uppercase tracking-wider ${
+      className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
         STATUS_STYLE[status] || STATUS_STYLE.absent
       }`}
     >
@@ -34,7 +35,7 @@ export function StatusPill({ status }) {
 export function ReviewChip({ entry }) {
   if (!needsReview(entry)) return null;
   return (
-    <span className="ml-1.5 inline-block rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
+    <span className="ml-1.5 inline-block rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
       Review
     </span>
   );
@@ -107,14 +108,14 @@ export function AttendanceTimesheet({ scope = 'self', employees = [], canManage 
 
         <div className="flex flex-wrap items-center gap-2">
           {scope === 'all' ? (
-            <select value={userId} onChange={(e) => setUserId(e.target.value)} className={`${FORM_INPUT_CLASS} w-auto`}>
+            <SelectField value={userId} onChange={(e) => setUserId(e.target.value)} className={`${FORM_INPUT_CLASS} w-auto`}>
               <option value="all">Everyone</option>
               {employees.map((emp) => (
                 <option key={emp.id} value={emp.id}>
                   {emp.name}
                 </option>
               ))}
-            </select>
+            </SelectField>
           ) : null}
           <MonthPicker value={month} onChange={setMonth} max={istMonth()} />
           <button
@@ -145,7 +146,7 @@ export function AttendanceTimesheet({ scope = 'self', employees = [], canManage 
               {COLUMNS.map((col) => (
                 <th
                   key={col.id}
-                  className="px-4 py-2 text-left text-[11px] font-black uppercase tracking-[0.12em] text-slate-500"
+                  className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500"
                 >
                   {col.label}
                 </th>
@@ -169,27 +170,27 @@ export function AttendanceTimesheet({ scope = 'self', employees = [], canManage 
             ) : (
               rows.map((row) => (
                 <tr key={row.id} className="transition hover:bg-slate-500/5">
-                  <td className="px-4 py-3 text-xs font-bold tabular-nums">{row.work_date}</td>
-                  <td className="px-4 py-3 text-xs font-bold">
+                  <td className="px-4 py-2.5 text-xs font-bold tabular-nums">{row.work_date}</td>
+                  <td className="px-4 py-2.5 text-xs font-bold">
                     {row.user_name}
                     {row.is_outside_geofence ? (
                       <MapPinOff className="ml-1.5 inline h-3 w-3 text-amber-500" aria-label="Outside geofence" />
                     ) : null}
                   </td>
-                  <td className="px-4 py-3 text-xs tabular-nums">
+                  <td className="px-4 py-2.5 text-xs tabular-nums">
                     {clockTime(row.clock_in_at)}
                     {row.isLate ? <span className="ml-1 text-[11px] font-bold text-rose-500">+{row.lateMinutes}</span> : null}
                   </td>
-                  <td className="px-4 py-3 text-xs tabular-nums">
-                    {row.isOpen ? <span className="font-black text-emerald-600">In now</span> : clockTime(row.clock_out_at)}
+                  <td className="px-4 py-2.5 text-xs tabular-nums">
+                    {row.isOpen ? <span className="font-bold text-emerald-600">In now</span> : clockTime(row.clock_out_at)}
                     <ReviewChip entry={row} />
                   </td>
-                  <td className="px-4 py-3 text-xs tabular-nums">{Math.round((row.break_seconds || 0) / 60)}</td>
-                  <td className="px-4 py-3 text-xs font-black tabular-nums">{formatMinutes(row.workedMinutes)}</td>
-                  <td className="px-4 py-3 text-xs tabular-nums">{row.lateMinutes || '—'}</td>
-                  <td className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">{row.source}</td>
+                  <td className="px-4 py-2.5 text-xs tabular-nums">{Math.round((row.break_seconds || 0) / 60)}</td>
+                  <td className="px-4 py-2.5 text-xs font-bold tabular-nums">{formatMinutes(row.workedMinutes)}</td>
+                  <td className="px-4 py-2.5 text-xs tabular-nums">{row.lateMinutes || '—'}</td>
+                  <td className="px-4 py-2.5 text-xs font-medium text-slate-500">{row.source}</td>
                   {canManage ? (
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-2.5 text-right">
                       <button type="button" onClick={() => onEdit?.(row)} aria-label={`Edit entry for ${row.user_name} on ${row.work_date}`} className="text-slate-500 hover:text-brand-primary">
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
@@ -214,8 +215,8 @@ export function AttendanceTimesheet({ scope = 'self', employees = [], canManage 
           rows.map((row) => (
             <article key={row.id} className="rounded-xl border border-border/60 p-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black tabular-nums">{row.work_date}</span>
-                <span className="text-xs font-black tabular-nums">{formatMinutes(row.workedMinutes)}</span>
+                <span className="text-xs font-bold tabular-nums">{row.work_date}</span>
+                <span className="text-xs font-bold tabular-nums">{formatMinutes(row.workedMinutes)}</span>
               </div>
               <p className="mt-1 text-[11px] font-bold text-slate-500">{row.user_name}</p>
               <p className="mt-1 text-[11px] tabular-nums text-slate-500">
@@ -224,7 +225,7 @@ export function AttendanceTimesheet({ scope = 'self', employees = [], canManage 
                 <ReviewChip entry={row} />
               </p>
               {canManage ? (
-                <button type="button" onClick={() => onEdit?.(row)} className="mt-2 text-[11px] font-black uppercase tracking-wider text-brand-primary">
+                <button type="button" onClick={() => onEdit?.(row)} className="mt-2 text-xs font-semibold text-brand-primary">
                   Edit
                 </button>
               ) : null}

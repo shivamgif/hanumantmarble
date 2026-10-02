@@ -1,15 +1,18 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
-import { Calendar, Hash, Truck, ChevronRight, FileText, Sparkles, Check, X, MessageSquare, IndianRupee, PackageCheck, Loader2 } from 'lucide-react';
-import EntryPreviewSheet, { PreviewKeyValueGrid } from '@/components/ui/entry-preview-sheet';
+import { Check, X, MessageSquare, IndianRupee, PackageCheck, Loader2, ExternalLink, FileText } from 'lucide-react';
+import EntryPreviewSheet, { PreviewKeyValueGrid, PreviewStats } from '@/components/ui/entry-preview-sheet';
+import { Badge } from '@/components/ui/badge';
 import PaginationControls from '@/components/ui/pagination-controls';
-import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
-import { formatDateTime, INVOICE_CLASSES } from '../lib/stock-utils';
+import { formatDateTime, getStatusVariant } from '../lib/stock-utils';
 import { ShowroomSection } from './showroom-section';
 import { showroomSplit } from '@/lib/stock-showroom';
 
-const COMPACT_ITEMS_THRESHOLD = 2;
+const num = (v, digits = 2) => Number(v || 0).toLocaleString('en-IN', { maximumFractionDigits: digits });
+const money = (v, digits = 0) => `₹${num(v, digits)}`;
+// Secondary bits of a line ("HSN 6907", "12.5 sqm"), dropping the empty ones.
+const joinBits = (...bits) => bits.filter(Boolean).join(' · ');
 
 function ActionFooter({ record, kind, userRole, actionLoading, onApprove, onReject, onRequestChanges, onMarkPaid, onMarkDelivered }) {
   const canAct = ['admin', 'manager'].includes(userRole);
@@ -22,47 +25,51 @@ function ActionFooter({ record, kind, userRole, actionLoading, onApprove, onReje
   const actionType = kind === 'arrival' ? 'inbound-shipments' : 'outbound-shipments';
 
   const buttons = [];
-  const baseBtn = 'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 shadow-sm';
+  const baseBtn = 'inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50';
+  const primary = `${baseBtn} bg-primary font-semibold text-primary-foreground hover:bg-primary/90`;
+  const outline = `${baseBtn} border border-border bg-card text-slate-700 hover:bg-muted dark:text-slate-200`;
+  const danger = `${baseBtn} border border-rose-600/30 bg-card text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10`;
 
   const isLoading = (action) => actionLoading === `${actionType}-${shipmentId}-${action}`;
   const anyLoading = Boolean(actionLoading);
+  const icon = (action, Icon) => (isLoading(action) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />);
 
   if (approvalStatus === 'pending' || approvalStatus === 'reviewed' || approvalStatus === 'changes_requested') {
-    if (onApprove) {
+    if (onRequestChanges) {
       buttons.push(
-        <button key="approve" type="button" disabled={anyLoading} onClick={() => onApprove(kind, record)} className={`${baseBtn} bg-emerald-500 hover:bg-emerald-600 text-white`}>
-          {isLoading('approve') ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Approve
+        <button key="changes" type="button" disabled={anyLoading} onClick={() => onRequestChanges(kind, record)} className={outline}>
+          {icon('request_changes', MessageSquare)} Request Changes
         </button>
       );
     }
     if (onReject) {
       buttons.push(
-        <button key="reject" type="button" disabled={anyLoading} onClick={() => onReject(kind, record)} className={`${baseBtn} bg-rose-500 hover:bg-rose-600 text-white`}>
-          {isLoading('reject') ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />} Reject
+        <button key="reject" type="button" disabled={anyLoading} onClick={() => onReject(kind, record)} className={danger}>
+          {icon('reject', X)} Reject
         </button>
       );
     }
-    if (onRequestChanges) {
+    if (onApprove) {
       buttons.push(
-        <button key="changes" type="button" disabled={anyLoading} onClick={() => onRequestChanges(kind, record)} className={`${baseBtn} bg-amber-500 hover:bg-amber-600 text-white`}>
-          {isLoading('request_changes') ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageSquare className="h-3.5 w-3.5" />} Request Changes
+        <button key="approve" type="button" disabled={anyLoading} onClick={() => onApprove(kind, record)} className={primary}>
+          {icon('approve', Check)} Approve
         </button>
       );
     }
   }
 
   if (approvalStatus === 'approved') {
-    if (kind === 'dispatch' && !deliveredDate && onMarkDelivered) {
+    if (paymentStatus && paymentStatus !== 'paid' && onMarkPaid) {
       buttons.push(
-        <button key="delivered" type="button" disabled={anyLoading} onClick={() => onMarkDelivered(kind, record)} className={`${baseBtn} bg-blue-500 hover:bg-blue-600 text-white`}>
-          {isLoading('mark_delivered') ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PackageCheck className="h-3.5 w-3.5" />} Mark Delivered
+        <button key="paid" type="button" disabled={anyLoading} onClick={() => onMarkPaid(kind, record)} className={outline}>
+          {icon('mark_paid', IndianRupee)} Mark Paid
         </button>
       );
     }
-    if (paymentStatus && paymentStatus !== 'paid' && onMarkPaid) {
+    if (kind === 'dispatch' && !deliveredDate && onMarkDelivered) {
       buttons.push(
-        <button key="paid" type="button" disabled={anyLoading} onClick={() => onMarkPaid(kind, record)} className={`${baseBtn} bg-emerald-600 hover:bg-emerald-700 text-white`}>
-          {isLoading('mark_paid') ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <IndianRupee className="h-3.5 w-3.5" />} Mark Paid
+        <button key="delivered" type="button" disabled={anyLoading} onClick={() => onMarkDelivered(kind, record)} className={primary}>
+          {icon('mark_delivered', PackageCheck)} Mark Delivered
         </button>
       );
     }
@@ -70,63 +77,123 @@ function ActionFooter({ record, kind, userRole, actionLoading, onApprove, onReje
 
   if (buttons.length === 0) return null;
 
+  return <div className="flex flex-wrap items-center justify-end gap-2">{buttons}</div>;
+}
+
+function DocumentCard({ document, tc }) {
+  const isImage = document.mime_type?.startsWith('image/');
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 px-4 py-3">
-      <span className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 mr-2">Actions</span>
-      {buttons}
-    </div>
+    <section className="overflow-hidden rounded-lg border border-border">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+            {joinBits(document.document_type, document.document_number) || (tc.document ?? 'Document')}
+          </p>
+          {document.file_name ? <p className="truncate text-xs text-slate-500">{document.file_name}</p> : null}
+        </div>
+        {document.file_url ? (
+          <a href={document.file_url} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand-primary hover:underline">
+            Open <ExternalLink className="h-3 w-3" />
+          </a>
+        ) : null}
+      </div>
+      {!document.file_url ? (
+        <p className="px-3 py-6 text-center text-xs text-slate-500">{tc.noPreview}</p>
+      ) : isImage ? (
+        <img src={document.file_url} alt={document.file_name || 'Document preview'} className="max-h-56 w-full bg-muted object-contain" />
+      ) : (
+        <iframe src={document.file_url} title={document.file_name || 'Document preview'} className="h-64 w-full bg-muted" />
+      )}
+    </section>
   );
 }
 
-function renderDocumentPreview(document, tc) {
-  if (!document?.file_url) {
-    return <div className="glass-panel rounded-2xl p-6 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">{tc.noPreview}</div>;
+// One line per item: name and specs on the left, quantity and money on the right.
+function ItemRow({ item, isInbound, canViewPricing, tc }) {
+  const uom = item.unit_of_measure;
+  const spec = uom === 'bag'
+    ? (item.weight_per_unit_kg ? `${item.weight_per_unit_kg} kg/bag` : item.type_name)
+    : uom === 'sqft'
+      ? (item.slab_size_label || item.type_name)
+      : item.size_label;
+  const boxesLabel = item.sell_unit === 'piece' ? (tc.pieces ?? 'pieces') : (tc.boxes ?? 'boxes');
+
+  let qty;
+  let qtySub = null;
+  let money1 = null;
+  const returns = [];
+  if (isInbound) {
+    if (uom === 'sqft') {
+      qty = `${num(item.received_qty_sqft, 3)} sqft`;
+      if (canViewPricing && item.cost_per_sqft != null) money1 = `${money(item.cost_per_sqft, 2)}/sqft · ${money(item.total_cost, 2)}`;
+    } else if (uom === 'bag') {
+      qty = `${item.received_whole_qty ?? 0} bags`;
+    } else {
+      qty = `${item.received_whole_qty ?? item.loaded_whole_qty ?? 0} ${tc.boxes ?? 'boxes'}`;
+      qtySub = item.qty_sqm != null ? `${Number(item.qty_sqm).toFixed(3)} sqm` : null;
+    }
+  } else if (uom === 'sqft') {
+    qty = `${num(item.qty_sqft, 3)} sqft`;
+    if (canViewPricing && item.rate_per_unit != null) money1 = `${money(item.rate_per_unit, 2)}/sqft · ${money(Number(item.qty_sqft ?? 0) * Number(item.rate_per_unit), 2)}`;
+    if (Number(item.returned_qty_sqft || 0) > 0) returns.push(`${num(item.returned_qty_sqft, 3)} sqft`);
+  } else if (uom === 'bag') {
+    qty = `${item.loaded_whole_qty ?? 0} bags`;
+    if (Number(item.returned_whole_qty || 0) > 0) returns.push(`${item.returned_whole_qty} bags`);
+  } else {
+    qty = `${item.loaded_whole_qty ?? 0} ${boxesLabel}`;
+    if (Number(item.loaded_broken_qty || 0) > 0) qtySub = `+ ${item.loaded_broken_qty} broken`;
+    if (canViewPricing && item.rate_per_unit != null) money1 = `${money(item.rate_per_unit, 2)} each · ${money(Number(item.loaded_whole_qty ?? 0) * Number(item.rate_per_unit), 2)}`;
+    if (Number(item.returned_whole_qty || 0) > 0) returns.push(`${item.returned_whole_qty} whole`);
+    if (Number(item.returned_broken_qty || 0) > 0) returns.push(`${item.returned_broken_qty} broken`);
   }
 
-  if (document.mime_type?.startsWith('image/')) {
-    return (
-      <div className="relative group overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50 shadow-2xl">
-        <img
-          src={document.file_url}
-          alt={document.file_name || 'Document preview'}
-          className="max-h-96 w-full object-contain transition-transform duration-700 group-hover:scale-105"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-4">
-          <div className="text-[10px] font-black uppercase tracking-widest text-white shadow-sm">{tc.visualVerificationHub}</div>
-        </div>
-      </div>
-    );
-  }
+  const detail = joinBits(
+    spec,
+    item.hsn_code ? `HSN ${item.hsn_code}` : null,
+    isInbound && uom !== 'sqft' && uom !== 'bag' && Number(item.broken_qty_sqm || 0) > 0 ? `${Number(item.broken_qty_sqm).toFixed(3)} sqm broken` : null,
+  );
 
   return (
-    <iframe
-      src={document.file_url}
-      title={document.file_name || 'Document preview'}
-      className="h-96 w-full rounded-2xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-sm"
-    />
+    <li className="flex items-start justify-between gap-4 px-3 py-2.5">
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+          {item.item_name || '—'}
+          {item.finish ? <span className="font-normal text-slate-500"> · {item.finish}</span> : null}
+        </p>
+        {detail ? <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{detail}</p> : null}
+        {returns.length ? <p className="mt-0.5 text-xs font-medium text-rose-700 dark:text-rose-400">{tc.returned ?? 'Returned'} {returns.join(', ')}</p> : null}
+        {isInbound && Number(item.discount_amount || 0) > 0 ? (
+          <p className="mt-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">− {money(item.discount_amount, 2)} discount</p>
+        ) : null}
+      </div>
+      <div className="shrink-0 text-right">
+        <p className="text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-50">{qty}</p>
+        {qtySub ? <p className="text-xs tabular-nums text-slate-500">{qtySub}</p> : null}
+        {money1 ? <p className="text-xs tabular-nums text-slate-500">{money1}</p> : null}
+      </div>
+    </li>
   );
 }
 
 export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPagination, setPreviewItemsPage, tc, userRole, pageSize, setPageSize, onApprove, onReject, onRequestChanges, onMarkPaid, onMarkDelivered, actionLoading, onShowroomChanged }) {
   const isInboundPreview = previewState.kind === 'arrival';
+  const isStock = previewState.kind === 'stock';
+  const r = previewState.record || {};
   // A shipment with none of the three was logged with no transport paperwork at
-  // all (see refineTransporter in lib/forms/stock-forms.js) — say so, rather
-  // than rendering three bare dashes that look like a bug.
+  // all (see refineTransporter in lib/forms/stock-forms.js) — say so once,
+  // rather than rendering bare dashes that look like a bug.
   const transportNotRecorded = isInboundPreview
-    && !previewState.record?.transporter_name
-    && !previewState.record?.truck_license_plate
-    && !previewState.record?.truck_number
-    && !previewState.record?.driver_name;
-  const notRecorded = transportNotRecorded ? 'Not recorded' : '—';
+    && !r.transporter_name && !r.truck_license_plate && !r.truck_number && !r.driver_name;
   const canViewPricing = ['admin', 'manager'].includes(userRole);
   const totalItems = previewState.items?.length || 0;
-  const isCompactItems = totalItems > 0 && totalItems <= COMPACT_ITEMS_THRESHOLD;
+  // Paginate only when the lines outrun a page; a pager under three rows is noise.
+  const isCompactItems = totalItems > 0 && totalItems <= pageSize;
   const lineDiscountTotal = useMemo(
     () => (previewState.items || []).reduce((sum, item) => sum + Number(item.discount_amount || 0), 0),
     [previewState.items]
   );
-  // Stone shipments carry no whole/broken counts, so the header must total the
-  // sqft columns or it reports 0 for a real delivery.
+  // Stone shipments carry no whole/broken counts, so the totals must sum the
+  // sqft columns or they report 0 for a real delivery.
   const stoneSqftTotal = useMemo(
     () => (previewState.items || [])
       .filter((item) => item.unit_of_measure === 'sqft')
@@ -134,373 +201,164 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
     [previewState.items]
   );
 
-  const inboundMetaItems = useMemo(() => [
-    { label: tc.status, value: previewState.record?.status },
-    { label: tc.approval, value: previewState.record?.approval_status },
-    { label: tc.driver, value: previewState.record?.driver_name || notRecorded },
-    { label: tc.originCity, value: previewState.record?.origin_city },
-    { label: tc.destinationWarehouse, value: previewState.record?.destination_warehouse_name },
-    { label: tc.paymentStatus, value: previewState.record?.payment_status },
-    ...(lineDiscountTotal > 0 ? [{ label: tc.lineDiscount || 'Line Discounts', value: `₹${lineDiscountTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}` }] : []),
-    ...(Number(previewState.record?.discount_amount || 0) > 0 ? [{ label: tc.shipmentDiscount || 'Shipment Discount', value: `₹${Number(previewState.record.discount_amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}` }] : []),
-    ...(stoneSqftTotal > 0
-      ? [{ label: tc.qtySqft ?? 'Total Sqft', value: stoneSqftTotal.toLocaleString('en-IN', { maximumFractionDigits: 3 }) }]
+  // Header: who it's with, then the paperwork identity and state on one line.
+  const shipmentDate = isInboundPreview ? r.arrival_date : (r.dispatch_date || r.created_at);
+  const sheetTitle = isStock
+    ? (r.name || previewState.title)
+    : ((isInboundPreview ? r.supplier_name : r.customer_name) || previewState.title);
+  const sheetDescription = isStock
+    ? joinBits(r.sku, r.size_label || r.last_slab_size_label, r.division_name || r.brand_name) || previewState.description
+    : (
+      <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="font-mono text-xs text-brand-primary">{r.shipment_number || previewState.title}</span>
+        {shipmentDate ? <><span aria-hidden="true">·</span><span>{formatDateTime(shipmentDate)}</span></> : null}
+        {r.status ? <Badge variant={getStatusVariant(r.status)}>{r.status}</Badge> : null}
+        {r.approval_status && r.approval_status !== r.status ? <Badge variant={getStatusVariant(r.approval_status)}>{String(r.approval_status).replace(/_/g, ' ')}</Badge> : null}
+      </span>
+    );
+
+  const sections = useMemo(() => {
+    if (isStock) {
+      const isBagItem = r.unit_of_measure === 'bag';
+      const isStoneItem = r.unit_of_measure === 'sqft';
+      const showroom = showroomSplit(r);
+      return [
+        {
+          children: (
+            <PreviewStats
+              items={[
+                {
+                  label: isBagItem ? tc.qtyBags : isStoneItem ? (tc.sqftLeft ?? 'Sqft left') : tc.wholeQty,
+                  value: isStoneItem ? num(r.current_sqft) : num(r.current_whole_qty, 0),
+                },
+                !isBagItem && !isStoneItem ? {
+                  label: tc.brokenQty,
+                  value: num(r.current_broken_qty, 0),
+                  tone: Number(r.current_broken_qty || 0) > 0 ? 'text-amber-700 dark:text-amber-400' : undefined,
+                } : null,
+                {
+                  label: tc.atShowroom ?? 'At showroom',
+                  value: num(showroom.total),
+                  sub: showroom.installed > 0 ? `${num(showroom.cassette)} cassette · ${num(showroom.installed)} installed` : null,
+                },
+                { label: tc.reorderLevel, value: num(r.reorder_level, 0) },
+              ]}
+            />
+          ),
+        },
+        {
+          title: tc.itemDetails,
+          children: (
+            <PreviewKeyValueGrid
+              items={[
+                { label: tc.finish, value: r.finish },
+                { label: tc.quality, value: r.grade },
+                {
+                  label: isBagItem ? tc.weightPerBag : tc.size,
+                  value: isBagItem
+                    ? (r.weight_per_unit_kg ? `${r.weight_per_unit_kg} kg/bag` : r.type_name)
+                    : isStoneItem ? (r.last_slab_size_label || r.type_name) : r.size_label,
+                },
+                { label: tc.brand, value: r.brand_name },
+                { label: tc.division, value: r.division_name },
+              ]}
+            />
+          ),
+        },
+        {
+          title: tc.showroom ?? 'Showroom',
+          children: <ShowroomSection item={r} userRole={userRole} onChanged={onShowroomChanged} />,
+        },
+      ];
+    }
+
+    // A mixed shipment (tiles plus stone) shows both: leading with sqft alone
+    // used to hide every box on the truck.
+    const wholeTotal = Number(r.total_whole_qty || 0);
+    const qtyStat = wholeTotal > 0 || stoneSqftTotal === 0
+      ? {
+        label: tc.totalWhole,
+        value: num(wholeTotal, 0),
+        sub: joinBits(
+          Number(r.total_broken_qty || 0) > 0 ? `+ ${num(r.total_broken_qty, 0)} broken` : null,
+          stoneSqftTotal > 0 ? `+ ${num(stoneSqftTotal, 3)} sqft` : null,
+        ) || null,
+      }
+      : { label: tc.qtySqft ?? 'Total sqft', value: num(stoneSqftTotal, 3) };
+    const paymentStat = r.payment_status ? {
+      label: tc.paymentStatus,
+      value: <span className="capitalize">{r.payment_status}</span>,
+      tone: r.payment_status === 'paid' ? 'text-emerald-700 dark:text-emerald-400' : undefined,
+      sub: r.paid_amount != null ? money(r.paid_amount) : null,
+    } : null;
+
+    const stats = isInboundPreview
+      ? [
+        qtyStat,
+        r.grand_total != null ? { label: tc.grandTotal ?? 'Total', value: money(r.grand_total) } : null,
+        paymentStat,
+        { label: tc.itemsTitle, value: totalItems },
+      ]
       : [
-          { label: tc.totalWhole, value: previewState.record?.total_whole_qty },
-          { label: tc.totalBroken, value: previewState.record?.total_broken_qty },
-        ]),
-    { label: tc.notes, value: previewState.record?.notes },
-  ], [previewState.record, tc, lineDiscountTotal, stoneSqftTotal, notRecorded]);
+        qtyStat,
+        canViewPricing && Number(r.total_selling_price_excl || 0) > 0
+          ? { label: tc.totalSellingExcl ?? 'Total (excl. GST)', value: money(r.total_selling_price_excl), sub: `${money(Number(r.total_selling_price_excl) * 1.18)} incl. GST` }
+          : null,
+        paymentStat,
+        { label: tc.itemsTitle, value: totalItems },
+      ];
 
-  const hasTechnicalSubBar = Boolean(previewState.record?.eway_bill_number || previewState.record?.irn_number);
+    const details = isInboundPreview
+      ? [
+        { label: tc.invoiceNoLabel, value: r.invoice_number },
+        { label: tc.date, value: r.invoice_date ? formatDateTime(r.invoice_date) : null },
+        { label: tc.route ?? 'Route', value: r.origin_city || r.destination_warehouse_name ? `${r.origin_city || '—'} → ${r.destination_warehouse_name || '—'}` : null },
+        ...(transportNotRecorded
+          ? [{ label: tc.transporter, value: 'Not recorded' }]
+          : [
+            { label: tc.vehicleNo, value: r.truck_license_plate || r.truck_number },
+            { label: tc.transporter, value: r.transporter_name },
+            { label: tc.driver, value: r.driver_name },
+          ]),
+        { label: 'GSTIN', value: r.supplier_gst_number },
+        { label: 'E-way bill', value: r.eway_bill_number },
+        { label: 'IRN', value: r.irn_number },
+        lineDiscountTotal > 0 ? { label: tc.lineDiscount || 'Line discounts', value: money(lineDiscountTotal, 2) } : null,
+        Number(r.discount_amount || 0) > 0 ? { label: tc.shipmentDiscount || 'Shipment discount', value: money(r.discount_amount, 2) } : null,
+        { label: tc.address ?? 'Address', value: r.supplier_address, wide: true },
+        { label: tc.notes, value: r.notes, wide: true },
+      ]
+      : [
+        {
+          label: tc.phone ?? 'Phone',
+          value: r.customer_phone_number ? <a href={`tel:${r.customer_phone_number}`} className="hover:underline">{r.customer_phone_number}</a> : null,
+        },
+        { label: tc.invoiceNoLabel, value: r.invoice_number },
+        { label: tc.salesperson, value: r.salesperson_name },
+        { label: tc.vehicleNo, value: r.truck_license_plate || r.truck_number },
+        { label: tc.driver, value: r.driver_name },
+        { label: 'Gatepass', value: r.gatepass_number },
+        Number(r.total_return_whole_qty || 0) > 0 ? { label: tc.returnWhole, value: num(r.total_return_whole_qty, 0) } : null,
+        Number(r.total_return_broken_qty || 0) > 0 ? { label: tc.returnBroken, value: num(r.total_return_broken_qty, 0) } : null,
+        { label: tc.address ?? 'Address', value: r.customer_address, wide: true },
+        { label: tc.notes, value: r.notes, wide: true },
+      ];
 
-  const stockSections = useMemo(() => {
-    const isBagItem = previewState.record?.unit_of_measure === 'bag';
-    const isStoneItem = previewState.record?.unit_of_measure === 'sqft';
-    return previewState.kind === 'stock'
-    ? [
-      {
-        title: tc.itemDetails,
-        children: (
-          <PreviewKeyValueGrid
-            items={[
-              { label: tc.name, value: previewState.record?.name },
-              { label: tc.finish, value: previewState.record?.finish },
-              { label: tc.quality, value: previewState.record?.grade },
-              {
-                label: isBagItem ? tc.weightPerBag : tc.size,
-                value: isBagItem
-                  ? (previewState.record?.weight_per_unit_kg ? `${previewState.record.weight_per_unit_kg} kg/bag` : previewState.record?.type_name || '—')
-                  : isStoneItem
-                  ? (previewState.record?.last_slab_size_label || previewState.record?.type_name || '—')
-                  : previewState.record?.size_label,
-              },
-              {
-                label: isBagItem ? tc.qtyBags : isStoneItem ? (tc.sqftLeft ?? 'Sqft Left') : tc.wholeQty,
-                value: isStoneItem
-                  ? Number(previewState.record?.current_sqft || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })
-                  : previewState.record?.current_whole_qty,
-              },
-              ...(!isBagItem && !isStoneItem ? [{ label: tc.brokenQty, value: previewState.record?.current_broken_qty }] : []),
-              {
-                label: tc.atShowroom ?? 'At Showroom',
-                value: (() => {
-                  const { total, cassette, installed } = showroomSplit(previewState.record);
-                  const n = (v) => v.toLocaleString('en-IN', { maximumFractionDigits: 2 });
-                  return installed > 0 ? `${n(total)} (${n(cassette)} on cassette, ${n(installed)} installed)` : n(total);
-                })(),
-              },
-              { label: tc.reorderLevel, value: previewState.record?.reorder_level },
-            ]}
-          />
-        ),
-      },
-      {
-        title: tc.showroom ?? 'Showroom',
-        children: (
-          <ShowroomSection
-            item={previewState.record}
-            userRole={userRole}
-            onChanged={onShowroomChanged}
-          />
-        ),
-      },
-    ]
-    : [
-      {
-        title: tc.details,
-        children: isInboundPreview ? (
-          <div className={INVOICE_CLASSES.surface}>
-            <div className={INVOICE_CLASSES.commandCard}>
-              <div className="grid gap-6 md:grid-cols-[1fr_1.2fr] md:items-start">
-                <div className="space-y-4">
-                   <div className="space-y-1">
-                    <nav className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
-                      <span>{tc.logisticsOrigin}</span>
-                      <ChevronRight className="h-2.5 w-2.5 opacity-50" />
-                      <span className="text-brand-primary">{tc.node}</span>
-                    </nav>
-                    <div className={INVOICE_CLASSES.supplierTitle}>{previewState.record?.supplier_name || 'Supplier'}</div>
-                  </div>
-                  <div className="space-y-1.5 opacity-80">
-                    <div className={INVOICE_CLASSES.supplierMeta}>GSTIN: {previewState.record?.supplier_gst_number || '—'}</div>
-                    <div className={INVOICE_CLASSES.supplierMeta}>{previewState.record?.supplier_address || 'Address not available'}</div>
-                  </div>
-                  <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-100 shadow-lg">
-                    {previewState.record?.shipment_number || '—'}
-                  </div>
-                </div>
-                <div className={INVOICE_CLASSES.logisticsGrid}>
-                  <div className={INVOICE_CLASSES.logisticsCell}>
-                    <div className={INVOICE_CLASSES.logisticsLabel}><Hash className="h-2.5 w-2.5" />{tc.invoiceNoLabel}</div>
-                    <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.invoice_number || '—'}</div>
-                  </div>
-                  <div className={INVOICE_CLASSES.logisticsCell}>
-                    <div className={INVOICE_CLASSES.logisticsLabel}><Calendar className="h-2.5 w-2.5" />{tc.date}</div>
-                    <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.invoice_date ? formatDateTime(previewState.record?.invoice_date) : '—'}</div>
-                  </div>
-                  <div className={INVOICE_CLASSES.logisticsCell}>
-                    <div className={INVOICE_CLASSES.logisticsLabel}><Truck className="h-2.5 w-2.5" />{tc.vehicleNo}</div>
-                    <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.truck_license_plate || previewState.record?.truck_number || notRecorded}</div>
-                  </div>
-                  <div className={INVOICE_CLASSES.logisticsCell}>
-                    <div className={INVOICE_CLASSES.logisticsLabel}><Truck className="h-2.5 w-2.5" />{tc.transporter}</div>
-                    <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.transporter_name || notRecorded}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            {hasTechnicalSubBar ? (
-              <div className="px-5 pb-5">
-                <div className={INVOICE_CLASSES.subBar}>
-                  {previewState.record?.eway_bill_number ? <span>E-WAY: {previewState.record?.eway_bill_number}</span> : null}
-                  {previewState.record?.irn_number ? <span>IRN: {previewState.record?.irn_number}</span> : null}
-                </div>
-              </div>
-            ) : null}
-            <div className="px-5 pb-5">
-              <PreviewKeyValueGrid items={inboundMetaItems} />
-            </div>
-          </div>
-        ) : (
-          <div className={INVOICE_CLASSES.surface}>
-            <div className={INVOICE_CLASSES.commandCard}>
-              <div className="grid gap-6 md:grid-cols-[1fr_1.2fr] md:items-start">
-                <div className="space-y-4">
-                   <div className="space-y-1">
-                    <nav className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
-                      <span>{tc.targetEntity}</span>
-                      <ChevronRight className="h-2.5 w-2.5 opacity-50" />
-                      <span className="text-brand-primary">{tc.terminal}</span>
-                    </nav>
-                    <div className={INVOICE_CLASSES.supplierTitle}>{previewState.record?.customer_name || 'Customer'}</div>
-                  </div>
-                   <div className="space-y-1.5 opacity-80">
-                    <div className={INVOICE_CLASSES.supplierMeta}>CONTACT: {previewState.record?.customer_phone_number || '—'}</div>
-                    <div className={INVOICE_CLASSES.supplierMeta}>{previewState.record?.customer_address || 'Address not available'}</div>
-                  </div>
-                  <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-100 shadow-lg">
-                    {previewState.record?.shipment_number || '—'}
-                  </div>
-                </div>
-                <div className={INVOICE_CLASSES.logisticsGrid}>
-                  <div className={INVOICE_CLASSES.logisticsCell}>
-                    <div className={INVOICE_CLASSES.logisticsLabel}><Hash className="h-2.5 w-2.5" />{tc.invoiceNoLabel}</div>
-                    <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.invoice_number || '—'}</div>
-                  </div>
-                   <div className={INVOICE_CLASSES.logisticsCell}>
-                    <div className={INVOICE_CLASSES.logisticsLabel}><Calendar className="h-2.5 w-2.5" />{tc.date}</div>
-                    <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.dispatch_date ? formatDateTime(previewState.record?.dispatch_date) : '—'}</div>
-                  </div>
-                   <div className={INVOICE_CLASSES.logisticsCell}>
-                    <div className={INVOICE_CLASSES.logisticsLabel}><Truck className="h-2.5 w-2.5" />{tc.vehicleNo}</div>
-                    <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.truck_license_plate || previewState.record?.truck_number || notRecorded}</div>
-                  </div>
-                  <div className={INVOICE_CLASSES.logisticsCell}>
-                    <div className={INVOICE_CLASSES.logisticsLabel}><Hash className="h-2.5 w-2.5" />GATEPASS</div>
-                    <div className={INVOICE_CLASSES.logisticsValue}>{previewState.record?.gatepass_number || '—'}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="px-5 pb-5">
-              <PreviewKeyValueGrid
-                items={[
-                  { label: tc.status, value: previewState.record?.status },
-                  { label: tc.approval, value: previewState.record?.approval_status },
-                  { label: tc.salesperson, value: previewState.record?.salesperson_name },
-                  { label: tc.driver, value: previewState.record?.driver_name || notRecorded },
-                  ...(stoneSqftTotal > 0
-                    ? [{ label: tc.qtySqft ?? 'Total Sqft', value: stoneSqftTotal.toLocaleString('en-IN', { maximumFractionDigits: 3 }) }]
-                    : [
-                        { label: tc.totalWhole, value: previewState.record?.total_whole_qty },
-                        { label: tc.totalBroken, value: previewState.record?.total_broken_qty },
-                        { label: tc.returnWhole, value: previewState.record?.total_return_whole_qty },
-                        { label: tc.returnBroken, value: previewState.record?.total_return_broken_qty },
-                      ]),
-                  ...(canViewPricing && Number(previewState.record?.total_selling_price_excl || 0) > 0 ? [
-                    {
-                      label: tc.totalSellingExcl ?? 'Total (excl. GST)',
-                      value: `₹${Number(previewState.record.total_selling_price_excl).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`,
-                    },
-                    {
-                      label: tc.totalSellingIncl ?? 'Total (incl. 18% GST)',
-                      value: `₹${(Number(previewState.record.total_selling_price_excl) * 1.18).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`,
-                    },
-                  ] : []),
-                  { label: tc.notes, value: previewState.record?.notes },
-                ]}
-              />
-            </div>
-          </div>
-        ),
-      },
-      previewState.items?.length
+    const itemRows = isCompactItems ? previewState.items : previewItemPagination.rows;
+
+    return [
+      { children: <PreviewStats items={stats} /> },
+      { title: tc.details, children: <PreviewKeyValueGrid items={details} /> },
+      totalItems
         ? {
-          title: isCompactItems ? `${tc.itemsTitle} (${totalItems})` : tc.itemsTitle,
+          title: `${tc.itemsTitle} (${totalItems})`,
           children: (
             <>
-              <div className={INVOICE_CLASSES.mobileGrid}>
-                {(isCompactItems ? previewState.items : previewItemPagination.rows).map((item, index) => (
-                  <article key={`shipment-item-${item.id || index}`} className={INVOICE_CLASSES.mobileCard}>
-                    <div className={INVOICE_CLASSES.mobileCardHeader}>{tc.line} {index + 1}</div>
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      {isInboundPreview && Number(item.discount_amount || 0) > 0 ? (
-                        <div className="col-span-2">
-                          <span className="inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black text-emerald-600 dark:text-emerald-300">
-                            - ₹{Number(item.discount_amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })} discount
-                          </span>
-                        </div>
-                      ) : null}
-                      <div>
-                        <div className={INVOICE_CLASSES.mobileKey}>{tc.description}</div>
-                        <div className={INVOICE_CLASSES.mobileValue}>{item.item_name || '—'} {item.finish ? `(${item.finish})` : ''}</div>
-                      </div>
-                      <div>
-                        <div className={INVOICE_CLASSES.mobileKey}>{item.unit_of_measure === 'bag' ? (tc.weightPerBag || 'Weight') : item.unit_of_measure === 'sqft' ? (tc.slabSize ?? 'Slab Size') : tc.size}</div>
-                        <div className={INVOICE_CLASSES.mobileValue}>{item.unit_of_measure === 'bag' ? (item.weight_per_unit_kg ? `${item.weight_per_unit_kg} kg` : (item.type_name || '—')) : item.unit_of_measure === 'sqft' ? (item.slab_size_label || item.type_name || '—') : (item.size_label || '—')}</div>
-                      </div>
-                      {isInboundPreview ? (
-                        item.unit_of_measure === 'sqft' ? (
-                          <>
-                            <div>
-                              <div className={INVOICE_CLASSES.mobileKey}>{tc.hsn}</div>
-                              <div className={INVOICE_CLASSES.mobileValue}>{item.hsn_code || '—'}</div>
-                            </div>
-                            <div>
-                              <div className={INVOICE_CLASSES.mobileKey}>{tc.qtySqft ?? 'Total Sqft'}</div>
-                              <div className={INVOICE_CLASSES.mobileValue}>
-                                {Number(item.received_qty_sqft ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 3 })}
-                              </div>
-                            </div>
-                            {canViewPricing && item.cost_per_sqft != null ? (
-                              <>
-                                <div>
-                                  <div className={INVOICE_CLASSES.mobileKey}>{tc.ratePerSqft ?? 'Rate / Sqft'}</div>
-                                  <div className={INVOICE_CLASSES.mobileValue}>₹{Number(item.cost_per_sqft).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
-                                </div>
-                                <div>
-                                  <div className={INVOICE_CLASSES.mobileKey}>{tc.lineTotal ?? 'Line Total'}</div>
-                                  <div className={INVOICE_CLASSES.mobileValue}>₹{Number(item.total_cost ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
-                                </div>
-                              </>
-                            ) : null}
-                          </>
-                        ) : item.unit_of_measure === 'bag' ? (
-                          <>
-                            <div>
-                              <div className={INVOICE_CLASSES.mobileKey}>{tc.hsn}</div>
-                              <div className={INVOICE_CLASSES.mobileValue}>{item.hsn_code || '—'}</div>
-                            </div>
-                            <div>
-                              <div className={INVOICE_CLASSES.mobileKey}>{tc.qtyBags}</div>
-                              <div className={INVOICE_CLASSES.mobileValue}>{item.received_whole_qty ?? 0}</div>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div>
-                              <div className={INVOICE_CLASSES.mobileKey}>{tc.hsn}</div>
-                              <div className={INVOICE_CLASSES.mobileValue}>{item.hsn_code || '—'}</div>
-                            </div>
-                            <div>
-                              <div className={INVOICE_CLASSES.mobileKey}>{tc.wholeBox}</div>
-                              <div className={INVOICE_CLASSES.mobileValue}>{item.received_whole_qty ?? item.loaded_whole_qty ?? 0}</div>
-                            </div>
-                            <div>
-                              <div className={INVOICE_CLASSES.mobileKey}>{tc.orderedSqm}</div>
-                              <div className={INVOICE_CLASSES.mobileValue}>{item.ordered_qty_sqm != null ? Number(item.ordered_qty_sqm).toFixed(3) : '—'}</div>
-                            </div>
-                            <div>
-                              <div className={INVOICE_CLASSES.mobileKey}>{tc.wholeSqm}</div>
-                              <div className={INVOICE_CLASSES.mobileValue}>{item.whole_qty_sqm != null ? Number(item.whole_qty_sqm).toFixed(3) : '—'}</div>
-                            </div>
-                            <div>
-                              <div className={INVOICE_CLASSES.mobileKey}>{tc.brokenSqm}</div>
-                              <div className={INVOICE_CLASSES.mobileValue}>{item.broken_qty_sqm != null ? Number(item.broken_qty_sqm).toFixed(3) : '—'}</div>
-                            </div>
-                            <div className="col-span-2">
-                              <div className={INVOICE_CLASSES.mobileKey}>{tc.totalSqmQty}</div>
-                              <div className={INVOICE_CLASSES.mobileValue}>
-                                {item.qty_sqm != null ? Number(item.qty_sqm).toFixed(3) : Number((item.received_whole_qty ?? 0) + (item.received_broken_qty ?? 0)).toFixed(0)}
-                              </div>
-                            </div>
-                          </>
-                        )
-                      ) : item.unit_of_measure === 'sqft' ? (
-                        <>
-                          <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>{tc.qtySqft ?? 'Sqft'}</div>
-                            <div className={INVOICE_CLASSES.mobileValue}>
-                              {Number(item.qty_sqft ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 3 })}
-                            </div>
-                          </div>
-                          {canViewPricing && item.rate_per_unit != null ? (
-                            <>
-                              <div>
-                                <div className={INVOICE_CLASSES.mobileKey}>{tc.ratePerSqft ?? 'Rate / Sqft'}</div>
-                                <div className={INVOICE_CLASSES.mobileValue}>₹{Number(item.rate_per_unit).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
-                              </div>
-                              <div>
-                                <div className={INVOICE_CLASSES.mobileKey}>{tc.lineTotal ?? 'Line Total'}</div>
-                                <div className={INVOICE_CLASSES.mobileValue}>₹{(Number(item.qty_sqft ?? 0) * Number(item.rate_per_unit)).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
-                              </div>
-                            </>
-                          ) : null}
-                          <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>{tc.returnQtySqft ?? 'Return Sqft'}</div>
-                            <div className={INVOICE_CLASSES.mobileValue}>
-                              {Number(item.returned_qty_sqft ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 3 })}
-                            </div>
-                          </div>
-                        </>
-                      ) : item.unit_of_measure === 'bag' ? (
-                        <>
-                          <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>{tc.qtyBags}</div>
-                            <div className={INVOICE_CLASSES.mobileValue}>{item.loaded_whole_qty ?? 0}</div>
-                          </div>
-                          <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>{tc.returnQtyBags}</div>
-                            <div className={INVOICE_CLASSES.mobileValue}>{item.returned_whole_qty ?? 0}</div>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>{item.sell_unit === 'piece' ? (tc.pieces ?? 'Pieces') : (tc.boxes ?? 'Boxes')}</div>
-                            <div className={INVOICE_CLASSES.mobileValue}>{item.loaded_whole_qty ?? 0}</div>
-                          </div>
-                          <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>{tc.loadedBroken}</div>
-                            <div className={INVOICE_CLASSES.mobileValue}>{item.loaded_broken_qty ?? 0}</div>
-                          </div>
-                          {canViewPricing && item.rate_per_unit != null ? (
-                            <>
-                              <div>
-                                <div className={INVOICE_CLASSES.mobileKey}>{item.sell_unit === 'piece' ? (tc.ratePerPiece ?? 'Rate/Piece') : (tc.ratePerBox ?? 'Rate/Box')}</div>
-                                <div className={INVOICE_CLASSES.mobileValue}>₹{Number(item.rate_per_unit).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
-                              </div>
-                              <div>
-                                <div className={INVOICE_CLASSES.mobileKey}>{tc.lineTotal ?? 'Line Total'}</div>
-                                <div className={INVOICE_CLASSES.mobileValue}>₹{(Number(item.loaded_whole_qty ?? 0) * Number(item.rate_per_unit)).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
-                              </div>
-                            </>
-                          ) : null}
-                          <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>{tc.returnWhole}</div>
-                            <div className={INVOICE_CLASSES.mobileValue}>{item.returned_whole_qty ?? 0}</div>
-                          </div>
-                          <div>
-                            <div className={INVOICE_CLASSES.mobileKey}>{tc.returnBroken}</div>
-                            <div className={INVOICE_CLASSES.mobileValue}>{item.returned_broken_qty ?? 0}</div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </article>
+              <ul className="divide-y divide-border rounded-lg border border-border">
+                {itemRows.map((item, index) => (
+                  <ItemRow key={`shipment-item-${item.id || index}`} item={item} isInbound={isInboundPreview} canViewPricing={canViewPricing} tc={tc} />
                 ))}
-              </div>
+              </ul>
               {isCompactItems ? null : (
                 <PaginationControls
                   page={previewItemPagination.page}
@@ -524,29 +382,16 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
         : null,
       previewState.documents?.length
         ? {
-          title: tc.linkedDocuments,
+          title: `${tc.linkedDocuments} (${previewState.documents.length})`,
           children: (
-            <div className="grid gap-6 xl:grid-cols-2">
-              {previewState.documents.map((document) => (
-                <section key={document.id} className="glass-panel overflow-hidden rounded-2xl transition-[box-shadow] duration-200 hover:shadow-card-hover">
-                  <div className="border-b border-white/5 bg-slate-900/40 px-5 py-4">
-                    <nav className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 mb-1">
-                      <span>{tc.intelligenceCase}</span>
-                      <ChevronRight className="h-2.5 w-2.5 opacity-50" />
-                      <span className="text-brand-primary">{document.document_type}</span>
-                    </nav>
-                    <div className="mt-2 text-base font-black text-slate-900 dark:text-white tracking-tight">{document.document_number || (language === 'hi' ? 'दस्तावेज़' : 'Document')}</div>
-                    <div className="mt-1 truncate text-[11px] font-bold text-slate-500 opacity-60">{document.file_name}</div>
-                  </div>
-                  <div className="p-5">{renderDocumentPreview(document, tc)}</div>
-                </section>
-              ))}
+            <div className="grid gap-3 sm:grid-cols-2">
+              {previewState.documents.map((document) => <DocumentCard key={document.id} document={document} tc={tc} />)}
             </div>
           ),
         }
         : null,
     ];
-  }, [previewState, tc, isInboundPreview, previewItemPagination, setPreviewItemsPage, inboundMetaItems, pageSize, setPageSize, isCompactItems, totalItems, canViewPricing, userRole, onShowroomChanged]);
+  }, [isStock, r, tc, userRole, onShowroomChanged, stoneSqftTotal, isInboundPreview, totalItems, canViewPricing, transportNotRecorded, lineDiscountTotal, isCompactItems, previewState.items, previewState.documents, previewItemPagination, pageSize, setPreviewItemsPage, setPageSize]);
 
   const handleOpenChange = useCallback((open) => { if (!open) closePreview(); }, [closePreview]);
 
@@ -554,18 +399,18 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
     <EntryPreviewSheet
       open={previewState.open}
       onOpenChange={handleOpenChange}
-      title={previewState.title}
-      description={previewState.description}
+      title={sheetTitle}
+      description={sheetDescription}
       summary={
         previewState.loading ? (
-          <div className="text-sm text-slate-500">{tc.loadingPreview}</div>
+          <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />{tc.loadingPreview}</div>
         ) : previewState.error ? (
-          <div className="text-sm text-red-600">{previewState.error}</div>
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">{previewState.error}</div>
         ) : null
       }
-      sections={stockSections}
+      sections={sections}
       footer={
-        previewState.kind !== 'stock' && !previewState.loading && !previewState.error ? (
+        !isStock && !previewState.loading && !previewState.error ? (
           <ActionFooter
             record={previewState.record}
             kind={previewState.kind}

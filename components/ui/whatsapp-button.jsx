@@ -24,7 +24,7 @@ export function WhatsAppButton() {
       {/* Tooltip */}
       <div
         className={cn(
-          "bg-white dark:bg-card text-foreground text-sm font-medium px-4 py-2.5 rounded-2xl shadow-lg border border-border/50 whitespace-nowrap transition-all duration-300 pointer-events-none",
+          "bg-white dark:bg-card text-foreground text-sm font-medium px-4 py-2.5 rounded-xl shadow-lg border border-border/50 whitespace-nowrap transition-all duration-300 pointer-events-none",
           showTooltip
             ? "opacity-100 translate-x-0"
             : "opacity-0 -translate-x-2"

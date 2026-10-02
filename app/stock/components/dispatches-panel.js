@@ -1,13 +1,14 @@
 'use client';
 
-import { useCallback, useState } from 'react';
-import { BarChart3, Download, PackageCheck, Plus, Search, Send } from 'lucide-react';
+import { Fragment, useCallback, useState } from 'react';
+import { BarChart3, Download, PackageCheck, Plus, Search, CalendarDays, ArrowDown, ArrowUp, Send } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
 import { DispatchFormContent } from './dispatch-form';
+import { groupRowsByDay, formatTime } from '../lib/group-by-day.mjs';
 import { ProductSalesReport } from './product-sales-report';
 import { formatDateTime, getGeneratedByRoleLabel, getStatusVariant, CLASSES, FORM_INPUT_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS, exportToCSV, EXPORT_PERIOD_PRESETS, filterRowsByPeriod, invalidateShipmentCache, fetchAllPages, fetchDispatches } from '../lib/stock-utils';
 import {
@@ -83,10 +84,30 @@ export function DispatchesPanel({
       direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
     }));
   }, [setDispatchSort]);
+  // Newest first on the first press from any other sort, then it flips.
+  const toggleDateSort = useCallback(() => {
+    setDispatchSort((current) => ({
+      key: 'datetime',
+      direction: current.key === 'datetime' && current.direction === 'desc' ? 'asc' : 'desc',
+    }));
+  }, [setDispatchSort]);
+
+  // Sorted by date, rows are bunched per day so the date prints once; any other
+  // sort keeps a date on every row, where a heading per row would only add noise.
+  const dispatchGrouped = dispatchSort.key === 'datetime';
+  const dispatchDateOf = (d) => d.dispatch_date || d.created_at;
+  const dispatchGroups = dispatchGrouped
+    ? groupRowsByDay(dispatchPagination.rows, dispatchDateOf, { today: tc.today, yesterday: tc.yesterday, locale: tc.dateLocale })
+    : dispatchPagination.rows.map((d) => ({ key: d.id, label: formatDateTime(dispatchDateOf(d)), rows: [d] }));
+  const dispatchWhen = (d) => (dispatchGrouped ? formatTime(dispatchDateOf(d), tc.dateLocale) : formatDateTime(dispatchDateOf(d)));
+  // A phone number is something you tap to call, not a way into the preview.
+  const phoneLink = (d) => (d.customer_phone_number ? (
+    <a href={`tel:${d.customer_phone_number}`} onClick={(e) => e.stopPropagation()} className="tabular-nums text-slate-600 hover:underline dark:text-slate-300">{d.customer_phone_number}</a>
+  ) : null);
 
   return (
     <div className="stock-tab-panel" key="stock-panel-dispatches">
-      <div className="flex flex-wrap items-center justify-between gap-3 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
         {tabs}
         <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5 sm:gap-3">
       <DropdownMenu>
@@ -194,125 +215,145 @@ export function DispatchesPanel({
           </SheetContent>
         </Sheet>
       </div>
-      <section id="dispatches" className="flex h-full flex-col overflow-hidden scroll-mt-6 glass-panel rounded-2xl">
-        <div className="sticky top-0 z-10 border-b border-slate-200/60 bg-white/50 px-3 py-2.5 backdrop-blur-md dark:bg-slate-900/50">
-          <div className="relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 transition-colors group-focus-within:text-brand-primary" />
+      <section id="dispatches" className="flex h-full flex-col overflow-hidden scroll-mt-6 glass-panel rounded-xl">
+        <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-card px-3 py-2.5">
+          <div className="relative group min-w-0 flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="search"
               value={dispatchSearch}
               onChange={(event) => setDispatchSearch(event.target.value)}
               placeholder={tc.searchDispatches}
-              className={`${FORM_INPUT_CLASS} pl-11`}
+              className={`${FORM_INPUT_CLASS} pl-9`}
             />
           </div>
+          <button
+            type="button"
+            onClick={toggleDateSort}
+            aria-label={dispatchSort.key === 'datetime' && dispatchSort.direction === 'asc' ? tc.oldestFirst : tc.newestFirst}
+            title={dispatchSort.key === 'datetime' && dispatchSort.direction === 'asc' ? tc.oldestFirst : tc.newestFirst}
+            className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-[13px] font-medium transition-colors hover:bg-muted ${dispatchGrouped ? 'text-slate-900 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400'}`}
+          >
+            <CalendarDays className="h-4 w-4" />
+            <span className="hidden sm:inline">{dispatchSort.key === 'datetime' && dispatchSort.direction === 'asc' ? tc.oldestFirst : tc.newestFirst}</span>
+            {dispatchGrouped ? (dispatchSort.direction === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />) : null}
+          </button>
         </div>
-        <div className={`space-y-3 p-3 md:hidden transition-opacity duration-200 ${dispatchFetching ? 'opacity-50' : ''}`}>
+        <div className={`px-3 pb-1 md:hidden transition-opacity duration-200 ${dispatchFetching ? 'opacity-50' : ''}`}>
           {dispatchFetching && dispatchPagination.rows.length === 0 && (
             <div className="flex items-center justify-center gap-2 py-8 text-slate-400">
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-brand-primary" />
               <span className="text-sm">Loading…</span>
             </div>
           )}
-          {dispatchPagination.rows.map((d) => {
-            const expanded = dispatchExpandedId === d.id;
-            return (
-              <article key={`dispatch-mobile-${d.id}`} className="glass-panel rounded-2xl p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => openShipmentPreview('dispatch', d)}
-                    className="min-w-0 flex-1 text-left"
-                    aria-label={`Open dispatch ${d.shipment_number}`}
-                  >
-                    <p className="break-all font-mono text-xs font-semibold text-primary dark:text-orange-400">{d.shipment_number}</p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">{formatDateTime(d.dispatch_date || d.created_at)}</p>
-                  </button>
-                  <Badge variant={getStatusVariant(d.status)}>{d.status}</Badge>
-                </div>
-                <p className="mt-1.5 text-xs text-slate-600 dark:text-slate-300">
-                  {d.customer_name || '—'}
-                  {d.customer_phone_number ? ` • ${d.customer_phone_number}` : ''}
-                </p>
-                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-600 dark:text-slate-300">
-                  {Number(d.total_sqft_qty || 0) > 0 && (
-                    <span className="text-sky-500 font-black" title={`${Number(d.total_sqft_qty)} Sqft`}>
-                      {Number(d.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-[10px] uppercase text-sky-400/70">Sqft</span>
-                    </span>
-                  )}
-                  {Number(d.total_bag_qty || 0) > 0 && (
-                    <span className="text-amber-500 font-black" title={`${Number(d.total_bag_qty)} Bags`}>
-                      {Number(d.total_bag_qty)} <span className="text-[10px] uppercase text-amber-400/70">Bags</span>
-                    </span>
-                  )}
-                  {((Number(d.total_whole_qty || 0) > 0 || Number(d.total_broken_qty || 0) > 0) || (Number(d.total_bag_qty || 0) === 0 && Number(d.total_sqft_qty || 0) === 0)) && (
-                    <span title={`${Number(d.total_whole_qty || 0)} Whole and ${Number(d.total_broken_qty || 0)} Broken Tiles`}>
-                      {Number(d.total_whole_qty || 0)} <span className="text-[10px] uppercase text-slate-400">Whole</span> / {Number(d.total_broken_qty || 0)} <span className="text-[10px] uppercase text-slate-400">Broken</span>
-                    </span>
-                  )}
-                  {canEdit && Number(d.total_selling_price_excl || 0) > 0 ? (
-                    <span className="ml-auto font-black text-emerald-600 dark:text-emerald-400">
-                      ₹{Number(d.total_selling_price_excl).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                      <span className="ml-1 text-[10px] font-bold opacity-70">/ ₹{(Number(d.total_selling_price_excl) * 1.18).toLocaleString('en-IN', { maximumFractionDigits: 0 })} GST</span>
-                    </span>
-                  ) : null}
-                </div>
-                {(Number(d.total_return_whole_qty || 0) > 0 || Number(d.total_return_broken_qty || 0) > 0) ? (
-                  <p className="text-xs text-rose-700 dark:text-rose-300 font-medium" title={`${Number(d.total_return_whole_qty || 0)} Whole and ${Number(d.total_return_broken_qty || 0)} Broken Tiles Returned`}>
-                    Returned: {Number(d.total_return_whole_qty || 0)} Whole / {Number(d.total_return_broken_qty || 0)} Broken
-                  </p>
-                ) : null}
-                {expanded ? (
-                  <div className="mt-1 space-y-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-                    <p className="truncate">{d.product_names || d.product_skus || '—'}</p>
-                    <p>{t('by')}: {d.generated_by || '—'}</p>
-                  </div>
-                ) : null}
-                {/* Money, payment state and every action share one wrapping row —
-                    stacked they cost four extra lines on a phone. */}
-                <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
-                  <span className={`capitalize ${d.payment_status === 'paid' ? 'font-bold text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                    {d.payment_status || 'Unpaid'}
-                  </span>
-                  {canEdit && d.approval_status === 'approved' && d.payment_status !== 'paid' && (
-                    <button
-                      type="button"
-                      onClick={e => { e.stopPropagation(); setConfirmPaidId(d.id); }}
-                      disabled={markingPaidId === d.id}
-                      className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-emerald-600 disabled:opacity-50"
-                    >
-                      {markingPaidId === d.id ? '…' : 'Mark as Paid'}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setDispatchExpandedId((current) => (current === d.id ? null : d.id))}
-                    className="ml-auto rounded-lg border border-border px-2 py-1 font-semibold text-muted-foreground transition hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700"
-                    aria-label={expanded ? tc.collapse : tc.expand}
-                  >
-                    {expanded ? tc.collapse : tc.expand}
-                  </button>
-                  {canEdit && (
-                    <button
-                      type="button"
-                      className="rounded-lg border border-border px-2 py-1 font-semibold text-foreground transition hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20"
-                      onClick={e => { e.stopPropagation(); onEdit(d); }}
-                    >
-                      {tc.edit}
-                    </button>
-                  )}
-                </div>
-              </article>
-            );
-          })}
+          {dispatchGroups.map((group) => (
+            <div key={group.key} className="-mx-3 border-t border-border first:border-t-0">
+              {dispatchGrouped && (
+                <h3 className="border-b border-border bg-muted px-4 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200">{group.label}</h3>
+              )}
+              <div className="divide-y divide-border px-3">
+              {group.rows.map((d) => {
+                const expanded = dispatchExpandedId === d.id;
+                return (
+                  <article key={`dispatch-mobile-${d.id}`} className="px-1 py-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openShipmentPreview('dispatch', d)}
+                        className="min-w-0 flex-1 text-left"
+                        aria-label={`Open dispatch ${d.shipment_number}`}
+                      >
+                        <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{d.customer_name || d.shipment_number}</p>
+                      </button>
+                      <Badge variant={getStatusVariant(d.status)}>{d.status}</Badge>
+                    </div>
+                    <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                      {phoneLink(d)}
+                      {d.customer_phone_number ? <span aria-hidden="true">·</span> : null}
+                      <span className="font-mono text-brand-primary">{d.shipment_number}</span>
+                      <span aria-hidden="true">·</span>
+                      <span className="tabular-nums">{dispatchWhen(d)}</span>
+                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-600 dark:text-slate-300">
+                      {Number(d.total_sqft_qty || 0) > 0 && (
+                        <span className="font-semibold text-slate-900 dark:text-slate-100" title={`${Number(d.total_sqft_qty)} Sqft`}>
+                          {Number(d.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-[11px] text-slate-500">Sqft</span>
+                        </span>
+                      )}
+                      {Number(d.total_bag_qty || 0) > 0 && (
+                        <span className="font-semibold text-slate-900 dark:text-slate-100" title={`${Number(d.total_bag_qty)} Bags`}>
+                          {Number(d.total_bag_qty)} <span className="text-[11px] text-slate-500">Bags</span>
+                        </span>
+                      )}
+                      {((Number(d.total_whole_qty || 0) > 0 || Number(d.total_broken_qty || 0) > 0) || (Number(d.total_bag_qty || 0) === 0 && Number(d.total_sqft_qty || 0) === 0)) && (
+                        <span title={`${Number(d.total_whole_qty || 0)} Whole and ${Number(d.total_broken_qty || 0)} Broken Tiles`}>
+                          {Number(d.total_whole_qty || 0)} <span className="text-[11px] text-slate-500">Whole</span> / {Number(d.total_broken_qty || 0)} <span className="text-[11px] text-slate-500">Broken</span>
+                        </span>
+                      )}
+                      {canEdit && Number(d.total_selling_price_excl || 0) > 0 ? (
+                        <span className="ml-auto font-bold text-emerald-600 dark:text-emerald-400">
+                          ₹{Number(d.total_selling_price_excl).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                          <span className="ml-1 text-[11px] font-bold opacity-70">/ ₹{(Number(d.total_selling_price_excl) * 1.18).toLocaleString('en-IN', { maximumFractionDigits: 0 })} GST</span>
+                        </span>
+                      ) : null}
+                    </div>
+                    {(Number(d.total_return_whole_qty || 0) > 0 || Number(d.total_return_broken_qty || 0) > 0) ? (
+                      <p className="text-xs text-rose-700 dark:text-rose-300 font-medium" title={`${Number(d.total_return_whole_qty || 0)} Whole and ${Number(d.total_return_broken_qty || 0)} Broken Tiles Returned`}>
+                        Returned: {Number(d.total_return_whole_qty || 0)} Whole / {Number(d.total_return_broken_qty || 0)} Broken
+                      </p>
+                    ) : null}
+                    {expanded ? (
+                      <div className="mt-1 space-y-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                        <p className="truncate">{d.product_names || d.product_skus || '—'}</p>
+                        <p>{t('by')}: {d.generated_by || '—'}</p>
+                      </div>
+                    ) : null}
+                    {/* Money, payment state and every action share one wrapping row —
+                        stacked they cost four extra lines on a phone. */}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+                      <span className={`capitalize ${d.payment_status === 'paid' ? 'font-bold text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                        {d.payment_status || 'Unpaid'}
+                      </span>
+                      {canEdit && d.approval_status === 'approved' && d.payment_status !== 'paid' && (
+                        <button
+                          type="button"
+                          onClick={e => { e.stopPropagation(); setConfirmPaidId(d.id); }}
+                          disabled={markingPaidId === d.id}
+                          className="rounded-lg border border-emerald-600/30 px-2 py-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400 disabled:opacity-50"
+                        >
+                          {markingPaidId === d.id ? '…' : 'Mark as Paid'}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setDispatchExpandedId((current) => (current === d.id ? null : d.id))}
+                        className="ml-auto rounded-lg border border-border px-2 py-1 font-semibold text-muted-foreground transition hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700"
+                        aria-label={expanded ? tc.collapse : tc.expand}
+                      >
+                        {expanded ? tc.collapse : tc.expand}
+                      </button>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          className="rounded-lg border border-border px-2 py-1 font-semibold text-foreground transition hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          onClick={e => { e.stopPropagation(); onEdit(d); }}
+                        >
+                          {tc.edit}
+                        </button>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+              </div>
+            </div>
+          ))}
         </div>
         <div className="overflow-x-auto overflow-y-auto max-h-[60vh] flex-1">
           <table className="hidden w-full text-left whitespace-nowrap md:table border-collapse">
-            <thead className="sticky top-0 z-20 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xl">
-              <tr className="border-b border-slate-200/60 dark:border-white/5">
+            <thead className="sticky top-0 z-20 bg-muted">
+              <tr className="border-b border-border">
                 {[
-                  { id: 'datetime', label: tc.datetime },
-                  { id: 'shipment', label: t('dispatchNo') },
                   { id: 'customer', label: tc.customer },
                   { id: 'products', label: tc.products },
                   { id: 'quantities', label: tc.quantities, align: 'right' },
@@ -321,14 +362,14 @@ export function DispatchesPanel({
                   ...(canEdit ? [{ id: 'edit', label: tc.edit, align: 'right' }] : []),
                   { id: 'status', label: t('status') },
                 ].map((col) => (
-                  <th key={col.id} className={`px-4 py-3 ${col.align === 'right' ? 'text-right' : ''}`}>
+                  <th key={col.id} className={`px-4 py-2 ${col.align === 'right' ? 'text-right' : ''}`}>
                     <button
                       type="button"
-                      onClick={() => col.id !== 'customer' && col.id !== 'return' && col.id !== 'edit' && col.id !== 'payment' && col.id !== 'generatedBy' && col.id !== 'approvedBy' ? toggleSort(col.id) : undefined}
-                      className={`text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 flex items-center gap-2 group/th ${col.id !== 'customer' && col.id !== 'return' && col.id !== 'edit' && col.id !== 'payment' && col.id !== 'generatedBy' && col.id !== 'approvedBy' ? 'hover:text-brand-primary' : 'cursor-default transition-all duration-300'}`}
+                      onClick={() => col.id !== 'return' && col.id !== 'edit' && col.id !== 'payment' && col.id !== 'generatedBy' && col.id !== 'approvedBy' ? toggleSort(col.id) : undefined}
+                      className={`text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 inline-flex items-center gap-1.5 group/th ${col.id !== 'return' && col.id !== 'edit' && col.id !== 'payment' && col.id !== 'generatedBy' && col.id !== 'approvedBy' ? 'hover:text-brand-primary' : 'cursor-default transition-all duration-300'}`}
                     >
                       {col.label}
-                      {col.id !== 'customer' && col.id !== 'return' && col.id !== 'edit' && col.id !== 'payment' && col.id !== 'generatedBy' && col.id !== 'approvedBy' && (
+                      {col.id !== 'return' && col.id !== 'edit' && col.id !== 'payment' && col.id !== 'generatedBy' && col.id !== 'approvedBy' && (
                         <span className={`h-1 w-1 rounded-full bg-brand-primary opacity-0 transition-opacity ${dispatchSort.key === col.id ? 'opacity-100' : 'group-hover/th:opacity-40'}`} />
                       )}
                     </button>
@@ -336,11 +377,16 @@ export function DispatchesPanel({
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-              {dispatchPagination.rows.map((d) => (
+            <tbody className="divide-y divide-border">
+              {dispatchGroups.map((group) => group.rows.map((d, index) => (
+                <Fragment key={d.id}>
+                {dispatchGrouped && index === 0 ? (
+                  <tr className="bg-muted">
+                    <td colSpan={canEdit ? 7 : 4} className="px-4 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200">{group.label}</td>
+                  </tr>
+                ) : null}
                 <tr
-                  key={d.id}
-                  className={`group/row cursor-pointer transition-all duration-300 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 ${highlightedShipmentKey === `dispatch-${d.id}` ? 'bg-primary/10 ring-1 ring-primary/40' : 'odd:bg-white even:bg-slate-50/70 dark:odd:bg-slate-900 dark:even:bg-slate-900/70'}`}
+                  className={`group/row cursor-pointer transition-colors duration-100 hover:bg-muted/60 ${highlightedShipmentKey === `dispatch-${d.id}` ? 'bg-primary/10 ring-1 ring-primary/40' : ''}`}
                   onClick={() => openShipmentPreview('dispatch', d)}
                   tabIndex={0}
                   role="button"
@@ -352,52 +398,51 @@ export function DispatchesPanel({
                   }}
                   title="Click to preview"
                 >
-                  <td className="px-4 py-3 text-[11px] text-muted-foreground tabular-nums">{formatDateTime(d.dispatch_date || d.created_at)}</td>
-                  <td className="px-4 py-3">
-                    <span className="font-mono text-[10px] font-black tracking-tight text-brand-primary dark:text-orange-400 bg-brand-primary/5 px-2 py-1 rounded-md border border-brand-primary/20 transition-colors group-hover/row:bg-brand-primary/10">
-                      {d.shipment_number}
-                    </span>
+                  <td className="px-4 py-2.5">
+                    <div className="max-w-[240px] truncate text-sm font-medium text-slate-900 dark:text-slate-100" title={d.customer_name || ''}>{d.customer_name || '—'}</div>
+                    <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                      {phoneLink(d)}
+                      {d.customer_phone_number ? <span aria-hidden="true">·</span> : null}
+                      <span className="font-mono text-brand-primary group-hover/row:underline underline-offset-2">{d.shipment_number}</span>
+                      <span aria-hidden="true">·</span><span className="tabular-nums">{dispatchWhen(d)}</span>
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-[11px] text-muted-foreground">
-                    <div className="font-black text-slate-700 dark:text-slate-300">{d.customer_name || '—'}</div>
-                    {d.customer_phone_number ? <div className="text-[9px] font-bold opacity-60 tabular-nums">{d.customer_phone_number}</div> : null}
+                  <td className="px-4 py-2.5">
+                    <div className="max-w-[260px] truncate text-sm font-medium text-slate-900 dark:text-slate-100" title={d.product_names || d.product_skus || ''}>{d.product_names || d.product_skus || '—'}</div>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="max-w-[260px] truncate text-xs font-black text-slate-900 dark:text-white" title={d.product_names || d.product_skus || ''}>{d.product_names || d.product_skus || '—'}</div>
-                  </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-2.5 text-right">
                     <div className="flex flex-col items-end gap-0.5">
                       {Number(d.total_sqft_qty || 0) > 0 && (
-                        <div className="text-xs font-black text-sky-500 tabular-nums" title={`${Number(d.total_sqft_qty)} Sqft`}>
-                          {Number(d.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-[9px] font-bold text-sky-400/70 uppercase">Sqft</span>
+                        <div className="text-sm font-medium text-slate-900 dark:text-slate-100 tabular-nums" title={`${Number(d.total_sqft_qty)} Sqft`}>
+                          {Number(d.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">Sqft</span>
                         </div>
                       )}
                       {Number(d.total_bag_qty || 0) > 0 && (
-                        <div className="text-xs font-black text-amber-500 tabular-nums" title={`${Number(d.total_bag_qty)} Bags`}>
-                          {Number(d.total_bag_qty)} <span className="text-[9px] font-bold text-amber-400/70 uppercase">Bags</span>
+                        <div className="text-sm font-medium text-slate-900 dark:text-slate-100 tabular-nums" title={`${Number(d.total_bag_qty)} Bags`}>
+                          {Number(d.total_bag_qty)} <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">Bags</span>
                         </div>
                       )}
                       {((Number(d.total_whole_qty || 0) > 0 || Number(d.total_broken_qty || 0) > 0) || (Number(d.total_bag_qty || 0) === 0 && Number(d.total_sqft_qty || 0) === 0)) && (
-                        <div className="text-xs font-black text-slate-900 dark:text-white tabular-nums" title={`${Number(d.total_whole_qty || 0)} Whole and ${Number(d.total_broken_qty || 0)} Broken Tiles`}>
-                          {Number(d.total_whole_qty || 0)} <span className="text-[9px] font-bold text-slate-400 mr-1 uppercase">Whole</span>
-                          <span className="opacity-50 mx-0.5">/</span> {Number(d.total_broken_qty || 0)} <span className="text-[9px] font-bold text-slate-400 uppercase">Broken</span>
+                        <div className="text-sm font-medium text-slate-900 dark:text-slate-100 tabular-nums" title={`${Number(d.total_whole_qty || 0)} Whole and ${Number(d.total_broken_qty || 0)} Broken Tiles`}>
+                          {Number(d.total_whole_qty || 0)} <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400 mr-1">Whole</span>
+                          <span className="mx-0.5 text-slate-300 dark:text-slate-600">/</span> {Number(d.total_broken_qty || 0)} <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">Broken</span>
                         </div>
                       )}
                       {(Number(d.total_return_whole_qty || 0) > 0 || Number(d.total_return_broken_qty || 0) > 0) && (
-                        <div className="text-[9px] font-bold text-rose-600 dark:text-rose-400 tabular-nums mt-0.5" title={`${Number(d.total_return_whole_qty || 0)} Whole and ${Number(d.total_return_broken_qty || 0)} Broken Tiles Returned`}>
+                        <div className="text-[11px] font-medium text-rose-700 dark:text-rose-400 tabular-nums mt-0.5" title={`${Number(d.total_return_whole_qty || 0)} Whole and ${Number(d.total_return_broken_qty || 0)} Broken Tiles Returned`}>
                           {tc.return}: {Number(d.total_return_whole_qty || 0)} W / {Number(d.total_return_broken_qty || 0)} B
                         </div>
                       )}
                     </div>
                   </td>
                   {canEdit && (
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-2.5 text-right">
                       {Number(d.total_selling_price_excl || 0) > 0 ? (
                         <div>
-                          <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+                          <div className="text-sm font-medium text-slate-900 dark:text-slate-100 tabular-nums">
                             ₹{Number(d.total_selling_price_excl).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                           </div>
-                          <div className="text-[9px] font-bold text-emerald-500/70 tabular-nums">
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
                             ₹{(Number(d.total_selling_price_excl) * 1.18).toLocaleString('en-IN', { maximumFractionDigits: 0 })} incl. GST
                           </div>
                         </div>
@@ -405,8 +450,8 @@ export function DispatchesPanel({
                     </td>
                   )}
                   {canEdit && (
-                    <td className="px-4 py-3 text-[11px] text-muted-foreground">
-                      <div className={`uppercase text-[9px] font-black tracking-widest ${d.payment_status === 'paid' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`}>
+                    <td className="px-4 py-2.5 text-[11px] text-muted-foreground">
+                      <div className={`capitalize text-xs font-medium ${d.payment_status === 'paid' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`}>
                         {d.payment_status || 'Unpaid'}
                       </div>
                       {d.approval_status === 'approved' && d.payment_status !== 'paid' && (
@@ -415,7 +460,7 @@ export function DispatchesPanel({
                           onClick={e => { e.stopPropagation(); setConfirmPaidId(d.id); }}
                           disabled={markingPaidId === d.id}
                           title="Mark this dispatch as fully paid"
-                          className="mt-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 text-[9px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all disabled:opacity-50 whitespace-nowrap"
+                          className="mt-1.5 px-2 py-0.5 rounded-md border border-emerald-600/30 text-emerald-700 dark:text-emerald-400 text-[11px] font-medium hover:bg-emerald-600 hover:text-white transition-colors disabled:opacity-50 whitespace-nowrap"
                         >
                           {markingPaidId === d.id ? '…' : 'Mark as Paid'}
                         </button>
@@ -423,10 +468,10 @@ export function DispatchesPanel({
                     </td>
                   )}
                   {canEdit && (
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-2.5 text-right">
                       <button
                         type="button"
-                        className="rounded-md border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+                        className="rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-muted transition-colors"
                         onClick={e => {
                           e.stopPropagation();
                           onEdit(d);
@@ -436,12 +481,13 @@ export function DispatchesPanel({
                       </button>
                     </td>
                   )}
-                  <td className="px-4 py-3"><Badge variant={getStatusVariant(d.status)}>{d.status}</Badge></td>
+                  <td className="px-4 py-2.5"><Badge variant={getStatusVariant(d.status)}>{d.status}</Badge></td>
                 </tr>
-              ))}
+                </Fragment>
+              )))}
               {dispatchFetching ? (
                 <tr>
-                  <td colSpan={canEdit ? 9 : 6} className="px-3 py-10">
+                  <td colSpan={canEdit ? 7 : 4} className="px-3 py-10">
                     <div className="flex items-center justify-center gap-2 text-slate-400">
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-brand-primary" />
                       <span className="text-sm">Loading…</span>
@@ -450,14 +496,14 @@ export function DispatchesPanel({
                 </tr>
               ) : dispatchPagination.total === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 9 : 6} className="px-3 py-10">
+                  <td colSpan={canEdit ? 7 : 4} className="px-3 py-10">
                     <div className="flex flex-col items-center justify-center gap-3 text-center">
                       <PackageCheck className="h-6 w-6 text-slate-400" />
                       <p className="text-sm text-slate-500 dark:text-slate-400">{tc.noDispatches}</p>
                       <button
                         type="button"
                         onClick={() => setDispatchSearch('')}
-                        className="rounded-xl bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        className="rounded-lg bg-primary px-3 py-1.5 text-[13px] font-semibold text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/20"
                       >
                         {tc.clearFilters}
                       </button>
@@ -468,7 +514,7 @@ export function DispatchesPanel({
             </tbody>
           </table>
         </div>
-        <div className="px-6 py-4 bg-slate-50/40 dark:bg-slate-900/40 border-t border-slate-200/60 dark:border-white/5">
+        <div className="px-4 py-3 border-t border-border">
           <PaginationControls
             page={dispatchPagination.page}
             pageCount={dispatchPagination.pageCount}

@@ -111,7 +111,7 @@ export function CatalogueViewer({ brand }) {
           <div
             key={cat.path}
             className={cn(
-              "group relative cursor-pointer rounded-2xl overflow-hidden border border-border/50 bg-muted/30",
+              "group relative cursor-pointer rounded-xl overflow-hidden border border-border/50 bg-muted/30",
               "hover:border-primary/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300",
               "aspect-[3/4]"
             )}
@@ -382,7 +382,7 @@ export function CatalogueViewer({ brand }) {
           className={cn(
             "fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%]",
             "h-[90vh] sm:h-[85vh] w-[95vw] sm:w-[90vw] max-w-[1200px]",
-            "rounded-2xl bg-card text-card-foreground p-4 sm:p-6 shadow-2xl border border-border/50",
+            "rounded-xl bg-card text-card-foreground p-4 sm:p-6 shadow-2xl border border-border/50",
             "animate-scale-in"
           )}
         >

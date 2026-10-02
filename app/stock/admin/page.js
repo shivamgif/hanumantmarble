@@ -9,7 +9,7 @@ import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { arrivalFormSchema, bagArrivalFormSchema, dispatchFormSchema } from '@/lib/forms/stock-forms';
 import { useStockFormStore } from '@/lib/stores/stock-form-store';
-import { createArrivalItemRow, createBagArrivalItemRow, createDispatchItemRow, createInitialArrivalDraft, createInitialBagArrivalDraft, createInitialDispatchDraft, formatLineVolume, formatShipmentVolume, toNumber, trimText, parseSizeLabelDimensions, tabButtonClass } from '@/app/stock/lib/stock-utils';
+import { createArrivalItemRow, createBagArrivalItemRow, createDispatchItemRow, createInitialArrivalDraft, createInitialBagArrivalDraft, createInitialDispatchDraft, formatLineVolume, formatShipmentVolume, toNumber, trimText, parseSizeLabelDimensions, tabButtonClass, tabTrackClass } from '@/app/stock/lib/stock-utils';
 import { ArrivalFormContent, BagArrivalFormContent } from '@/app/stock/components/arrival-form';
 import { DispatchFormContent } from '@/app/stock/components/dispatch-form';
 import { BranchesPanel } from '@/app/stock/components/branches-panel';
@@ -74,10 +74,10 @@ function formatDateTime(value) {
 }
 
 
-const FORM_LABEL_CLASS = 'block text-[11px] font-semibold uppercase tracking-[0.08em] text-foreground/75';
+const FORM_LABEL_CLASS = 'block text-xs font-medium tracking-[0.08em] text-foreground/75';
 const FORM_INPUT_CLASS = 'mt-1';
 const FORM_SELECT_CLASS = 'mt-1';
-const FORM_PANEL_CLASS = 'rounded-2xl border border-border/80 bg-background/80 p-4';
+const FORM_PANEL_CLASS = 'rounded-xl border border-border/80 bg-background/80 p-4';
 
 function getInitials(name, email) {
   const source = (name || email || '').trim();
@@ -323,7 +323,7 @@ export default function AdminDashboard() {
           // stock role lives only in stock_app_users - and the fetch would be
           // skipped for exactly the managers it is meant for. The endpoint does
           // its own role check; a 401 here just leaves the tabs empty.
-          fetch(`/api/stock/admin/analytics?months=${REVIEW_MONTHS}`),
+          fetch(`/api/stock/admin/analytics?section=review&months=${REVIEW_MONTHS}`),
         ];
         const [dashboardResponse, changeRequestResponse, reviewResponse] = await Promise.all(fetchPromises);
 
@@ -433,7 +433,7 @@ export default function AdminDashboard() {
       fetch('/api/stock/admin/dashboard'),
       fetch('/api/stock/change-requests', { cache: 'no-store' }),
       // fresh=1: an approval just changed the books, so the cached copy is stale.
-      fetch(`/api/stock/admin/analytics?months=${REVIEW_MONTHS}&fresh=1`),
+      fetch(`/api/stock/admin/analytics?section=review&months=${REVIEW_MONTHS}&fresh=1`),
     ]);
 
     const refreshJson = await refreshResponse.json();
@@ -1161,11 +1161,11 @@ export default function AdminDashboard() {
       <div className="space-y-10 lg:space-y-12 p-4 sm:p-6 lg:p-8">
         <div className="flex flex-col gap-4">
           <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 animate-pulse rounded" />
-          <div className="h-16 sm:h-20 w-full sm:w-3/4 max-w-lg bg-slate-200 dark:bg-slate-800 animate-pulse rounded-2xl sm:rounded-[2.5rem]" />
+          <div className="h-16 sm:h-20 w-full sm:w-3/4 max-w-lg bg-slate-200 dark:bg-slate-800 animate-pulse rounded-xl" />
         </div>
         <div className="grid grid-cols-1 gap-6">
-          <div className="animate-pulse rounded-3xl sm:rounded-[2.5rem] bg-slate-200 dark:bg-slate-800 h-96" />
-          <div className="animate-pulse rounded-3xl sm:rounded-[2.5rem] bg-slate-200 dark:bg-slate-800 h-96" />
+          <div className="animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800 h-96" />
+          <div className="animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800 h-96" />
         </div>
       </div>
     );
@@ -1173,31 +1173,47 @@ export default function AdminDashboard() {
   if (!data && error) return <div className="p-8 text-red-500">{error}</div>;
   if (!data) return null;
 
+  const adminTabs = [
+    { id: 'approvals', label: t('approvals'), icon: ShieldCheck, badge: pendingApprovals },
+    { id: 'changes', label: t('changes'), icon: Clock, badge: pendingChangeRequests },
+    { id: 'users', label: t('users'), icon: UsersRound },
+    // Freight charged twice, and the same tile entered as two products.
+    // Both are things to go and fix, which is what this page is for, and
+    // they keep the names they had on the analytics page.
+    ...(canViewAnalytics ? [
+      { id: 'freight', label: ta('tabFreight'), icon: Truck },
+      { id: 'duplicates', label: ta('tabDuplicates'), icon: Copy },
+    ] : []),
+    // Branches are company setup, not user admin — its own tab rather
+    // than buried in the users section.
+    ...(canManageUsers ? [{ id: 'branches', label: language === 'hi' ? 'शाखाएँ' : 'Branches', icon: Building2 }] : []),
+  ];
+
   return (
     <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
       <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
         <div className="space-y-2">
-          <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
+          <nav className="flex items-center flex-wrap gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
             <span className="text-slate-400">Stock</span>
-            <ChevronRight className="h-3 w-3 opacity-50" />
+            <ChevronRight className="h-3 w-3 text-slate-300 dark:text-slate-600" />
             <span className="text-slate-900 dark:text-white">{t('adminTitle')}</span>
           </nav>
-          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-            <span className="text-brand-primary">{t('adminTitle').split(' ')[0]}</span> {t('adminTitle').split(' ')[1] || 'Hub'}
+          <h1 className="page-title">
+            {t('adminTitle')}
           </h1>
         </div>
 
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowInsights(!showInsights)}
-            className={`flex items-center justify-center p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/5 hover:shadow-md transition-all active:scale-95 ${showInsights ? 'text-brand-primary' : 'text-slate-400'}`}
+            className={`flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card hover:bg-muted transition-colors ${showInsights ? 'text-brand-primary' : 'text-slate-500'}`}
             title={t('toggleInsights')}
           >
             <Activity className="h-5 w-5" />
           </button>
           <button
             onClick={() => refreshDashboard()}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-primary text-white text-xs font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-sm active:scale-95"
+            className="flex h-9 items-center justify-center gap-2 px-3.5 rounded-lg border border-border bg-card text-slate-700 dark:text-slate-200 text-[13px] font-medium hover:bg-muted transition-colors"
           >
             <FileText className="h-4 w-4" />
             {t('syncLogs')}
@@ -1221,24 +1237,10 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Same strip as the dashboard and analytics: below sm only the active tab
-          keeps its label, the rest collapse to icon circles. */}
-      <div className="flex w-full min-w-0 items-center gap-1 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 p-1 scrollbar-none dark:border-white/5 dark:bg-slate-900/40 sm:w-fit sm:gap-0 sm:overflow-x-auto">
-        {[
-          { id: 'approvals', label: t('approvals'), icon: ShieldCheck, badge: pendingApprovals },
-          { id: 'changes', label: t('changes'), icon: Clock, badge: pendingChangeRequests },
-          { id: 'users', label: t('users'), icon: UsersRound },
-          // Freight charged twice, and the same tile entered as two products.
-          // Both are things to go and fix, which is what this page is for, and
-          // they keep the names they had on the analytics page.
-          ...(canViewAnalytics ? [
-            { id: 'freight', label: ta('tabFreight'), icon: Truck },
-            { id: 'duplicates', label: ta('tabDuplicates'), icon: Copy },
-          ] : []),
-          // Branches are company setup, not user admin — its own tab rather
-          // than buried in the users section.
-          ...(canManageUsers ? [{ id: 'branches', label: language === 'hi' ? 'शाखाएँ' : 'Branches', icon: Building2 }] : []),
-        ].map((tab) => {
+      {/* Same strip as the dashboard and analytics: below sm, equal columns with
+          the icon over its label (see tabButtonClass). */}
+      <div className={tabTrackClass(adminTabs.length)}>
+        {adminTabs.map((tab) => {
           const isActive = mobileSection === tab.id;
           const Icon = tab.icon;
           return (
@@ -1248,17 +1250,17 @@ export default function AdminDashboard() {
               onClick={() => setMobileSection(tab.id)}
               aria-label={tab.badge ? `${tab.label} (${tab.badge})` : tab.label}
               aria-current={isActive ? 'true' : undefined}
-              className={`${tabButtonClass(isActive)} relative`}
+              className={tabButtonClass(isActive, adminTabs.length)}
             >
               <Icon className="h-4 w-4 shrink-0 sm:hidden" />
-              <span className={`overflow-hidden transition-all duration-300 ease-out sm:max-w-none sm:opacity-100 ${isActive ? 'max-w-[12rem] opacity-100' : 'max-w-0 opacity-0'}`}>
+              <span className="line-clamp-2 min-w-0 text-center sm:whitespace-nowrap">
                 {tab.label}
               </span>
               {/* Waiting work, shown as a count where there is room and a dot
                   where the tab has collapsed to an icon. */}
               {tab.badge ? (
                 <>
-                  <span className="ml-1.5 hidden rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] leading-none text-amber-600 dark:text-amber-400 sm:inline-block">{tab.badge}</span>
+                  <span className="ml-1.5 hidden rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[11px] leading-none text-amber-600 dark:text-amber-400 sm:inline-block">{tab.badge}</span>
                   <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 sm:hidden" />
                 </>
               ) : null}
@@ -1276,46 +1278,46 @@ export default function AdminDashboard() {
               insight={t('inboundQueueInsight')}
               showInsight={showInsights}
             >
-              <div className="hidden md:block overflow-x-auto rounded-3xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
+              <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
                 <table className="w-full text-left text-sm whitespace-nowrap">
-                  <thead className="sticky top-0 z-20 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xl">
-                    <tr className="border-b border-slate-200/60 dark:border-white/5">
-                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('date')}</th>
-                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Shipment & Maintainer</th>
-                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Supplier & Transport</th>
-                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Quantities</th>
-                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
+                  <thead className="sticky top-0 z-20 bg-muted">
+                    <tr className="border-b border-border">
+                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('date')}</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Shipment & Maintainer</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Supplier & Transport</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Quantities</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                  <tbody className="divide-y divide-border">
                     {arrivalPagination.rows.map((item) => (
                       <tr
                         key={item.id}
-                        className="group cursor-pointer transition-all duration-300 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 odd:bg-white even:bg-slate-50/70 dark:odd:bg-slate-900 dark:even:bg-slate-900/70"
+                        className="group cursor-pointer transition-colors duration-100 hover:bg-muted/60"
                         onClick={() => openShipmentPreview('arrival', item)}
                       >
-                        <td className="px-4 py-3 text-slate-900 dark:text-slate-100 font-bold text-xs">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-2.5 text-slate-900 dark:text-slate-100 font-bold text-xs">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</td>
+                        <td className="px-4 py-2.5">
                           <div className="flex flex-col gap-1">
-                            <span className="w-fit bg-brand-primary/5 px-2 py-0.5 rounded border border-brand-primary/20 font-black text-brand-primary dark:text-orange-400 text-[10px]">{item.shipment_number}</span>
-                            <span className="text-slate-500 dark:text-slate-400 text-[9px] uppercase font-bold tracking-widest">{item.maintainer_name || '-'}</span>
+                            <span className="w-fit bg-brand-primary/5 px-2 py-0.5 rounded border border-brand-primary/20 font-bold text-brand-primary dark:text-orange-400 text-[11px]">{item.shipment_number}</span>
+                            <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">{item.maintainer_name || '-'}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-2.5">
                           <div className="flex flex-col gap-1">
                             <span className="text-slate-900 dark:text-slate-100 font-bold text-xs truncate max-w-[150px]">{item.supplier_name || '—'}</span>
-                            <span className="text-slate-500 dark:text-slate-400 text-[9px] uppercase font-bold tracking-widest">{item.truck_license_plate || '—'}</span>
+                            <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">{item.truck_license_plate || '—'}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-2.5">
                           <div className="flex flex-col gap-1">
-                            {Number(item.total_bag_qty) > 0 && <span className="text-amber-600 dark:text-amber-400 font-black text-xs font-sans">{item.total_bag_qty} <span className="text-[9px] uppercase tracking-widest">Bags</span></span>}
-                            {Number(item.total_sqft_qty) > 0 && <span className="text-sky-600 dark:text-sky-400 font-black text-xs font-sans">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-[9px] uppercase tracking-widest">Sqft</span></span>}
-                            {Number(item.total_whole_qty) > 0 && <span className="text-slate-900 dark:text-slate-100 font-black text-xs font-sans">{item.total_whole_qty} <span className="text-[9px] text-slate-400 uppercase tracking-widest">Whole</span></span>}
-                            {Number(item.total_broken_qty) > 0 && <span className="text-rose-500 font-black text-xs font-sans">{item.total_broken_qty} <span className="text-[9px] text-rose-400 uppercase tracking-widest">Broken</span></span>}
+                            {Number(item.total_bag_qty) > 0 && <span className="text-amber-600 dark:text-amber-400 font-bold text-xs font-sans">{item.total_bag_qty} <span className="text-xs">Bags</span></span>}
+                            {Number(item.total_sqft_qty) > 0 && <span className="text-sky-600 dark:text-sky-400 font-bold text-xs font-sans">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-xs">Sqft</span></span>}
+                            {Number(item.total_whole_qty) > 0 && <span className="text-slate-900 dark:text-slate-100 font-bold text-xs font-sans">{item.total_whole_qty} <span className="text-xs text-slate-400">Whole</span></span>}
+                            {Number(item.total_broken_qty) > 0 && <span className="text-rose-700 dark:text-rose-400 font-semibold text-xs font-sans">{item.total_broken_qty} <span className="font-normal">Broken</span></span>}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-4 py-2.5 text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
@@ -1357,7 +1359,7 @@ export default function AdminDashboard() {
                       </tr>
                     ))}
                     {arrivalPagination.total === 0 && (
-                      <tr><td colSpan="5" className="px-6 py-8 text-center text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] italic">{t('noPending')}</td></tr>
+                      <tr><td colSpan="5" className="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">{t('noPending')}</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -1369,30 +1371,30 @@ export default function AdminDashboard() {
                   <div
                     key={`arrival-mob-${item.id}`}
                     onClick={() => openShipmentPreview('arrival', item)}
-                    className="p-5 rounded-2xl border border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-slate-900/10 space-y-4 active:scale-[0.98] transition-transform"
+                    className="p-5 rounded-xl border border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-slate-900/10 space-y-4 active:scale-[0.98] transition-transform"
                   >
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('date')}</p>
-                        <p className="text-xs font-black text-slate-900 dark:text-white">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</p>
+                        <p className="text-xs font-medium text-slate-400 mb-1">{t('date')}</p>
+                        <p className="text-xs font-bold text-slate-900 dark:text-white">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Source</p>
+                        <p className="text-xs font-medium text-slate-400 mb-1">Source</p>
                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 max-w-[120px] truncate">{item.supplier_name || '—'}</p>
                       </div>
                     </div>
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('shipmentNo')} & Maintainer</p>
-                        <p className="text-sm font-black text-brand-primary dark:text-orange-400 mb-1">{item.shipment_number}</p>
-                        <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{item.maintainer_name || '-'}</p>
+                        <p className="text-xs font-medium text-slate-400 mb-1">{t('shipmentNo')} & Maintainer</p>
+                        <p className="text-sm font-bold text-brand-primary dark:text-orange-400 mb-1">{item.shipment_number}</p>
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{item.maintainer_name || '-'}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Quantities</p>
-                        {Number(item.total_bag_qty) > 0 && <p className="text-xs font-black text-amber-600 dark:text-amber-400">{item.total_bag_qty} Bags</p>}
-                        {Number(item.total_sqft_qty) > 0 && <p className="text-xs font-black text-sky-600 dark:text-sky-400">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} Sqft</p>}
-                        {Number(item.total_whole_qty) > 0 && <p className="text-xs font-black text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>}
-                        {Number(item.total_broken_qty) > 0 && <p className="text-xs font-black text-rose-500">{item.total_broken_qty} Broken</p>}
+                        <p className="text-xs font-medium text-slate-400 mb-1">Quantities</p>
+                        {Number(item.total_bag_qty) > 0 && <p className="text-xs font-bold text-amber-600 dark:text-amber-400">{item.total_bag_qty} Bags</p>}
+                        {Number(item.total_sqft_qty) > 0 && <p className="text-xs font-bold text-sky-600 dark:text-sky-400">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} Sqft</p>}
+                        {Number(item.total_whole_qty) > 0 && <p className="text-xs font-bold text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>}
+                        {Number(item.total_broken_qty) > 0 && <p className="text-xs font-bold text-rose-500">{item.total_broken_qty} Broken</p>}
                       </div>
                     </div>
                     <div className="flex gap-2 pt-2">
@@ -1414,7 +1416,7 @@ export default function AdminDashboard() {
                           promptApproveShipment('inbound-shipments', item);
                         }}
                         disabled={actionLoading === `inbound-shipments-${item.id}-approve`}
-                        className="flex-1 h-10 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20"
+                        className="flex-1 h-10 flex items-center justify-center gap-2 rounded-lg bg-emerald-600 text-white text-[13px] font-semibold"
                       >
                         <ShieldCheck className="h-4 w-4" /> Approve
                       </button>
@@ -1425,7 +1427,7 @@ export default function AdminDashboard() {
                           promptRejectShipment('inbound-shipments', item);
                         }}
                         disabled={actionLoading === `inbound-shipments-${item.id}-reject`}
-                        className="h-10 px-4 flex items-center gap-2 rounded-xl bg-rose-500/10 text-rose-600 text-[10px] font-black uppercase tracking-widest"
+                        className="h-10 px-4 flex items-center gap-2 rounded-lg bg-rose-500/10 text-rose-600 text-[13px] font-semibold"
                       >
                         <X className="h-4 w-4" /> Reject
                       </button>
@@ -1433,7 +1435,7 @@ export default function AdminDashboard() {
                   </div>
                 ))}
                 {arrivalPagination.total === 0 && (
-                  <div className="p-8 text-center text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] italic bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">{t('noPending')}</div>
+                  <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400 rounded-lg border border-dashed border-border">{t('noPending')}</div>
                 )}
               </div>
               <PaginationControls
@@ -1454,46 +1456,46 @@ export default function AdminDashboard() {
                 title="Cancelled Inbound Entries"
                 subtitle="Manage and delete cancelled inbound shipments"
               >
-                <div className="hidden md:block overflow-x-auto rounded-3xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
+                <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
                   <table className="w-full text-left text-sm whitespace-nowrap">
-                    <thead className="sticky top-0 z-20 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xl">
-                      <tr className="border-b border-slate-200/60 dark:border-white/5">
-                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('date')}</th>
-                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Shipment & Maintainer</th>
-                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Supplier & Transport</th>
-                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Quantities</th>
-                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
+                    <thead className="sticky top-0 z-20 bg-muted">
+                      <tr className="border-b border-border">
+                        <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('date')}</th>
+                        <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Shipment & Maintainer</th>
+                        <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Supplier & Transport</th>
+                        <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Quantities</th>
+                        <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                    <tbody className="divide-y divide-border">
                       {cancelledArrivalPagination.rows.map((item) => (
                         <tr
                           key={item.id}
-                          className="group cursor-pointer transition-all duration-300 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 odd:bg-white even:bg-slate-50/70 dark:odd:bg-slate-900 dark:even:bg-slate-900/70"
+                          className="group cursor-pointer transition-colors duration-100 hover:bg-muted/60"
                           onClick={() => openShipmentPreview('arrival', item)}
                         >
-                          <td className="px-4 py-3 text-slate-900 dark:text-slate-100 font-bold text-xs">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-2.5 text-slate-900 dark:text-slate-100 font-bold text-xs">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</td>
+                          <td className="px-4 py-2.5">
                             <div className="flex flex-col gap-1">
-                              <span className="w-fit bg-amber-500/5 px-2 py-0.5 rounded border border-amber-500/20 font-black text-amber-600 dark:text-amber-400 text-[10px]">{item.shipment_number}</span>
-                              <span className="text-slate-500 dark:text-slate-400 text-[9px] uppercase font-bold tracking-widest">{item.maintainer_name || '-'}</span>
+                              <span className="w-fit bg-amber-500/5 px-2 py-0.5 rounded border border-amber-500/20 font-bold text-amber-600 dark:text-amber-400 text-[11px]">{item.shipment_number}</span>
+                              <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">{item.maintainer_name || '-'}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-2.5">
                             <div className="flex flex-col gap-1">
                               <span className="text-slate-900 dark:text-slate-100 font-bold text-xs truncate max-w-[150px]">{item.supplier_name || '—'}</span>
-                              <span className="text-slate-500 dark:text-slate-400 text-[9px] uppercase font-bold tracking-widest">{item.truck_license_plate || '—'}</span>
+                              <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">{item.truck_license_plate || '—'}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-2.5">
                             <div className="flex flex-col gap-1">
                               {Number(item.total_sqft_qty || 0) > 0
-                                ? <span className="text-sky-600 dark:text-sky-400 font-black text-xs font-sans">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-[9px] uppercase tracking-widest">Sqft</span></span>
-                                : <span className="text-slate-900 dark:text-slate-100 font-black text-xs font-sans">{item.total_whole_qty} <span className="text-[9px] text-slate-400 uppercase tracking-widest">Whole</span></span>}
-                              {Number(item.total_broken_qty) > 0 && <span className="text-rose-500 font-black text-xs font-sans">{item.total_broken_qty} <span className="text-[9px] text-rose-400 uppercase tracking-widest">Broken</span></span>}
+                                ? <span className="text-sky-600 dark:text-sky-400 font-bold text-xs font-sans">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-xs">Sqft</span></span>
+                                : <span className="text-slate-900 dark:text-slate-100 font-bold text-xs font-sans">{item.total_whole_qty} <span className="text-xs text-slate-400">Whole</span></span>}
+                              {Number(item.total_broken_qty) > 0 && <span className="text-rose-700 dark:text-rose-400 font-semibold text-xs font-sans">{item.total_broken_qty} <span className="font-normal">Broken</span></span>}
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-right">
+                          <td className="px-4 py-2.5 text-right">
                             <button
                               type="button"
                               onClick={(event) => {
@@ -1519,27 +1521,27 @@ export default function AdminDashboard() {
                     <div
                       key={`cancelled-mob-${item.id}`}
                       onClick={() => openShipmentPreview('arrival', item)}
-                      className="p-5 rounded-2xl border border-amber-200 dark:border-amber-900/30 bg-amber-50/30 dark:bg-amber-900/10 space-y-4 active:scale-[0.98] transition-transform"
+                      className="p-5 rounded-xl border border-amber-200 dark:border-amber-900/30 bg-amber-50/30 dark:bg-amber-900/10 space-y-4 active:scale-[0.98] transition-transform"
                     >
                       <div className="flex justify-between items-start mb-4">
                         <div>
-                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('date')}</p>
-                          <p className="text-xs font-black text-slate-900 dark:text-white">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</p>
+                          <p className="text-xs font-medium text-slate-400 mb-1">{t('date')}</p>
+                          <p className="text-xs font-bold text-slate-900 dark:text-white">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</p>
                         </div>
                         <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">Cancelled</Badge>
                       </div>
                       <div className="flex justify-between items-start">
                         <div>
-                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('shipmentNo')} & Maintainer</p>
-                          <p className="text-sm font-black text-amber-600 dark:text-amber-400 mb-1">{item.shipment_number}</p>
-                          <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{item.maintainer_name || '-'}</p>
+                          <p className="text-xs font-medium text-slate-400 mb-1">{t('shipmentNo')} & Maintainer</p>
+                          <p className="text-sm font-bold text-amber-600 dark:text-amber-400 mb-1">{item.shipment_number}</p>
+                          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{item.maintainer_name || '-'}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Source & Quantities</p>
+                          <p className="text-xs font-medium text-slate-400 mb-1">Source & Quantities</p>
                           <p className="text-xs font-bold text-slate-700 dark:text-slate-300 max-w-[120px] truncate mb-1">{item.supplier_name || '—'}</p>
                           {Number(item.total_sqft_qty || 0) > 0
-                          ? <p className="text-xs font-black text-sky-600 dark:text-sky-400">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} Sqft</p>
-                          : <p className="text-xs font-black text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>}
+                          ? <p className="text-xs font-bold text-sky-600 dark:text-sky-400">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} Sqft</p>
+                          : <p className="text-xs font-bold text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>}
                         </div>
                       </div>
                       <div className="flex gap-2 pt-2">
@@ -1550,7 +1552,7 @@ export default function AdminDashboard() {
                             handleShipmentAction('inbound-shipments', item.id, 'delete', null, { status: 'cancelled' });
                           }}
                           disabled={actionLoading === `inbound-shipments-${item.id}-delete`}
-                          className="flex-1 h-10 flex items-center justify-center gap-2 rounded-xl bg-red-600 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-500/20"
+                          className="flex-1 h-10 flex items-center justify-center gap-2 rounded-lg bg-red-600 text-white text-[13px] font-semibold"
                         >
                           <X className="h-4 w-4" /> Delete
                         </button>
@@ -1577,46 +1579,46 @@ export default function AdminDashboard() {
               insight={t('outboundQueueInsight')}
               showInsight={showInsights}
             >
-              <div className="hidden md:block overflow-x-auto rounded-3xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
+              <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
                 <table className="w-full text-left text-sm whitespace-nowrap">
-                  <thead className="sticky top-0 z-20 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xl">
-                    <tr className="border-b border-slate-200/60 dark:border-white/5">
-                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('date')}</th>
-                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Dispatch & Driver</th>
-                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Customer & Value</th>
-                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Quantities</th>
-                      <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
+                  <thead className="sticky top-0 z-20 bg-muted">
+                    <tr className="border-b border-border">
+                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('date')}</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Dispatch & Driver</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Customer & Value</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Quantities</th>
+                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                  <tbody className="divide-y divide-border">
                     {dispatchPagination.rows.map((item) => (
                       <tr
                         key={item.id}
-                        className="group cursor-pointer transition-all duration-300 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 odd:bg-white even:bg-slate-50/70 dark:odd:bg-slate-900 dark:even:bg-slate-900/70"
+                        className="group cursor-pointer transition-colors duration-100 hover:bg-muted/60"
                         onClick={() => openShipmentPreview('dispatch', item)}
                       >
-                        <td className="px-4 py-3 text-slate-900 dark:text-slate-100 font-bold text-xs">{formatDateTime(item.dispatch_date).split(',')[0]}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-2.5 text-slate-900 dark:text-slate-100 font-bold text-xs">{formatDateTime(item.dispatch_date).split(',')[0]}</td>
+                        <td className="px-4 py-2.5">
                           <div className="flex flex-col gap-1">
-                            <span className="w-fit bg-brand-secondary/5 px-2 py-0.5 rounded border border-brand-secondary/20 font-black text-brand-secondary dark:text-indigo-400 text-[10px]">{item.shipment_number}</span>
-                            <span className="text-slate-500 dark:text-slate-400 text-[9px] uppercase font-bold tracking-widest">{item.driver_name || '-'}</span>
+                            <span className="w-fit bg-brand-secondary/5 px-2 py-0.5 rounded border border-brand-secondary/20 font-bold text-brand-secondary dark:text-indigo-400 text-[11px]">{item.shipment_number}</span>
+                            <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">{item.driver_name || '-'}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-2.5">
                           <div className="flex flex-col gap-1">
                             <span className="text-slate-900 dark:text-slate-100 font-bold text-xs truncate max-w-[150px]">{item.customer_name || '—'}</span>
-                            {Number(item.total_selling_price_excl) > 0 && <span className="text-emerald-600 dark:text-emerald-400 text-[10px] uppercase font-bold tracking-widest">₹{Number(item.total_selling_price_excl).toLocaleString('en-IN')}</span>}
+                            {Number(item.total_selling_price_excl) > 0 && <span className="text-emerald-600 dark:text-emerald-400 text-xs font-semibold">₹{Number(item.total_selling_price_excl).toLocaleString('en-IN')}</span>}
                           </div>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-2.5">
                           <div className="flex flex-col gap-1">
                             {Number(item.total_sqft_qty || 0) > 0
-                                ? <span className="text-sky-600 dark:text-sky-400 font-black text-xs font-sans">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-[9px] uppercase tracking-widest">Sqft</span></span>
-                                : <span className="text-slate-900 dark:text-slate-100 font-black text-xs font-sans">{item.total_whole_qty} <span className="text-[9px] text-slate-400 uppercase tracking-widest">Whole</span></span>}
-                            {Number(item.total_broken_qty) > 0 && <span className="text-rose-500 font-black text-xs font-sans">{item.total_broken_qty} <span className="text-[9px] text-rose-400 uppercase tracking-widest">Broken</span></span>}
+                                ? <span className="text-sky-600 dark:text-sky-400 font-bold text-xs font-sans">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-xs">Sqft</span></span>
+                                : <span className="text-slate-900 dark:text-slate-100 font-bold text-xs font-sans">{item.total_whole_qty} <span className="text-xs text-slate-400">Whole</span></span>}
+                            {Number(item.total_broken_qty) > 0 && <span className="text-rose-700 dark:text-rose-400 font-semibold text-xs font-sans">{item.total_broken_qty} <span className="font-normal">Broken</span></span>}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-4 py-2.5 text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
@@ -1658,7 +1660,7 @@ export default function AdminDashboard() {
                       </tr>
                     ))}
                     {dispatchPagination.total === 0 && (
-                      <tr><td colSpan="5" className="px-6 py-8 text-center text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] italic">{t('noPending')}</td></tr>
+                      <tr><td colSpan="5" className="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">{t('noPending')}</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -1670,30 +1672,30 @@ export default function AdminDashboard() {
                   <div
                     key={`dispatch-mob-${item.id}`}
                     onClick={() => openShipmentPreview('dispatch', item)}
-                    className="p-5 rounded-2xl border border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-slate-900/10 space-y-4 active:scale-[0.98] transition-transform"
+                    className="p-5 rounded-xl border border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-slate-900/10 space-y-4 active:scale-[0.98] transition-transform"
                   >
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('date')}</p>
-                        <p className="text-xs font-black text-slate-900 dark:text-white">{formatDateTime(item.dispatch_date).split(',')[0]}</p>
+                        <p className="text-xs font-medium text-slate-400 mb-1">{t('date')}</p>
+                        <p className="text-xs font-bold text-slate-900 dark:text-white">{formatDateTime(item.dispatch_date).split(',')[0]}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Customer</p>
+                        <p className="text-xs font-medium text-slate-400 mb-1">Customer</p>
                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 max-w-[120px] truncate">{item.customer_name || '—'}</p>
                       </div>
                     </div>
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('dispatchNo')} & {t('driver')}</p>
-                        <p className="text-sm font-black text-brand-secondary dark:text-indigo-400 mb-1">{item.shipment_number}</p>
-                        <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{item.driver_name || '-'}</p>
+                        <p className="text-xs font-medium text-slate-400 mb-1">{t('dispatchNo')} & {t('driver')}</p>
+                        <p className="text-sm font-bold text-brand-secondary dark:text-indigo-400 mb-1">{item.shipment_number}</p>
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{item.driver_name || '-'}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Quantities</p>
+                        <p className="text-xs font-medium text-slate-400 mb-1">Quantities</p>
                         {Number(item.total_sqft_qty || 0) > 0
-                          ? <p className="text-xs font-black text-sky-600 dark:text-sky-400">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} Sqft</p>
-                          : <p className="text-xs font-black text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>}
-                        {Number(item.total_broken_qty) > 0 && <p className="text-xs font-black text-rose-500">{item.total_broken_qty} Broken</p>}
+                          ? <p className="text-xs font-bold text-sky-600 dark:text-sky-400">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} Sqft</p>
+                          : <p className="text-xs font-bold text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>}
+                        {Number(item.total_broken_qty) > 0 && <p className="text-xs font-bold text-rose-500">{item.total_broken_qty} Broken</p>}
                       </div>
                     </div>
                     <div className="flex gap-2 pt-2">
@@ -1715,7 +1717,7 @@ export default function AdminDashboard() {
                           promptApproveShipment('outbound-shipments', item);
                         }}
                         disabled={actionLoading === `outbound-shipments-${item.id}-approve`}
-                        className="flex-1 h-10 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20"
+                        className="flex-1 h-10 flex items-center justify-center gap-2 rounded-lg bg-emerald-600 text-white text-[13px] font-semibold"
                       >
                         <ShieldCheck className="h-4 w-4" /> Approve
                       </button>
@@ -1726,7 +1728,7 @@ export default function AdminDashboard() {
                           promptRejectShipment('outbound-shipments', item);
                         }}
                         disabled={actionLoading === `outbound-shipments-${item.id}-reject`}
-                        className="h-10 px-4 flex items-center gap-2 rounded-xl bg-rose-500/10 text-rose-600 text-[10px] font-black uppercase tracking-widest"
+                        className="h-10 px-4 flex items-center gap-2 rounded-lg bg-rose-500/10 text-rose-600 text-[13px] font-semibold"
                       >
                         <X className="h-4 w-4" /> Reject
                       </button>
@@ -1734,7 +1736,7 @@ export default function AdminDashboard() {
                   </div>
                 ))}
                 {dispatchPagination.total === 0 && (
-                  <div className="p-8 text-center text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] italic bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">{t('noPending')}</div>
+                  <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400 rounded-lg border border-dashed border-border">{t('noPending')}</div>
                 )}
               </div>
               <PaginationControls
@@ -1758,32 +1760,32 @@ export default function AdminDashboard() {
             insight={t('changeRequestsInsight')}
             showInsight={showInsights}
           >
-            <div id="change-requests-panel" className="hidden md:block overflow-x-auto rounded-3xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
+            <div id="change-requests-panel" className="hidden md:block overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
               <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="sticky top-0 z-20 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xl">
-                  <tr className="border-b border-slate-200/60 dark:border-white/5">
-                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('requestNo')}</th>
-                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('source')}</th>
-                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('type')}</th>
-                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('status')}</th>
-                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 text-right">{t('requestedBy')}</th>
+                <thead className="sticky top-0 z-20 bg-muted">
+                  <tr className="border-b border-border">
+                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('requestNo')}</th>
+                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('source')}</th>
+                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('type')}</th>
+                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('status')}</th>
+                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">{t('requestedBy')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                <tbody className="divide-y divide-border">
                   {changeRequestPagination.rows.map((requestRow) => (
                     <tr
                       key={requestRow.id}
-                      className={`group cursor-pointer transition-all duration-300 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 odd:bg-white even:bg-slate-50/70 dark:odd:bg-slate-900 dark:even:bg-slate-900/70 ${highlightedChangeRequestId === requestRow.id ? 'bg-brand-primary/10 ring-1 ring-brand-primary/40' : ''
+                      className={`group cursor-pointer transition-colors duration-100 hover:bg-muted/60 ${highlightedChangeRequestId === requestRow.id ? 'bg-brand-primary/10 ring-1 ring-brand-primary/40' : ''
                         }`}
                       onClick={() => openChangeRequestPreview(requestRow)}
                     >
-                      <td className="px-4 py-3 font-black text-brand-primary text-xs">
+                      <td className="px-4 py-2.5 font-bold text-brand-primary text-xs">
                         <span className="bg-brand-primary/5 px-2 py-1 rounded-md border border-brand-primary/20">{requestRow.request_number || `CR-${requestRow.id}`}</span>
                       </td>
-                      <td className="px-4 py-3 text-slate-900 dark:text-slate-100 font-bold text-xs">{requestRow.source_entity_type} #{requestRow.source_entity_id}</td>
-                      <td className="px-4 py-3 text-slate-900 dark:text-slate-100 font-black text-[10px] uppercase tracking-tighter">{requestRow.request_type}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black tracking-widest uppercase border ${getStatusVariant(requestRow.status) === 'approved' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
+                      <td className="px-4 py-2.5 text-slate-900 dark:text-slate-100 font-bold text-xs">{requestRow.source_entity_type} #{requestRow.source_entity_id}</td>
+                      <td className="px-4 py-2.5 text-slate-900 dark:text-slate-100 font-semibold text-xs">{requestRow.request_type}</td>
+                      <td className="px-4 py-2.5">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getStatusVariant(requestRow.status) === 'approved' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
                           getStatusVariant(requestRow.status) === 'pending' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
                             'bg-slate-500/10 text-slate-600 border-slate-500/20'
                           }`}>
@@ -1791,11 +1793,11 @@ export default function AdminDashboard() {
                           {requestRow.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right text-slate-500 dark:text-slate-400 font-black uppercase text-[10px] tracking-tight">{requestRow.requested_by_name || '—'}</td>
+                      <td className="px-4 py-2.5 text-right text-slate-500 dark:text-slate-400 font-medium text-xs">{requestRow.requested_by_name || '—'}</td>
                     </tr>
                   ))}
                   {changeRequestPagination.total === 0 && (
-                    <tr><td colSpan="5" className="px-6 py-8 text-center text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] italic">{t('noChangeRequests')}</td></tr>
+                    <tr><td colSpan="5" className="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">{t('noChangeRequests')}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -1807,17 +1809,17 @@ export default function AdminDashboard() {
                 <div
                   key={`cr-mob-${item.id}`}
                   onClick={() => openChangeRequestPreview(item)}
-                  className={`p-5 rounded-2xl border transition-all active:scale-[0.98] ${highlightedChangeRequestId === item.id
+                  className={`p-5 rounded-xl border transition-all active:scale-[0.98] ${highlightedChangeRequestId === item.id
                       ? 'border-brand-primary bg-brand-primary/5 ring-1 ring-brand-primary/20'
                       : 'border-slate-100 dark:border-white/5 bg-slate-50/30'
                     }`}
                 >
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">{t('requestNo')}</p>
-                      <p className="text-sm font-black text-brand-primary">{item.request_number || `CR-${item.id}`}</p>
+                      <p className="text-xs font-medium text-slate-400 mb-0.5">{t('requestNo')}</p>
+                      <p className="text-sm font-bold text-brand-primary">{item.request_number || `CR-${item.id}`}</p>
                     </div>
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black tracking-widest uppercase border ${getStatusVariant(item.status) === 'approved' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${getStatusVariant(item.status) === 'approved' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
                         getStatusVariant(item.status) === 'pending' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
                           'bg-slate-500/10 text-slate-600 border-slate-500/20'
                       }`}>
@@ -1826,22 +1828,22 @@ export default function AdminDashboard() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">{t('type')}</p>
-                      <p className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">{item.request_type}</p>
+                      <p className="text-xs font-medium text-slate-400 mb-0.5">{t('type')}</p>
+                      <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{item.request_type}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">{t('requestedBy')}</p>
-                      <p className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">{item.requested_by_name || '—'}</p>
+                      <p className="text-xs font-medium text-slate-400 mb-0.5">{t('requestedBy')}</p>
+                      <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{item.requested_by_name || '—'}</p>
                     </div>
                   </div>
                   <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/5">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">{t('source')}</p>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white uppercase">{item.source_entity_type} #{item.source_entity_id}</p>
+                    <p className="text-xs font-medium text-slate-400 mb-0.5">{t('source')}</p>
+                    <p className="text-xs font-semibold text-slate-900 dark:text-white">{item.source_entity_type} #{item.source_entity_id}</p>
                   </div>
                 </div>
               ))}
               {changeRequestPagination.total === 0 && (
-                <div className="p-8 text-center text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] italic bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">{t('noChangeRequests')}</div>
+                <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400 rounded-lg border border-dashed border-border">{t('noChangeRequests')}</div>
               )}
             </div>
             <PaginationControls
@@ -1897,7 +1899,7 @@ export default function AdminDashboard() {
                 <button
                   type="button"
                   onClick={() => setShowUserForm((current) => !current)}
-                  className="px-6 py-2 rounded-xl bg-brand-primary text-white text-[10px] font-black uppercase tracking-widest shadow-lg hover:brightness-110 active:scale-95 transition-all outline-none border-none"
+                  className="px-6 py-2 rounded-lg bg-brand-primary text-white text-[13px] font-semibold hover:brightness-110 active:scale-95 transition-all outline-none border-none"
                 >
                   {showUserForm ? (language === 'hi' ? 'फॉर्म बंद करें' : 'Close Form') : t('addUserContact')}
                 </button>
@@ -1905,42 +1907,42 @@ export default function AdminDashboard() {
             }
           >
             {canManageUsers && showUserForm && (
-              <div className="mb-8 p-5 sm:p-8 rounded-3xl sm:rounded-[2rem] bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800/50 animate-scale-in">
+              <div className="mb-8 p-5 sm:p-8 rounded-xl bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800/50 animate-scale-in">
                 <form onSubmit={handleSaveUser} className="space-y-8">
                   <div className="flex items-center gap-4 mb-6">
                     <div className="w-10 h-px bg-brand-primary/30" />
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-primary">{language === 'hi' ? 'ऑनबोर्डिंग प्रोटोकॉल' : 'Onboarding Protocol'}</h4>
+                    <h4 className="text-xs font-semibold text-brand-primary">{language === 'hi' ? 'ऑनबोर्डिंग प्रोटोकॉल' : 'Onboarding Protocol'}</h4>
                   </div>
 
                   {userFormNotice && (
-                    <div className={`p-4 rounded-2xl text-xs font-bold ring-1 ${userFormNotice.type === 'error' ? 'bg-rose-50 text-rose-600 ring-rose-200' : 'bg-emerald-50 text-emerald-600 ring-emerald-200'}`}>
+                    <div className={`p-4 rounded-xl text-xs font-bold ring-1 ${userFormNotice.type === 'error' ? 'bg-rose-50 text-rose-600 ring-rose-200' : 'bg-emerald-50 text-emerald-600 ring-emerald-200'}`}>
                       {userFormNotice.message}
                     </div>
                   )}
 
                   <div className="grid gap-6 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{t('name')}</Label>
+                      <Label className="text-xs font-medium text-slate-400 px-1">{t('name')}</Label>
                       <Input {...createUserForm.register('name')} className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold" placeholder="Full legal name" />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{t('phone')}</Label>
+                      <Label className="text-xs font-medium text-slate-400 px-1">{t('phone')}</Label>
                       <Input {...createUserForm.register('phone')} className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold" placeholder="10-digit primary contact" />
                     </div>
                   </div>
 
                   <div className="grid gap-6 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{t('email')}</Label>
+                      <Label className="text-xs font-medium text-slate-400 px-1">{t('email')}</Label>
                       <Input {...createUserForm.register('email')} type="email" className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold" placeholder="Official email address" />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{t('role')}</Label>
+                      <Label className="text-xs font-medium text-slate-400 px-1">{t('role')}</Label>
                       <Select
                         value={createUserForm.watch('role')}
                         onValueChange={(value) => createUserForm.setValue('role', value, { shouldDirty: true })}
                       >
-                        <SelectTrigger className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold">
+                        <SelectTrigger>
                           <SelectValue placeholder={t('role')} />
                         </SelectTrigger>
                         <SelectContent>
@@ -1953,7 +1955,7 @@ export default function AdminDashboard() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">
+                      <Label className="text-xs font-medium text-slate-400 px-1">
                         {language === 'hi' ? 'मुख्य शाखा' : 'Home Branch'}
                       </Label>
                       {/* Optional. Blank means no fixed branch, and the punch
@@ -1964,7 +1966,7 @@ export default function AdminDashboard() {
                           createUserForm.setValue('defaultLocationId', value === 'none' ? '' : value, { shouldDirty: true })
                         }
                       >
-                        <SelectTrigger className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold">
+                        <SelectTrigger>
                           <SelectValue placeholder={language === 'hi' ? 'कोई नहीं' : 'No home branch'} />
                         </SelectTrigger>
                         <SelectContent>
@@ -1979,7 +1981,7 @@ export default function AdminDashboard() {
 
                   {createUserForm.watch('role') === 'salesperson' && (
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{language === 'hi' ? 'डिवीज़न' : 'Divisions'}</Label>
+                      <Label className="text-xs font-medium text-slate-400 px-1">{language === 'hi' ? 'डिवीज़न' : 'Divisions'}</Label>
                       <div className="flex flex-wrap gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                         {['Adhesive', ...(suggestions?.divisionName || []).filter((n) => n !== 'Adhesive')].map((name) => {
                           const selected = (createUserForm.watch('divisions') || []).includes(name);
@@ -2007,7 +2009,7 @@ export default function AdminDashboard() {
 
                   <div className="grid gap-6 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{t('password')}</Label>
+                      <Label className="text-xs font-medium text-slate-400 px-1">{t('password')}</Label>
                       <div className="relative">
                         <Input {...createUserForm.register('password')} type={showPrimaryPassword ? 'text' : 'password'} className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold pr-12" placeholder="Secure token" />
                         <button type="button" onClick={() => setShowPrimaryPassword(!showPrimaryPassword)} title={showPrimaryPassword ? 'Hide password' : 'Show password'} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
@@ -2016,7 +2018,7 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{t('confirmPassword')}</Label>
+                      <Label className="text-xs font-medium text-slate-400 px-1">{t('confirmPassword')}</Label>
                       <div className="relative">
                         <Input value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} type={showConfirmPassword ? 'text' : 'password'} className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold pr-12" placeholder="Verify token" />
                         <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} title={showConfirmPassword ? 'Hide password' : 'Show password'} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
@@ -2030,7 +2032,7 @@ export default function AdminDashboard() {
                     <button
                       type="submit"
                       disabled={actionLoading === 'user-save'}
-                      className="flex-1 h-14 rounded-2xl bg-slate-900 transition-all hover:bg-black text-white text-xs font-black uppercase tracking-widest disabled:opacity-50"
+                      className="flex-1 h-14 rounded-lg bg-slate-900 transition-all hover:bg-black text-white text-sm font-semibold disabled:opacity-50"
                     >
                        {actionLoading === 'user-save' ? (language === 'hi' ? 'प्रसंस्करण...' : 'Processing...') : (language === 'hi' ? 'पहचान अधिकृत करें' : 'Authorize Identity')}
                     </button>
@@ -2044,7 +2046,7 @@ export default function AdminDashboard() {
                         setShowPrimaryPassword(false);
                         setShowConfirmPassword(false);
                       }}
-                      className="px-8 h-14 rounded-2xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 text-xs font-black uppercase tracking-widest transition-all"
+                      className="px-8 h-14 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 text-sm font-semibold transition-all"
                     >
                        {language === 'hi' ? 'रद्द करें' : 'Cancel'}
                     </button>
@@ -2054,49 +2056,49 @@ export default function AdminDashboard() {
                 </form>
               </div>
             )}
-            <div className="hidden md:block overflow-x-auto rounded-[2rem] border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
+            <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
               <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="sticky top-0 z-20 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xl">
-                  <tr className="border-b border-slate-200/60 dark:border-white/5">
-                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('user')}</th>
-                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('role')}</th>
-                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">{t('status')}</th>
-                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
+                <thead className="sticky top-0 z-20 bg-muted">
+                  <tr className="border-b border-border">
+                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('user')}</th>
+                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('role')}</th>
+                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('status')}</th>
+                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                <tbody className="divide-y divide-border">
                   {userPagination.rows.map((u) => (
                     <tr
                       key={u.id}
-                      className="group cursor-pointer transition-all duration-300 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 odd:bg-white even:bg-slate-50/70 dark:odd:bg-slate-900 dark:even:bg-slate-900/70"
+                      className="group cursor-pointer transition-colors duration-100 hover:bg-muted/60"
                       onClick={() => openUserPreview(u)}
                     >
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-2.5">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center font-black text-xs border border-brand-primary/20 shadow-sm transition-transform group-hover:scale-105">
+                          <div className="h-8 w-8 rounded-full bg-muted text-slate-700 dark:text-slate-200 flex items-center justify-center font-semibold text-xs">
                             {getInitials(u.full_name, u.email)}
                           </div>
                           <div className="min-w-0">
-                            <p className="font-black text-slate-900 dark:text-white tracking-tight leading-none mb-1 text-xs">{u.full_name || 'N/A'}</p>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{u.email}</p>
+                            <p className="font-medium text-slate-900 dark:text-white leading-tight text-sm">{u.full_name || 'N/A'}</p>
+                            <p className="text-xs font-medium text-slate-400">{u.email}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black tracking-widest uppercase border ${u.role === 'admin' ? 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20' :
-                          u.role === 'manager' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
-                            'bg-slate-500/10 text-slate-600 border-slate-500/20'
+                      <td className="px-4 py-2.5">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium capitalize border ${u.role === 'admin' ? 'bg-slate-900 text-white border-slate-900 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100' :
+                          u.role === 'manager' ? 'bg-card text-slate-800 border-slate-400 dark:text-slate-200 dark:border-slate-500' :
+                            'bg-card text-slate-600 border-border dark:text-slate-300'
                           }`}>
                           {u.role}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-2.5">
                         <div className="flex items-center gap-1.5">
-                          <span className={`w-1.5 h-1.5 rounded-full ${u.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
-                          <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">{u.is_active ? t('active') : t('inactive')}</span>
+                          <span className={`w-1.5 h-1.5 rounded-full ${u.is_active ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                          <span className="text-xs font-medium text-slate-500">{u.is_active ? t('active') : t('inactive')}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-2.5 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
@@ -2132,7 +2134,7 @@ export default function AdminDashboard() {
                     </tr>
                   ))}
                   {userPagination.total === 0 && (
-                    <tr><td colSpan="4" className="px-8 py-12 text-center text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] italic">{t('noUsersFound')}</td></tr>
+                    <tr><td colSpan="4" className="px-8 py-12 text-center text-sm text-slate-500 dark:text-slate-400">{t('noUsersFound')}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -2144,17 +2146,17 @@ export default function AdminDashboard() {
                 <div
                   key={`user-mob-${u.id}`}
                   onClick={() => openUserPreview(u)}
-                  className="p-5 rounded-2xl border border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-slate-900/10 space-y-4 active:scale-[0.98] transition-transform"
+                  className="p-5 rounded-xl border border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-slate-900/10 space-y-4 active:scale-[0.98] transition-transform"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-brand-primary/10 text-brand-primary flex items-center justify-center font-black text-sm border border-brand-primary/20 shadow-sm">
+                    <div className="h-12 w-12 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center font-bold text-sm border border-brand-primary/20 shadow-sm">
                       {getInitials(u.full_name, u.email)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-black text-slate-900 dark:text-white tracking-tight leading-none mb-1.5 truncate">{u.full_name || 'N/A'}</p>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">{u.email}</p>
+                      <p className="font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1.5 truncate">{u.full_name || 'N/A'}</p>
+                      <p className="text-xs font-medium text-slate-400 truncate">{u.email}</p>
                     </div>
-                    <span className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black tracking-widest uppercase border ${u.role === 'admin' ? 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20' :
+                    <span className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${u.role === 'admin' ? 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20' :
                       u.role === 'manager' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
                         'bg-slate-500/10 text-slate-600 border-slate-500/20'
                       }`}>
@@ -2163,8 +2165,8 @@ export default function AdminDashboard() {
                   </div>
                   <div className="flex items-center justify-between pt-2">
                     <div className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full ${u.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{u.is_active ? t('active') : t('inactive')}</span>
+                      <span className={`w-2 h-2 rounded-full ${u.is_active ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                      <span className="text-xs font-medium text-slate-500">{u.is_active ? t('active') : t('inactive')}</span>
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -2174,7 +2176,7 @@ export default function AdminDashboard() {
                           promptToggleUser(u);
                         }}
                         disabled={actionLoading === `user-${u.id}-update`}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border transition-all text-[9px] font-black uppercase tracking-widest ${u.is_active
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border transition-all text-[13px] font-semibold ${u.is_active
                             ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
                             : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
                           }`}
@@ -2190,7 +2192,7 @@ export default function AdminDashboard() {
                             handleDeleteUser(u.id);
                           }}
                           disabled={actionLoading === `user-${u.id}-delete`}
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500/10 text-rose-600 border border-rose-500/20 text-[9px] font-black uppercase tracking-widest"
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-rose-500/10 text-rose-600 border border-rose-500/20 text-[13px] font-semibold"
                         >
                           <X className="h-4 w-4" />
                           <span>Remove</span>
@@ -2201,7 +2203,7 @@ export default function AdminDashboard() {
                 </div>
               ))}
               {userPagination.total === 0 && (
-                <div className="p-8 text-center text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] italic bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">{t('noUsersFound')}</div>
+                <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400 rounded-lg border border-dashed border-border">{t('noUsersFound')}</div>
               )}
             </div>
             <PaginationControls
@@ -2219,14 +2221,14 @@ export default function AdminDashboard() {
       </div>
 
       {confirmModal.open && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full p-6 sm:p-8 animate-in zoom-in-95 duration-300">
-            <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight mb-2">{confirmModal.title}</h3>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-950/40 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full p-6 sm:p-8 animate-in zoom-in-95 duration-300">
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">{confirmModal.title}</h3>
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">{confirmModal.message}</p>
             <div className="flex items-center justify-end gap-3">
               <button
                 onClick={() => setConfirmModal({ ...confirmModal, open: false })}
-                className="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
+                className="px-6 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
               >
                 Cancel
               </button>
@@ -2235,10 +2237,10 @@ export default function AdminDashboard() {
                   confirmModal.onConfirm();
                   setConfirmModal({ ...confirmModal, open: false });
                 }}
-                className={`px-6 py-2.5 rounded-xl text-white font-black text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95 ${
-                  confirmModal.confirmVariant === 'rose' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-500/20' :
-                  confirmModal.confirmVariant === 'amber' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-500/20' :
-                  'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20'
+                className={`px-4 py-2 rounded-lg text-white font-semibold text-sm transition-colors ${
+                  confirmModal.confirmVariant === 'rose' ? 'bg-rose-600 hover:bg-rose-700' :
+                  confirmModal.confirmVariant === 'amber' ? 'bg-amber-600 hover:bg-amber-700' :
+                  'bg-emerald-600 hover:bg-emerald-700'
                 }`}
               >
                 {confirmModal.confirmText}
@@ -2255,48 +2257,41 @@ export default function AdminDashboard() {
         description={previewState.description}
         summary={
           previewState.loading ? (
-            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 animate-pulse">{t('loadingPreview')}</div>
+            <div className="text-xs font-medium text-slate-400 animate-pulse">{t('loadingPreview')}</div>
           ) : previewState.error ? (
-            <div className="text-[10px] font-black uppercase tracking-widest text-rose-500">{previewState.error}</div>
+            <div className="text-xs font-semibold text-rose-500">{previewState.error}</div>
           ) : null
         }
         sections={
           previewState.kind === 'change-request'
             ? [
               {
-                title: 'Core Logistics Logic',
+                title: 'Request',
                 children: (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {[
+                  <PreviewKeyValueGrid
+                    items={[
                       { label: 'Request ID', value: previewState.record?.request_number || `CR-${previewState.record?.id}`, isBold: true },
                       { label: 'Status', value: previewState.record?.status, isStatus: true },
-                      { label: 'Entity Source', value: `${previewState.record?.source_entity_type} #${previewState.record?.source_entity_id}` },
+                      { label: 'Entity', value: `${previewState.record?.source_entity_type} #${previewState.record?.source_entity_id}` },
                       { label: 'Priority', value: previewState.record?.priority || 'normal' },
-                      { label: 'Initiated By', value: previewState.record?.requested_by_name },
-                      { label: 'Timestamp', value: formatDateTime(previewState.record?.created_at) },
-                    ].map((item) => (
-                      <div key={item.label} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/50">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{item.label}</p>
-                        <p className={`text-xs ${item.isBold ? 'font-black text-brand-primary' : 'font-bold text-slate-900 dark:text-slate-100'}`}>
-                          {item.value}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
+                      { label: 'Requested by', value: previewState.record?.requested_by_name },
+                      { label: 'Created', value: formatDateTime(previewState.record?.created_at) },
+                    ]}
+                  />
                 ),
               },
             ]
             : previewState.kind === 'user'
               ? [
                 {
-                  title: 'Identity & Access',
+                  title: 'Profile',
                   children: (
                     <div className="space-y-6">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {[
+                      <PreviewKeyValueGrid
+                        items={[
                           { label: 'Full Name', value: previewState.record?.full_name, isBold: true },
                           { label: 'Email Address', value: previewState.record?.email },
-                          { label: 'Primary Contact', value: previewState.record?.phone_number },
+                          { label: 'Phone', value: previewState.record?.phone_number },
                           { label: 'Department', value: previewState.record?.department || 'Adhesive' },
                           {
                             label: 'Home Branch',
@@ -2304,22 +2299,12 @@ export default function AdminDashboard() {
                               branchOptions.find((b) => String(b.id) === String(previewState.record?.default_location_id))?.name
                               || 'No home branch',
                           },
-                          { label: 'Status', value: previewState.record?.is_active ? 'Active Identity' : 'Suspended' },
-                        ].map((item) => (
-                          <div key={item.label} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/50">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{item.label}</p>
-                            <p className={`text-xs ${item.isBold ? 'font-black text-brand-primary' : 'font-bold text-slate-900 dark:text-slate-100'}`}>
-                              {item.value}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
+                          { label: 'Status', value: previewState.record?.is_active ? 'Active' : 'Suspended' },
+                        ]}
+                      />
 
-                      <div className="p-6 rounded-3xl border border-slate-200/60 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/20">
-                        <div className="flex items-center gap-3 mb-6">
-                          <ShieldCheck className="h-5 w-5 text-brand-primary" />
-                          <h4 className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Permissions & Role Configuration</h4>
-                        </div>
+                      <div>
+                        <h4 className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Role & permissions</h4>
                         <form onSubmit={(e) => {
                           e.preventDefault();
                           const sells = previewUserForm.watch('role') === 'salesperson' || previewUserForm.watch('canSell') === true;
@@ -2348,7 +2333,7 @@ export default function AdminDashboard() {
                                 value={previewUserForm.watch('role') || 'stock_maintainer'}
                                 onValueChange={(value) => previewUserForm.setValue('role', value, { shouldDirty: true })}
                               >
-                                <SelectTrigger className="h-11 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                                <SelectTrigger>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -2371,7 +2356,7 @@ export default function AdminDashboard() {
                                   previewUserForm.setValue('defaultLocationId', value === 'none' ? '' : value, { shouldDirty: true })
                                 }
                               >
-                                <SelectTrigger className="h-11 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                                <SelectTrigger>
                                   <SelectValue placeholder="No home branch" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -2422,7 +2407,7 @@ export default function AdminDashboard() {
                               />
                               <span className="space-y-0.5">
                                 <span className="block text-xs font-bold text-slate-700 dark:text-slate-300">Also sells</span>
-                                <span className="block text-[10px] font-medium text-slate-400">
+                                <span className="block text-[11px] font-medium text-slate-400">
                                   Can be picked as the salesperson on a dispatch and sees their own performance. Keeps every existing permission.
                                 </span>
                               </span>
@@ -2431,7 +2416,7 @@ export default function AdminDashboard() {
 
                           {(previewUserForm.watch('role') === 'salesperson' || previewUserForm.watch('canSell') === true) && (
                             <div className="space-y-4">
-                              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Salesperson Targets</p>
+                              <p className="text-xs font-medium text-slate-400">Salesperson Targets</p>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                   <Label className={FORM_LABEL_CLASS}>Monthly Salary (₹)</Label>
@@ -2462,9 +2447,9 @@ export default function AdminDashboard() {
                           )}
 
                           <div className="space-y-4">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Permission Flags</p>
+                            <p className="text-xs font-medium text-slate-400">Permission Flags</p>
                             <div className="space-y-3">
-                              <div className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
+                              <div className="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
                                 <Checkbox
                                   checked={previewUserForm.watch('canViewDashboard') || false}
                                   onChange={(e) => previewUserForm.setValue('canViewDashboard', e.target.checked, { shouldDirty: true })}
@@ -2472,10 +2457,10 @@ export default function AdminDashboard() {
                                 />
                                 <label htmlFor="dashboard-flag" className="flex-1 cursor-pointer">
                                   <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Can See Dashboard</p>
-                                  <p className="text-[9px] text-slate-500 dark:text-slate-400">Access to analytics and dashboard features</p>
+                                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Access to analytics and dashboard features</p>
                                 </label>
                               </div>
-                              <div className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
+                              <div className="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
                                 <Checkbox
                                   checked={previewUserForm.watch('canManageUsers') || false}
                                   onChange={(e) => previewUserForm.setValue('canManageUsers', e.target.checked, { shouldDirty: true })}
@@ -2483,10 +2468,10 @@ export default function AdminDashboard() {
                                 />
                                 <label htmlFor="manage-users-flag" className="flex-1 cursor-pointer">
                                   <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Can Manage Users</p>
-                                  <p className="text-[9px] text-slate-500 dark:text-slate-400">Create, edit, and manage user accounts</p>
+                                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Create, edit, and manage user accounts</p>
                                 </label>
                               </div>
-                              <div className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
+                              <div className="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
                                 <Checkbox
                                   checked={previewUserForm.watch('canApproveChanges') || false}
                                   onChange={(e) => previewUserForm.setValue('canApproveChanges', e.target.checked, { shouldDirty: true })}
@@ -2494,7 +2479,7 @@ export default function AdminDashboard() {
                                 />
                                 <label htmlFor="approve-changes-flag" className="flex-1 cursor-pointer">
                                   <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Can Approve Changes</p>
-                                  <p className="text-[9px] text-slate-500 dark:text-slate-400">Approve shipments and change requests</p>
+                                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Approve shipments and change requests</p>
                                 </label>
                               </div>
                             </div>
@@ -2504,7 +2489,7 @@ export default function AdminDashboard() {
                             <button
                               type="submit"
                               disabled={actionLoading === `user-${previewState.record?.id}-update`}
-                              className="flex-1 py-3 rounded-xl bg-brand-primary text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-50 hover:brightness-110 transition-all"
+                              className="flex-1 py-3 rounded-lg bg-brand-primary text-white text-[13px] font-semibold disabled:opacity-50 hover:brightness-110 transition-all"
                             >
                               {actionLoading === `user-${previewState.record?.id}-update` ? 'Saving...' : 'Save Permissions'}
                             </button>
@@ -2521,7 +2506,7 @@ export default function AdminDashboard() {
                                 salary: previewState.record?.salary != null ? String(previewState.record.salary) : '',
                                 monthlySalesGoal: previewState.record?.monthly_sales_goal != null ? String(previewState.record.monthly_sales_goal) : '',
                               })}
-                              className="px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-300 text-[10px] font-black uppercase tracking-widest transition-all"
+                              className="px-6 py-3 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-300 text-[13px] font-semibold transition-all"
                             >
                               Reset
                             </button>
@@ -2529,17 +2514,17 @@ export default function AdminDashboard() {
                         </form>
                       </div>
 
-                      <div className="p-6 rounded-3xl border border-brand-primary/20 bg-brand-primary/5">
+                      <div className="p-6 rounded-xl border border-brand-primary/20 bg-brand-primary/5">
                         <div className="flex items-center gap-3 mb-4">
                           <ShieldCheck className="h-5 w-5 text-brand-primary" />
-                          <h4 className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Governance Override</h4>
+                          <h4 className="text-xs font-semibold text-brand-primary">Governance Override</h4>
                         </div>
                         <div className="flex items-center gap-3">
                           <button
                             type="button"
                             onClick={() => promptToggleUser(previewState.record)}
                             disabled={actionLoading === `user-${previewState.record?.id}-update` || previewState.record?.is_active}
-                            className="flex-1 py-3 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+                            className="flex-1 py-3 rounded-lg bg-emerald-600 text-white text-[13px] font-semibold disabled:opacity-50"
                           >
                             Restore Access
                           </button>
@@ -2547,7 +2532,7 @@ export default function AdminDashboard() {
                             type="button"
                             onClick={() => promptToggleUser(previewState.record)}
                             disabled={actionLoading === `user-${previewState.record?.id}-update` || !previewState.record?.is_active}
-                            className="flex-1 py-3 rounded-xl bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+                            className="flex-1 py-3 rounded-lg bg-amber-600 text-white text-[13px] font-semibold disabled:opacity-50"
                           >
                             Suspend Identity
                           </button>
@@ -2556,7 +2541,7 @@ export default function AdminDashboard() {
                           <button
                             type="button"
                             onClick={() => setResetPasswordModal({ open: true, email: previewState.record?.email || '', newPassword: '', confirm: '', loading: false, error: null, success: false })}
-                            className="w-full py-3 rounded-xl bg-slate-700 text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-600"
+                            className="w-full py-3 rounded-lg bg-slate-700 text-white text-[13px] font-semibold hover:bg-slate-600"
                           >
                             Reset Password
                           </button>
@@ -2579,9 +2564,9 @@ export default function AdminDashboard() {
                         { label: 'Approval State', value: previewState.record?.status || previewState.record?.approval_status },
                         { label: 'Net Volume', value: formatShipmentVolume(previewState.items) },
                       ].map((item) => (
-                        <div key={item.label} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/50">
-                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{item.label}</p>
-                          <p className={`text-xs ${item.isBold ? 'font-black text-brand-primary' : 'font-bold text-slate-900 dark:text-slate-100'}`}>
+                        <div key={item.label} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/50">
+                          <p className="text-xs font-medium text-slate-400 mb-1">{item.label}</p>
+                          <p className={`text-xs ${item.isBold ? 'font-bold text-brand-primary' : 'font-bold text-slate-900 dark:text-slate-100'}`}>
                             {item.value}
                           </p>
                         </div>
@@ -2594,21 +2579,21 @@ export default function AdminDashboard() {
                     title: 'Inventory Delta',
                     children: (
                       <div className="space-y-4">
-                        <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
+                        <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
                           <table className="w-full text-left text-xs">
                             <thead>
                               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
-                                <th className="px-4 py-3 font-black uppercase tracking-widest text-slate-400">SKU</th>
-                                <th className="px-4 py-3 font-black uppercase tracking-widest text-slate-400">Label</th>
-                                <th className="px-4 py-3 text-right font-black uppercase tracking-widest text-slate-400">Volume</th>
+                                <th className="px-4 py-3 font-semibold uppercase tracking-wider text-slate-400">SKU</th>
+                                <th className="px-4 py-3 font-semibold uppercase tracking-wider text-slate-400">Label</th>
+                                <th className="px-4 py-3 text-right font-semibold uppercase tracking-wider text-slate-400">Volume</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                               {previewItemPagination.rows.map((item) => (
                                 <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                  <td className="px-4 py-3 font-black text-brand-primary">{item.sku}</td>
-                                  <td className="px-4 py-3 font-bold text-slate-700 dark:text-slate-300">{item.item_name}</td>
-                                  <td className="px-4 py-3 text-right font-black text-slate-900 dark:text-white">
+                                  <td className="px-4 py-2.5 font-bold text-brand-primary">{item.sku}</td>
+                                  <td className="px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300">{item.item_name}</td>
+                                  <td className="px-4 py-2.5 text-right font-bold text-slate-900 dark:text-white">
                                     {formatLineVolume(item)}
                                   </td>
                                 </tr>
@@ -2634,9 +2619,9 @@ export default function AdminDashboard() {
       />
 
       {resetPasswordModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 shadow-2xl">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-slate-100 mb-1">Reset Password</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 shadow-2xl">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1">Reset Password</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">{resetPasswordModal.email}</p>
 
             {resetPasswordModal.success ? (
@@ -2645,7 +2630,7 @@ export default function AdminDashboard() {
                 <button
                   type="button"
                   onClick={() => setResetPasswordModal((s) => ({ ...s, open: false }))}
-                  className="w-full py-3 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest"
+                  className="w-full py-3 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[13px] font-semibold"
                 >
                   Close
                 </button>
@@ -2653,7 +2638,7 @@ export default function AdminDashboard() {
             ) : (
               <div className="space-y-3">
                 <div>
-                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1">New Password</label>
+                  <label className="text-xs font-medium text-slate-400 block mb-1">New Password</label>
                   <input
                     type="password"
                     value={resetPasswordModal.newPassword}
@@ -2664,7 +2649,7 @@ export default function AdminDashboard() {
                   />
                 </div>
                 <div>
-                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1">Confirm Password</label>
+                  <label className="text-xs font-medium text-slate-400 block mb-1">Confirm Password</label>
                   <input
                     type="password"
                     value={resetPasswordModal.confirm}
@@ -2682,7 +2667,7 @@ export default function AdminDashboard() {
                     type="button"
                     onClick={() => setResetPasswordModal((s) => ({ ...s, open: false }))}
                     disabled={resetPasswordModal.loading}
-                    className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 disabled:opacity-50"
+                    className="flex-1 py-3 rounded-lg border border-slate-200 dark:border-slate-700 text-[13px] font-semibold text-slate-600 dark:text-slate-400 disabled:opacity-50"
                   >
                     Cancel
                   </button>
@@ -2690,7 +2675,7 @@ export default function AdminDashboard() {
                     type="button"
                     onClick={handleResetPassword}
                     disabled={resetPasswordModal.loading || !resetPasswordModal.newPassword}
-                    className="flex-1 py-3 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+                    className="flex-1 py-3 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[13px] font-semibold disabled:opacity-50"
                   >
                     {resetPasswordModal.loading ? 'Saving…' : 'Set Password'}
                   </button>

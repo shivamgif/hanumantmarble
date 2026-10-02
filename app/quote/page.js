@@ -1,6 +1,6 @@
 "use client"
 
-import { FileText, Sparkles, Shield, MessageSquare } from 'lucide-react';
+import { FileText, IndianRupee, Shield, MessageSquare } from 'lucide-react';
 import { ProductForm } from '@/components/ui/product-form';
 import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -13,20 +13,14 @@ export default function Quote() {
   const [headerRef, isHeaderInView] = useInView({ threshold: 0.2 });
 
   const badges = [
-    { icon: Shield, label: getTranslation('quote.badges.quality', language), color: 'from-emerald-500 to-green-500' },
-    { icon: Sparkles, label: getTranslation('quote.badges.pricing', language), color: 'from-blue-500 to-cyan-500' },
-    { icon: MessageSquare, label: getTranslation('quote.badges.consultation', language), color: 'from-violet-500 to-purple-500' },
+    { icon: Shield, label: getTranslation('quote.badges.quality', language) },
+    { icon: IndianRupee, label: getTranslation('quote.badges.pricing', language) },
+    { icon: MessageSquare, label: getTranslation('quote.badges.consultation', language) },
   ];
 
   return (
     <div className="relative min-h-screen overflow-hidden">
       {/* Background decorations */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 left-1/4 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
-      </div>
-
       <div className="container mx-auto py-12 sm:py-20 px-4 space-y-8 sm:space-y-12 relative z-10">
         <div ref={headerRef} className="text-center space-y-6 max-w-2xl mx-auto">
           <div className={cn(
@@ -38,7 +32,7 @@ export default function Quote() {
           </div>
 
           <h1 className={cn(
-            "text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight animate-on-scroll",
+            "font-semibold tracking-tight text-3xl sm:text-4xl md:text-5xl lg:text-5xl animate-on-scroll",
             isHeaderInView ? "in-view" : ""
           )} style={{ transitionDelay: "100ms" }}>
             {getTranslation('quote.title', language)}
@@ -59,11 +53,10 @@ export default function Quote() {
               <Badge 
                 key={index}
                 className={cn(
-                  "px-4 py-2 text-sm font-medium border-0 text-white bg-gradient-to-r",
-                  badge.color
+                  "px-3 py-1.5 text-sm font-medium border-border bg-card text-foreground"
                 )}
               >
-                <badge.icon className="w-4 h-4 mr-2" />
+                <badge.icon className="w-4 h-4 mr-2 text-primary" strokeWidth={1.75} />
                 {badge.label}
               </Badge>
             ))}
@@ -74,7 +67,7 @@ export default function Quote() {
           "max-w-3xl mx-auto animate-on-scroll",
           isHeaderInView ? "in-view" : ""
         )} style={{ transitionDelay: "400ms" }}>
-          <div className="rounded-2xl border-0 bg-card/80 backdrop-blur-sm p-5 sm:p-8 md:p-10 shadow-2xl">
+          <div className="rounded-xl border border-border bg-card p-5 sm:p-8 md:p-10 shadow-card">
             <ProductForm />
           </div>
         </div>

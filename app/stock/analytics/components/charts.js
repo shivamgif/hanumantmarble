@@ -142,9 +142,9 @@ export function TopDivisionsChart({ data }) {
           return (
             <div key={d.division || i} className="flex items-center gap-3 text-xs">
               <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-              <span className="font-black uppercase tracking-[0.15em] text-[10px] text-slate-600 dark:text-slate-300 flex-1 truncate">{d.division || t('unknown')}</span>
-              <span className="font-sans font-black text-slate-900 dark:text-white tracking-wider">{formatCompactINR(d.total_revenue)}</span>
-              <span className="text-[9px] font-bold text-slate-400 w-10 text-right">{pct.toFixed(0)}%</span>
+              <span className="font-medium text-xs text-slate-600 dark:text-slate-300 flex-1 truncate">{d.division || t('unknown')}</span>
+              <span className="font-sans font-bold text-slate-900 dark:text-white tracking-wider">{formatCompactINR(d.total_revenue)}</span>
+              <span className="text-[11px] font-bold text-slate-400 w-10 text-right">{pct.toFixed(0)}%</span>
             </div>
           );
         })}
@@ -193,10 +193,10 @@ export function MonthlyCostVolumeChart({ dispatchTrend, inboundTrend, partial = 
       contextBar={partial ? t('partialMonthNote') : null}
       topRight={
         <div className="flex flex-wrap gap-2">
-          <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] bg-card px-3 py-1.5 rounded-full border border-border">
+          <div className="flex items-center gap-2 text-xs font-medium text-slate-400 bg-card px-3 py-1.5 rounded-full border border-border">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> {t('inbound')}
           </div>
-          <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] bg-card px-3 py-1.5 rounded-full border border-border">
+          <div className="flex items-center gap-2 text-xs font-medium text-slate-400 bg-card px-3 py-1.5 rounded-full border border-border">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> {t('outbound')}
           </div>
         </div>
@@ -256,10 +256,10 @@ export function MonthlyProfitChart({ data, partial = false }) {
       contextBar={contextBar}
       topRight={
         <div className="flex flex-wrap gap-2">
-          <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] bg-card px-3 py-1.5 rounded-full border border-border">
+          <div className="flex items-center gap-2 text-xs font-medium text-slate-400 bg-card px-3 py-1.5 rounded-full border border-border">
             <span className="w-2.5 h-2.5 rounded-full bg-blue-600" /> {t('revenue')}
           </div>
-          <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] bg-card px-3 py-1.5 rounded-full border border-border">
+          <div className="flex items-center gap-2 text-xs font-medium text-slate-400 bg-card px-3 py-1.5 rounded-full border border-border">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" /> {t('profit')}
           </div>
         </div>
@@ -343,7 +343,7 @@ export function SalespersonTrendChart({ trend }) {
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3 px-1">
         {people.map((p, i) => (
-          <span key={p} className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 dark:text-slate-300 min-w-0">
+          <span key={p} className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 min-w-0">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: SERIES_COLORS[i % SERIES_COLORS.length] }} />
             <span className="truncate max-w-[10rem]">{p}</span>
           </span>
@@ -371,7 +371,7 @@ export function TopSellersWidget({ items }) {
   const totalItems = Number(items[0]?.total_items_with_sales || items.length);
   const top80Count = Number(items[0]?.rank_at_80 || 0);
   const maxRev = Number(items[0]?.revenue || 1);
-  const headCell = 'text-[10px] font-black uppercase tracking-widest text-slate-400';
+  const headCell = 'text-xs font-medium text-slate-400';
   const cols = 'md:grid md:grid-cols-[1.5rem_minmax(0,2fr)_minmax(0,1.6fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,1fr)] md:items-center md:gap-4';
   return (
     <AnalyticsCard
@@ -402,36 +402,36 @@ export function TopSellersWidget({ items }) {
                 : 'text-slate-500 dark:text-slate-400';
           return (
             <div key={it.id} className={`${cols} grid grid-cols-2 gap-x-3 gap-y-1.5 py-2.5 px-1 border-b border-slate-100 dark:border-slate-800/40 last:border-b-0`}>
-              <span className="hidden md:block text-xs font-black text-slate-400 text-right tabular-nums">{it.rank}.</span>
+              <span className="hidden md:block text-xs font-bold text-slate-400 text-right tabular-nums">{it.rank}.</span>
               <div className="col-span-2 md:col-span-1 min-w-0">
                 <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate" title={it.name}>
                   <span className="md:hidden text-slate-400 tabular-nums">{it.rank}. </span>{it.name}
                 </p>
-                <p className="text-[10px] font-bold text-slate-400 truncate">{it.division}{it.sku ? ` · ${it.sku}` : ''}</p>
+                <p className="text-[11px] font-bold text-slate-400 truncate">{it.division}{it.sku ? ` · ${it.sku}` : ''}</p>
               </div>
               <div className="col-span-2 md:col-span-1 min-w-0">
                 <div className="flex items-baseline justify-between gap-2 tabular-nums">
-                  <span className="text-xs font-black text-slate-900 dark:text-white">{formatCompactINR(revenue)}</span>
-                  <span className="text-[10px] font-bold text-slate-400">{Number(it.share_pct || 0).toFixed(1)}% {t('ofSales')}</span>
+                  <span className="text-xs font-bold text-slate-900 dark:text-white">{formatCompactINR(revenue)}</span>
+                  <span className="text-[11px] font-bold text-slate-400">{Number(it.share_pct || 0).toFixed(1)}% {t('ofSales')}</span>
                 </div>
                 <div className="mt-1 h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                   <div className="h-full bg-brand-secondary rounded-full" style={{ width: `${Math.min(100, (revenue / maxRev) * 100)}%` }} />
                 </div>
               </div>
               <div className="md:text-right tabular-nums">
-                <span className="md:hidden text-[9px] font-black uppercase tracking-widest text-slate-400">{t('sold')} </span>
-                <span className="text-xs font-black text-slate-900 dark:text-white">{formatCompactNumber(it.units)}</span>
+                <span className="md:hidden text-xs font-medium text-slate-400">{t('sold')} </span>
+                <span className="text-xs font-bold text-slate-900 dark:text-white">{formatCompactNumber(it.units)}</span>
               </div>
               <div className="text-right tabular-nums">
-                <p className={`text-xs font-black ${profit < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                  <span className="md:hidden text-[9px] uppercase tracking-widest text-slate-400">{t('profit')} </span>
+                <p className={`text-xs font-bold ${profit < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                  <span className="md:hidden text-xs text-slate-400">{t('profit')} </span>
                   {formatCompactINR(profit)}
                 </p>
-                {margin != null ? <p className="text-[10px] font-bold text-slate-400">{margin.toFixed(1)}% {t('margin')}</p> : null}
+                {margin != null ? <p className="text-[11px] font-bold text-slate-400">{margin.toFixed(1)}% {t('margin')}</p> : null}
               </div>
               <div className="col-span-2 md:col-span-1 flex items-center justify-between md:justify-end gap-2 tabular-nums">
-                <span className="text-[10px] font-bold text-slate-400">{formatCompactNumber(it.in_stock)} {t('onHandShort')}</span>
-                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${daysTone}`}>
+                <span className="text-[11px] font-bold text-slate-400">{formatCompactNumber(it.in_stock)} {t('onHandShort')}</span>
+                <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-md ${daysTone}`}>
                   {daysLeft != null ? `${daysLeft}${t('daysShort')}` : '—'}
                 </span>
               </div>

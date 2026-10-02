@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { CartSummary } from "@/components/ui/CartSummary"
 import { useCart } from "@/contexts/CartContext"
+import { BrandMark } from '@/components/ui/brand-mark'
 
 export function Header() {
   const pathname = usePathname()
@@ -59,15 +60,8 @@ export function Header() {
       <div className="container mx-auto h-20 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center">
-          <Link href="/" className="relative h-20 w-20 hover:scale-105 transition-transform">
-            <Image
-              src="/logo.png"
-              alt="Hanumant Marble Logo"
-              fill
-              sizes="80px"
-              className="object-contain"
-              priority
-            />
+          <Link href="/" className="flex items-center" aria-label="Hanumant Marble home">
+            <BrandMark size={48} priority />
           </Link>
         </div>
 
@@ -131,15 +125,8 @@ export function Header() {
                 <SheetHeader>
                   <SheetTitle>
                     <Link href="/" className="flex items-center gap-3" onClick={() => setOpen(false)}>
-                      <div className="relative h-12 w-12">
-                        <Image
-                          src="/logo.png"
-                          alt="Hanumant Marble Logo"
-                          fill
-                          sizes="48px"
-                          className="object-contain"
-                          priority
-                        />
+                      <div className="flex items-center">
+                        <BrandMark size={36} />
                       </div>
                       <span className="font-semibold text-lg">Hanumant Marble</span>
                     </Link>

@@ -11,7 +11,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Boxes, ChevronRight, Download, LayoutGrid, TrendingUp, UserCheck, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CLASSES, paceAdjustedTarget } from '../components/dashboard-ui';
-import { PILL_BUTTON_CLASS, tabButtonClass } from '../lib/stock-utils';
+import { PILL_BUTTON_CLASS, tabButtonClass, tabTrackClass } from '../lib/stock-utils';
 import {
   SalesRevenueChart,
   TopDivisionsChart,
@@ -108,19 +108,17 @@ function AnalyticsDashboardInner() {
       setError(null);
       try {
         // Independent, not either/or: someone who sees the company view and
-        // also sells needs both payloads on the same page.
-        if (canViewAllAnalytics) {
-          const response = await fetch(`/api/stock/admin/analytics?months=${analyticsRangeMonths}`, { cache: 'no-store' });
+        // also sells needs both payloads on the same page — fetched together.
+        const load = async (url, set) => {
+          const response = await fetch(url, { cache: 'no-store' });
           const json = await response.json();
           if (!response.ok) throw new Error(json.error || 'Failed to load analytics');
-          if (mounted) setAdminAnalytics(json);
-        }
-        if (sellsToo) {
-          const response = await fetch('/api/stock/salesperson-analytics', { cache: 'no-store' });
-          const json = await response.json();
-          if (!response.ok) throw new Error(json.error || 'Failed to load analytics');
-          if (mounted) setSalespersonAnalytics(json);
-        }
+          if (mounted) set(json);
+        };
+        await Promise.all([
+          canViewAllAnalytics && load(`/api/stock/admin/analytics?months=${analyticsRangeMonths}`, setAdminAnalytics),
+          sellsToo && load('/api/stock/salesperson-analytics', setSalespersonAnalytics),
+        ]);
       } catch (err) {
         if (mounted) setError(err.message);
       } finally {
@@ -213,33 +211,33 @@ function AnalyticsDashboardInner() {
       <div className="mx-auto max-w-[1600px] space-y-10 lg:space-y-12 p-4 sm:p-6 lg:p-8">
         <div className="flex flex-col gap-4">
           <Skeleton className="h-4 w-32 rounded" />
-          <Skeleton className="h-16 sm:h-20 w-full sm:w-3/4 max-w-lg rounded-2xl" />
+          <Skeleton className="h-16 sm:h-20 w-full sm:w-3/4 max-w-lg rounded-xl" />
         </div>
         <div className={CLASSES.heroGrid}>
           {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={`hero-skeleton-${index}`} className="rounded-2xl h-40 sm:h-48" />
+            <Skeleton key={`hero-skeleton-${index}`} className="rounded-xl h-40 sm:h-48" />
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Skeleton className="rounded-2xl h-80 sm:h-96" />
-          <Skeleton className="rounded-2xl h-80 sm:h-96" />
+          <Skeleton className="rounded-xl h-80 sm:h-96" />
+          <Skeleton className="rounded-xl h-80 sm:h-96" />
         </div>
       </div>
     );
-  if (error && !hasData) return <div className="p-8 text-rose-500 font-bold bg-rose-50 rounded-2xl border border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40">{error}</div>;
+  if (error && !hasData) return <div className="p-8 text-rose-500 font-bold bg-rose-50 rounded-xl border border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40">{error}</div>;
 
   if (isSalesperson) {
     return (
       <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-clip">
         <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
           <div className="space-y-2">
-            <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
-              <Link href="/stock" className="hover:text-brand-primary transition-colors">{t('me.crumbHome')}</Link>
-              <ChevronRight className="h-3 w-3 opacity-50" />
+            <nav className="flex items-center flex-wrap gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+              <Link href="/stock" className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors">{t('me.crumbHome')}</Link>
+              <ChevronRight className="h-3 w-3 text-slate-300 dark:text-slate-600" />
               <span className="text-slate-900 dark:text-white">{t('me.crumbMine')}</span>
             </nav>
-            <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-              <span className="text-brand-primary">{t('tabMyPerformance').split(' ')[0]}</span> {t('tabMyPerformance').split(' ').slice(1).join(' ')}
+            <h1 className="page-title">
+              {t('tabMyPerformance')}
             </h1>
             <p className="text-sm text-slate-600 dark:text-slate-400 font-medium leading-relaxed max-w-3xl">
               {t('me.pageSubtitle')}
@@ -277,13 +275,13 @@ function AnalyticsDashboardInner() {
     <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-clip">
       <header>
         <div className="space-y-2">
-          <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
-            <Link href="/stock/admin" className="hover:text-brand-primary transition-colors">{t('operationalCore')}</Link>
-            <ChevronRight className="h-3 w-3 opacity-50" />
+          <nav className="flex items-center flex-wrap gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+            <Link href="/stock/admin" className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors">{t('operationalCore')}</Link>
+            <ChevronRight className="h-3 w-3 text-slate-300 dark:text-slate-600" />
             <span className="text-slate-900 dark:text-white">{t('businessIntelligence')}</span>
           </nav>
-          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-            <span className="text-brand-primary">{t('executiveDashboard').split(' ')[0]}</span> {t('executiveDashboard').split(' ').slice(1).join(' ')}
+          <h1 className="page-title">
+            {t('executiveDashboard')}
           </h1>
         </div>
       </header>
@@ -296,12 +294,9 @@ function AnalyticsDashboardInner() {
         onNavigate={jumpTo}
       />
 
-      {/* ponytail: top offsets mirror StockTopbar's height (mobile 134px, lg 81px);
-          z-10 keeps this bar under the topbar's z-20. Update both if the topbar changes. */}
-      <div className="sticky top-[134px] z-10 -mx-4 flex lg:top-[81px] flex-col gap-2 bg-background/80 px-4 py-2 backdrop-blur-md sm:mx-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-0">
-        {/* ponytail: below sm only the active tab shows its label, the rest collapse
-            to icon circles, so four tabs fit without a horizontal scroll */}
-        <div className="flex w-full min-w-0 items-center gap-1 overflow-hidden rounded-xl border border-border/60 bg-muted p-1 scrollbar-none sm:w-fit sm:gap-0 sm:overflow-x-auto">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+        {/* Below sm: equal columns, icon over label (see tabButtonClass). */}
+        <div className={tabTrackClass(visibleTabs.length)}>
           {visibleTabs.map((tab) => {
             const isActive = currentTab === tab.id;
             const Icon = tab.icon;
@@ -312,10 +307,10 @@ function AnalyticsDashboardInner() {
                 onClick={() => selectTab(tab.id)}
                 aria-label={label}
                 aria-current={isActive ? 'true' : undefined}
-                className={tabButtonClass(isActive)}
+                className={tabButtonClass(isActive, visibleTabs.length)}
               >
                 <Icon className="h-4 w-4 shrink-0 sm:hidden" />
-                <span className={`overflow-hidden transition-all duration-300 ease-out sm:max-w-none sm:opacity-100 ${isActive ? 'max-w-[12rem] opacity-100' : 'max-w-0 opacity-0'}`}>
+                <span className="line-clamp-2 min-w-0 text-center sm:whitespace-nowrap">
                   {label}
                 </span>
               </button>
@@ -329,7 +324,7 @@ function AnalyticsDashboardInner() {
               <button
                 key={m}
                 onClick={() => setAnalyticsRangeMonths(m)}
-                className={`flex h-[30px] items-center rounded-full px-3 text-[10px] font-black uppercase tracking-wide transition-all sm:h-9 sm:px-4 sm:text-[11px] sm:tracking-widest ${analyticsRangeMonths === m
+                className={`flex h-[30px] items-center rounded-full px-3 text-xs font-semibold transition-all sm:h-9 sm:px-4 sm:text-[11px] ${analyticsRangeMonths === m
                   ? 'bg-white dark:bg-slate-800 text-brand-primary shadow-sm'
                   : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                   }`}
@@ -359,7 +354,7 @@ function AnalyticsDashboardInner() {
               setActionError(null);
               setError(null);
             }}
-            className="shrink-0 text-xs font-black uppercase tracking-wider hover:underline"
+            className="shrink-0 text-xs font-semibold hover:underline"
           >
             Dismiss
           </button>
@@ -369,7 +364,13 @@ function AnalyticsDashboardInner() {
       <div aria-busy={loading} className={`space-y-6 transition-opacity duration-200 lg:space-y-8 ${loading ? 'pointer-events-none opacity-60' : ''}`}>
       {currentTab === 'overview' && (
         <div className="space-y-6">
-          <StockHealthScorecard data={divisionRisk} stockRisk={stockRisk} approvalOps={approvalOps} />
+          <StockHealthScorecard
+            data={divisionRisk}
+            stockRisk={stockRisk}
+            approvalOps={approvalOps}
+            monthlyProfit={monthlyProfit}
+            elapsedFraction={Number(adminAnalytics?.range?.elapsedFraction || 1)}
+          />
           <SalesRevenueChart data={dispatchTrend} partial={partialLastMonth} />
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             <div className="lg:col-span-7 min-w-0" id="widget-reorder">

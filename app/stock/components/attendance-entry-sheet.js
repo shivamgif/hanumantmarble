@@ -5,6 +5,7 @@ import { Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { AUTO_CLOSED_NOTE } from '@/lib/attendance.mjs';
 import { FORM_INPUT_CLASS, FORM_LABEL_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../lib/stock-utils';
+import { SelectField } from '@/components/ui/select';
 
 // Entries cross the wire as IST wall-clock "YYYY-MM-DDTHH:MM:SS" (see
 // serializeEntry), which is exactly what <input type="datetime-local"> wants
@@ -117,12 +118,12 @@ export function AttendanceEntrySheet({ open, entry = null, employees = [], onClo
           {isNew ? (
             <div>
               <label className={FORM_LABEL_CLASS} htmlFor="entry-employee">Employee</label>
-              <select id="entry-employee" required value={draft.userId} onChange={set('userId')} className={FORM_INPUT_CLASS}>
+              <SelectField id="entry-employee" required value={draft.userId} onChange={set('userId')} className={FORM_INPUT_CLASS}>
                 <option value="">Select…</option>
                 {employees.map((emp) => (
                   <option key={emp.id} value={emp.id}>{emp.name}</option>
                 ))}
-              </select>
+              </SelectField>
             </div>
           ) : null}
 

@@ -65,8 +65,9 @@ module.exports = {
         },
       },
       fontFamily: {
-        display: ["DM Serif Display", "Georgia", "Times New Roman", "serif"],
-        sans: ["DM Sans", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        // Set by next/font in app/layout.js.
+        display: ["var(--font-dm-serif)", "Georgia", "Times New Roman", "serif"],
+        sans: ["var(--font-dm-sans)", "var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -74,8 +75,8 @@ module.exports = {
         sm: "calc(var(--radius) - 4px)",
       },
       boxShadow: {
-        card: "0 1px 2px 0 rgb(2 8 23 / 0.04), 0 1px 3px 0 rgb(2 8 23 / 0.06)",
-        "card-hover": "0 2px 4px -1px rgb(2 8 23 / 0.05), 0 10px 20px -6px rgb(2 8 23 / 0.10)",
+        card: "0 1px 2px 0 rgb(15 23 42 / 0.06), 0 1px 3px 0 rgb(15 23 42 / 0.04)",
+        "card-hover": "0 1px 2px 0 rgb(15 23 42 / 0.06), 0 8px 24px -12px rgb(15 23 42 / 0.20)",
       },
       keyframes: {
         "accordion-down": {

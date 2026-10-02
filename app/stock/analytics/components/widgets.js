@@ -55,6 +55,8 @@ import {
 } from '../../components/dashboard-ui';
 import { deriveSpotlight } from '../lib/spotlight.mjs';
 import { deriveStreak, streakTier, goalTier, projectMonth } from '../lib/streak.mjs';
+import { revenuePace } from '../lib/revenue-pace.mjs';
+import { SelectField } from '@/components/ui/select';
 
 // Bars animate from 0 on mount so the hero visibly "fills in" - purely cosmetic,
 // so it degrades to the final width if the effect never runs.
@@ -67,12 +69,7 @@ function useGrowth(pct) {
   return width;
 }
 
-const MILESTONES = [
-  { at: 25, emoji: '🌱' },
-  { at: 50, emoji: '⚡' },
-  { at: 75, emoji: '🚀' },
-  { at: 100, emoji: '🏆' },
-];
+const MILESTONES = [{ at: 25 }, { at: 50 }, { at: 75 }, { at: 100 }];
 
 const KNOWN_STATUSES = ['draft', 'dispatched', 'delivered', 'cancelled'];
 
@@ -166,7 +163,7 @@ export function MyPerformancePanel({ data, goal }) {
               <li key={d.id}>
                 <Link
                   href={`/stock?entityType=outbound_shipment&entityId=${d.id}`}
-                  className="glass-panel flex items-center justify-between gap-3 rounded-2xl p-4 transition-colors hover:bg-muted/50"
+                  className="glass-panel flex items-center justify-between gap-3 rounded-xl p-4 transition-colors hover:bg-muted/50"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold text-slate-900 dark:text-slate-100">{d.customerName || '—'}</p>
@@ -177,15 +174,15 @@ export function MyPerformancePanel({ data, goal }) {
                       <DispatchStatus d={d} t={t} />
                     </div>
                   </div>
-                  <span className="shrink-0 text-sm font-black text-slate-900 dark:text-slate-100 tabular-nums">{formatINR(d.totalValue)}</span>
+                  <span className="shrink-0 text-sm font-bold text-slate-900 dark:text-slate-100 tabular-nums">{formatINR(d.totalValue)}</span>
                 </Link>
               </li>
             ))}
           </ul>
-          <div className="glass-panel hidden overflow-hidden rounded-2xl sm:block">
+          <div className="glass-panel hidden overflow-hidden rounded-xl sm:block">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-border/60 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                <tr className="border-b border-border/60 text-xs font-medium text-slate-500">
                   <th className="p-4 text-left">{t('colShipment')}</th>
                   <th className="p-4 text-left">{t('colDate')}</th>
                   <th className="p-4 text-left">{t('colCustomer')}</th>
@@ -224,7 +221,7 @@ function SectionTitle({ children }) {
   return (
     <div className="flex items-center gap-6">
       <h2 className="text-sm font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">{children}</h2>
-      <div className="h-px flex-1 bg-gradient-to-r from-slate-200 dark:from-slate-800/50 via-slate-100 dark:via-slate-900/20 to-transparent" />
+      <div className="h-px flex-1 bg-border" />
     </div>
   );
 }
@@ -238,12 +235,12 @@ function DispatchStatus({ d, t }) {
         : 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400';
   return (
     <>
-      <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${tone}`}>
+      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${tone}`}>
         {KNOWN_STATUSES.includes(d.status) ? t(`status_${d.status}`) : d.status}
       </span>
       {/* Counted in the month already (see shippedFilter); the pill just says an approver hasn't looked yet. */}
       {d.approvalStatus === 'pending' ? (
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
           {t('awaitingApproval')}
         </span>
       ) : null}
@@ -285,18 +282,17 @@ export function MyPerformanceHero({ data, target, targetKind, pct, expectedPct, 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 items-start">
       {target > 0 ? (
-        <div className="glass-panel rounded-2xl p-6 sm:p-8 relative overflow-hidden transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group lg:col-span-2">
+        <div className="glass-panel rounded-xl p-5 sm:p-7 relative overflow-hidden group lg:col-span-2">
           <div className="relative z-10">
-            <div className="flex items-center justify-between gap-3 mb-8">
-              <div className={`w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center rounded-xl border ${standing.bg} ${standing.border}`}>
-                <Target className={`h-7 w-7 sm:h-8 sm:w-8 ${standing.color}`} />
+            <div className="flex items-center justify-between gap-3 mb-6">
+              <div className={`w-11 h-11 flex items-center justify-center rounded-lg border ${standing.bg} ${standing.border}`}>
+                <Target className={`h-5 w-5 ${standing.color}`} strokeWidth={1.75} />
               </div>
               <div className="flex flex-col items-end gap-2">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                <span className="text-xs font-medium text-slate-500">
                   {targetKind === 'goal' ? t('monthlyGoal') : t('beatYourBest')}
                 </span>
-                <span className={`flex items-center gap-1.5 text-[11px] font-black px-3 py-1 rounded-full ${standing.color} ${standing.bg} border ${standing.border}`}>
-                  <span aria-hidden="true">{standing.emoji}</span>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${standing.color} ${standing.bg} border ${standing.border}`}>
                   {t(standing.key)}
                 </span>
               </div>
@@ -304,11 +300,11 @@ export function MyPerformanceHero({ data, target, targetKind, pct, expectedPct, 
 
             <div className="space-y-2">
               <div className="flex flex-wrap items-baseline gap-3">
-                <span className="text-3xl sm:text-4xl lg:text-5xl font-black font-sans tracking-tighter text-slate-900 dark:text-white leading-none tabular-nums">
+                <span className="text-3xl sm:text-4xl lg:text-[2.75rem] font-semibold font-sans tracking-tight text-slate-900 dark:text-white leading-none tabular-nums">
                   {formatCompactINR(value)}
                 </span>
-                <span className="text-sm font-black text-slate-500 tabular-nums">/ {formatCompactINR(target)}</span>
-                <span className={`text-sm font-black tabular-nums ${standing.color}`}>{Math.round(pct)}%</span>
+                <span className="text-sm font-bold text-slate-500 tabular-nums">/ {formatCompactINR(target)}</span>
+                <span className={`text-sm font-bold tabular-nums ${standing.color}`}>{Math.round(pct)}%</span>
               </div>
               {/* The way forward, big enough to read at a glance: the daily figure
                   when behind, what is left otherwise. */}
@@ -326,7 +322,7 @@ export function MyPerformanceHero({ data, target, targetKind, pct, expectedPct, 
             </div>
 
             <div className="mt-6 space-y-2">
-              <div className="relative h-4 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+              <div className="relative h-2.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-[width] duration-1000 ease-out ${standing.bar}`}
                   style={{ width: `${goalWidth}%` }}
@@ -344,9 +340,9 @@ export function MyPerformanceHero({ data, target, targetKind, pct, expectedPct, 
                   return (
                     <span
                       key={m.at}
-                      className={`flex items-center gap-1 text-[10px] font-black tabular-nums transition-opacity duration-500 ${hit ? 'opacity-100 text-slate-700 dark:text-slate-200' : 'opacity-40 text-slate-500 grayscale'}`}
+                      className={`flex items-center gap-1.5 text-[11px] font-medium tabular-nums ${hit ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'}`}
                     >
-                      <span aria-hidden="true">{m.emoji}</span>
+                      <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${hit ? standing.bar : 'bg-slate-300 dark:bg-slate-600'}`} />
                       {m.at}%
                     </span>
                   );
@@ -401,22 +397,22 @@ function RankCard({ rank }) {
     : t('rankGap', { amount: formatCompactINR(rank.gapToNext), next: rank.position - 1 });
   return (
     <div
-      className="glass-panel rounded-2xl p-4 sm:p-5 flex items-center gap-4 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover"
+      className="glass-panel rounded-xl p-4 sm:p-5 flex items-center gap-4 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover"
       title={t('rankHint')}
     >
       <div className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border ${leading ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-brand-primary/10 border-brand-primary/20'}`}>
         <Trophy className={`h-5 w-5 ${leading ? 'text-yellow-600 dark:text-yellow-400' : 'text-brand-primary'}`} />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">{t('teamRank')}</div>
+        <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('teamRank')}</div>
         <div className="flex items-baseline gap-1.5 mt-0.5">
-          <span className="text-2xl font-black font-sans tracking-tighter text-slate-900 dark:text-white leading-none tabular-nums">#{rank.position}</span>
+          <span className="text-2xl font-bold font-sans tracking-tight text-slate-900 dark:text-white leading-none tabular-nums">#{rank.position}</span>
           <span className="text-xs font-bold text-slate-500 tabular-nums">{t('ofTotal', { total: rank.total })}</span>
         </div>
         <div className="text-xs font-bold text-slate-600 dark:text-slate-300 mt-1">{line}</div>
       </div>
       {rank.mostImproved ? (
-        <span className="shrink-0 self-start rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+        <span className="shrink-0 self-start rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
           📈 {t('mostImproved')}
         </span>
       ) : null}
@@ -434,7 +430,7 @@ function MyTrend({ rows, goal, projected }) {
   return (
     <section className="space-y-6">
       <SectionTitle>{t('trendTitle')}</SectionTitle>
-      <div className="glass-panel rounded-2xl p-4 sm:p-6 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover">
+      <div className="glass-panel rounded-xl p-4 sm:p-6 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover">
         <div className="space-y-4">
           {rows.map((row) => {
             const isBest = best > 0 && row.totalValue === best;
@@ -445,8 +441,8 @@ function MyTrend({ rows, goal, projected }) {
               /* ponytail: mobile wraps the bar onto its own line via order/basis, no duplicate markup. */
               <div key={row.monthKey} className="flex flex-wrap items-center gap-x-2 gap-y-2 sm:flex-nowrap sm:gap-4">
                 <span className="w-20 shrink-0 leading-tight">
-                  <span className="block text-[10px] font-black uppercase tracking-widest text-slate-500">{formatMonthKey(row.monthKey, locale)}</span>
-                  {row.isCurrent ? <span className="block text-[10px] font-bold text-brand-primary">{t('inProgress')}</span> : null}
+                  <span className="block text-xs font-medium text-slate-500">{formatMonthKey(row.monthKey, locale)}</span>
+                  {row.isCurrent ? <span className="block text-[11px] font-bold text-brand-primary">{t('inProgress')}</span> : null}
                 </span>
                 <div className="relative order-last basis-full h-6 sm:order-none sm:basis-auto sm:flex-1 sm:h-8 rounded-xl bg-slate-100 dark:bg-slate-800 overflow-hidden">
                   {row.isCurrent && projected > row.totalValue ? (
@@ -485,10 +481,10 @@ function CloseTheGap({ sellFirst, followUps, gap, today }) {
       <SectionTitle>{gap > 0 ? t('closeGapTitle', { amount: formatCompactINR(gap) }) : t('easyWinsTitle')}</SectionTitle>
       <div className={`grid grid-cols-1 gap-4 sm:gap-6 ${sellFirst.length && followUps.length ? 'lg:grid-cols-2' : ''}`}>
         {sellFirst.length > 0 && (
-          <div className="glass-panel rounded-2xl p-4 sm:p-5">
+          <div className="glass-panel rounded-xl p-4 sm:p-5">
             <div className="flex items-center gap-2">
               <Package className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-              <h3 className="text-sm font-black text-slate-900 dark:text-white">{t('sellFirstTitle')}</h3>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t('sellFirstTitle')}</h3>
             </div>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('sellFirstHint')}</p>
             <ul className="mt-3 divide-y divide-border/50">
@@ -499,7 +495,7 @@ function CloseTheGap({ sellFirst, followUps, gap, today }) {
                     <p className="truncate text-xs text-slate-500">{[item.brandName, item.sizeLabel, item.divisionName].filter(Boolean).join(' · ')}</p>
                   </div>
                   <div className="shrink-0 text-right text-xs tabular-nums">
-                    <p className="font-black text-slate-700 dark:text-slate-200">
+                    <p className="font-bold text-slate-700 dark:text-slate-200">
                       {Number(item.availableQty).toLocaleString('en-IN', { maximumFractionDigits: 3 })} {unit(item.unitOfMeasure)}
                     </p>
                     <p className={`font-bold ${item.daysIdle >= 120 ? 'text-rose-600 dark:text-rose-400' : 'text-amber-700 dark:text-amber-400'}`}>
@@ -512,10 +508,10 @@ function CloseTheGap({ sellFirst, followUps, gap, today }) {
           </div>
         )}
         {followUps.length > 0 && (
-          <div className="glass-panel rounded-2xl p-4 sm:p-5">
+          <div className="glass-panel rounded-xl p-4 sm:p-5">
             <div className="flex items-center gap-2">
               <PhoneCall className="h-4 w-4 text-brand-primary" />
-              <h3 className="text-sm font-black text-slate-900 dark:text-white">{t('followUpTitle')}</h3>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t('followUpTitle')}</h3>
             </div>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('followUpHint')}</p>
             <ul className="mt-3 divide-y divide-border/50">
@@ -530,8 +526,8 @@ function CloseTheGap({ sellFirst, followUps, gap, today }) {
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="text-sm font-black text-slate-700 dark:text-slate-200 tabular-nums">{formatCompactINR(c.lifetimeValue)}</p>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{t('lifetime')}</p>
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200 tabular-nums">{formatCompactINR(c.lifetimeValue)}</p>
+                      <p className="text-xs font-medium text-slate-500">{t('lifetime')}</p>
                     </div>
                   </li>
                 );
@@ -564,23 +560,23 @@ function formatWeekday(key, locale, withDate = false) {
 function StreakCard({ streak, tier, className = '', wide = false }) {
   const { t, locale } = useMeText();
   return (
-    <div className={`glass-panel rounded-2xl p-5 sm:p-6 relative overflow-hidden transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group ${className}`}>
+    <div className={`glass-panel rounded-xl p-5 sm:p-6 relative overflow-hidden group ${className}`}>
       <div className="relative z-10">
         <div className="flex items-center gap-4">
-          <div className={`w-14 h-14 shrink-0 flex items-center justify-center rounded-xl border text-2xl ${tier.bg} ${tier.border} ${tier.glow ? 'animate-pulse-glow' : ''}`}>
-            <span aria-hidden="true">{tier.emoji}</span>
+          <div className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-lg border ${tier.bg} ${tier.border}`}>
+            <Flame className={`h-5 w-5 ${tier.color}`} strokeWidth={1.75} aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">{t('salesStreak')}</div>
+            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('salesStreak')}</div>
             <div className="flex items-baseline gap-1.5">
-              <span className={`text-3xl ${wide ? 'sm:text-4xl lg:text-5xl' : ''} font-black font-sans tracking-tighter leading-none tabular-nums ${tier.color}`}>
+              <span className={`text-3xl ${wide ? 'sm:text-4xl' : ''} font-semibold font-sans tracking-tight leading-none tabular-nums ${tier.color}`}>
                 {streak.current}
               </span>
-              <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">
+              <span className="text-xs font-medium text-slate-500">
                 {streak.current === 1 ? t('day') : t('days')}
               </span>
             </div>
-            <div className={`text-[10px] font-black uppercase tracking-[0.15em] mt-1 ${tier.color}`}>{t(tier.key)}</div>
+            <div className={`text-xs font-semibold mt-1 ${tier.color}`}>{t(tier.key)}</div>
           </div>
         </div>
 
@@ -593,7 +589,7 @@ function StreakCard({ streak, tier, className = '', wide = false }) {
             const Icon = cell.icon;
             return (
               <li key={d.date} className="flex flex-col items-center gap-1" title={`${formatWeekday(d.date, locale, true)} · ${t(cell.label)}`}>
-                <span className={`text-[10px] font-bold ${d.state === 'today' ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>
+                <span className={`text-[11px] font-bold ${d.state === 'today' ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>
                   {d.state === 'today' ? t('today') : formatWeekday(d.date, locale)}
                 </span>
                 <span className={`flex h-7 w-full items-center justify-center rounded-md ${cell.className}`}>
@@ -604,7 +600,7 @@ function StreakCard({ streak, tier, className = '', wide = false }) {
             );
           })}
         </ol>
-        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-bold text-slate-500" aria-hidden="true">
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-bold text-slate-500" aria-hidden="true">
           {['active', 'missed', 'off'].map((state) => (
             <span key={state} className="flex items-center gap-1">
               <span className={`inline-block h-2.5 w-2.5 rounded-sm ${STREAK_DAY[state].className}`} />
@@ -623,7 +619,7 @@ function StreakCard({ streak, tier, className = '', wide = false }) {
               ? t('safeToday')
               : t('keepAlive', { n: streak.current + 1 })}
         </p>
-        <p className="mt-1 text-[10px] font-bold text-slate-500">
+        <p className="mt-1 text-[11px] font-bold text-slate-500">
           {t('bestRun', { n: streak.best })}
           {streak.current > 0 && streak.current >= streak.best ? ` · ${t('personalRecord')} 🏅` : ''}
         </p>
@@ -637,13 +633,13 @@ function StreakCard({ streak, tier, className = '', wide = false }) {
 
 function MiniStat({ icon: Icon, label, value, sub, change }) {
   return (
-    <div className="glass-panel rounded-2xl p-4 sm:p-5 flex items-center gap-4 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover">
+    <div className="glass-panel rounded-xl p-4 sm:p-5 flex items-center gap-4 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover">
       <div className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border bg-brand-primary/10 border-brand-primary/20">
         <Icon className="h-5 w-5 text-brand-primary" />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400 truncate">{label}</div>
-        <div className="text-2xl font-black font-sans tracking-tighter text-slate-900 dark:text-white leading-none mt-0.5 tabular-nums">{value}</div>
+        <div className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">{label}</div>
+        <div className="text-2xl font-bold font-sans tracking-tight text-slate-900 dark:text-white leading-none mt-0.5 tabular-nums">{value}</div>
         <div className="text-[11px] font-bold text-slate-500 mt-1 truncate">{sub}</div>
       </div>
       {change === null || change === undefined ? null : (
@@ -655,9 +651,11 @@ function MiniStat({ icon: Icon, label, value, sub, change }) {
   );
 }
 
-export function StockHealthScorecard({ data, stockRisk, approvalOps }) {
+export function StockHealthScorecard({ data, stockRisk, approvalOps, monthlyProfit = [], elapsedFraction = 1 }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+  const pace = revenuePace(monthlyProfit, elapsedFraction);
+  const paceUp = pace?.changePct == null || pace.changePct >= 0;
   const healthy = data.reduce((s, d) => s + Math.max(0, Number(d.total_items || 0) - Number(d.at_risk || 0)), 0);
   const totalItems = data.reduce((s, d) => s + Number(d.total_items || 0), 0);
   const healthyRatio = totalItems > 0 ? healthy / totalItems : 0;
@@ -665,11 +663,23 @@ export function StockHealthScorecard({ data, stockRisk, approvalOps }) {
   const zeroStock = Number(stockRisk?.zeroStock || 0);
   const lowStock = Number(stockRisk?.lowStock || 0);
   const riskCount = zeroStock + lowStock;
-  const pendingCount = Number(approvalOps?.pendingCount || 0);
-  const oldestPendingHours = Number(approvalOps?.oldestPendingHours || 0);
   const medianLagHours = Number(approvalOps?.medianLagHours || 0);
 
+  // Pending approvals used to be a tile here too, repeating the HeroCallouts
+  // pill right above it. Its slot shows the one money figure Overview lacked.
   const metrics = [
+    {
+      label: t('revenueThisMonth'),
+      value: pace ? formatCompactINR(pace.revenue) : '—',
+      subValue: pace
+        ? `${formatCompactINR(pace.profit)} ${t('profit')}${pace.marginPct != null ? ` · ${pace.marginPct.toFixed(1)}% ${t('margin')}` : ''}`
+        : t('noData'),
+      color: paceUp ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400',
+      bg: paceUp ? 'bg-emerald-500/10' : 'bg-amber-500/10',
+      border: paceUp ? 'border-emerald-500/20' : 'border-amber-500/20',
+      icon: Wallet,
+      change: pace?.changePct ?? null,
+    },
     {
       label: t('stockRisk'),
       value: formatCompactNumber(riskCount),
@@ -678,15 +688,6 @@ export function StockHealthScorecard({ data, stockRisk, approvalOps }) {
       bg: riskCount > 0 ? 'bg-rose-500/10' : 'bg-emerald-500/10',
       border: riskCount > 0 ? 'border-rose-500/20' : 'border-emerald-500/20',
       icon: AlertCircle,
-    },
-    {
-      label: t('pendingApprovals'),
-      value: formatCompactNumber(pendingCount),
-      subValue: pendingCount > 0 ? `${formatHours(oldestPendingHours)} ${t('oldestPending')}` : t('awaitingReview'),
-      color: pendingCount > 10 ? 'text-rose-600 dark:text-rose-400' : pendingCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400',
-      bg: pendingCount > 10 ? 'bg-rose-500/10' : pendingCount > 0 ? 'bg-amber-500/10' : 'bg-emerald-500/10',
-      border: pendingCount > 10 ? 'border-rose-500/20' : pendingCount > 0 ? 'border-amber-500/20' : 'border-emerald-500/20',
-      icon: Hourglass,
     },
     {
       label: t('approvalLag'),
@@ -711,17 +712,22 @@ export function StockHealthScorecard({ data, stockRisk, approvalOps }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
       {metrics.map((m) => (
-        <div className="glass-panel rounded-xl p-3 sm:rounded-2xl sm:p-6 relative overflow-hidden transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group" key={m.label}>
+        <div className="glass-panel rounded-xl p-3 sm:p-6 relative overflow-hidden transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group" key={m.label}>
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-3 sm:mb-5">
               <div className={`w-10 h-10 sm:w-16 sm:h-16 flex items-center justify-center rounded-lg sm:rounded-xl border ${m.bg} ${m.border}`}>
                 <m.icon className={`h-5 w-5 sm:h-8 sm:w-8 ${m.color}`} />
               </div>
+              {m.change != null ? (
+                <span title={t('paceVsLastMonth')} aria-label={t('paceVsLastMonth')}>
+                  <TrendCapsule value={m.change} isPositive={m.change >= 0} />
+                </span>
+              ) : null}
             </div>
             <div className="space-y-1 sm:space-y-2">
               <div className="text-slate-500 dark:text-slate-400 text-[11px] sm:text-sm font-bold">{m.label}</div>
-              <div className={`text-2xl sm:text-4xl lg:text-5xl font-black font-sans tracking-tighter text-slate-900 dark:text-white leading-none`}>{m.value}</div>
-              <div className="text-[10px] sm:text-xs font-medium text-slate-400 mt-1.5 sm:mt-3">{m.subValue}</div>
+              <div className={`text-2xl sm:text-4xl lg:text-5xl font-bold font-sans tracking-tight text-slate-900 dark:text-white leading-none`}>{m.value}</div>
+              <div className="text-[11px] sm:text-xs font-medium text-slate-400 mt-1.5 sm:mt-3">{m.subValue}</div>
             </div>
           </div>
           <div className={`absolute -right-6 -bottom-6 w-24 h-24 sm:w-40 sm:h-40 opacity-[0.04] transition-opacity duration-200 pointer-events-none group-hover:opacity-[0.08]`}>
@@ -770,12 +776,12 @@ export function HeroCallouts({ stockedOut, approvalsWaiting, oldestPendingHours,
           key={p.label}
           type="button"
           onClick={() => onNavigate?.(p.tab, p.target)}
-          className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider transition-shadow duration-200 hover:shadow-card focus-ring ${p.tone}`}
+          className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-shadow duration-200 hover:shadow-card focus-ring ${p.tone}`}
         >
           <p.icon className="h-3.5 w-3.5 shrink-0" />
           <span className="tabular-nums text-sm leading-none">{p.value}</span>
           <span className="whitespace-nowrap">{p.label}</span>
-          {p.hint ? <span className="whitespace-nowrap text-[9px] opacity-70">· {p.hint}</span> : null}
+          {p.hint ? <span className="whitespace-nowrap text-[11px] opacity-70">· {p.hint}</span> : null}
         </button>
       ))}
     </div>
@@ -826,7 +832,7 @@ export function SalespersonSpotlight({ trend, ranking, goals, selected, onSelect
       topRight={
         <label className="flex items-center gap-2">
           <span className="sr-only">{t('selectSalesperson')}</span>
-          <select
+          <SelectField
             value={active || ''}
             onChange={(e) => onSelect?.(e.target.value)}
             className="max-w-[14rem] rounded-lg border border-border bg-card px-3 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus-ring"
@@ -834,21 +840,21 @@ export function SalespersonSpotlight({ trend, ranking, goals, selected, onSelect
             {roster.map((name) => (
               <option key={name} value={name}>{name}</option>
             ))}
-          </select>
+          </SelectField>
         </label>
       }
     >
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        <p className="text-lg font-black tracking-tight text-slate-900 dark:text-white truncate">{active}</p>
+        <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-white truncate">{active}</p>
         {growthRatio != null ? <TrendCapsule value={growthRatio * 100} isPositive={growthRatio >= 0} /> : null}
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t('growthVsLastPeriod')}</span>
+        <span className="text-xs font-medium text-slate-400">{t('growthVsLastPeriod')}</span>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         {stats.map((s) => (
           <div key={s.label} className="rounded-xl border border-border/60 bg-muted/30 px-3 py-2.5">
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{s.label}</p>
-            <p className="mt-1 text-lg font-black font-sans tracking-tight text-slate-900 dark:text-slate-100 tabular-nums">{s.value}</p>
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{s.label}</p>
+            <p className="mt-1 text-lg font-bold font-sans tracking-tight text-slate-900 dark:text-slate-100 tabular-nums">{s.value}</p>
           </div>
         ))}
       </div>
@@ -856,8 +862,8 @@ export function SalespersonSpotlight({ trend, ranking, goals, selected, onSelect
       {goal > 0 ? (
         <div className="space-y-1 mb-4">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">{t('salesPace')}</span>
-            <span className={`text-xs font-black tabular-nums ${behindPace ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('salesPace')}</span>
+            <span className={`text-xs font-bold tabular-nums ${behindPace ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
               {Math.round(goalPct)}%{behindPace ? ` · ${t('behindPace')}` : ''}
             </span>
           </div>
@@ -872,12 +878,12 @@ export function SalespersonSpotlight({ trend, ranking, goals, selected, onSelect
               title={`${t('expectedPace')} ${Math.round(expectedPct)}%`}
             />
           </div>
-          <p className="text-[10px] font-bold text-slate-400 tabular-nums">
+          <p className="text-[11px] font-bold text-slate-400 tabular-nums">
             {formatCompactINR(goalActual)} / {formatCompactINR(goal)} · {t('expectedPace')} {formatCompactINR(expected)}
           </p>
         </div>
       ) : (
-        <p className="mb-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">{t('noGoal')}</p>
+        <p className="mb-4 text-xs font-medium text-slate-400">{t('noGoal')}</p>
       )}
 
       {series.length === 0 ? (
@@ -942,22 +948,22 @@ function LeaderboardRow({ row, i, maxVal, onSelect, isSelected, blendedMargin, g
       {...interactiveProps}
       className={`flex w-full items-start gap-3 py-2.5 border-b border-slate-100 dark:border-slate-800/40 last:border-b-0 ${onSelect ? 'text-left cursor-pointer focus-ring' : ''} ${isSelected ? 'bg-brand-primary/5 ring-1 ring-brand-primary/40 rounded-lg px-2 -mx-2 border-b-transparent' : ''}`}
     >
-      <span className="w-6 text-xs font-black text-slate-400 text-right tabular-nums">{i + 1}.</span>
+      <span className="w-6 text-xs font-bold text-slate-400 text-right tabular-nums">{i + 1}.</span>
       <div className="flex-1 min-w-0 space-y-1.5">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
           <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{name}</p>
           <div className="flex items-center gap-2 shrink-0 tabular-nums">
-            <p className="text-xs font-black font-sans text-slate-900 dark:text-white">{formatCompactINR(row.revenue)}</p>
-            <span className={`text-[10px] font-black ${profit < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+            <p className="text-xs font-bold font-sans text-slate-900 dark:text-white">{formatCompactINR(row.revenue)}</p>
+            <span className={`text-[11px] font-bold ${profit < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
               {formatCompactINR(profit)} {t('profit')}
             </span>
             {margin != null ? (
-              <span className={`text-[10px] font-black ${marginLags ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}>
+              <span className={`text-[11px] font-bold ${marginLags ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}>
                 {margin.toFixed(1)}%
               </span>
             ) : null}
             {growthRatio != null ? (
-              <span className={`text-[10px] font-black ${growthRatio >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+              <span className={`text-[11px] font-bold ${growthRatio >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                 {growthRatio >= 0 ? '+' : ''}{(growthRatio * 100).toFixed(0)}%
               </span>
             ) : null}
@@ -983,13 +989,13 @@ function LeaderboardRow({ row, i, maxVal, onSelect, isSelected, blendedMargin, g
                 title={`${t('expectedPace')} ${Math.round(expectedPct)}%`}
               />
             </div>
-            <span className="shrink-0 text-[10px] font-bold text-slate-400 tabular-nums">
+            <span className="shrink-0 text-[11px] font-bold text-slate-400 tabular-nums">
               <span className={behindPace ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}>{Math.round(goalPct)}%</span>
               {' '}{formatCompactINR(actual)} / {formatCompactINR(goal)} · {goalRow.shipments} {t('dispatchesShort')}
             </span>
           </div>
         ) : (
-          <p className="text-[10px] font-bold text-slate-400">{t('thisMonthVsGoal')}: {t('noGoal')}</p>
+          <p className="text-[11px] font-bold text-slate-400">{t('thisMonthVsGoal')}: {t('noGoal')}</p>
         )}
       </div>
     </Wrapper>
@@ -1028,7 +1034,7 @@ export function Leaderboard({ ranking, goals = [], months, onSelect, selected })
         <EmptyState label={t('noData')} />
       ) : (
         <>
-          <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold text-slate-400">
+          <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold text-slate-400">
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-emerald-500" />{t('profit')}</span>
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-slate-400 dark:bg-slate-500" />{t('cost')}</span>
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-slate-200 dark:bg-slate-700" />{t('uncostedRevenue')}</span>
@@ -1077,15 +1083,15 @@ export function ReorderNowWidget({ items, months }) {
                 <PackageX className={`h-4 w-4 shrink-0 ${isCritical ? 'text-rose-500' : 'text-amber-500'}`} />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate" title={item.name}>{item.name}</p>
-                  <p className="text-[10px] text-slate-400 font-bold truncate">{item.division} · {item.sku}</p>
+                  <p className="text-[11px] text-slate-400 font-bold truncate">{item.division} · {item.sku}</p>
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className="text-xs font-black font-sans text-slate-900 dark:text-white tabular-nums">{item.sold_30d}</p>
-                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{t('sold30d')}</p>
+                  <p className="text-xs font-bold font-sans text-slate-900 dark:text-white tabular-nums">{item.sold_30d}</p>
+                  <p className="text-xs text-slate-400 font-medium">{t('sold30d')}</p>
                 </div>
                 <div className={`shrink-0 text-right w-16 px-2 py-1 rounded-lg ${isCritical ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400' : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400'}`}>
-                  <p className="text-xs font-black tabular-nums">{cover.toFixed(1)}d</p>
-                  <p className="text-[9px] font-bold uppercase tracking-widest leading-none">{t('daysCover')}</p>
+                  <p className="text-xs font-bold tabular-nums">{cover.toFixed(1)}d</p>
+                  <p className="text-xs font-semibold leading-none">{t('daysCover')}</p>
                 </div>
               </div>
             );
@@ -1110,24 +1116,24 @@ export function DeadStockWidget({ data, months }) {
       topRight={count > 0 ? <CsvExportButton type="deadstock" months={months} label={t('exportCsv')} /> : null}
     >
       <div className="flex items-start gap-4">
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-slate-100 dark:bg-slate-800 shrink-0">
+        <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-slate-100 dark:bg-slate-800 shrink-0">
           <Archive className="h-7 w-7 text-slate-500" />
         </div>
         <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <p className="text-2xl font-black font-sans text-slate-900 dark:text-white tabular-nums leading-none">{count}</p>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">{t('items')}</p>
+            <p className="text-2xl font-bold font-sans text-slate-900 dark:text-white tabular-nums leading-none">{count}</p>
+            <p className="text-xs font-medium text-slate-400 mt-1">{t('items')}</p>
           </div>
           <div>
-            <p className="text-2xl font-black font-sans text-slate-900 dark:text-white tabular-nums leading-none">{formatCompactNumber(units)}</p>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">{t('unitsIdle')}</p>
+            <p className="text-2xl font-bold font-sans text-slate-900 dark:text-white tabular-nums leading-none">{formatCompactNumber(units)}</p>
+            <p className="text-xs font-medium text-slate-400 mt-1">{t('unitsIdle')}</p>
           </div>
           {value > 0 ? (
             <div>
-              <p className="text-xl font-black font-sans text-slate-900 dark:text-white tabular-nums leading-none">{formatCompactINR(value)}</p>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">{t('capitalIdle')}</p>
+              <p className="text-xl font-bold font-sans text-slate-900 dark:text-white tabular-nums leading-none">{formatCompactINR(value)}</p>
+              <p className="text-xs font-medium text-slate-400 mt-1">{t('capitalIdle')}</p>
               {uncosted > 0 ? (
-                <p className="text-[9px] font-bold text-amber-600 dark:text-amber-400 mt-1">
+                <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-1">
                   {uncosted} {t('uncostedItems')}
                 </p>
               ) : null}
@@ -1156,9 +1162,9 @@ export function PendingQueueWidget({ items, onApprove, onReject, actionLoading }
               <div key={item.id} className="flex items-center gap-2 py-2 border-b border-slate-100 dark:border-slate-800/40 last:border-b-0">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{item.shipment_number}</p>
-                  <p className="text-[10px] text-slate-400 font-bold truncate">{item.customer_name || '—'} · {item.salesperson_name || '—'}</p>
+                  <p className="text-[11px] text-slate-400 font-bold truncate">{item.customer_name || '—'} · {item.salesperson_name || '—'}</p>
                 </div>
-                <span className={`shrink-0 text-[10px] font-black px-2 py-1 rounded-lg tabular-nums ${ageColor}`}>{formatHours(hrs)}</span>
+                <span className={`shrink-0 text-[11px] font-bold px-2 py-1 rounded-lg tabular-nums ${ageColor}`}>{formatHours(hrs)}</span>
                 <div className="flex gap-1 shrink-0">
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -1249,14 +1255,14 @@ export function CustomerConcentrationWidget({ rows }) {
             <div key={row.id} className="flex items-center gap-2 text-xs">
               <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: INDUSTRIAL_COLORS[i % INDUSTRIAL_COLORS.length] }} />
               <span className="font-bold text-slate-700 dark:text-slate-300 flex-1 truncate" title={row.name}>{row.name}</span>
-              <span className="font-sans font-black text-slate-900 dark:text-white tabular-nums shrink-0">{formatCompactINR(row.revenue)}</span>
+              <span className="font-sans font-bold text-slate-900 dark:text-white tabular-nums shrink-0">{formatCompactINR(row.revenue)}</span>
               <span
-                className={`text-[10px] font-black tabular-nums shrink-0 w-14 text-right ${marginLags ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}
+                className={`text-[11px] font-bold tabular-nums shrink-0 w-14 text-right ${marginLags ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}
                 title={margin != null ? `${formatCompactINR(row.gross_profit)} ${t('profit')}` : undefined}
               >
                 {margin != null ? `${margin.toFixed(1)}% ${t('margin')}` : '\u2014'}
               </span>
-              <span className={`text-[10px] font-black tabular-nums shrink-0 w-12 text-right ${isConcentrated ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}>
+              <span className={`text-[11px] font-bold tabular-nums shrink-0 w-12 text-right ${isConcentrated ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}>
                 {share.toFixed(1)}%
               </span>
             </div>
@@ -1313,10 +1319,10 @@ export function PriceDispersionWidget({ rows }) {
       topRight={
         <div className="flex items-center gap-2">
           <Tags className="w-3.5 h-3.5 text-amber-500" />
-          <span className="font-sans text-sm font-black text-amber-600 dark:text-amber-400 tabular-nums">
+          <span className="font-sans text-sm font-bold text-amber-600 dark:text-amber-400 tabular-nums">
             {formatCompactINR(totalUplift)}
           </span>
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('uplift')}</span>
+          <span className="text-xs font-medium text-slate-400">{t('uplift')}</span>
         </div>
       }
     >
@@ -1324,11 +1330,11 @@ export function PriceDispersionWidget({ rows }) {
         <table className="w-full text-left text-sm min-w-[640px]">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('itemName')}</th>
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('typicalRate')}</th>
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('rateRange')}</th>
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('belowTypical')}</th>
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('uplift')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('itemName')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('typicalRate')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('rateRange')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('belowTypical')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('uplift')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
@@ -1338,16 +1344,16 @@ export function PriceDispersionWidget({ rows }) {
                 <tr key={row.item_id} className="group hover:bg-muted/50 transition-colors">
                   <td className="px-5 py-4">
                     <p className="font-bold text-slate-900 dark:text-slate-100 text-xs truncate max-w-[240px]" title={row.name}>{row.name}</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5 truncate max-w-[240px]" title={row.sku}>{row.sku}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5 truncate max-w-[240px]" title={row.sku}>{row.sku}</p>
                   </td>
-                  <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-900 dark:text-white">{formatINR(row.median_rate)}</td>
-                  <td className={`px-5 py-4 text-right font-sans font-black text-xs ${wideGap ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500'}`}>
+                  <td className="px-5 py-4 text-right font-sans font-bold text-xs text-slate-900 dark:text-white">{formatINR(row.median_rate)}</td>
+                  <td className={`px-5 py-4 text-right font-sans font-bold text-xs ${wideGap ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500'}`}>
                     {formatINR(row.min_rate)} – {formatINR(row.max_rate)}
                   </td>
-                  <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-500 tabular-nums">
+                  <td className="px-5 py-4 text-right font-sans font-bold text-xs text-slate-500 tabular-nums">
                     {row.below_count} / {row.sale_count}
                   </td>
-                  <td className="px-5 py-4 text-right font-sans font-black text-xs text-amber-600 dark:text-amber-400">{formatCompactINR(row.uplift)}</td>
+                  <td className="px-5 py-4 text-right font-sans font-bold text-xs text-amber-600 dark:text-amber-400">{formatCompactINR(row.uplift)}</td>
                 </tr>
               );
             })}
@@ -1359,26 +1365,26 @@ export function PriceDispersionWidget({ rows }) {
         {rows.map((row) => {
           const wideGap = gapPct(row) >= RATE_GAP_ALERT_PCT;
           return (
-            <div key={`disp-mob-${row.item_id}`} className="p-5 rounded-2xl border border-border/60 bg-muted/20 space-y-4">
+            <div key={`disp-mob-${row.item_id}`} className="p-5 rounded-xl border border-border/60 bg-muted/20 space-y-4">
               <div className="flex justify-between items-start gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-black text-slate-900 dark:text-white truncate">{row.name}</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5 truncate">{row.sku}</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{row.name}</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5 truncate">{row.sku}</p>
                 </div>
-                <span className="font-sans text-sm font-black text-amber-600 dark:text-amber-400 shrink-0">{formatCompactINR(row.uplift)}</span>
+                <span className="font-sans text-sm font-bold text-amber-600 dark:text-amber-400 shrink-0">{formatCompactINR(row.uplift)}</span>
               </div>
               <div className="grid grid-cols-3 gap-4 pt-2 border-t border-border/60">
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('typicalRate')}</p>
-                  <p className="text-xs font-black text-slate-900 dark:text-white">{formatINR(row.median_rate)}</p>
+                  <p className="text-xs font-medium text-slate-400 mb-1">{t('typicalRate')}</p>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white">{formatINR(row.median_rate)}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('rateRange')}</p>
-                  <p className={`text-xs font-black ${wideGap ? 'text-rose-600' : 'text-slate-500'}`}>{formatINR(row.min_rate)} – {formatINR(row.max_rate)}</p>
+                  <p className="text-xs font-medium text-slate-400 mb-1">{t('rateRange')}</p>
+                  <p className={`text-xs font-bold ${wideGap ? 'text-rose-600' : 'text-slate-500'}`}>{formatINR(row.min_rate)} – {formatINR(row.max_rate)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('belowTypical')}</p>
-                  <p className="text-xs font-black text-slate-500">{row.below_count} / {row.sale_count}</p>
+                  <p className="text-xs font-medium text-slate-400 mb-1">{t('belowTypical')}</p>
+                  <p className="text-xs font-bold text-slate-500">{row.below_count} / {row.sale_count}</p>
                 </div>
               </div>
             </div>
@@ -1386,7 +1392,7 @@ export function PriceDispersionWidget({ rows }) {
         })}
       </div>
 
-      <p className="mt-4 text-[10px] text-slate-500 leading-relaxed">{t('priceDispersionNote')}</p>
+      <p className="mt-4 text-[11px] text-slate-500 leading-relaxed">{t('priceDispersionNote')}</p>
     </AnalyticsCard>
   );
 }
@@ -1410,12 +1416,12 @@ function TripShipments({ shipments, t }) {
       <table className="w-full text-left text-xs">
         <thead>
           <tr className="border-b border-border/60">
-            <th className="px-4 py-2.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground">{t('shipmentNumber')}</th>
-            <th className="px-4 py-2.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground">{t('invoiceNumber')}</th>
-            <th className="px-4 py-2.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground">{t('supplierName')}</th>
-            <th className="px-4 py-2.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground text-right">{t('unitsReceived')}</th>
-            <th className="px-4 py-2.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground text-right">{t('goodsValue')}</th>
-            <th className="px-4 py-2.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground text-right">{t('freightLabel')}</th>
+            <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('shipmentNumber')}</th>
+            <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('invoiceNumber')}</th>
+            <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('supplierName')}</th>
+            <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('unitsReceived')}</th>
+            <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('goodsValue')}</th>
+            <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('freightLabel')}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border/40">
@@ -1424,9 +1430,9 @@ function TripShipments({ shipments, t }) {
               <td className="px-4 py-2.5 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{ship.shipment_number}</td>
               <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">{ship.invoice_number || '\u2014'}</td>
               <td className="px-4 py-2.5 text-slate-500 truncate max-w-[180px]" title={ship.supplier || ''}>{ship.supplier || '\u2014'}</td>
-              <td className="px-4 py-2.5 text-right font-sans font-black text-slate-500 tabular-nums">{formatCompactNumber(ship.units)}</td>
-              <td className="px-4 py-2.5 text-right font-sans font-black text-slate-500">{formatCompactINR(ship.goods)}</td>
-              <td className="px-4 py-2.5 text-right font-sans font-black text-slate-900 dark:text-white">
+              <td className="px-4 py-2.5 text-right font-sans font-bold text-slate-500 tabular-nums">{formatCompactNumber(ship.units)}</td>
+              <td className="px-4 py-2.5 text-right font-sans font-bold text-slate-500">{formatCompactINR(ship.goods)}</td>
+              <td className="px-4 py-2.5 text-right font-sans font-bold text-slate-900 dark:text-white">
                 {ship.freight != null ? formatINR(ship.freight) : <span className="text-slate-400">{'\u2014'}</span>}
               </td>
             </tr>
@@ -1473,27 +1479,27 @@ export function FreightTripsWidget({ trips, summary }) {
       topRight={
         <div className="flex items-center gap-2">
           <Truck className="w-3.5 h-3.5 text-rose-500" />
-          <span className="font-sans text-sm font-black text-rose-600 dark:text-rose-400 tabular-nums">
+          <span className="font-sans text-sm font-bold text-rose-600 dark:text-rose-400 tabular-nums">
             {formatCompactINR(repeatedTotal)}
           </span>
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('repeatedFreight')}</span>
+          <span className="text-xs font-medium text-slate-400">{t('repeatedFreight')}</span>
         </div>
       }
     >
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-5">
-        <div className="p-4 rounded-2xl border border-border/60 bg-muted/20">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('freightBooked')}</p>
-          <p className="font-sans text-base font-black text-slate-900 dark:text-white">{formatCompactINR(freightTotal)}</p>
+        <div className="p-4 rounded-xl border border-border/60 bg-muted/20">
+          <p className="text-xs font-medium text-slate-400 mb-1">{t('freightBooked')}</p>
+          <p className="font-sans text-base font-bold text-slate-900 dark:text-white">{formatCompactINR(freightTotal)}</p>
         </div>
-        <div className="p-4 rounded-2xl border border-border/60 bg-muted/20">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('ofGoodsValue')}</p>
-          <p className="font-sans text-base font-black text-amber-600 dark:text-amber-400">
+        <div className="p-4 rounded-xl border border-border/60 bg-muted/20">
+          <p className="text-xs font-medium text-slate-400 mb-1">{t('ofGoodsValue')}</p>
+          <p className="font-sans text-base font-bold text-amber-600 dark:text-amber-400">
             {freightShare != null ? `${freightShare.toFixed(1)}%` : '\u2014'}
           </p>
         </div>
-        <div className="p-4 rounded-2xl border border-border/60 bg-muted/20">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('repeatedFreight')}</p>
-          <p className="font-sans text-base font-black text-rose-600 dark:text-rose-400">{formatCompactINR(repeatedTotal)}</p>
+        <div className="p-4 rounded-xl border border-border/60 bg-muted/20">
+          <p className="text-xs font-medium text-slate-400 mb-1">{t('repeatedFreight')}</p>
+          <p className="font-sans text-base font-bold text-rose-600 dark:text-rose-400">{formatCompactINR(repeatedTotal)}</p>
         </div>
       </div>
 
@@ -1501,14 +1507,14 @@ export function FreightTripsWidget({ trips, summary }) {
         <table className="w-full text-left text-sm min-w-[720px]">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('licensePlate')}</th>
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('driverName')}</th>
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('arrivedOn')}</th>
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('shipmentsLabel')}</th>
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('freightExpected')}</th>
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('freightBooked')}</th>
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('goodsValue')}</th>
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('repeatedFreight')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('licensePlate')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('driverName')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('arrivedOn')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('shipmentsLabel')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('freightExpected')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('freightBooked')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('goodsValue')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('repeatedFreight')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
@@ -1533,22 +1539,22 @@ export function FreightTripsWidget({ trips, summary }) {
                 </td>
                 <td className="px-5 py-4 text-xs text-slate-500 truncate max-w-[140px]" title={trip.driver}>{trip.driver}</td>
                 <td className="px-5 py-4 text-xs text-slate-500 whitespace-nowrap">{formatTripDate(trip.arrival_date)}</td>
-                <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-900 dark:text-white tabular-nums">
+                <td className="px-5 py-4 text-right font-sans font-bold text-xs text-slate-900 dark:text-white tabular-nums">
                   {trip.shipments}
                   {Number(trip.trip_count) > 1 ? (
-                    <span className="block text-[10px] font-bold text-slate-400">{trip.trip_count} {t('tripsLabel')}</span>
+                    <span className="block text-[11px] font-bold text-slate-400">{trip.trip_count} {t('tripsLabel')}</span>
                   ) : null}
                 </td>
-                <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-500">{formatINR(trip.freight_expected)}</td>
-                <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-900 dark:text-white">{formatCompactINR(trip.freight_booked)}</td>
-                <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-500">{formatCompactINR(trip.goods_value)}</td>
+                <td className="px-5 py-4 text-right font-sans font-bold text-xs text-slate-500">{formatINR(trip.freight_expected)}</td>
+                <td className="px-5 py-4 text-right font-sans font-bold text-xs text-slate-900 dark:text-white">{formatCompactINR(trip.freight_booked)}</td>
+                <td className="px-5 py-4 text-right font-sans font-bold text-xs text-slate-500">{formatCompactINR(trip.goods_value)}</td>
                 <td className="px-5 py-4 text-right">
                   {tripFreightStatus(trip) === 'repeated' ? (
-                    <span className="font-sans font-black text-xs text-rose-600 dark:text-rose-400" title={t('sameAmountFlag')}>
+                    <span className="font-sans font-bold text-xs text-rose-600 dark:text-rose-400" title={t('sameAmountFlag')}>
                       {formatCompactINR(trip.repeated_amount)}
                     </span>
                   ) : (
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${tripFreightStatus(trip) === 'shared' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                    <span className={`text-xs font-semibold ${tripFreightStatus(trip) === 'shared' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
                       {t(tripFreightStatus(trip) === 'shared' ? 'sharedTripFlag' : 'mixedAmountFlag')}
                     </span>
                   )}
@@ -1573,7 +1579,7 @@ export function FreightTripsWidget({ trips, summary }) {
           const key = tripKey(trip);
           const isOpen = openTrip === key;
           return (
-          <div key={`trip-mob-${key}`} className="p-5 rounded-2xl border border-border/60 bg-muted/20 space-y-4">
+          <div key={`trip-mob-${key}`} className="p-5 rounded-xl border border-border/60 bg-muted/20 space-y-4">
             <button
               type="button"
               className="flex w-full justify-between items-start gap-3 text-left focus-ring"
@@ -1581,37 +1587,37 @@ export function FreightTripsWidget({ trips, summary }) {
               aria-expanded={isOpen}
             >
               <span className="min-w-0">
-                <span className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <span className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <ChevronDown
                     className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isOpen ? '' : '-rotate-90'}`}
                     aria-label={t('expandTrip')}
                   />
                   {trip.plate}
                 </span>
-                <span className="block text-[10px] text-slate-500 mt-0.5 truncate">{trip.driver} · {formatTripDate(trip.arrival_date)}</span>
+                <span className="block text-[11px] text-slate-500 mt-0.5 truncate">{trip.driver} · {formatTripDate(trip.arrival_date)}</span>
               </span>
               {tripFreightStatus(trip) === 'repeated' ? (
-                <span className="font-sans text-sm font-black text-rose-600 dark:text-rose-400 shrink-0">{formatCompactINR(trip.repeated_amount)}</span>
+                <span className="font-sans text-sm font-bold text-rose-600 dark:text-rose-400 shrink-0">{formatCompactINR(trip.repeated_amount)}</span>
               ) : (
-                <span className={`text-[10px] font-black uppercase tracking-widest shrink-0 ${tripFreightStatus(trip) === 'shared' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                <span className={`text-xs font-semibold shrink-0 ${tripFreightStatus(trip) === 'shared' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
                   {t(tripFreightStatus(trip) === 'shared' ? 'sharedTripFlag' : 'mixedAmountFlag')}
                 </span>
               )}
             </button>
             <div className="grid grid-cols-3 gap-4 pt-2 border-t border-border/60">
               <div>
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('shipmentsLabel')}</p>
-                <p className="text-xs font-black text-slate-900 dark:text-white">
+                <p className="text-xs font-medium text-slate-400 mb-1">{t('shipmentsLabel')}</p>
+                <p className="text-xs font-bold text-slate-900 dark:text-white">
                   {trip.shipments}{Number(trip.trip_count) > 1 ? ` · ${trip.trip_count} ${t('tripsLabel')}` : ''}
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('freightExpected')}</p>
-                <p className="text-xs font-black text-slate-500">{formatINR(trip.freight_expected)}</p>
+                <p className="text-xs font-medium text-slate-400 mb-1">{t('freightExpected')}</p>
+                <p className="text-xs font-bold text-slate-500">{formatINR(trip.freight_expected)}</p>
               </div>
               <div className="text-right">
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('freightBooked')}</p>
-                <p className="text-xs font-black text-slate-900 dark:text-white">{formatCompactINR(trip.freight_booked)}</p>
+                <p className="text-xs font-medium text-slate-400 mb-1">{t('freightBooked')}</p>
+                <p className="text-xs font-bold text-slate-900 dark:text-white">{formatCompactINR(trip.freight_booked)}</p>
               </div>
             </div>
             {isOpen ? (
@@ -1624,7 +1630,7 @@ export function FreightTripsWidget({ trips, summary }) {
         })}
       </div>
 
-      <p className="mt-4 text-[10px] text-slate-500 leading-relaxed">{t('freightNote')}</p>
+      <p className="mt-4 text-[11px] text-slate-500 leading-relaxed">{t('freightNote')}</p>
     </AnalyticsCard>
   );
 }
@@ -1647,20 +1653,20 @@ function DuplicateItemSides({ pair, t }) {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
       {pair.items.map((side) => (
         <div key={side.id} className="rounded-xl border border-border/60 bg-background/60 p-4 space-y-2">
-          <p className="text-xs font-black text-slate-900 dark:text-white break-words">{side.name}</p>
-          <p className="text-[10px] font-mono text-slate-500 break-all">{side.sku}</p>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500">
+          <p className="text-xs font-bold text-slate-900 dark:text-white break-words">{side.name}</p>
+          <p className="text-[11px] font-mono text-slate-500 break-all">{side.sku}</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500">
             <span>{t('stockLabel')}: <b className="text-slate-900 dark:text-white">{formatCompactNumber(side.qty)}</b></span>
             <span>{t('salesLabel')}: <b className="text-slate-900 dark:text-white">{formatCompactNumber(side.sells)}</b></span>
             <span>{t('avgCost')}: <b className="text-slate-900 dark:text-white">{side.unit_cost ? formatINR(side.unit_cost) : '—'}</b></span>
             {side.is_active ? null : (
-              <span className="font-black uppercase tracking-widest text-slate-400">{t('inactiveLabel')}</span>
+              <span className="font-medium text-slate-400">{t('inactiveLabel')}</span>
             )}
           </div>
           {(side.purchases || []).length ? (
             <ul className="space-y-1 pt-1 border-t border-border/40">
               {side.purchases.map((buy) => (
-                <li key={buy.shipment_number} className="text-[10px] text-slate-500 flex flex-wrap gap-x-2">
+                <li key={buy.shipment_number} className="text-[11px] text-slate-500 flex flex-wrap gap-x-2">
                   <span className="tabular-nums">{formatTripDate(buy.arrival_date)}</span>
                   <span className="font-bold text-slate-700 dark:text-slate-300">{buy.invoice_number || buy.shipment_number}</span>
                   <span className="tabular-nums">{formatCompactNumber(buy.qty)} @ {buy.unit_cost ? formatINR(buy.unit_cost) : '—'}</span>
@@ -1668,7 +1674,7 @@ function DuplicateItemSides({ pair, t }) {
               ))}
             </ul>
           ) : (
-            <p className="text-[10px] text-slate-400 pt-1 border-t border-border/40">{t('noPurchases')}</p>
+            <p className="text-[11px] text-slate-400 pt-1 border-t border-border/40">{t('noPurchases')}</p>
           )}
         </div>
       ))}
@@ -1709,25 +1715,25 @@ export function DuplicateItemsWidget({ pairs, summary }) {
       topRight={
         <div className="flex items-center gap-2">
           <Copy className="w-3.5 h-3.5 text-rose-500" />
-          <span className="font-sans text-sm font-black text-rose-600 dark:text-rose-400 tabular-nums">
+          <span className="font-sans text-sm font-bold text-rose-600 dark:text-rose-400 tabular-nums">
             {summary?.pairCount ?? pairs.length}
           </span>
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('duplicatePairs')}</span>
+          <span className="text-xs font-medium text-slate-400">{t('duplicatePairs')}</span>
         </div>
       }
     >
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-5">
-        <div className="p-4 rounded-2xl border border-border/60 bg-muted/20">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('confidentPairs')}</p>
-          <p className="font-sans text-base font-black text-rose-600 dark:text-rose-400">{summary?.certainCount ?? 0}</p>
+        <div className="p-4 rounded-xl border border-border/60 bg-muted/20">
+          <p className="text-xs font-medium text-slate-400 mb-1">{t('confidentPairs')}</p>
+          <p className="font-sans text-base font-bold text-rose-600 dark:text-rose-400">{summary?.certainCount ?? 0}</p>
         </div>
-        <div className="p-4 rounded-2xl border border-border/60 bg-muted/20">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('productsInvolved')}</p>
-          <p className="font-sans text-base font-black text-slate-900 dark:text-white">{summary?.productCount ?? 0}</p>
+        <div className="p-4 rounded-xl border border-border/60 bg-muted/20">
+          <p className="text-xs font-medium text-slate-400 mb-1">{t('productsInvolved')}</p>
+          <p className="font-sans text-base font-bold text-slate-900 dark:text-white">{summary?.productCount ?? 0}</p>
         </div>
-        <div className="p-4 rounded-2xl border border-border/60 bg-muted/20">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('strandedStock')}</p>
-          <p className="font-sans text-base font-black text-amber-600 dark:text-amber-400">{formatCompactINR(strandedValue)}</p>
+        <div className="p-4 rounded-xl border border-border/60 bg-muted/20">
+          <p className="text-xs font-medium text-slate-400 mb-1">{t('strandedStock')}</p>
+          <p className="font-sans text-base font-bold text-amber-600 dark:text-amber-400">{formatCompactINR(strandedValue)}</p>
         </div>
       </div>
 
@@ -1735,11 +1741,11 @@ export function DuplicateItemsWidget({ pairs, summary }) {
         <table className="w-full text-left text-sm min-w-[720px]">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('productPair')}</th>
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('specLabel')}</th>
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('costRatio')}</th>
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('strandedStock')}</th>
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('confidenceLabel')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('productPair')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('specLabel')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('costRatio')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('strandedStock')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('confidenceLabel')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
@@ -1763,7 +1769,7 @@ export function DuplicateItemsWidget({ pairs, summary }) {
                           <span className="block font-bold text-slate-900 dark:text-slate-100 break-words">{a.name}</span>
                           <span className="block text-slate-500 break-words">{b.name}</span>
                           {pair.sharesPurchase ? (
-                            <span className="inline-block mt-1 text-[9px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                            <span className="inline-block mt-1 text-xs font-semibold text-amber-600 dark:text-amber-400">
                               {t('samePurchaseFlag')}
                             </span>
                           ) : null}
@@ -1773,14 +1779,14 @@ export function DuplicateItemsWidget({ pairs, summary }) {
                     <td className="px-5 py-4 text-xs text-slate-500 whitespace-nowrap">
                       {a.brand} · {a.size}{a.grade ? ` · ${a.grade}` : ''}
                     </td>
-                    <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-500 tabular-nums">
+                    <td className="px-5 py-4 text-right font-sans font-bold text-xs text-slate-500 tabular-nums">
                       {pair.costRatio == null ? '—' : `×${pair.costRatio.toFixed(2)}`}
                     </td>
-                    <td className="px-5 py-4 text-right font-sans font-black text-xs text-slate-900 dark:text-white">
+                    <td className="px-5 py-4 text-right font-sans font-bold text-xs text-slate-900 dark:text-white">
                       {formatCompactINR(pair.strandedValue)}
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <span className={`text-[10px] font-black uppercase tracking-widest ${DUPLICATE_TONES[pair.confidence]}`}>
+                      <span className={`text-xs font-semibold ${DUPLICATE_TONES[pair.confidence]}`}>
                         {t(`duplicate_${pair.confidence}`)}
                       </span>
                     </td>
@@ -1804,7 +1810,7 @@ export function DuplicateItemsWidget({ pairs, summary }) {
           const isOpen = openPair === pair.key;
           const [a, b] = pair.items;
           return (
-            <div key={`dup-mob-${pair.key}`} className="p-5 rounded-2xl border border-border/60 bg-muted/20 space-y-4">
+            <div key={`dup-mob-${pair.key}`} className="p-5 rounded-xl border border-border/60 bg-muted/20 space-y-4">
               <button
                 type="button"
                 className="flex w-full justify-between items-start gap-3 text-left focus-ring"
@@ -1812,7 +1818,7 @@ export function DuplicateItemsWidget({ pairs, summary }) {
                 aria-expanded={isOpen}
               >
                 <span className="min-w-0">
-                  <span className="text-sm font-black text-slate-900 dark:text-white flex items-start gap-2">
+                  <span className="text-sm font-bold text-slate-900 dark:text-white flex items-start gap-2">
                     <ChevronDown
                       className={`w-3.5 h-3.5 mt-0.5 shrink-0 text-slate-400 transition-transform ${isOpen ? '' : '-rotate-90'}`}
                       aria-label={t('expandPair')}
@@ -1820,28 +1826,28 @@ export function DuplicateItemsWidget({ pairs, summary }) {
                     <span className="min-w-0 break-words">{a.name}</span>
                   </span>
                   <span className="block text-[11px] text-slate-500 mt-0.5 ml-5 break-words">{b.name}</span>
-                  <span className="block text-[10px] text-slate-400 mt-0.5 ml-5">
+                  <span className="block text-[11px] text-slate-400 mt-0.5 ml-5">
                     {a.brand} · {a.size}{a.grade ? ` · ${a.grade}` : ''}
                   </span>
                 </span>
-                <span className={`text-[10px] font-black uppercase tracking-widest shrink-0 ${DUPLICATE_TONES[pair.confidence]}`}>
+                <span className={`text-xs font-semibold shrink-0 ${DUPLICATE_TONES[pair.confidence]}`}>
                   {t(`duplicate_${pair.confidence}`)}
                 </span>
               </button>
               <div className="grid grid-cols-3 gap-4 pt-2 border-t border-border/60">
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('costRatio')}</p>
-                  <p className="text-xs font-black text-slate-500 tabular-nums">
+                  <p className="text-xs font-medium text-slate-400 mb-1">{t('costRatio')}</p>
+                  <p className="text-xs font-bold text-slate-500 tabular-nums">
                     {pair.costRatio == null ? '—' : `×${pair.costRatio.toFixed(2)}`}
                   </p>
                 </div>
                 <div className="text-center">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('strandedStock')}</p>
-                  <p className="text-xs font-black text-slate-900 dark:text-white">{formatCompactINR(pair.strandedValue)}</p>
+                  <p className="text-xs font-medium text-slate-400 mb-1">{t('strandedStock')}</p>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white">{formatCompactINR(pair.strandedValue)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('samePurchaseShort')}</p>
-                  <p className="text-xs font-black text-slate-900 dark:text-white">{pair.sharesPurchase ? t('yes') : t('no')}</p>
+                  <p className="text-xs font-medium text-slate-400 mb-1">{t('samePurchaseShort')}</p>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white">{pair.sharesPurchase ? t('yes') : t('no')}</p>
                 </div>
               </div>
               {isOpen ? <DuplicateItemSides pair={pair} t={t} /> : null}
@@ -1850,7 +1856,7 @@ export function DuplicateItemsWidget({ pairs, summary }) {
         })}
       </div>
 
-      <p className="mt-4 text-[10px] text-slate-500 leading-relaxed">{t('duplicateItemsNote')}</p>
+      <p className="mt-4 text-[11px] text-slate-500 leading-relaxed">{t('duplicateItemsNote')}</p>
     </AnalyticsCard>
   );
 }
@@ -1880,9 +1886,9 @@ export function ActivityFeedWidget({ events }) {
             <span className={`mt-1 w-2 h-2 rounded-full shrink-0 ${eventColor(e.event_type)}`} />
             <div className="flex-1 min-w-0">
               <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{eventLabel(e.event_type)}</p>
-              <p className="text-[10px] text-slate-400 truncate">{e.summary || `${e.entity_type} #${e.entity_id}`}{e.actor_name ? ` · ${e.actor_name}` : ''}</p>
+              <p className="text-[11px] text-slate-400 truncate">{e.summary || `${e.entity_type} #${e.entity_id}`}{e.actor_name ? ` · ${e.actor_name}` : ''}</p>
             </div>
-            <span className="text-[10px] font-bold text-slate-400 shrink-0 tabular-nums">{formatRelativeTime(e.occurred_at)}</span>
+            <span className="text-[11px] font-bold text-slate-400 shrink-0 tabular-nums">{formatRelativeTime(e.occurred_at)}</span>
           </div>
         ))}
       </div>
@@ -1903,11 +1909,11 @@ export function RiskInventoryTable({ divisionRisk, months }) {
         <table className="w-full text-left text-sm min-w-[600px]">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('divisionName')}</th>
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('available')}</th>
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('outOfStock')}</th>
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('lowStock')}</th>
-              <th className="px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">{t('status')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('divisionName')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('available')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('outOfStock')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('lowStock')}</th>
+              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('status')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
@@ -1920,14 +1926,14 @@ export function RiskInventoryTable({ divisionRisk, months }) {
                   <td className="px-5 py-4">
                     <p className="font-bold text-slate-900 dark:text-slate-100 text-xs">{d.division}</p>
                     {d.critical_items_list && (
-                      <p className="text-[10px] text-slate-500 mt-1 max-w-[200px] truncate" title={d.critical_items_list}>⚠️ {d.critical_items_list}</p>
+                      <p className="text-[11px] text-slate-500 mt-1 max-w-[200px] truncate" title={d.critical_items_list}>⚠️ {d.critical_items_list}</p>
                     )}
                   </td>
-                  <td className="px-5 py-4 text-right font-sans text-emerald-600 dark:text-emerald-400 font-black text-xs">{formatCompactNumber(d.current_stock)}</td>
-                  <td className="px-5 py-4 text-right font-sans text-rose-600 dark:text-rose-400 font-black text-xs">{formatCompactNumber(d.out_of_stock)}</td>
-                  <td className="px-5 py-4 text-right font-sans text-amber-600 dark:text-amber-400 font-black text-xs">{formatCompactNumber(d.low_stock)}</td>
+                  <td className="px-5 py-4 text-right font-sans text-emerald-600 dark:text-emerald-400 font-bold text-xs">{formatCompactNumber(d.current_stock)}</td>
+                  <td className="px-5 py-4 text-right font-sans text-rose-600 dark:text-rose-400 font-bold text-xs">{formatCompactNumber(d.out_of_stock)}</td>
+                  <td className="px-5 py-4 text-right font-sans text-amber-600 dark:text-amber-400 font-bold text-xs">{formatCompactNumber(d.low_stock)}</td>
                   <td className="px-5 py-4 text-right">
-                    <div className="flex items-center justify-end gap-3 text-[10px] font-black uppercase tracking-widest">
+                    <div className="flex items-center justify-end gap-3 text-xs font-semibold">
                       <span className={isCritical ? 'text-rose-500' : 'text-emerald-500'}>
                         {isCritical ? t('actionRequired') : t('stable')}
                       </span>
@@ -1949,32 +1955,32 @@ export function RiskInventoryTable({ divisionRisk, months }) {
           return (
             <div
               key={`risk-mob-${d.division}`}
-              className="p-5 rounded-2xl border border-border/60 bg-muted/20 space-y-4"
+              className="p-5 rounded-xl border border-border/60 bg-muted/20 space-y-4"
             >
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-sm font-black text-slate-900 dark:text-white">{d.division}</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">{d.division}</p>
                   {d.critical_items_list && (
-                    <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">⚠️ {d.critical_items_list}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">⚠️ {d.critical_items_list}</p>
                   )}
                 </div>
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
+                <div className="flex items-center gap-2 text-xs font-semibold">
                   <span className={isCritical ? 'text-rose-500' : 'text-emerald-500'}>{isCritical ? t('critical') : t('stable')}</span>
                   <span className={`w-2 h-2 rounded-full ${isCritical ? 'bg-rose-500' : 'bg-emerald-500'}`} />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4 pt-2 border-t border-border/60">
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('available')}</p>
-                  <p className="text-xs font-black text-emerald-600">{formatCompactNumber(d.current_stock)}</p>
+                  <p className="text-xs font-medium text-slate-400 mb-1">{t('available')}</p>
+                  <p className="text-xs font-bold text-emerald-600">{formatCompactNumber(d.current_stock)}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('outOfStock')}</p>
-                  <p className="text-xs font-black text-rose-600">{formatCompactNumber(d.out_of_stock)}</p>
+                  <p className="text-xs font-medium text-slate-400 mb-1">{t('outOfStock')}</p>
+                  <p className="text-xs font-bold text-rose-600">{formatCompactNumber(d.out_of_stock)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('lowStock')}</p>
-                  <p className="text-xs font-black text-amber-600">{formatCompactNumber(d.low_stock)}</p>
+                  <p className="text-xs font-medium text-slate-400 mb-1">{t('lowStock')}</p>
+                  <p className="text-xs font-bold text-amber-600">{formatCompactNumber(d.low_stock)}</p>
                 </div>
               </div>
             </div>

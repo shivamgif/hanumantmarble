@@ -1,6 +1,5 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useInView } from "@/lib/hooks/useInView";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -37,7 +36,6 @@ export function ProductsGrid() {
           align="center"
           className="mb-16"
           eyebrow={language === 'hi' ? 'ऑनलाइन खरीदें' : 'Shop Online'}
-          icon={<Sparkles className="w-4 h-4" />}
           title={getTranslation("shop.sectionTitle", language)}
           subtitle={
             language === 'hi'

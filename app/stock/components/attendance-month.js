@@ -94,14 +94,14 @@ export function AttendanceMonth({ reloadKey }) {
           <div>
             <div className="grid grid-cols-7 gap-1.5 text-center">
               {t('weekdays').split(',').map((d, i) => (
-                <span key={i} className="pb-1 text-[11px] font-black text-slate-500">{d}</span>
+                <span key={i} className="pb-1 text-[11px] font-bold text-slate-500">{d}</span>
               ))}
               {Array.from({ length: lead }, (_, i) => <span key={`lead-${i}`} />)}
               {days.map((day) => (
                 <div
                   key={day.date}
                   title={`${day.date} · ${day.status.replaceAll('_', ' ')}${day.workedMinutes ? ` · ${formatMinutes(day.workedMinutes)}` : ''}${day.isLate ? ` · late ${day.lateMinutes}m` : ''}`}
-                  className={`relative flex aspect-square items-center justify-center rounded-lg text-xs font-black tabular-nums ${
+                  className={`relative flex aspect-square items-center justify-center rounded-lg text-xs font-bold tabular-nums ${
                     STATUS_STYLE[day.status] || ''
                   } ${day.date === today ? 'ring-2 ring-brand-primary' : ''}`}
                 >
@@ -130,7 +130,7 @@ export function AttendanceMonth({ reloadKey }) {
             {stats.map(([label, value]) => (
               <div key={label} className="rounded-xl border border-border/60 p-3">
                 <dt className="text-[11px] font-bold text-slate-500">{label}</dt>
-                <dd className="mt-1 text-xl font-black tabular-nums text-slate-900 dark:text-white">{value}</dd>
+                <dd className="mt-1 text-xl font-bold tabular-nums text-slate-900 dark:text-white">{value}</dd>
               </div>
             ))}
           </dl>

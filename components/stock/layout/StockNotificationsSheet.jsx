@@ -21,28 +21,27 @@ export default function StockNotificationsSheet({
 }) {
   return (
     <Sheet open={notificationOpen} onOpenChange={setNotificationOpen}>
-      <SheetContent side="right" className="w-full max-w-none overflow-y-auto md:w-[480px] p-0 glass-panel border-y-0 border-r-0 shadow-none">
-        <div className="p-8 space-y-8">
-          <SheetHeader className="text-left space-y-4">
+      <SheetContent side="right" className="w-full max-w-none overflow-y-auto md:w-[460px] p-0 bg-card border-l border-border">
+        <div className="p-6 space-y-5">
+          <SheetHeader className="text-left space-y-1">
             <div className="flex items-center gap-3">
-              <div className="h-6 w-1 rounded-full bg-brand-primary" />
-              <SheetTitle className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">{t('notifications')}</SheetTitle>
+              <SheetTitle className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white">{t('notifications')}</SheetTitle>
             </div>
-            <SheetDescription className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-relaxed">
+            <SheetDescription className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
               {t('notificationsSubtitle')}
             </SheetDescription>
           </SheetHeader>
 
-          <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-white/40 dark:bg-slate-950/40 border border-slate-100 dark:border-white/5">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-primary">
-              {unreadCount} {t('unread')} Records
+          <div className="flex items-center justify-between gap-4 border-y border-border py-3">
+            <div className="text-sm text-slate-600 dark:text-slate-300">
+              <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-100">{unreadCount}</span> {t('unread')}
             </div>
             <div className="flex items-center gap-2">
               {accessRole === 'admin' ? (
                 <button
                   type="button"
                   onClick={() => setShowNotificationDebug((current) => !current)}
-                  className="h-9 px-4 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 text-[9px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 transition-all hover:border-brand-primary/30"
+                  className="h-8 px-3 rounded-md border border-border bg-card text-xs font-medium text-slate-600 dark:text-slate-400 transition-colors hover:bg-muted"
                 >
                   {showNotificationDebug ? t('hideDebug') : t('debug')}
                 </button>
@@ -51,7 +50,7 @@ export default function StockNotificationsSheet({
                 type="button"
                 onClick={markAllNotificationsRead}
                 disabled={notificationUpdating || unreadCount === 0}
-                className="h-9 px-4 inline-flex items-center gap-2 rounded-xl bg-slate-900 dark:bg-brand-primary text-white text-[9px] font-black uppercase tracking-widest transition-all hover:brightness-110 disabled:opacity-50"
+                className="h-8 px-3 inline-flex items-center gap-1.5 rounded-md border border-border bg-card text-xs font-medium text-slate-700 dark:text-slate-200 transition-colors hover:bg-muted disabled:opacity-50"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
                 {t('markAllRead')}
@@ -60,19 +59,19 @@ export default function StockNotificationsSheet({
           </div>
 
           {notificationError ? (
-            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-[11px] font-bold text-rose-700 animate-in fade-in duration-500">
+            <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
               {notificationError}
             </div>
           ) : null}
 
           {notificationLoading ? (
-            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-center py-20">{t('loadingNotifications')}</div>
+            <div className="text-xs font-medium text-slate-400 text-center py-20">{t('loadingNotifications')}</div>
           ) : notifications.length === 0 ? (
-            <div className="rounded-[2rem] border border-dashed border-slate-200 px-6 py-16 text-center">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">{t('noNotifications')}</p>
+            <div className="rounded-lg border border-dashed border-border px-6 py-16 text-center">
+              <p className="text-sm text-slate-500 dark:text-slate-400">{t('noNotifications')}</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="-mx-2 divide-y divide-border">
               {notifications.map((notification) => {
                 const recipients = Array.isArray(notification.recipients)
                   ? notification.recipients
@@ -104,37 +103,24 @@ export default function StockNotificationsSheet({
                     key={notification.id}
                     href={notification.actionHref || '/stock'}
                     onClick={() => handleNotificationNavigate(notification)}
-                    className={`block w-full rounded-2xl border p-5 text-left transition-[box-shadow] duration-200 hover:shadow-card focus-ring ${
-                      notification.is_read
-                        ? 'border-border/60 bg-card/40'
-                        : 'border-brand-primary/20 bg-brand-primary/5 ring-1 ring-brand-primary/10'
-                    }`}
+                    className="relative block w-full rounded-md px-2 py-3.5 pl-6 text-left transition-colors hover:bg-muted/60 focus-ring"
                   >
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight">{notification.event_type.replace(/_/g, ' ')}</p>
-                      <span className="rounded-full bg-slate-900 dark:bg-slate-800 px-3 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-white">
-                        {notification.channel}
+                    {!notification.is_read && <span aria-hidden="true" className="absolute left-2 top-5 h-2 w-2 rounded-full bg-brand-primary" />}
+                    <div className="flex items-baseline justify-between gap-3 mb-1">
+                      <p className={`text-sm capitalize ${notification.is_read ? 'font-medium text-slate-700 dark:text-slate-300' : 'font-semibold text-slate-900 dark:text-white'}`}>{notification.event_type.replace(/_/g, ' ')}</p>
+                      <span className="shrink-0 text-xs tabular-nums text-slate-400">
+                        {new Date(notification.created_at).toLocaleDateString()} · {new Date(notification.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <p className="text-[13px] leading-relaxed text-slate-600 dark:text-slate-300 font-medium">{notification.message_text}</p>
-                    
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-                      <div className="flex items-center gap-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                        <span>{new Date(notification.created_at).toLocaleDateString()}</span>
-                        <span className="opacity-30">•</span>
-                        <span>{new Date(notification.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                      <span className="text-[9px] font-black uppercase tracking-widest text-brand-primary underline decoration-2 underline-offset-4">{t('open')} Protocol</span>
+                    <p className="text-[13px] leading-relaxed text-slate-600 dark:text-slate-400">{notification.message_text}</p>
+                    <div className="mt-2 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                      <span className="capitalize">{notification.channel}</span>
+                      {departmentLabel ? <><span aria-hidden="true">·</span><span>{t('target')}: {departmentLabel}</span></> : null}
+                      <span className="ml-auto font-medium text-brand-primary">{t('open')} →</span>
                     </div>
 
-                    {departmentLabel ? (
-                      <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-white/5 text-[9px] font-black uppercase tracking-widest text-slate-500">
-                        <span className="text-brand-primary">{t('target')}:</span> {departmentLabel}
-                      </div>
-                    ) : null}
-
                     {showNotificationDebug && accessRole === 'admin' && firstWhatsappPayload ? (
-                      <pre className="mt-4 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-[10px] text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+                      <pre className="mt-3 overflow-auto rounded-md border border-border bg-muted p-3 text-[11px] text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
                         {JSON.stringify(firstWhatsappPayload, null, 2)}
                       </pre>
                     ) : null}

@@ -1,5 +1,6 @@
 'use client';
 
+import { SelectField } from '@/components/ui/select';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2, Store, Undo2, Replace } from 'lucide-react';
 import {
@@ -18,9 +19,9 @@ const WRITE_ROLES = ['admin', 'manager', 'stock_maintainer'];
 // flooring is a STATE, picked with a radio and changeable afterwards, so it is
 // not its own button — see lib/stock-showroom.js.
 const ACTIONS = [
-  { action: 'to_showroom', label: 'Send to showroom', icon: Store, className: 'bg-violet-500 hover:bg-violet-600' },
-  { action: 'to_warehouse', label: 'Bring back', icon: Undo2, className: 'bg-emerald-500 hover:bg-emerald-600' },
-  { action: 'reclassify', label: 'Change state', icon: Replace, className: 'bg-slate-600 hover:bg-slate-700' },
+  { action: 'to_showroom', label: 'Send to showroom', icon: Store },
+  { action: 'to_warehouse', label: 'Bring back', icon: Undo2 },
+  { action: 'reclassify', label: 'Change state', icon: Replace },
 ];
 
 const STATE_LABELS = {
@@ -54,7 +55,7 @@ function StateRadio({ value, onChange, name, disabledStates = [] }) {
               className="mt-0.5 h-4 w-4 shrink-0 accent-brand-primary"
             />
             <div className="space-y-0.5">
-              <div className="text-xs font-black uppercase tracking-widest text-foreground/80">{title}</div>
+              <div className="text-xs font-medium text-foreground/80">{title}</div>
               <p className="text-[11px] font-medium text-muted-foreground">{hint}</p>
             </div>
           </label>
@@ -171,28 +172,10 @@ export function ShowroomSection({ item, userRole, onChanged }) {
 
   return (
     <div className="space-y-5">
-      {/* What is where, before any action — the whole point of the feature. */}
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/60 bg-muted/30 px-4 py-3">
-        <span className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-400">At showroom</span>
-        <span className="tabular-nums text-sm font-black text-slate-900 dark:text-white">
-          {fmt(split.total)} <span className="text-[10px] uppercase text-slate-400">{split.unit}</span>
-        </span>
-        {split.total > 0 && (
-          <span className="flex flex-wrap gap-1.5">
-            <span className="rounded-full bg-violet-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-violet-500">
-              {fmt(split.cassette)} on cassette
-            </span>
-            <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-amber-500">
-              {fmt(split.installed)} installed
-            </span>
-          </span>
-        )}
-      </div>
-
       {canWrite && (
         <div className="space-y-3">
           <div className="flex flex-wrap gap-2">
-            {ACTIONS.map(({ action, label, icon: Icon, className }) => (
+            {ACTIONS.map(({ action, label, icon: Icon }) => (
               <button
                 key={action}
                 type="button"
@@ -206,23 +189,23 @@ export function ShowroomSection({ item, userRole, onChanged }) {
                   // that is the only reason to open it.
                   if (action === 'reclassify') setState(split.installed > 0 && split.cassette <= 0 ? 'cassette' : 'installed');
                 }}
-                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest text-white transition-all active:scale-95 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed ${className} ${openAction === action ? 'ring-2 ring-offset-2 ring-brand-primary' : ''}`}
+                className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${openAction === action ? 'border-slate-400 bg-muted text-slate-900 dark:border-slate-500 dark:text-slate-50' : 'border-border bg-card text-slate-700 hover:bg-muted dark:text-slate-200'}`}
               >
-                <Icon className="h-3.5 w-3.5" />
+                <Icon className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                 {label}
               </button>
             ))}
           </div>
 
           {openAction && (
-            <div className="rounded-2xl border border-border/60 bg-muted/40 p-4 space-y-4">
+            <div className="rounded-lg border border-border p-3 space-y-3">
               {/* Only worth asking when there is more than one showroom. With a
                   single branch this stays hidden and the request omits
                   locationId, which the API resolves to that one showroom. */}
               {branches.length > 1 && (
                 <div>
                   <label className={FORM_LABEL_CLASS} htmlFor="showroom-branch">Showroom</label>
-                  <select
+                  <SelectField
                     id="showroom-branch"
                     value={locationId}
                     onChange={(event) => setLocationId(event.target.value)}
@@ -236,7 +219,7 @@ export function ShowroomSection({ item, userRole, onChanged }) {
                           : ' — nothing on display'}
                       </option>
                     ))}
-                  </select>
+                  </SelectField>
                 </div>
               )}
               <div className="grid gap-3 sm:grid-cols-2">
@@ -304,12 +287,12 @@ export function ShowroomSection({ item, userRole, onChanged }) {
                   type="button"
                   disabled={submitting || !qty}
                   onClick={onSubmitClick}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-primary text-white text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex h-9 items-center gap-2 px-3.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   Confirm
                 </button>
-                <button type="button" onClick={reset} className="px-4 py-2.5 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-slate-700">
+                <button type="button" onClick={reset} className="h-9 px-3 text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-slate-100">
                   Cancel
                 </button>
               </div>
@@ -319,24 +302,24 @@ export function ShowroomSection({ item, userRole, onChanged }) {
       )}
 
       <div className="space-y-2">
-        <div className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-400">Showroom activity</div>
+        <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Showroom activity</div>
         {historyLoading ? (
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
+          <div className="flex items-center gap-2 text-sm text-slate-500">
             <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
           </div>
         ) : history.length === 0 ? (
-          <div className="text-xs font-bold text-slate-400">No showroom activity.</div>
+          <div className="text-sm text-slate-500 dark:text-slate-400">No showroom activity yet.</div>
         ) : (
-          <ul className="divide-y divide-border/60 rounded-2xl border border-border/60 overflow-hidden">
+          <ul className="divide-y divide-border rounded-lg border border-border overflow-hidden">
             {history.map((movement) => {
               const action = showroomActionOf(movement);
               return (
-                <li key={movement.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-2.5 text-xs bg-muted/20">
-                  <span className="tabular-nums font-bold text-slate-400 w-20 shrink-0">{formatDateTime(movement.created_at)}</span>
-                  <span className={`font-black uppercase tracking-widest text-[10px] ${action ? SHOWROOM_ACTIONS[action].tone : 'text-slate-500'}`}>
+                <li key={movement.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2 text-xs">
+                  <span className="tabular-nums text-slate-500 w-20 shrink-0">{formatDateTime(movement.created_at)}</span>
+                  <span className={`font-semibold text-xs ${action ? SHOWROOM_ACTIONS[action].tone : 'text-slate-500'}`}>
                     {action ? SHOWROOM_ACTIONS[action].short : movement.movement_type}
                   </span>
-                  <span className="tabular-nums font-black text-slate-900 dark:text-white">{formatShowroomQty(movement)}</span>
+                  <span className="tabular-nums font-semibold text-slate-900 dark:text-white">{formatShowroomQty(movement)}</span>
                   <span className="font-bold text-slate-400 truncate">{movement.created_by}</span>
                   {movement.notes && <span className="text-slate-500 italic truncate">{movement.notes}</span>}
                 </li>

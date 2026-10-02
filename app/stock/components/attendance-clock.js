@@ -337,10 +337,10 @@ export function AttendanceClock({ onPunched }) {
     <div className={CLASSES.topCard}>
       <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-center sm:text-left">
-          <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
+          <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
             {isIn ? (onBreak ? t('onBreak') : t('clockedIn')) : t('notClockedIn')}
           </p>
-          <p className="mt-1 text-4xl font-black tabular-nums text-slate-900 dark:text-white">
+          <p className="mt-1 text-4xl font-bold tabular-nums text-slate-900 dark:text-white">
             {loading ? '—' : formatMinutes(liveMinutes)}
           </p>
           {/* While clocked in, show where the punch was actually attributed —
@@ -351,7 +351,7 @@ export function AttendanceClock({ onPunched }) {
             <p className="mt-1 flex items-center justify-center gap-1.5 text-[11px] font-bold text-slate-500 sm:justify-start">
               <Building2 className="h-3.5 w-3.5" />
               {branch.name}
-              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+              <span className="text-xs font-medium text-slate-500">
                 {isIn && state.currentBranch ? t('punchedHere') : t('yourBranch')}
               </span>
             </p>
@@ -400,7 +400,7 @@ export function AttendanceClock({ onPunched }) {
                 type="button"
                 onClick={() => startPunch('out')}
                 disabled={Boolean(busy) || needsBranch}
-                className="flex flex-1 shrink-0 items-center justify-center gap-2 rounded-full bg-rose-600 px-6 py-4 text-sm font-black sm:flex-none sm:py-3 sm:text-xs uppercase tracking-widest text-white shadow-lg shadow-rose-600/20 transition-all hover:scale-105 hover:bg-rose-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex flex-1 shrink-0 items-center justify-center gap-2 rounded-lg bg-rose-600 px-6 py-4 text-sm font-semibold sm:flex-none sm:py-3 sm:text-sm text-white transition-all hover:bg-rose-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <LogOut className="h-4 w-4" />
                 {busy === 'out' ? t('saving') : t('clockOut')}
@@ -411,7 +411,7 @@ export function AttendanceClock({ onPunched }) {
               type="button"
               onClick={() => startPunch('in')}
               disabled={Boolean(busy) || loading || needsBranch}
-              className="flex w-full shrink-0 items-center justify-center gap-2 rounded-full bg-emerald-600 px-8 py-4 text-sm font-black sm:w-auto sm:py-3.5 sm:text-xs uppercase tracking-widest text-white shadow-lg shadow-emerald-600/20 transition-all hover:scale-105 hover:bg-emerald-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-8 py-4 text-sm font-semibold sm:w-auto sm:py-3.5 sm:text-sm text-white transition-all hover:bg-emerald-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <LogIn className="h-4 w-4" />
               {busy === 'in' ? t('saving') : t('clockIn')}
@@ -425,7 +425,7 @@ export function AttendanceClock({ onPunched }) {
           finds out what to actually do about it. */}
       {advice ? (
         <div className="mt-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
-          <p className="flex items-center gap-1.5 text-xs font-black text-amber-700 dark:text-amber-400">
+          <p className="flex items-center gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-400">
             <MapPinOff className="h-3.5 w-3.5 shrink-0" />
             {t(advice.title)}
           </p>
@@ -440,7 +440,7 @@ export function AttendanceClock({ onPunched }) {
               type="button"
               onClick={() => startPunch(isIn ? 'out' : 'in')}
               disabled={Boolean(busy) || needsBranch}
-              className="mt-2.5 rounded-full bg-amber-600 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-white transition-all hover:bg-amber-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-2.5 rounded-lg bg-amber-600 px-4 py-2 text-[13px] font-semibold text-white transition-all hover:bg-amber-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? t('checking') : t('tryAgain')}
             </button>

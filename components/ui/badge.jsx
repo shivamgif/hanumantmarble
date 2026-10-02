@@ -5,17 +5,17 @@ const badgeVariants = {
   secondary: "border-transparent bg-secondary text-secondary-foreground",
   destructive: "border-transparent bg-destructive text-destructive-foreground",
   outline: "text-foreground",
-  approved: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
-  pending: "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-300",
-  rejected: "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-300",
-  neutral: "border-slate-500/20 bg-slate-500/10 text-slate-600 dark:text-slate-300",
+  approved: "border-emerald-600/20 bg-emerald-500/[0.06] text-emerald-700 dark:text-emerald-400 capitalize before:h-1.5 before:w-1.5 before:rounded-full before:bg-current",
+  pending: "border-amber-600/25 bg-amber-500/[0.06] text-amber-700 dark:text-amber-400 capitalize before:h-1.5 before:w-1.5 before:rounded-full before:bg-current",
+  rejected: "border-rose-600/20 bg-rose-500/[0.06] text-rose-700 dark:text-rose-400 capitalize before:h-1.5 before:w-1.5 before:rounded-full before:bg-current",
+  neutral: "border-border bg-transparent text-slate-600 dark:text-slate-300 capitalize before:h-1.5 before:w-1.5 before:rounded-full before:bg-current",
 }
 
 export function Badge({ className, variant = "default", ...props }) {
   return (
     <div
       className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+        "inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
         badgeVariants[variant],
         className
       )}

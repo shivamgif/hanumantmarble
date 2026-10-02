@@ -2,7 +2,7 @@
 
 import { memo, useEffect, useMemo, useState } from 'react';
 import { useWatch } from 'react-hook-form';
-import { Boxes, FileText, Plus, ReceiptText, Sparkles, Truck, ChevronRight, X, Package } from 'lucide-react';
+import { Boxes, FileText, Plus, ReceiptText, Truck, ChevronRight, X, Package } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -79,7 +79,7 @@ function TransporterFields({ form, suggestions, t, tc }) {
               />
             </FormControl>
             <div className="space-y-0.5">
-              <FormLabel className="text-xs font-black uppercase tracking-widest text-foreground/70 cursor-pointer">
+              <FormLabel className="text-xs font-medium text-foreground/70 cursor-pointer">
                 {tc?.noTransporterDetails ?? 'No transporter details'}
               </FormLabel>
               <p className="text-[11px] font-medium text-muted-foreground">
@@ -141,7 +141,7 @@ function FreightWeightField({ form, label }) {
                     type="button"
                     onClick={() => setUnit(u)}
                     aria-pressed={unit === u}
-                    className={`h-8 min-w-10 rounded-full px-3 text-[11px] font-black uppercase tracking-wider transition-colors ${unit === u ? 'bg-brand-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                    className={`h-8 min-w-10 rounded-full px-3 text-xs font-semibold transition-colors ${unit === u ? 'bg-brand-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
                   >
                     {u}
                   </button>
@@ -297,7 +297,7 @@ function TripPicker({ form }) {
   const separateChecked = pickedSeparate && !tripId;
 
   return (
-    <div className="sm:col-span-2 lg:col-span-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+    <div className="sm:col-span-2 lg:col-span-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
       <p className="text-xs font-bold text-foreground">{tt('tripFoundTitle')}</p>
       <p className="text-[11px] text-muted-foreground">{tt('tripFoundHint')}</p>
       <div className="space-y-2" role="radiogroup" aria-label={tt('tripFoundTitle')}>
@@ -311,7 +311,7 @@ function TripPicker({ form }) {
             >
               <input type="radio" name="trip-choice" className="mt-1 accent-brand-primary" checked={checked} onChange={() => join(trip)} />
               <span className="min-w-0 space-y-1">
-                <span className="block text-xs font-black text-foreground">
+                <span className="block text-xs font-bold text-foreground">
                   {String(trip.arrival_date).split('-').reverse().join('/')} · {trip.truck_license_plate}{trip.driver_name ? ` · ${trip.driver_name}` : ''}
                 </span>
                 <span className="block text-[11px] text-muted-foreground">
@@ -370,11 +370,11 @@ export const FLAT_RATE_VARIANTS = {
     key: 'bag',
     badge: 'Bag',
     breadcrumb: 'Bag Goods',
-    accentText: 'text-amber-400',
+    accentText: 'text-amber-700 dark:text-amber-400',
     accentDot: 'bg-amber-400',
-    accentChip: 'border-amber-500/20 bg-amber-500/10 text-amber-400',
-    accentAddBtn: 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20',
-    accentSubmitBtn: 'bg-amber-500 shadow-amber-500/20',
+    accentChip: 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400',
+    accentAddBtn: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20',
+    accentSubmitBtn: 'bg-amber-600',
     addItemLabel: 'Add Bag Item',
     submitArrivalLabel: 'Submit Bag Purchase',
     submitDispatchLabel: 'Submit Bag Dispatch',
@@ -390,11 +390,11 @@ export const FLAT_RATE_VARIANTS = {
     key: 'stone',
     badge: 'Stone',
     breadcrumb: 'Stone Goods',
-    accentText: 'text-sky-400',
+    accentText: 'text-sky-700 dark:text-sky-400',
     accentDot: 'bg-sky-400',
-    accentChip: 'border-sky-500/20 bg-sky-500/10 text-sky-400',
-    accentAddBtn: 'bg-sky-500/10 text-sky-400 hover:bg-sky-500/20',
-    accentSubmitBtn: 'bg-sky-500 shadow-sky-500/20',
+    accentChip: 'border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-400',
+    accentAddBtn: 'bg-sky-500/10 text-sky-700 dark:text-sky-400 hover:bg-sky-500/20',
+    accentSubmitBtn: 'bg-sky-600',
     addItemLabel: 'Add Stone Item',
     submitArrivalLabel: 'Submit Stone Purchase',
     submitDispatchLabel: 'Submit Stone Dispatch',
@@ -422,21 +422,21 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
   const brokenQtySqmDisplay = _sqmPerBox != null ? round3(_sqmPerBox * _brokenQty) : null;
 
   return (
-    <div key={fieldRow.id} className="glass-panel rounded-2xl overflow-hidden group/item">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 bg-slate-900/40 px-4 py-2.5">
+    <div key={fieldRow.id} className="glass-panel rounded-xl overflow-hidden group/item">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/60 px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-brand-primary animate-pulse" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-100">{tc.itemLabel} {index + 1}</span>
+          <span className="h-1.5 w-1.5 rounded-full bg-brand-primary" />
+          <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">{tc.itemLabel} {index + 1}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-widest shadow-sm ${isCatalogItem ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400' : 'border-amber-500/20 bg-amber-500/10 text-amber-400'}`}>
+          <span className={`rounded-md border px-2 py-0.5 text-xs font-medium ${isCatalogItem ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400'}`}>
             {isCatalogItem ? tc.autofilledCatalog : tc.newTileEntry}
           </span>
           {totalItems > 1 && (
             <button
               type="button"
               onClick={() => onRemoveItem(index)}
-              className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+              className="p-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors"
               title="Remove item"
             >
               <X className="h-4 w-4" />
@@ -474,21 +474,20 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
             <StockFormField control={control} name={`items.${index}.wholeQty`} label={tc.wholeBox} type="number" placeholder="0" min="0"  />
             <StockFormField control={control} name={`items.${index}.brokenQty`} label={tc.brokenTiles} type="number"  placeholder="0"  min="0"/>
           </div>
-        <div className="grid gap-3 sm:grid-cols-3 p-3 rounded-xl bg-slate-500/5 border border-white/5">
+        <div className="grid gap-3 sm:grid-cols-3 p-3 rounded-xl bg-muted/50 border border-border">
           {[
             { label: tc.orderedSqm, value: orderedQtySqmDisplay },
             { label: tc.wholeSqm, value: wholeQtySqmDisplay },
             { label: tc.brokenSqm, value: brokenQtySqmDisplay },
           ].map(({ label, value }) => (
             <div key={label}>
-              <div className="text-[9px] font-black uppercase tracking-widest text-slate-500/60 mb-1">{label}</div>
-              <div className="text-sm font-black text-slate-900 dark:text-white tabular-nums tracking-tight">{value ?? '—'}</div>
+              <div className="text-xs font-medium text-slate-500/60 mb-1">{label}</div>
+              <div className="text-sm font-bold text-slate-900 dark:text-white tabular-nums tracking-tight">{value ?? '—'}</div>
             </div>
           ))}
         </div>
         <div>
-          <div className="mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-            <Sparkles className="h-3.5 w-3.5 text-brand-primary" />
+          <div className="mb-4 flex items-center gap-2 text-xs font-medium text-slate-400">
             {isCatalogItem ? tc.catalogIntelligence : tc.technicalEntry}
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
@@ -560,7 +559,7 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
                         <SelectValue placeholder={tc.quality} />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent className="glass-panel">
+                    <SelectContent>
                       <SelectItem value="Premium">Premium</SelectItem>
                       <SelectItem value="Standard">Standard</SelectItem>
                       <SelectItem value="Commercial">Commercial</SelectItem>
@@ -589,15 +588,15 @@ const FlatRateArrivalItemRow = memo(function FlatRateArrivalItemRow({ index, fie
   const v = variant ?? FLAT_RATE_VARIANTS.bag;
   const isStone = v.key === 'stone';
   return (
-    <div key={fieldRow.id} className="glass-panel rounded-2xl overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 bg-slate-900/40 px-4 py-2.5">
+    <div key={fieldRow.id} className="glass-panel rounded-xl overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/60 px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className={`h-1.5 w-1.5 rounded-full animate-pulse ${v.accentDot}`} />
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-100">{tc?.itemLabel ?? 'Item'} {index + 1}</span>
-          <span className={`rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-widest ${v.accentChip}`}>{v.badge}</span>
+          <span className={`h-1.5 w-1.5 rounded-full ${v.accentDot}`} />
+          <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">{tc?.itemLabel ?? 'Item'} {index + 1}</span>
+          <span className={`rounded-md border px-2 py-0.5 text-xs font-medium ${v.accentChip}`}>{v.badge}</span>
         </div>
         {totalItems > 1 && (
-          <button type="button" onClick={() => onRemoveItem(index)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
+          <button type="button" onClick={() => onRemoveItem(index)} className="p-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors">
             <X className="h-4 w-4" />
           </button>
         )}
@@ -724,12 +723,12 @@ export function FlatRateArrivalFormContent({
         <div className={FORM_CARD_CLASS}>
           <div className="flex justify-between items-center mb-4 gap-4 px-1">
             <div className="space-y-1">
-              <nav className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
+              <nav className="flex items-center gap-2 text-xs font-medium text-slate-500">
                 <span>Inventory Hub</span>
                 <ChevronRight className="h-2.5 w-2.5 opacity-50" />
                 <span className={v.accentText}>{v.breadcrumb}</span>
               </nav>
-              <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">Items</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">Items</h3>
             </div>
           </div>
           <div className="space-y-4">
@@ -752,7 +751,7 @@ export function FlatRateArrivalFormContent({
             <button
               type="button"
               onClick={onAddItem}
-              className={`inline-flex mb-4 mt-4 items-center gap-2 rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 ${v.accentAddBtn}`}
+              className={`inline-flex mb-4 mt-4 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${v.accentAddBtn}`}
             >
               <Plus className="h-3.5 w-3.5" />
               {v.addItemLabel}
@@ -779,7 +778,7 @@ export function FlatRateArrivalFormContent({
         <button
           type="submit"
           disabled={submitting}
-          className={`mt-6 w-full rounded-2xl px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-white shadow-xl transition-all hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${v.accentSubmitBtn}`}
+          className={`mt-6 w-full rounded-lg px-4 py-3 text-sm font-semibold text-white transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 ${v.accentSubmitBtn}`}
         >
           <span className="inline-flex items-center gap-3">
             <Package className="h-5 w-5" />
@@ -860,12 +859,12 @@ export function ArrivalFormContent({
         <div className={FORM_CARD_CLASS}>
           <div className="flex justify-between items-center mb-4 gap-4 px-1">
             <div className="space-y-1">
-              <nav className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
+              <nav className="flex items-center gap-2 text-xs font-medium text-slate-500">
                 <span>{tc.inventoryHub}</span>
                 <ChevronRight className="h-2.5 w-2.5 opacity-50" />
                 <span className="text-brand-primary">{tc.assets}</span>
               </nav>
-              <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">{t('items')}</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">{t('items')}</h3>
             </div>
 
           </div>
@@ -892,7 +891,7 @@ export function ArrivalFormContent({
             <button
               type="button"
               onClick={onAddItem}
-              className="inline-flex mb-4 items-center gap-2 rounded-full bg-brand-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95"
+              className="inline-flex mb-4 items-center gap-2 rounded-lg bg-brand-primary/10 px-4 py-2 text-[13px] font-semibold text-brand-primary transition-all hover:bg-brand-primary/20 active:scale-95"
             >
               <Plus className="h-3.5 w-3.5" />
               {t('addItem')}
@@ -919,7 +918,7 @@ export function ArrivalFormContent({
         <button
           type="submit"
           disabled={submitting}
-          className="mt-6 w-full rounded-2xl bg-brand-primary px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-brand-primary/20 transition-all hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-6 w-full rounded-lg bg-brand-primary px-4 py-3 text-sm font-semibold text-white transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <span className="inline-flex items-center gap-3">
             <ReceiptText className="h-5 w-5" />

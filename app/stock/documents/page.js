@@ -7,6 +7,7 @@ import EntryPreviewSheet, { PreviewKeyValueGrid } from '@/components/ui/entry-pr
 import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { usePageSize } from '@/hooks/usePageSize';
+import { SelectField } from '@/components/ui/select';
 
 const copy = {
   en: {
@@ -294,7 +295,7 @@ export default function StockDocumentsPage() {
   function renderDocumentPreview(document) {
     if (!document?.file_url) {
       return (
-        <div className="rounded-2xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+        <div className="rounded-xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
           {t.noPreviewAvailable}
         </div>
       );
@@ -305,7 +306,7 @@ export default function StockDocumentsPage() {
         <img
           src={document.file_url}
           alt={document.file_name || t.documentPreview}
-          className="max-h-[70vh] w-full rounded-2xl border border-border object-contain bg-background/60"
+          className="max-h-[70vh] w-full rounded-xl border border-border object-contain bg-background/60"
         />
       );
     }
@@ -314,7 +315,7 @@ export default function StockDocumentsPage() {
       <iframe
         src={document.file_url}
         title={document.file_name || t.documentPreview}
-        className="h-[70vh] w-full rounded-2xl border border-border bg-card"
+        className="h-[70vh] w-full rounded-xl border border-border bg-card"
       />
     );
   }
@@ -323,8 +324,8 @@ export default function StockDocumentsPage() {
     <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t.title}</p>
-          <h1 className="mt-2 text-3xl font-black text-foreground">{t.subtitle}</h1>
+          <p className="text-sm font-medium text-muted-foreground">{t.title}</p>
+          <h1 className="mt-2 text-3xl font-bold text-foreground">{t.subtitle}</h1>
         </div>
         <div className="flex gap-3">
           <Link href="/stock" className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/60">{t.backToDashboard}</Link>
@@ -332,22 +333,22 @@ export default function StockDocumentsPage() {
         </div>
       </div>
 
-      {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-900 dark:bg-red-950/30 dark:text-red-200">{error}</div>}
+      {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-900 dark:bg-red-950/30 dark:text-red-200">{error}</div>}
 
       <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
-        <form onSubmit={handleSubmit} className="space-y-4 rounded-3xl border border-border bg-card p-5 shadow-sm">
+        <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
           <h2 className="text-lg font-semibold text-foreground">{t.uploadTitle}</h2>
           <label className="block text-sm font-medium text-foreground/80">
             {t.documentType}
-            <select className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" value={form.documentType} onChange={(event) => setForm((prev) => ({ ...prev, documentType: event.target.value }))}>
+            <SelectField className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" value={form.documentType} onChange={(event) => setForm((prev) => ({ ...prev, documentType: event.target.value }))}>
               {documentTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
+            </SelectField>
           </label>
           <label className="block text-sm font-medium text-foreground/80">
             {t.entityType}
-            <select className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" value={form.entityType} onChange={(event) => setForm((prev) => ({ ...prev, entityType: event.target.value }))}>
+            <SelectField className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" value={form.entityType} onChange={(event) => setForm((prev) => ({ ...prev, entityType: event.target.value }))}>
               {entityTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
+            </SelectField>
           </label>
           <label className="block text-sm font-medium text-foreground/80">
             {t.entityId}
@@ -370,7 +371,7 @@ export default function StockDocumentsPage() {
           </button>
         </form>
 
-        <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold text-foreground">{t.recentDocuments}</h2>
             <div className="text-xs text-muted-foreground">{documents.length}</div>

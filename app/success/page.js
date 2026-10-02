@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useCart } from "@/contexts/CartContext";
-import { CheckCircle, ArrowRight, ShoppingBag, Sparkles } from "lucide-react";
+import { CheckCircle, ArrowRight, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -19,20 +19,14 @@ export default function SuccessPage() {
   return (
     <div className="relative min-h-[80vh] overflow-hidden">
       {/* Background decorations */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-green-500/10 rounded-full blur-3xl" />
-      </div>
-
       <div ref={contentRef} className="container mx-auto px-4 py-12 sm:py-20 text-center relative z-10">
         {/* Success Icon */}
         <div className={cn(
           "relative inline-block mb-8 animate-on-scroll",
           isContentInView ? "in-view" : ""
         )}>
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-green-500 rounded-full blur-2xl opacity-30 animate-pulse" />
-          <div className="relative w-28 h-28 rounded-full bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center shadow-2xl">
-            <CheckCircle className="h-14 w-14 text-white" />
+          <div className="relative w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-600/20 flex items-center justify-center">
+            <CheckCircle className="h-10 w-10 text-emerald-600 dark:text-emerald-400" strokeWidth={1.5} />
           </div>
         </div>
 
@@ -41,13 +35,12 @@ export default function SuccessPage() {
           "inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm font-medium mb-6 animate-on-scroll",
           isContentInView ? "in-view" : ""
         )} style={{ transitionDelay: "100ms" }}>
-          <Sparkles className="w-4 h-4" />
           Order Confirmed
         </div>
 
         {/* Heading */}
         <h1 className={cn(
-          "text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-4 animate-on-scroll",
+          "font-semibold tracking-tight text-3xl sm:text-4xl md:text-5xl lg:text-5xl mb-4 animate-on-scroll",
           isContentInView ? "in-view" : ""
         )} style={{ transitionDelay: "200ms" }}>
           Payment Successful!
@@ -66,7 +59,7 @@ export default function SuccessPage() {
           "flex flex-col sm:flex-row gap-4 justify-center animate-on-scroll",
           isContentInView ? "in-view" : ""
         )} style={{ transitionDelay: "400ms" }}>
-          <Button asChild size="lg" className="rounded-full px-8 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 border-0">
+          <Button asChild size="lg" className="px-6">
             <Link href="/" className="flex items-center gap-2">
               <ShoppingBag className="w-5 h-5" />
               Continue Shopping

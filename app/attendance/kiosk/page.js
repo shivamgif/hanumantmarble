@@ -138,7 +138,7 @@ function KioskInner() {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
         <div className="max-w-sm text-center">
-          <h1 className="text-xl font-black">{t('notPaired')}</h1>
+          <h1 className="text-xl font-bold">{t('notPaired')}</h1>
           <p className="mt-2 text-sm font-bold text-slate-500">
             {status.message || t('pairHint')}
           </p>
@@ -152,7 +152,7 @@ function KioskInner() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-emerald-600 p-6 text-white">
         {status.action === 'in' ? <LogIn className="h-16 w-16" /> : <LogOut className="h-16 w-16" />}
-        <p className="text-center text-3xl font-black">{status.message}</p>
+        <p className="text-center text-3xl font-bold">{status.message}</p>
         <p className="text-sm font-bold opacity-80">{new Date().toLocaleTimeString('en-IN')}</p>
       </div>
     );
@@ -161,8 +161,8 @@ function KioskInner() {
   return (
     <div className="mx-auto min-h-screen w-full max-w-3xl p-5 sm:p-8">
       <header className="relative mb-6 text-center">
-        <h1 className="text-lg font-black tracking-tight">{device.label}</h1>
-        <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+        <h1 className="text-lg font-bold tracking-tight">{device.label}</h1>
+        <p className="text-xs font-medium text-slate-500">
           {device.locationName || t('kioskTitle')}
         </p>
         {/* A shared tablet never sees the stock sidebar's language switch. */}
@@ -170,7 +170,7 @@ function KioskInner() {
           type="button"
           onClick={toggleLanguage}
           aria-label={language === 'hi' ? 'Switch to English' : 'हिंदी में बदलें'}
-          className="absolute right-0 top-0 rounded-full border border-border/60 px-3 py-1.5 text-xs font-black transition active:scale-95"
+          className="absolute right-0 top-0 rounded-full border border-border/60 px-3 py-1.5 text-xs font-bold transition active:scale-95"
         >
           {language === 'hi' ? 'EN' : 'हिं'}
         </button>
@@ -178,7 +178,7 @@ function KioskInner() {
 
       {!selected ? (
         <>
-          <p className="mb-3 text-center text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+          <p className="mb-3 text-center text-xs font-medium text-slate-500">
             {t('tapName')}
           </p>
 
@@ -191,7 +191,7 @@ function KioskInner() {
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t('searchName')}
               aria-label={t('searchName')}
-              className="mb-4 w-full rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm outline-none focus:border-brand-primary/50"
+              className="mb-4 w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm outline-none focus:border-brand-primary/50"
             />
           ) : null}
 
@@ -205,14 +205,14 @@ function KioskInner() {
                   setPin('');
                   setStatus({ kind: '', message: '' });
                 }}
-                className={`rounded-2xl border-2 p-5 text-sm font-black transition active:scale-95 ${
+                className={`rounded-xl border-2 p-5 text-sm font-bold transition active:scale-95 ${
                   emp.isClockedIn
                     ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700'
                     : 'border-border/60 hover:border-brand-primary/50'
                 }`}
               >
                 {emp.name}
-                <span className="mt-1 block text-[11px] font-bold uppercase tracking-wider opacity-70">
+                <span className="mt-1 block text-xs font-medium opacity-70">
                   {emp.isClockedIn ? t('clockedIn') : t('clockedOut')}
                 </span>
               </button>
@@ -228,8 +228,8 @@ function KioskInner() {
         </>
       ) : (
         <div className="mx-auto max-w-xs">
-          <p className="text-center text-lg font-black">{selected.name}</p>
-          <p className="mb-4 text-center text-[11px] font-bold uppercase tracking-widest text-slate-500">
+          <p className="text-center text-lg font-bold">{selected.name}</p>
+          <p className="mb-4 text-center text-xs font-medium text-slate-500">
             {selected.isClockedIn ? t('enterPinOut') : t('enterPinIn')}
           </p>
 
@@ -248,7 +248,7 @@ function KioskInner() {
                 key={digit}
                 type="button"
                 onClick={() => press(digit)}
-                className="rounded-2xl border border-border/60 py-5 text-xl font-black transition active:scale-95 hover:bg-slate-500/5"
+                className="rounded-xl border border-border/60 py-5 text-xl font-bold transition active:scale-95 hover:bg-slate-500/5"
               >
                 {digit}
               </button>
@@ -260,14 +260,14 @@ function KioskInner() {
                 setPin('');
                 setStatus({ kind: '', message: '' });
               }}
-              className="rounded-2xl border border-border/60 py-5 text-xs font-black uppercase tracking-wider transition active:scale-95"
+              className="rounded-lg border border-border/60 py-5 text-sm font-semibold transition active:scale-95"
             >
               {t('back')}
             </button>
             <button
               type="button"
               onClick={() => press(0)}
-              className="rounded-2xl border border-border/60 py-5 text-xl font-black transition active:scale-95 hover:bg-slate-500/5"
+              className="rounded-xl border border-border/60 py-5 text-xl font-bold transition active:scale-95 hover:bg-slate-500/5"
             >
               0
             </button>
@@ -275,7 +275,7 @@ function KioskInner() {
               type="button"
               onClick={() => setPin((p) => p.slice(0, -1))}
               aria-label={t('deleteDigit')}
-              className="flex items-center justify-center rounded-2xl border border-border/60 py-5 transition active:scale-95"
+              className="flex items-center justify-center rounded-xl border border-border/60 py-5 transition active:scale-95"
             >
               <Delete className="h-5 w-5" />
             </button>
@@ -288,7 +288,7 @@ function KioskInner() {
               type="button"
               onClick={() => submit(pin)}
               disabled={busy}
-              className="mt-3 w-full rounded-2xl bg-primary py-4 text-xs font-black uppercase tracking-widest text-primary-foreground disabled:opacity-50"
+              className="mt-3 w-full rounded-lg bg-primary py-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"
             >
               {busy ? t('checking') : t('confirm')}
             </button>
@@ -297,7 +297,7 @@ function KioskInner() {
       )}
 
       {status.kind === 'error' ? (
-        <p role="alert" className="mt-5 text-center text-sm font-black text-rose-500">{status.message}</p>
+        <p role="alert" className="mt-5 text-center text-sm font-bold text-rose-500">{status.message}</p>
       ) : null}
     </div>
   );

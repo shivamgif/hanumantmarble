@@ -33,20 +33,15 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="relative bg-gradient-to-b from-muted/30 to-muted/50 border-t border-border/50">
+    <footer className="relative bg-muted/40 border-t border-border">
       {/* Decorative elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
-      </div>
-
       <div className="container mx-auto px-4 py-10 sm:py-16 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12">
           {/* Brand Section */}
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-bold tracking-tight mb-2">Hanumant Marble</h2>
-              <div className="h-1 w-12 bg-gradient-to-r from-primary to-primary/50 rounded-full"></div>
+              <div className="h-px w-12 bg-primary"></div>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Premium tiles, marble & sanitaryware with unmatched quality and service since 1994.
@@ -61,7 +56,7 @@ const Footer = () => {
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-semibold tracking-tight mb-2">Quick Links</h3>
-              <div className="h-1 w-8 bg-gradient-to-r from-primary to-primary/50 rounded-full"></div>
+              <div className="h-px w-8 bg-primary"></div>
             </div>
             <ul className="space-y-3">
               {quickLinks.map((link) => (
@@ -82,7 +77,7 @@ const Footer = () => {
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-semibold tracking-tight mb-2">Contact Us</h3>
-              <div className="h-1 w-8 bg-gradient-to-r from-primary to-primary/50 rounded-full"></div>
+              <div className="h-px w-8 bg-primary"></div>
             </div>
             <ul className="space-y-4">
               {contactLinks.map((link) => (
@@ -107,7 +102,7 @@ const Footer = () => {
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-semibold tracking-tight mb-2">Follow Us</h3>
-              <div className="h-1 w-8 bg-gradient-to-r from-primary to-primary/50 rounded-full"></div>
+              <div className="h-px w-8 bg-primary"></div>
             </div>
             <div className="flex gap-3">
               {socialLinks.map((link) => (
@@ -116,7 +111,7 @@ const Footer = () => {
                   href={link.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all duration-300 hover:scale-110"
+                  className="w-10 h-10 rounded-lg border border-border bg-card flex items-center justify-center hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
                   aria-label={link.label}
                 >
                   <link.icon className="h-5 w-5" />

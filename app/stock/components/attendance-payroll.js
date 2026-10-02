@@ -99,7 +99,7 @@ export function AttendancePayroll() {
               {['Employee', 'Present', 'Half', 'Leave', 'Absent', 'OT', 'Per day', 'Earned', 'OT pay', 'Net pay'].map((label) => (
                 <th
                   key={label}
-                  className={`px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-slate-500 ${
+                  className={`px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 ${
                     label === 'Employee' ? 'text-left' : 'text-right'
                   }`}
                 >
@@ -127,7 +127,7 @@ export function AttendancePayroll() {
                   <td className="px-3 py-3 text-xs font-bold">
                     {row.name}
                     {!row.hasLogin ? (
-                      <span className="ml-1.5 text-[11px] font-black uppercase tracking-wider text-slate-500">no login</span>
+                      <span className="ml-1.5 text-xs font-medium text-slate-500">no login</span>
                     ) : null}
                   </td>
                   <td className="px-3 py-3 text-right text-xs tabular-nums">{row.presentDays}</td>
@@ -140,7 +140,7 @@ export function AttendancePayroll() {
                   <td className="px-3 py-3 text-right text-xs tabular-nums">{rupees(row.perDay)}</td>
                   <td className="px-3 py-3 text-right text-xs tabular-nums">{rupees(row.earnedBase)}</td>
                   <td className="px-3 py-3 text-right text-xs tabular-nums">{row.overtimePay ? rupees(row.overtimePay) : '—'}</td>
-                  <td className="px-3 py-3 text-right text-xs font-black tabular-nums">{rupees(row.netPay)}</td>
+                  <td className="px-3 py-3 text-right text-xs font-bold tabular-nums">{rupees(row.netPay)}</td>
                 </tr>
               ))
             )}
@@ -152,8 +152,8 @@ export function AttendancePayroll() {
         {rows.map((row) => (
           <article key={row.userId} className="rounded-xl border border-border/60 p-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-black">{row.name}</span>
-              <span className="text-xs font-black tabular-nums">{rupees(row.netPay)}</span>
+              <span className="text-xs font-bold">{row.name}</span>
+              <span className="text-xs font-bold tabular-nums">{rupees(row.netPay)}</span>
             </div>
             <p className="mt-1 text-[11px] font-bold tabular-nums text-slate-500">
               {row.presentDays} present · {row.absentDays} absent · {formatMinutes(row.overtimeMinutes)} OT

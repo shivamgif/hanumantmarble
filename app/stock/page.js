@@ -39,7 +39,7 @@ import {
   fetchShipmentDocuments,
   invalidateShipmentCache,
   shipmentCache,
-  tabButtonClass,
+  tabButtonClass, tabTrackClass,
 } from './lib/stock-utils';
 import { StockStatsGrid } from './components/stock-stats-grid';
 import { StockItemsTable } from './components/stock-items-table';
@@ -144,6 +144,11 @@ export default function StockDashboard() {
     purchaseSheetDesc: t('purchaseSheetDesc'),
     insufficientNewPurchase: t('insufficientNewPurchase'),
     datetime: t('datetime'),
+    today: t('today'),
+    yesterday: t('yesterday'),
+    newestFirst: t('newestFirst'),
+    oldestFirst: t('oldestFirst'),
+    dateLocale: language === 'hi' ? 'hi-IN' : 'en-IN',
     invoice: t('invoice'),
     route: t('route'),
     payment: t('payment'),
@@ -162,6 +167,7 @@ export default function StockDashboard() {
     searchPurchases: t('searchPurchases'),
     searchDispatches: t('searchDispatches'),
     customer: t('customer'),
+    supplier: t('supplier'),
     return: t('return'),
     by: t('by'),
     paginationShowing: t('paginationShowing'),
@@ -198,7 +204,7 @@ export default function StockDashboard() {
     qtyBags: t('qtyBags'),
     returnQtyBags: t('returnQtyBags'),
     weightPerBag: t('weightPerBag'),
-  }), [t]);
+  }), [t, language]);
 
   const { user, isLoading: userLoading } = useAuthUser();
   const { accessUser } = useStockAccess(user);
@@ -1088,10 +1094,9 @@ export default function StockDashboard() {
   if (accessRole === 'salesperson') tableViewTabs.unshift(...tableViewTabs.splice(2, 1));
 
   // ponytail: one tab strip, rendered inside whichever panel's header is on screen.
-  // On mobile only the active tab shows its label; the rest collapse to icon circles
-  // so four tabs fit without a horizontal scroll. Labels animate open/closed.
+  // Below sm each tab is an equal column, icon over label (see tabButtonClass).
   const tabsBar = (
-    <div className="flex w-full min-w-0 items-center gap-1 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-white/5 dark:bg-slate-900/40 scrollbar-none sm:w-auto sm:gap-0 sm:overflow-x-auto">
+    <div className={tabTrackClass(tableViewTabs.length)}>
       {tableViewTabs.map((tab) => {
         const isActive = activeTableView === tab.id;
         const Icon = tab.icon;
@@ -1102,12 +1107,10 @@ export default function StockDashboard() {
             onClick={() => setActiveTableView(tab.id)}
             aria-label={tab.label}
             aria-current={isActive ? 'true' : undefined}
-            className={tabButtonClass(isActive)}
+            className={tabButtonClass(isActive, tableViewTabs.length)}
           >
             <Icon className="h-4 w-4 shrink-0 sm:hidden" />
-            <span
-              className={`overflow-hidden transition-all duration-300 ease-out sm:max-w-none sm:opacity-100 ${isActive ? 'tab-label-enter max-w-[12rem] opacity-100' : 'max-w-0 opacity-0'}`}
-            >
+            <span className="line-clamp-2 min-w-0 text-center sm:whitespace-nowrap">
               {tab.label}
             </span>
           </button>
@@ -1281,14 +1284,14 @@ export default function StockDashboard() {
       <div className="space-y-10 lg:space-y-12 p-4 sm:p-6 lg:p-8 animate-pulse">
         <div className="flex flex-col gap-4">
           <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 rounded" />
-          <div className="h-16 sm:h-20 w-full sm:w-3/4 max-w-lg bg-slate-200 dark:bg-slate-800 rounded-2xl sm:rounded-[2.5rem]" />
+          <div className="h-16 sm:h-20 w-full sm:w-3/4 max-w-lg bg-slate-200 dark:bg-slate-800 rounded-xl" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={`op-stat-skeleton-${index}`} className="h-40 rounded-3xl sm:rounded-[2rem] bg-slate-200 dark:bg-slate-800" />
+            <div key={`op-stat-skeleton-${index}`} className="h-40 rounded-xl bg-slate-200 dark:bg-slate-800" />
           ))}
         </div>
-        <div className="h-96 rounded-3xl sm:rounded-[2.5rem] bg-slate-200 dark:bg-slate-800" />
+        <div className="h-96 rounded-xl bg-slate-200 dark:bg-slate-800" />
       </div>
     );
   }
@@ -1299,13 +1302,13 @@ export default function StockDashboard() {
     <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-fade-in font-sans selection:bg-brand-primary/20 overflow-x-hidden">
       <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
         <div className="space-y-2">
-          <nav className="flex items-center flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
+          <nav className="flex items-center flex-wrap gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
             <span className="text-slate-400">{t('inventory')}</span>
-            <ChevronRight className="h-3 w-3 opacity-50" />
+            <ChevronRight className="h-3 w-3 text-slate-300 dark:text-slate-600" />
             <span className="text-slate-900 dark:text-white">{t('operationalNode')}</span>
           </nav>
-          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-            {language === 'hi' ? t('stockControl') : <><span className="text-brand-primary">Stock</span> Control</>}
+          <h1 className="page-title">
+            {t('stockControl')}
           </h1>
         </div>
       </header>
@@ -1327,9 +1330,9 @@ export default function StockDashboard() {
         return (
           <Link
             href="/stock/analytics"
-            className="flex items-center gap-3 rounded-2xl border border-slate-200/60 bg-white px-3 py-2 shadow-sm transition-shadow hover:shadow-md dark:border-slate-800/60 dark:bg-slate-900/50"
+            className="flex items-center gap-3 rounded-xl border border-slate-200/60 bg-white px-3 py-2 shadow-sm transition-shadow hover:shadow-md dark:border-slate-800/60 dark:bg-slate-900/50"
           >
-            <p className="w-16 shrink-0 text-[9px] font-black uppercase leading-tight tracking-widest text-slate-500">{getTranslation('stock.analytics.me.monthlyGoal', language)}</p>
+            <p className="w-16 shrink-0 text-xs font-medium leading-tight text-slate-500">{getTranslation('stock.analytics.me.monthlyGoal', language)}</p>
             {/* The figure sits inside the bar, printed twice: dark over the empty
                 track, light over the fill. The light copy is as wide as the whole
                 track (100/fill of the fill's width), so the two line up exactly
@@ -1343,12 +1346,12 @@ export default function StockDashboard() {
               aria-valuetext={label}
               className="relative h-7 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
             >
-              <span className="absolute inset-0 flex items-center justify-center whitespace-nowrap px-3 text-[11px] font-black tabular-nums text-slate-700 dark:text-slate-200">{label}</span>
+              <span className="absolute inset-0 flex items-center justify-center whitespace-nowrap px-3 text-[11px] font-bold tabular-nums text-slate-700 dark:text-slate-200">{label}</span>
               {fill > 0 && (
                 <div className={`absolute inset-y-0 left-0 overflow-hidden rounded-full ${barColor}`} style={{ width: `${fill}%` }}>
                   <span
                     aria-hidden="true"
-                    className={`absolute inset-y-0 left-0 flex items-center justify-center whitespace-nowrap px-3 text-[11px] font-black tabular-nums ${achieved ? 'text-slate-900' : 'text-white'}`}
+                    className={`absolute inset-y-0 left-0 flex items-center justify-center whitespace-nowrap px-3 text-[11px] font-bold tabular-nums ${achieved ? 'text-slate-900' : 'text-white'}`}
                     style={{ width: `${10000 / fill}%` }}
                   >
                     {label}
@@ -1358,8 +1361,8 @@ export default function StockDashboard() {
             </div>
             {/* Quiet while on track; speaks up when the goal is hit or the month slips. */}
             {(achieved || (goal > 0 && standing.behind)) && (
-              <span className={`shrink-0 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-black ${standing.color} ${standing.bg} ${standing.border}`}>
-                <span aria-hidden="true">{standing.emoji}</span> {getTranslation(`stock.analytics.me.${standing.key}`, language)}
+              <span className={`shrink-0 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-bold ${standing.color} ${standing.bg} ${standing.border}`}>
+                {getTranslation(`stock.analytics.me.${standing.key}`, language)}
               </span>
             )}
             <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
@@ -1375,11 +1378,11 @@ export default function StockDashboard() {
         <section
           aria-labelledby="sell-first-title"
           title={t('sellFirstSubtitle')}
-          className="flex items-stretch gap-2 overflow-x-auto rounded-2xl border border-amber-500/30 bg-amber-500/5 p-2 dark:bg-amber-500/10 snap-x"
+          className="flex items-stretch gap-2 overflow-x-auto rounded-xl border border-amber-500/30 bg-amber-500/5 p-2 dark:bg-amber-500/10 snap-x"
         >
           <div className="flex shrink-0 flex-col justify-center rounded-xl px-2 sm:px-3">
-            <p className="text-[9px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400">{t('sellFirstEyebrow')}</p>
-            <h2 id="sell-first-title" className="whitespace-nowrap text-sm font-black text-slate-900 dark:text-white">{t('sellFirstTitle')}</h2>
+            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">{t('sellFirstEyebrow')}</p>
+            <h2 id="sell-first-title" className="whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white">{t('sellFirstTitle')}</h2>
           </div>
           {data.sellFirst.items.map((item) => {
             const unit = item.unitOfMeasure === 'sqft' ? 'sqft' : item.unitOfMeasure === 'bag' ? t('bagsUnit') : t('boxes');
@@ -1395,10 +1398,10 @@ export default function StockDashboard() {
               >
                 <p className="truncate text-xs font-bold text-slate-900 dark:text-slate-100">{item.name}</p>
                 <p className="mt-0.5 flex items-baseline justify-between gap-2 text-[11px] tabular-nums">
-                  <span className="font-black text-slate-700 dark:text-slate-200">
+                  <span className="font-bold text-slate-700 dark:text-slate-200">
                     {Number(item.availableQty).toLocaleString('en-IN', { maximumFractionDigits: 3 })} <span className="font-bold text-slate-500">{unit}</span>
                   </span>
-                  <span className={`whitespace-nowrap font-black ${item.daysIdle >= 120 ? 'text-rose-600 dark:text-rose-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                  <span className={`whitespace-nowrap font-bold ${item.daysIdle >= 120 ? 'text-rose-600 dark:text-rose-400' : 'text-amber-700 dark:text-amber-400'}`}>
                     {item.daysIdle} {t('daysIdle')}
                   </span>
                 </p>

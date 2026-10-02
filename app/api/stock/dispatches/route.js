@@ -7,6 +7,7 @@ import { netRevenueExpr } from '@/lib/stock-analytics-sql.mjs';
 const SORT_COLS = {
   datetime: 'dispatch_date',
   shipment: 'shipment_number',
+  customer: 'customer_name',
   quantities: 'total_tile_qty',
   products: 'product_names',
   status: 'status',

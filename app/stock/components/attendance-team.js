@@ -86,8 +86,8 @@ export function AttendanceTeam({ employees = [], reloadKey, onEdit }) {
       {/* Shifts nobody clocked out of. The system closed them at shift end so
           they cannot run into a 30-hour day; the real time is a manager's call. */}
       {review.length ? (
-        <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 sm:p-6">
-          <h2 className="flex items-center gap-2 text-xs font-black text-amber-800 dark:text-amber-300">
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 sm:p-6">
+          <h2 className="flex items-center gap-2 text-xs font-bold text-amber-800 dark:text-amber-300">
             <AlertTriangle className="h-4 w-4 shrink-0" />
             {review.length} forgotten clock-out{review.length === 1 ? '' : 's'} to review
           </h2>
@@ -98,7 +98,7 @@ export function AttendanceTeam({ employees = [], reloadKey, onEdit }) {
             {review.map((row) => (
               <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-background/70 p-3">
                 <p className="text-xs font-bold">
-                  <span className="font-black">{row.user_name}</span>
+                  <span className="font-bold">{row.user_name}</span>
                   <span className="ml-2 tabular-nums text-slate-500">
                     {row.work_date} · {clockTime(row.clock_in_at)} → {clockTime(row.clock_out_at)} · {formatMinutes(row.workedMinutes)}
                   </span>
@@ -107,7 +107,7 @@ export function AttendanceTeam({ employees = [], reloadKey, onEdit }) {
                   <button
                     type="button"
                     onClick={() => onEdit(row)}
-                    className="rounded-full bg-amber-600 px-4 py-2 text-[11px] font-black uppercase tracking-wider text-white transition hover:bg-amber-700 active:scale-95"
+                    className="rounded-lg bg-amber-600 px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-amber-700 active:scale-95"
                   >
                     Review
                   </button>
@@ -146,7 +146,7 @@ export function AttendanceTeam({ employees = [], reloadKey, onEdit }) {
                 type="button"
                 onClick={() => onEdit?.(row)}
                 disabled={!onEdit}
-                className="flex items-center gap-2 rounded-full bg-amber-500/15 px-3 py-1.5 text-[11px] font-black text-amber-800 transition enabled:hover:bg-amber-500/25 dark:text-amber-300"
+                className="flex items-center gap-2 rounded-full bg-amber-500/15 px-3 py-1.5 text-[11px] font-bold text-amber-800 transition enabled:hover:bg-amber-500/25 dark:text-amber-300"
               >
                 <AlertTriangle className="h-3 w-3" />
                 {row.user_name}
@@ -157,7 +157,7 @@ export function AttendanceTeam({ employees = [], reloadKey, onEdit }) {
             ) : (
               <span
                 key={row.id}
-                className="flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1.5 text-[11px] font-black text-emerald-700 dark:text-emerald-400"
+                className="flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400"
               >
                 {row.user_name}
                 <span className="tabular-nums opacity-70">since {clockTime(row.clock_in_at)}</span>
@@ -188,7 +188,7 @@ export function AttendanceTeam({ employees = [], reloadKey, onEdit }) {
                   <div className="flex items-center gap-3">
                     <PunchSelfies row={row} />
                     <div>
-                    <p className="text-xs font-black">
+                    <p className="text-xs font-bold">
                       {row.user_name}
                       {row.is_outside_geofence ? (
                         <MapPinOff className="ml-1.5 inline h-3 w-3 text-amber-500" aria-label="Outside geofence" />
@@ -200,13 +200,13 @@ export function AttendanceTeam({ employees = [], reloadKey, onEdit }) {
                     </p>
                     </div>
                   </div>
-                  <span className="text-xs font-black tabular-nums">{formatMinutes(row.workedMinutes)}</span>
+                  <span className="text-xs font-bold tabular-nums">{formatMinutes(row.workedMinutes)}</span>
                 </div>
               ))}
 
               {missing.length ? (
                 <div className="pt-2">
-                  <p className="mb-2 text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">
+                  <p className="mb-2 text-xs font-medium text-slate-500">
                     No punch ({missing.length})
                   </p>
                   <div className="flex flex-wrap gap-2">

@@ -30,23 +30,23 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
   const isStone = itemCategory === 'stone';
 
   return (
-    <div key={fieldRow.id} className="glass-panel rounded-2xl overflow-hidden group/item">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 bg-slate-900/40 px-4 py-2.5">
+    <div key={fieldRow.id} className="glass-panel rounded-xl overflow-hidden group/item">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/60 px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className={`h-1.5 w-1.5 rounded-full animate-pulse ${isBag ? 'bg-amber-400' : isStone ? 'bg-sky-400' : 'bg-brand-primary'}`} />
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-100">{tc?.itemLabel ?? 'Item'} {index + 1}</span>
+          <span className={`h-1.5 w-1.5 rounded-full ${isBag ? 'bg-amber-400' : isStone ? 'bg-sky-400' : 'bg-brand-primary'}`} />
+          <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">{tc?.itemLabel ?? 'Item'} {index + 1}</span>
           {isBag && (
-            <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-amber-400">Bag</span>
+            <span className="rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">Bag</span>
           )}
           {isStone && (
-            <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-sky-400">Stone</span>
+            <span className="rounded-md border border-sky-500/20 bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-400">Stone</span>
           )}
         </div>
         {totalItems > 1 && (
           <button
             type="button"
             onClick={() => onRemoveItem(index)}
-            className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+            className="p-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors"
             title="Remove item"
           >
             <X className="h-4 w-4" />
@@ -87,10 +87,10 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
               }`}
             >
               <div className="flex flex-col">
-                <span className={`text-[10px] font-black uppercase tracking-widest ${fromBroken ? 'text-amber-700 dark:text-amber-300' : 'text-brand-primary dark:text-brand-primary'}`}>
+                <span className={`text-xs font-semibold ${fromBroken ? 'text-amber-700 dark:text-amber-300' : 'text-brand-primary dark:text-brand-primary'}`}>
                   {tc?.brokenStockSale ?? 'Broken-Stock Sale'}
                 </span>
-                <span className="text-[9px] font-medium text-slate-600 dark:text-slate-400">
+                <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">
                   {fromBroken
                     ? (tc?.brokenStockSaleHintOn ?? 'Selling from broken inventory')
                     : (tc?.brokenStockSaleHintOff ?? 'Toggle for damaged stock')}
@@ -152,14 +152,14 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
                 )}
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{tc?.sellUnit ?? 'Sell As'}</label>
+                <label className="text-xs font-medium text-slate-400 px-1">{tc?.sellUnit ?? 'Sell As'}</label>
                 <div className="flex gap-1">
                   {['box', 'piece'].map((u) => (
                     <button
                       key={u}
                       type="button"
                       onClick={() => setValue(`items.${index}.sellUnit`, u)}
-                      className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${sellUnit === u ? 'border-brand-primary bg-brand-primary/20 text-brand-primary' : 'border-white/10 text-slate-400 hover:border-white/20'}`}
+                      className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-semibold transition-colors ${sellUnit === u ? 'border-brand-primary bg-brand-primary/20 text-brand-primary' : 'border-border text-slate-400 hover:border-white/20'}`}
                     >
                       {u === 'box' ? (tc?.box ?? 'Box') : (tc?.piece ?? 'Piece')}
                     </button>
@@ -183,15 +183,15 @@ const BagDispatchItemRow = memo(function BagDispatchItemRow({ index, fieldRow, c
   const canEditReturns = ['admin', 'manager'].includes(userRole);
 
   return (
-    <div key={fieldRow.id} className="glass-panel rounded-2xl overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 bg-slate-900/40 px-4 py-2.5">
+    <div key={fieldRow.id} className="glass-panel rounded-xl overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/60 px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-100">{tc?.itemLabel ?? 'Item'} {index + 1}</span>
-          <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-amber-400">Bag</span>
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+          <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">{tc?.itemLabel ?? 'Item'} {index + 1}</span>
+          <span className="rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">Bag</span>
         </div>
         {totalItems > 1 && (
-          <button type="button" onClick={() => onRemoveItem(index)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
+          <button type="button" onClick={() => onRemoveItem(index)} className="p-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors">
             <X className="h-4 w-4" />
           </button>
         )}
@@ -271,12 +271,12 @@ export function BagDispatchFormContent({
         <div className={FORM_CARD_CLASS}>
           <div className="flex justify-between items-center mb-4 gap-4 px-1">
             <div className="space-y-1">
-              <nav className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
+              <nav className="flex items-center gap-2 text-xs font-medium text-slate-500">
                 <span>Inventory Hub</span>
                 <ChevronRight className="h-2.5 w-2.5 opacity-50" />
-                <span className="text-amber-400">Bag Goods</span>
+                <span className="text-amber-700 dark:text-amber-400">Bag Goods</span>
               </nav>
-              <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">{t?.('items') ?? 'Items'}</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">{t?.('items') ?? 'Items'}</h3>
             </div>
           </div>
           <div className="space-y-4">
@@ -296,7 +296,7 @@ export function BagDispatchFormContent({
             <button
               type="button"
               onClick={onAddItem}
-              className="inline-flex mt-4 mb-4 items-center gap-2 rounded-full bg-amber-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-amber-400 transition-all hover:bg-amber-500/20 hover:scale-105 active:scale-95"
+              className="inline-flex mt-4 mb-4 items-center gap-2 rounded-lg bg-amber-500/10 px-4 py-2 text-[13px] font-semibold text-amber-700 dark:text-amber-400 transition-all hover:bg-amber-500/20 active:scale-95"
             >
               <Plus className="h-3.5 w-3.5" />
               {tc?.addBagItem ?? 'Add Bag Item'}
@@ -323,7 +323,7 @@ export function BagDispatchFormContent({
         <button
           type="submit"
           disabled={submitting}
-          className="mt-6 w-full rounded-2xl bg-amber-500 px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-amber-500/20 transition-all hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-6 w-full rounded-lg bg-amber-600 px-4 py-3 text-sm font-semibold text-white transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <span className="inline-flex items-center justify-center gap-3">
             <Package className="h-5 w-5" />
@@ -440,12 +440,12 @@ export function DispatchFormContent({
           <div className="">
             <div className="flex justify-between items-center mb-4 gap-4 px-1">
               <div className="space-y-1">
-                <nav className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
+                <nav className="flex items-center gap-2 text-xs font-medium text-slate-500">
                   <span>{tc.inventoryHub}</span>
                   <ChevronRight className="h-2.5 w-2.5 opacity-50" />
                   <span className="text-brand-primary">{tc.shipments}</span>
                 </nav>
-                <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">{t('items')}</h3>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">{t('items')}</h3>
               </div>
 
             </div>
@@ -470,7 +470,7 @@ export function DispatchFormContent({
             <button
               type="button"
               onClick={onAddItem}
-              className="inline-flex mt-4 mb-4 items-center gap-2 rounded-full bg-brand-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-brand-primary transition-all hover:bg-brand-primary/20 hover:scale-105 active:scale-95"
+              className="inline-flex mt-4 mb-4 items-center gap-2 rounded-lg bg-brand-primary/10 px-4 py-2 text-[13px] font-semibold text-brand-primary transition-all hover:bg-brand-primary/20 active:scale-95"
             >
               <Plus className="h-3.5 w-3.5" />
               {t('addItem')}
@@ -497,7 +497,7 @@ export function DispatchFormContent({
         <button
           type="submit"
           disabled={submitting}
-          className="mt-6 w-full rounded-2xl bg-brand-primary px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-brand-primary/20 transition-all hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-6 w-full rounded-lg bg-brand-primary px-4 py-3 text-sm font-semibold text-white transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <span className="inline-flex items-center justify-center gap-3">
             <Send className="h-5 w-5" />

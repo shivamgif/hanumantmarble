@@ -75,7 +75,7 @@ export function WorkGallery() {
             <div
               key={shot.src}
               className={cn(
-                "group relative overflow-hidden rounded-2xl fade-on-scroll",
+                "group relative overflow-hidden rounded-xl fade-on-scroll",
                 shot.span,
                 shot.height,
                 isGridInView && "in-view"

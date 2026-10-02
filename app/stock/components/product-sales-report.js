@@ -22,18 +22,18 @@ const saleDate = (value) => {
 function QtyCells({ row }) {
   return (
     <>
-      <td className="px-4 py-3 text-right text-xs font-black tabular-nums text-slate-900 dark:text-white">
+      <td className="px-4 py-2.5 text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white">
         {row.boxQty || row.brokenQty ? (
           <>
             {int(row.boxQty)}
-            {row.brokenQty ? <span className="ml-1 text-[9px] font-bold text-rose-500">+{int(row.brokenQty)} brk</span> : null}
+            {row.brokenQty ? <span className="ml-1 text-[11px] font-bold text-rose-500">+{int(row.brokenQty)} brk</span> : null}
           </>
         ) : <span className="text-slate-400">—</span>}
       </td>
-      <td className="px-4 py-3 text-right text-xs font-black tabular-nums text-amber-500">
+      <td className="px-4 py-2.5 text-right text-xs font-bold tabular-nums text-amber-500">
         {row.bagQty ? int(row.bagQty) : <span className="text-slate-400">—</span>}
       </td>
-      <td className="px-4 py-3 text-right text-xs font-black tabular-nums text-sky-500">
+      <td className="px-4 py-2.5 text-right text-xs font-bold tabular-nums text-sky-500">
         {row.sqftQty ? sqft(row.sqftQty) : <span className="text-slate-400">—</span>}
       </td>
     </>
@@ -118,7 +118,7 @@ export function ProductSalesReport({ open, onOpenChange }) {
             className={`${FORM_INPUT_CLASS} w-auto flex-1 min-w-[160px]`}
             aria-label="Filter products"
           />
-          <span className="rounded-full bg-brand-primary/10 border border-brand-primary/20 px-3 py-1 text-[9px] font-black uppercase tracking-widest tabular-nums text-brand-primary">
+          <span className="rounded-full bg-brand-primary/10 border border-brand-primary/20 px-3 py-1 text-xs font-semibold tabular-nums text-brand-primary">
             {visible.length} products
           </span>
           <button
@@ -146,18 +146,18 @@ export function ProductSalesReport({ open, onOpenChange }) {
           {visible.map((p) => {
             const expanded = expandedId === p.itemId;
             return (
-              <article key={`product-sales-mobile-${p.itemId}`} className="glass-panel rounded-2xl p-4">
+              <article key={`product-sales-mobile-${p.itemId}`} className="glass-panel rounded-xl p-4">
                 <button type="button" onClick={() => setExpandedId(expanded ? null : p.itemId)} className="w-full text-left">
-                  <p className="text-xs font-black text-slate-900 dark:text-white">{p.itemName}</p>
-                  <p className="font-mono text-[10px] text-slate-500 dark:text-slate-400">{p.sku}</p>
-                  <p className="mt-1 flex flex-wrap gap-x-3 text-xs font-black tabular-nums">
-                    {p.boxQty || p.brokenQty ? <span className="text-slate-900 dark:text-white">{int(p.boxQty)} <span className="text-[10px] uppercase text-slate-400">Boxes</span></span> : null}
-                    {p.bagQty ? <span className="text-amber-500">{int(p.bagQty)} <span className="text-[10px] uppercase text-amber-400/70">Bags</span></span> : null}
-                    {p.sqftQty ? <span className="text-sky-500">{sqft(p.sqftQty)} <span className="text-[10px] uppercase text-sky-400/70">Sqft</span></span> : null}
+                  <p className="text-xs font-bold text-slate-900 dark:text-white">{p.itemName}</p>
+                  <p className="font-mono text-[11px] text-slate-500 dark:text-slate-400">{p.sku}</p>
+                  <p className="mt-1 flex flex-wrap gap-x-3 text-xs font-bold tabular-nums">
+                    {p.boxQty || p.brokenQty ? <span className="text-slate-900 dark:text-white">{int(p.boxQty)} <span className="text-[11px] text-slate-500">Boxes</span></span> : null}
+                    {p.bagQty ? <span className="text-amber-500">{int(p.bagQty)} <span className="text-[11px] text-slate-500">Bags</span></span> : null}
+                    {p.sqftQty ? <span className="text-sky-500">{sqft(p.sqftQty)} <span className="text-[11px] text-slate-500">Sqft</span></span> : null}
                   </p>
                   <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
                     {p.sales.length} sales
-                    {canSeeRevenue ? <span className="ml-2 font-black text-emerald-600 dark:text-emerald-400">{rupees(p.revenueExcl)}</span> : null}
+                    {canSeeRevenue ? <span className="ml-2 font-bold text-emerald-600 dark:text-emerald-400">{rupees(p.revenueExcl)}</span> : null}
                   </p>
                 </button>
                 {expanded ? (
@@ -168,7 +168,7 @@ export function ProductSalesReport({ open, onOpenChange }) {
                           <span className="mr-2 font-bold tabular-nums text-slate-400">{saleDate(c.date)}</span>
                           {c.name}
                         </span>
-                        <span className="font-black tabular-nums">
+                        <span className="font-bold tabular-nums">
                           {c.sqftQty ? `${sqft(c.sqftQty)} sqft` : c.bagQty ? `${int(c.bagQty)} bags` : `${int(c.boxQty)} boxes`}
                         </span>
                       </li>
@@ -183,8 +183,8 @@ export function ProductSalesReport({ open, onOpenChange }) {
         {/* Desktop */}
         <div className="hidden overflow-x-auto md:block">
           <table className="w-full border-collapse text-left whitespace-nowrap">
-            <thead className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur-xl dark:bg-slate-900/90">
-              <tr className="border-b border-slate-200/60 dark:border-white/5">
+            <thead className="sticky top-0 z-10 bg-muted">
+              <tr className="border-b border-border">
                 {[
                   { id: 'product', label: 'Product' },
                   { id: 'boxes', label: 'Boxes', align: 'right' },
@@ -193,13 +193,13 @@ export function ProductSalesReport({ open, onOpenChange }) {
                   { id: 'sales', label: 'Sales', align: 'right' },
                   ...(canSeeRevenue ? [{ id: 'revenue', label: 'Revenue', align: 'right' }] : []),
                 ].map((col) => (
-                  <th key={col.id} className={`px-4 py-3 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 ${col.align === 'right' ? 'text-right' : ''}`}>
+                  <th key={col.id} className={`px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 ${col.align === 'right' ? 'text-right' : ''}`}>
                     {col.label}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+            <tbody className="divide-y divide-border">
               {visible.map((p) => {
                 const expanded = expandedId === p.itemId;
                 return [
@@ -208,21 +208,21 @@ export function ProductSalesReport({ open, onOpenChange }) {
                     onClick={() => setExpandedId(expanded ? null : p.itemId)}
                     className="cursor-pointer transition-colors odd:bg-white even:bg-slate-50/70 hover:bg-slate-100/50 dark:odd:bg-slate-900 dark:even:bg-slate-900/70 dark:hover:bg-slate-800/40"
                   >
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
                         {expanded ? <ChevronDown className="h-3.5 w-3.5 text-brand-primary" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
                         <div>
-                          <div className="text-xs font-black text-slate-900 dark:text-white">{p.itemName}</div>
-                          <div className="font-mono text-[9px] font-bold text-slate-500 dark:text-slate-400">{p.sku}</div>
+                          <div className="text-xs font-bold text-slate-900 dark:text-white">{p.itemName}</div>
+                          <div className="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400">{p.sku}</div>
                         </div>
                       </div>
                     </td>
                     <QtyCells row={p} />
-                    <td className="px-4 py-3 text-right text-xs font-black tabular-nums text-slate-600 dark:text-slate-300">{p.sales.length}</td>
+                    <td className="px-4 py-2.5 text-right text-xs font-bold tabular-nums text-slate-600 dark:text-slate-300">{p.sales.length}</td>
                     {canSeeRevenue ? (
-                      <td className="px-4 py-3 text-right">
-                        <div className="text-xs font-black tabular-nums text-emerald-600 dark:text-emerald-400">{rupees(p.revenueExcl)}</div>
-                        <div className="text-[9px] font-bold tabular-nums text-emerald-500/70">{rupees(p.revenueExcl * 1.18)} incl. GST</div>
+                      <td className="px-4 py-2.5 text-right">
+                        <div className="text-xs font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{rupees(p.revenueExcl)}</div>
+                        <div className="text-[11px] font-bold tabular-nums text-emerald-500/70">{rupees(p.revenueExcl * 1.18)} incl. GST</div>
                       </td>
                     ) : null}
                   </tr>,
@@ -230,9 +230,9 @@ export function ProductSalesReport({ open, onOpenChange }) {
                     <tr key={`product-${p.itemId}-${c.shipmentId}`} className="bg-slate-50/40 dark:bg-slate-800/30">
                       <td className="px-4 py-2 pl-11 text-[11px] font-bold text-slate-600 dark:text-slate-300">{c.name}</td>
                       <QtyCells row={c} />
-                      <td className="px-4 py-2 text-right text-[10px] font-bold tabular-nums text-slate-500">{saleDate(c.date)}</td>
+                      <td className="px-4 py-2 text-right text-[11px] font-bold tabular-nums text-slate-500">{saleDate(c.date)}</td>
                       {canSeeRevenue ? (
-                        <td className="px-4 py-2 text-right text-[11px] font-black tabular-nums text-emerald-600 dark:text-emerald-400">{rupees(c.revenueExcl)}</td>
+                        <td className="px-4 py-2 text-right text-[11px] font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{rupees(c.revenueExcl)}</td>
                       ) : null}
                     </tr>
                   )) : []),

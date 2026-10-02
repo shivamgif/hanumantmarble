@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Check, X } from 'lucide-react';
 import { useAttendanceText } from '@/lib/attendance-i18n';
 import { CLASSES, FORM_INPUT_CLASS, FORM_LABEL_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../lib/stock-utils';
+import { SelectField } from '@/components/ui/select';
 
 const LEAVE_TYPES = ['paid', 'unpaid', 'sick', 'casual'];
 
@@ -97,7 +98,7 @@ export function AttendanceLeave({ canManage = false, employees = [], currentUser
           {canManage ? (
             <div>
               <label className={FORM_LABEL_CLASS} htmlFor="leave-employee">{t('employee')}</label>
-              <select
+              <SelectField
                 id="leave-employee"
                 value={form.userId}
                 onChange={(e) => setForm((f) => ({ ...f, userId: e.target.value }))}
@@ -107,7 +108,7 @@ export function AttendanceLeave({ canManage = false, employees = [], currentUser
                 {employees.map((emp) => (
                   <option key={emp.id} value={emp.id}>{emp.name}</option>
                 ))}
-              </select>
+              </SelectField>
             </div>
           ) : null}
           <div>
@@ -137,7 +138,7 @@ export function AttendanceLeave({ canManage = false, employees = [], currentUser
           </div>
           <div>
             <label className={FORM_LABEL_CLASS} htmlFor="leave-type">{t('type')}</label>
-            <select
+            <SelectField
               id="leave-type"
               value={form.leaveType}
               onChange={(e) => setForm((f) => ({ ...f, leaveType: e.target.value }))}
@@ -146,7 +147,7 @@ export function AttendanceLeave({ canManage = false, employees = [], currentUser
               {LEAVE_TYPES.map((type) => (
                 <option key={type} value={type}>{t(`leave_${type}`)}</option>
               ))}
-            </select>
+            </SelectField>
           </div>
           <div>
             <label className={FORM_LABEL_CLASS} htmlFor="leave-reason">{t('reason')}</label>
@@ -183,9 +184,9 @@ export function AttendanceLeave({ canManage = false, employees = [], currentUser
                 className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 p-3"
               >
                 <div>
-                  <p className="text-xs font-black">
+                  <p className="text-xs font-bold">
                     {req.user_name}
-                    <span className="ml-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">{t(`leave_${req.leave_type}`)}</span>
+                    <span className="ml-2 text-xs font-medium text-slate-500">{t(`leave_${req.leave_type}`)}</span>
                   </p>
                   <p className="mt-0.5 text-[11px] font-bold tabular-nums text-slate-500">
                     {req.from_date} → {req.to_date}
@@ -194,7 +195,7 @@ export function AttendanceLeave({ canManage = false, employees = [], currentUser
                 </div>
                 <div className="flex items-center gap-2">
                   <span
-                    className={`rounded-full px-2 py-0.5 text-[11px] font-black uppercase tracking-wider ${
+                    className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                       STATUS_STYLE[req.status] || STATUS_STYLE.pending
                     }`}
                   >
@@ -204,7 +205,7 @@ export function AttendanceLeave({ canManage = false, employees = [], currentUser
                     <button
                       type="button"
                       onClick={() => withdraw(req)}
-                      className="rounded-full px-2 py-1 text-[11px] font-black uppercase tracking-wider text-slate-500 transition hover:text-rose-600"
+                      className="rounded-full px-2 py-1 text-xs font-medium text-slate-500 transition hover:text-rose-600"
                     >
                       {t('withdraw')}
                     </button>

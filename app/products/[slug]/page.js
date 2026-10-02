@@ -20,8 +20,7 @@ import {
   Minus,
   Plus,
   Package,
-  ArrowLeft,
-  Sparkles
+  ArrowLeft
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,10 +41,10 @@ export default function ProductPage() {
 
   if (!product) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-muted/50 via-background to-muted/30 flex items-center justify-center">
-        <Card className="bg-card/80 backdrop-blur-sm border-0 shadow-xl p-8 text-center max-w-md">
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="bg-card border border-border shadow-card p-8 text-center max-w-md">
           <Package className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Product Not Found</h1>
+          <h1 className="font-semibold tracking-tight text-2xl mb-2">Product Not Found</h1>
           <p className="text-muted-foreground mb-6">The product you're looking for doesn't exist or has been removed.</p>
           <Button asChild className="rounded-full">
             <Link href="/#products">
@@ -83,11 +82,8 @@ export default function ProductPage() {
     .slice(0, 3);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-muted/50 via-background to-muted/30 relative overflow-hidden">
+    <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Decorative elements */}
-      <div className="absolute top-20 left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-
       <div className="container mx-auto px-4 py-8 relative z-10">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8">
@@ -103,9 +99,9 @@ export default function ProductPage() {
           {/* Image Gallery */}
           <div className="space-y-4">
             {/* Main Image */}
-            <Card className="bg-card/80 backdrop-blur-sm border-0 shadow-xl overflow-hidden">
+            <Card className="bg-card border border-border shadow-card overflow-hidden">
               <CardContent className="p-0">
-                <div className="relative aspect-square bg-gradient-to-br from-muted to-muted/50">
+                <div className="relative aspect-square bg-muted">
                   <Image
                     src={currentImage}
                     alt={productName}
@@ -194,10 +190,9 @@ export default function ProductPage() {
             {/* Title & Rating */}
             <div>
               <Badge variant="outline" className="mb-3 bg-primary/10 text-primary border-primary/20">
-                <Sparkles className="h-3 w-3 mr-1" />
                 {productCategory}
               </Badge>
-              <h1 className="text-3xl sm:text-4xl font-bold mb-3">{productName}</h1>
+              <h1 className="font-semibold tracking-tight text-3xl sm:text-4xl mb-3">{productName}</h1>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1">
                   {[...Array(5)].map((_, i) => (
@@ -315,7 +310,7 @@ export default function ProductPage() {
         </div>
 
         {/* Product Details Tabs */}
-        <Card className="bg-card/80 backdrop-blur-sm border-0 shadow-xl mb-16">
+        <Card className="bg-card border border-border shadow-card mb-16">
           <CardContent className="p-6">
             {/* Tab Headers */}
             <div className="flex gap-1 border-b border-border mb-6 overflow-x-auto">
@@ -373,13 +368,13 @@ export default function ProductPage() {
         {/* Related Products */}
         {relatedProducts.length > 0 && (
           <div>
-            <h2 className="text-2xl font-bold mb-6">Related Products</h2>
+            <h2 className="font-semibold tracking-tight text-2xl mb-6">Related Products</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {relatedProducts.map((relatedProduct) => (
                 <Link key={relatedProduct.id} href={`/products/${relatedProduct.slug}`}>
-                  <Card className="group bg-card/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+                  <Card className="group bg-card border border-border shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden">
                     <CardContent className="p-0">
-                      <div className="relative aspect-square bg-gradient-to-br from-muted to-muted/50">
+                      <div className="relative aspect-square bg-muted">
                         <Image
                           src={relatedProduct.mainImage}
                           alt={language === 'hi' ? relatedProduct.nameHi : relatedProduct.name}

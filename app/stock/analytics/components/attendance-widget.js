@@ -55,7 +55,7 @@ export function AttendanceSummaryWidget() {
       </AnalyticsCard>
     );
   }
-  if (!data) return <Skeleton className="h-72 rounded-2xl" />;
+  if (!data) return <Skeleton className="h-72 rounded-xl" />;
 
   const today = istToday();
   const rows = data.payroll.rows || [];
@@ -99,7 +99,7 @@ export function AttendanceSummaryWidget() {
       topRight={
         <Link
           href="/stock/attendance?view=team"
-          className="flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-brand-primary hover:underline"
+          className="flex items-center gap-1 text-xs font-semibold text-brand-primary hover:underline"
         >
           {t('openAttendance')}
           <ChevronRight className="h-3.5 w-3.5" />
@@ -112,7 +112,7 @@ export function AttendanceSummaryWidget() {
             <>
               <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{tile.label}</p>
               <p
-                className={`mt-1 text-2xl font-black tabular-nums ${
+                className={`mt-1 text-2xl font-bold tabular-nums ${
                   tile.alert ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-slate-100'
                 }`}
               >

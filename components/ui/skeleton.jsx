@@ -14,7 +14,7 @@ export function Skeleton({ className, ...props }) {
 
 export function ProductCardSkeleton() {
   return (
-    <div className="rounded-2xl border-0 bg-card/50 shadow-lg overflow-hidden">
+    <div className="rounded-xl border-0 bg-card/50 shadow-lg overflow-hidden">
       {/* Image area */}
       <Skeleton className="h-48 sm:h-64 w-full rounded-none" />
       {/* Content */}

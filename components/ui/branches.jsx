@@ -44,7 +44,7 @@ export function Branches() {
               <div
                 key={branch.key}
                 className={cn(
-                  "group flex flex-col overflow-hidden rounded-2xl bg-card border border-border/60 hover:border-primary/40 hover:shadow-lg transition-all duration-300 animate-on-scroll",
+                  "group flex flex-col overflow-hidden rounded-xl bg-card border border-border/60 hover:border-primary/40 hover:shadow-lg transition-all duration-300 animate-on-scroll",
                   inView && "in-view"
                 )}
                 style={{ transitionDelay: `${Math.min(index, 3) * 70}ms` }}

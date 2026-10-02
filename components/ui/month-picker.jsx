@@ -47,7 +47,7 @@ export function MonthPicker({ value, onChange, max, className, disabled }) {
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="text-sm font-black tabular-nums">{year}</span>
+          <span className="text-sm font-bold tabular-nums">{year}</span>
           <button
             type="button"
             onClick={() => setYear((y) => y + 1)}

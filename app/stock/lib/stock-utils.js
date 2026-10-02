@@ -356,11 +356,11 @@ export function getGeneratedByRoleLabel(role) {
 // both render the same labels and the same unit-aware quantity.
 // Keys must match SHOWROOM_MOVES in lib/stock-showroom.js.
 export const SHOWROOM_ACTIONS = {
-  to_cassette: { label: 'Sent to showroom, on a cassette', short: 'To cassette', tone: 'text-violet-500' },
-  to_installed: { label: 'Sent to showroom, installed as flooring', short: 'To installed', tone: 'text-amber-500' },
-  to_warehouse: { label: 'Back to warehouse', short: 'To warehouse', tone: 'text-emerald-500' },
-  reclassify_installed: { label: 'Re-marked as installed', short: 'Now installed', tone: 'text-amber-500' },
-  reclassify_cassette: { label: 'Re-marked as on a cassette', short: 'Now on cassette', tone: 'text-violet-500' },
+  to_cassette: { label: 'Sent to showroom, on a cassette', short: 'To cassette', tone: 'text-violet-700 dark:text-violet-400' },
+  to_installed: { label: 'Sent to showroom, installed as flooring', short: 'To installed', tone: 'text-amber-700 dark:text-amber-400' },
+  to_warehouse: { label: 'Back to warehouse', short: 'To warehouse', tone: 'text-emerald-700 dark:text-emerald-400' },
+  reclassify_installed: { label: 'Re-marked as installed', short: 'Now installed', tone: 'text-amber-700 dark:text-amber-400' },
+  reclassify_cassette: { label: 'Re-marked as on a cassette', short: 'Now on cassette', tone: 'text-violet-700 dark:text-violet-400' },
 };
 
 // Both showroom moves are movement_type 'transfer_out', so the state cannot be
@@ -489,60 +489,67 @@ export function getSortedRows(rows, sortState, accessors) {
   return sortedRows;
 }
 
-export const FORM_LABEL_CLASS = 'block text-[11px] font-black uppercase tracking-[0.12em] text-foreground/60 mb-1.5';
-export const FORM_INPUT_CLASS = 'w-full rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10';
-export const FORM_CARD_CLASS = 'glass-panel rounded-2xl p-4 sm:p-5 transition-[box-shadow,border-color] duration-200';
+export const FORM_LABEL_CLASS = 'block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5';
+export const FORM_INPUT_CLASS = 'w-full rounded-lg border border-input bg-card px-3 py-2.5 text-sm text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-brand-primary/15 dark:focus:border-slate-500';
+export const FORM_CARD_CLASS = 'glass-panel rounded-xl p-4 sm:p-5';
 
 // Panel header action pills. Smaller text, padding and gap below sm so three of
 // them still fit one line on a 360px viewport; the row holding them is flex-wrap.
-const PILL_BASE = 'flex min-h-[38px] sm:min-h-[44px] shrink-0 items-center gap-1 sm:gap-2 rounded-full px-2.5 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-[11px] font-black uppercase tracking-wide sm:tracking-widest [&>svg]:h-3.5 [&>svg]:w-3.5 sm:[&>svg]:h-4 sm:[&>svg]:w-4 transition-transform duration-100 ease-out active:scale-95 disabled:cursor-not-allowed disabled:opacity-50';
-export const PILL_BUTTON_CLASS = `${PILL_BASE} border border-slate-200/60 bg-white text-slate-700 shadow-sm hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800`;
-export const PILL_PRIMARY_BUTTON_CLASS = `${PILL_BASE} bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90`;
+const PILL_BASE = 'flex min-h-[36px] sm:min-h-[38px] shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 sm:px-3.5 text-[13px] font-medium [&>svg]:h-4 [&>svg]:w-4 transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50';
+export const PILL_BUTTON_CLASS = `${PILL_BASE} border border-border bg-card text-slate-700 hover:bg-muted dark:text-slate-200`;
+export const PILL_PRIMARY_BUTTON_CLASS = `${PILL_BASE} bg-primary font-semibold text-primary-foreground hover:bg-primary/90`;
 
-// Mobile tab strips (dashboard, analytics, admin, attendance). Below sm only the
-// active tab keeps its label; the rest collapse to icon chips. Mobile has no
-// hover, so those chips carry a ring and a press scale to read as tappable.
-export const tabButtonClass = (isActive) => `flex h-10 items-center justify-center overflow-hidden whitespace-nowrap rounded-full text-xs font-black uppercase tracking-widest transition-all duration-300 ease-out sm:h-auto sm:w-auto sm:flex-none sm:rounded-lg sm:px-6 sm:py-2.5 ${isActive
-  ? 'flex-1 gap-1.5 bg-white px-2 text-brand-primary shadow-sm dark:bg-slate-800'
-  : 'w-10 shrink-0 bg-white/50 px-0 text-slate-600 ring-1 ring-inset ring-slate-300 active:scale-95 hover:text-slate-700 dark:bg-slate-800/60 dark:text-slate-300 dark:ring-white/10 dark:hover:text-slate-200 sm:bg-transparent sm:text-slate-400 sm:ring-0 sm:active:scale-100'}`;
+// Page tab strips (dashboard, analytics, admin, attendance). Below sm, up to
+// four tabs share one row as equal columns, icon over label. Five or more drop
+// to a three-column grid with the icon beside the label: a 360px phone gives six
+// tabs ~52px each and "Timesheets" needs ~63, and hyphenation isn't on every
+// device. Either way every tab stays named and nothing scrolls. From sm up it's
+// a row of text tabs.
+export const tabTrackClass = (count) => `grid w-full min-w-0 gap-0.5 rounded-lg bg-muted p-1 scrollbar-none sm:flex sm:w-fit sm:items-center sm:overflow-x-auto ${count > 4 ? 'grid-cols-3' : 'auto-cols-[minmax(0,1fr)] grid-flow-col'}`;
+
+export const tabButtonClass = (isActive, count = 4) => `relative flex min-w-0 items-center justify-center rounded-md text-[11px] leading-tight transition-colors sm:h-8 sm:flex-none sm:flex-row sm:gap-1.5 sm:px-3.5 sm:py-0 sm:text-[13px] ${count > 4
+  ? 'h-9 flex-row gap-1.5 px-1.5'
+  : 'flex-col gap-0.5 px-0.5 py-1.5'} ${isActive
+  ? 'bg-card font-semibold text-slate-900 shadow-card ring-1 ring-border dark:text-slate-50 [&>svg]:text-brand-primary'
+  : 'font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'}`;
 
 export const CLASSES = {
   contentWrap: 'mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6',
-  topCard: 'glass-panel rounded-2xl p-4 sm:p-6 lg:p-8',
-  interactiveCard: 'glass-panel rounded-2xl transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover',
-  card: 'glass-panel rounded-2xl p-4 sm:p-6 lg:p-8 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group/card',
-  cardCompact: 'glass-panel rounded-2xl p-3 sm:p-4 lg:p-6 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group/card',
-  title: 'text-[11px] font-black uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400 group-hover/card:text-brand-primary transition-colors',
+  topCard: 'glass-panel rounded-xl p-4 sm:p-6 lg:p-8',
+  interactiveCard: 'glass-panel rounded-xl transition-[box-shadow,border-color] duration-200 hover:border-slate-300 dark:hover:border-slate-600',
+  card: 'glass-panel rounded-xl p-4 sm:p-6 lg:p-8 group/card',
+  cardCompact: 'glass-panel rounded-xl p-3 sm:p-4 lg:p-6 group/card',
+  title: 'text-sm font-semibold text-slate-900 dark:text-slate-100',
   grid: 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
   heroGrid: 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 lg:gap-6',
   statGrid: 'grid grid-cols-2 gap-3 lg:grid-cols-4',
-  statCard: 'min-w-0 glass-panel rounded-2xl p-4 sm:p-5 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover',
-  statLabel: 'text-[11px] font-black uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400',
-  statValue: 'mt-1.5 text-2xl font-black text-slate-900 sm:text-3xl dark:text-slate-100 leading-none tracking-tighter',
+  statCard: 'min-w-0 glass-panel rounded-xl p-4 sm:p-5',
+  statLabel: 'text-xs font-medium text-slate-500 dark:text-slate-400',
+  statValue: 'mt-1.5 text-2xl font-semibold text-slate-900 sm:text-[1.75rem] dark:text-slate-100 leading-none tracking-tight tabular-nums',
   mobileScroll: 'flex overflow-x-auto scrollbar-none gap-2 pb-2 snap-x snap-mandatory overscroll-x-contain',
 };
 
 export const INVOICE_CLASSES = {
-  surface: 'glass-panel rounded-2xl overflow-hidden',
-  commandCard: 'glass-panel rounded-2xl p-5 m-4',
-  supplierTitle: 'text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tighter',
-  supplierMeta: 'mt-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400 opacity-70',
-  logisticsGrid: 'grid grid-cols-2 overflow-hidden rounded-2xl border border-border/60',
-  logisticsCell: 'border-b border-r border-border/60 bg-card p-4 last:border-r-0',
-  logisticsLabel: 'flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-brand-primary opacity-80',
-  logisticsValue: 'mt-2 text-sm font-black tracking-tight text-slate-900 dark:text-slate-100',
-  subBar: 'flex flex-wrap gap-6 rounded-xl bg-muted px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300',
-  tableWrap: 'overflow-hidden rounded-2xl border border-border/60 max-h-[60vh] overflow-y-auto scrollbar-none',
-  tableHead: 'bg-muted/90 text-slate-700 dark:text-slate-100 text-[9px] font-black uppercase tracking-[0.25em] sticky top-0 z-20 backdrop-blur-sm',
-  tableHeadCell: 'px-5 py-4',
-  tableRow: 'border-b border-border hover:bg-muted/50 transition-colors duration-150',
-  tableCell: 'px-5 py-4 text-sm font-medium text-slate-700 dark:text-slate-200',
-  monoCell: 'font-mono text-sm font-bold text-slate-800 dark:text-slate-100',
-  mobileGrid: 'space-y-4',
-  mobileCard: 'glass-panel rounded-2xl p-5 relative overflow-hidden group',
-  mobileCardHeader: 'absolute top-0 right-0 rounded-bl-xl bg-muted px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-100',
-  mobileKey: 'text-[9px] font-black uppercase tracking-[0.15em] text-slate-600 dark:text-slate-400',
-  mobileValue: 'mt-1 text-[11px] font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight',
+  surface: 'glass-panel rounded-xl overflow-hidden',
+  commandCard: 'glass-panel rounded-xl p-5 m-4',
+  supplierTitle: 'text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50',
+  supplierMeta: 'mt-1 text-xs text-slate-500 dark:text-slate-400',
+  logisticsGrid: 'grid grid-cols-2 overflow-hidden rounded-lg border border-border',
+  logisticsCell: 'border-b border-r border-border bg-card px-4 py-3 last:border-r-0',
+  logisticsLabel: 'flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 [&>svg]:text-brand-primary',
+  logisticsValue: 'mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100',
+  subBar: 'flex flex-wrap gap-x-6 gap-y-1 rounded-lg bg-muted px-4 py-2.5 text-[13px] font-medium text-slate-700 dark:text-slate-300',
+  tableWrap: 'overflow-hidden rounded-lg border border-border max-h-[60vh] overflow-y-auto scrollbar-none',
+  tableHead: 'bg-muted text-slate-500 dark:text-slate-400 text-[11px] font-semibold uppercase tracking-wider sticky top-0 z-20',
+  tableHeadCell: 'px-4 py-2.5',
+  tableRow: 'border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors duration-150',
+  tableCell: 'px-4 py-3 text-sm text-slate-700 dark:text-slate-200',
+  monoCell: 'font-mono text-[13px] font-medium text-slate-800 dark:text-slate-100',
+  mobileGrid: 'space-y-3',
+  mobileCard: 'glass-panel rounded-xl p-4 relative overflow-hidden group',
+  mobileCardHeader: 'absolute top-0 right-0 rounded-bl-lg bg-muted px-2.5 py-1 font-mono text-[11px] font-medium text-slate-600 dark:text-slate-300',
+  mobileKey: 'text-xs text-slate-500 dark:text-slate-400',
+  mobileValue: 'mt-0.5 text-sm font-medium text-slate-900 dark:text-slate-100 leading-tight',
 };
 
 export const shipmentCache = new Map();

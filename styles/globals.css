@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,700&family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700;800;900&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -18,11 +17,6 @@
 @keyframes scale-in {
   from { transform: scale(0.95); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
-}
-
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgb(var(--primary) / 0.3); }
-  50% { box-shadow: 0 0 40px rgb(var(--primary) / 0.5); }
 }
 
 @keyframes stock-tab-panel-enter {
@@ -58,50 +52,17 @@
   animation: stock-tab-panel-enter 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* The dashboard tab strip lives inside the panel that swaps on every switch, so
-   the active pill mounts fresh with no previous state to transition from. This
-   replays the expand the analytics strip gets from its CSS transition. Mobile
-   only: above sm every label is visible and nothing collapses. */
-@keyframes tab-label-expand {
-  from {
-    max-width: 0;
-    opacity: 0;
-  }
-
-  to {
-    max-width: 12rem;
-    opacity: 1;
-  }
-}
-
-@media (max-width: 639px) {
-  .tab-label-enter {
-    animation: tab-label-expand 300ms cubic-bezier(0.16, 1, 0.3, 1);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .stock-tab-panel > section > :not(:first-child),
-  .stock-tab-panel > div > :not(:first-child),
-  .tab-label-enter {
+  .stock-tab-panel > div > :not(:first-child) {
     animation: fade-in 200ms ease-out both;
   }
-}
-
-/* Hot sales streak. Uses the existing pulse-glow keyframe, so the halo is brand
-   orange whatever the streak tier's own colour is. */
-.animate-pulse-glow {
-  animation: pulse-glow 2.4s ease-in-out infinite;
 }
 
 /* Reduced motion means a gentler equivalent, not no feedback: keep the opacity
    cross-fade so reveals still read as arriving, drop every translate, scale and
    loop. Unlayered, so it outranks the @layer components rules below. */
 @media (prefers-reduced-motion: reduce) {
-  .animate-pulse-glow {
-    animation: none;
-  }
-
   .animate-slide-up,
   .animate-scale-in {
     animation: fade-in 200ms ease-out both;
@@ -203,12 +164,17 @@
      whatever serif the OS happens to have. Fallback is per-glyph, so Latin
      still renders in DM Serif. */
   .font-display {
-    font-family: 'DM Serif Display', 'Noto Sans Devanagari', Georgia, 'Times New Roman', serif;
+    font-family: var(--font-dm-serif), var(--font-noto-devanagari), Georgia, 'Times New Roman', serif;
   }
 
   /* Unified elevated-card surface (formerly frosted glass) */
   .glass-panel {
     @apply bg-card border border-border shadow-card;
+  }
+
+  /* Page titles across the stock app. */
+  .page-title {
+    @apply text-2xl sm:text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-slate-900 dark:text-slate-50;
   }
 
   .focus-ring {
@@ -222,16 +188,16 @@
      opacity modifiers compile (bg-card/60, border-border/40, …). */
   :root {
     --background: 248 250 252;
-    --foreground: 2 8 23;
+    --foreground: 15 23 42;
 
     --muted: 241 245 249;
     --muted-foreground: 100 116 139;
 
     --popover: 255 255 255;
-    --popover-foreground: 2 8 23;
+    --popover-foreground: 15 23 42;
 
     --card: 255 255 255;
-    --card-foreground: 2 8 23;
+    --card-foreground: 15 23 42;
 
     --border: 226 232 240;
     --input: 226 232 240;
@@ -245,7 +211,7 @@
     --accent: 13 148 136;
     --accent-foreground: 255 255 255;
 
-    --destructive: 239 68 68;
+    --destructive: 220 38 38;
     --destructive-foreground: 248 250 252;
 
     --ring: 224 122 0;
@@ -254,20 +220,20 @@
   }
 
   .dark {
-    --background: 2 6 23;
-    --foreground: 248 250 252;
+    --background: 20 29 46;
+    --foreground: 241 245 249;
 
-    --muted: 15 23 42;
+    --muted: 38 50 70;
     --muted-foreground: 148 163 184;
 
-    --popover: 2 8 23;
-    --popover-foreground: 248 250 252;
+    --popover: 30 41 59;
+    --popover-foreground: 241 245 249;
 
-    --card: 15 23 42;
-    --card-foreground: 248 250 252;
+    --card: 30 41 59;
+    --card-foreground: 241 245 249;
 
-    --border: 30 41 59;
-    --input: 30 41 59;
+    --border: 51 65 85;
+    --input: 51 65 85;
 
     --primary: 224 122 0;
     --primary-foreground: 255 255 255;
@@ -278,8 +244,8 @@
     --accent: 13 148 136;
     --accent-foreground: 255 255 255;
 
-    --destructive: 127 29 29;
-    --destructive-foreground: 248 250 252;
+    --destructive: 153 27 27;
+    --destructive-foreground: 241 245 249;
 
     --ring: 224 122 0;
   }
@@ -291,7 +257,7 @@
   }
   body {
     @apply bg-background text-foreground font-sans;
-    font-family: 'DM Sans', 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+    font-family: var(--font-dm-sans), var(--font-inter), ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
   }
 }
 
@@ -306,25 +272,44 @@
    Unlayered on purpose so it outranks the @layer base :root/.dark tokens.
    ========================================================================= */
 .stock-scope {
-  --background: 238 241 245; /* #eef1f5 - deeper canvas, not near-white */
-  --card: 250 251 252;       /* #fafbfc - off-white, not pure white */
-  --popover: 250 251 252;
-  --muted: 232 236 241;
-  --border: 223 228 234;
-  --input: 223 228 234;
-  --foreground: 30 41 59;    /* slate-800, not near-black */
+  --background: 241 245 249; /* slate-100: cool canvas that white cards and chrome sit on */
+  --card: 255 255 255;
+  --popover: 255 255 255;
+  --muted: 233 238 244;      /* tab tracks, table heads, hovers: between canvas and slate-200 */
+  --border: 226 232 240;     /* slate-200 */
+  --input: 214 222 232;
+  --foreground: 15 23 42;    /* slate-900 */
+  --muted-foreground: 100 116 139; /* slate-500, 4.8:1 on white */
 
   color: rgb(var(--foreground));
+  /* Every figure in a stock table lines up by column. */
+  font-variant-numeric: tabular-nums;
 }
 
 .dark .stock-scope {
-  --background: 18 22 31;    /* #12161f - lifted off pure black */
-  --card: 26 32 48;          /* #1a2030 */
-  --popover: 26 32 48;
-  --muted: 30 37 52;
-  --border: 43 52 68;
-  --input: 43 52 68;
-  --foreground: 226 232 240; /* slate-200, not near-white */
+  --background: 20 29 46;    /* #141d2e deep slate canvas */
+  --card: 30 41 59;          /* slate-800: cards and chrome clearly lift off it */
+  --popover: 36 49 69;
+  --muted: 38 50 70;
+  --border: 51 65 85;        /* slate-700: edges you can actually see */
+  --input: 61 77 101;
+  --foreground: 241 245 249;
+  --muted-foreground: 148 163 184; /* slate-400, 5.7:1 on the card */
+}
+
+/* Geist in the app, DM Sans stays on the storefront. .font-sans is listed
+   because ~100 stock elements re-declare it, which would reset to DM Sans. */
+.stock-scope,
+.stock-scope .font-sans {
+  font-family: var(--font-geist), var(--font-dm-sans), ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.stock-scope .font-mono {
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+html[lang="hi"] .stock-scope,
+html[lang="hi"] .stock-scope .font-sans {
+  font-family: var(--font-noto-devanagari), var(--font-geist), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* --- Literal remap: light-mode surfaces -----------------------------------
@@ -371,10 +356,21 @@
 .dark .stock-scope .dark\:even\:bg-slate-900\/70:nth-child(even) { background-color: rgb(var(--card) / 0.7); }
 .dark .stock-scope :is(.dark\:hover\:bg-slate-800, .dark\:hover\:bg-slate-800\/40, .dark\:hover\:bg-slate-800\/50):hover { background-color: rgb(var(--muted)); }
 
+/* --- Literal remap: faint text --------------------------------------------
+   text-slate-400 (#94a3b8) is ~2.6:1 on the stock cards, under the 4.5:1 WCAG
+   AA floor, and it carries ~300 labels, sub-values and breadcrumbs. Light mode
+   only (it reads fine on the dark surfaces), and :where() keeps this at the
+   utility's own specificity, so hover:/group-hover:/dark: variants still win. */
+:where(html:not(.dark) .stock-scope) .text-slate-400 { color: rgb(var(--muted-foreground)); }
+
+/* Chart axis labels: Recharts writes a fixed fill="#94a3b8" attribute, which
+   any CSS outranks. muted-foreground is slate-500 light / slate-400 dark. */
+.stock-scope .recharts-cartesian-axis-tick-value { fill: rgb(var(--muted-foreground)); }
+
 /* Hindi Typography Adjustments */
 html[lang="hi"],
 html[lang="hi"] body {
-  font-family: 'Noto Sans Devanagari', 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif !important;
+  font-family: var(--font-noto-devanagari), var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif !important;
 }
 
 html[lang="hi"] body {

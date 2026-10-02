@@ -3,7 +3,7 @@
 import { useAuthUser, withPageAuthRequiredCompat } from '@/lib/auth-client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ShoppingBag, Package, Truck, CheckCircle2, Clock, ArrowRight, Sparkles, ChevronRight, Calendar, CreditCard, MapPin } from 'lucide-react';
+import { ShoppingBag, Package, Truck, CheckCircle2, Clock, ArrowRight, ChevronRight, Calendar, CreditCard, MapPin } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -57,38 +57,37 @@ function OrdersPage() {
           icon: CheckCircle2, 
           color: 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20',
           iconColor: 'text-green-500',
-          gradient: 'from-green-500 to-emerald-500'
+          tone: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
         };
       case 'shipped':
         return { 
           icon: Truck, 
           color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
           iconColor: 'text-blue-500',
-          gradient: 'from-blue-500 to-cyan-500'
+          tone: 'bg-sky-500/10 text-sky-700 dark:text-sky-400'
         };
       case 'processing':
         return { 
           icon: Package, 
           color: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20',
           iconColor: 'text-orange-500',
-          gradient: 'from-orange-500 to-amber-500'
+          tone: 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
         };
       default:
         return { 
           icon: Clock, 
           color: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20',
           iconColor: 'text-yellow-500',
-          gradient: 'from-yellow-500 to-orange-500'
+          tone: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400'
         };
     }
   };
 
   if (isLoading || loadingOrders) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-muted/50 via-background to-muted/30 flex justify-center items-center">
+      <div className="min-h-screen bg-background flex justify-center items-center">
         <div className="relative">
-          <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse" />
-          <div className="relative bg-card/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-border/50">
+          <div className="relative bg-card rounded-xl p-8 shadow-card border border-border">
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               <p className="text-lg font-medium text-muted-foreground">Loading your orders...</p>
@@ -100,12 +99,8 @@ function OrdersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-muted/50 via-background to-muted/30 relative overflow-hidden">
+    <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Decorative elements */}
-      <div className="absolute top-20 left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-
       <div className="container mx-auto px-4 py-12 relative z-10">
         {/* Header Section */}
         <div className="text-center mb-12">
@@ -116,7 +111,7 @@ function OrdersPage() {
             <ShoppingBag className="w-4 h-4 mr-2" />
             Order History
           </Badge>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-4">My Orders</h1>
+          <h1 className="font-semibold tracking-tight text-3xl sm:text-4xl md:text-5xl mb-4">My Orders</h1>
           <p className="text-muted-foreground max-w-md mx-auto">
             {orders.length > 0 
               ? `You have ${orders.length} order${orders.length !== 1 ? 's' : ''} in your history`
@@ -127,21 +122,18 @@ function OrdersPage() {
 
         {orders.length === 0 ? (
           /* Empty State */
-          <Card className="max-w-md mx-auto bg-card/80 backdrop-blur-sm border-0 shadow-xl overflow-hidden">
+          <Card className="max-w-md mx-auto bg-card border border-border shadow-card overflow-hidden">
             <CardContent className="p-12 text-center relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 pointer-events-none" />
               <div className="relative">
                 <div className="relative mx-auto w-24 h-24 mb-6">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary/50 rounded-full blur-lg opacity-30" />
-                  <div className="relative h-full w-full rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+                  <div className="relative h-full w-full rounded-full bg-primary/10 flex items-center justify-center">
                     <ShoppingBag className="h-10 w-10 text-primary" />
                   </div>
                 </div>
                 <h3 className="text-xl font-semibold mb-2">No orders yet</h3>
                 <p className="text-muted-foreground mb-6">Start shopping to see your orders here!</p>
-                <Button className="rounded-full px-8 bg-primary hover:bg-primary/90 shadow-lg hover:shadow-primary/25 transition-all duration-300" asChild>
+                <Button className="px-6" asChild>
                   <Link href="/#products" className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4" />
                     Start Shopping
                     <ArrowRight className="h-4 w-4" />
                   </Link>
@@ -161,7 +153,7 @@ function OrdersPage() {
                 <Card 
                   key={order.id} 
                   className={cn(
-                    "bg-card/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden cursor-pointer",
+                    "bg-card border border-border shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden cursor-pointer",
                   )}
                   style={{ animationDelay: `${index * 100}ms` }}
                   onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
@@ -169,16 +161,14 @@ function OrdersPage() {
                   <CardContent className="p-0">
                     {/* Order Header */}
                     <div className="p-6 relative">
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-primary/5 pointer-events-none" />
-                      
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative">
                         {/* Order Info */}
                         <div className="flex items-center gap-4">
                           <div className={cn(
-                            "h-12 w-12 rounded-xl bg-gradient-to-br flex items-center justify-center text-white shadow-lg shrink-0",
-                            statusConfig.gradient
+                            "h-10 w-10 rounded-lg flex items-center justify-center shrink-0",
+                            statusConfig.tone
                           )}>
-                            <StatusIcon className="h-6 w-6" />
+                            <StatusIcon className="h-5 w-5" strokeWidth={1.75} />
                           </div>
                           <div>
                             <p className="text-sm text-muted-foreground mb-0.5">Order ID</p>
@@ -231,7 +221,7 @@ function OrdersPage() {
                               className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                             >
                               <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-muted to-muted-foreground/10 flex items-center justify-center">
+                                <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
                                   <Package className="h-5 w-5 text-muted-foreground/50" />
                                 </div>
                                 <span className="font-medium">{item.name}</span>
@@ -279,10 +269,9 @@ function OrdersPage() {
 
 export default withPageAuthRequiredCompat(OrdersPage, {
   onRedirecting: () => (
-    <div className="min-h-screen bg-gradient-to-b from-muted/50 via-background to-muted/30 flex justify-center items-center">
+    <div className="min-h-screen bg-background flex justify-center items-center">
       <div className="relative">
-        <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse" />
-        <div className="relative bg-card/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-border/50">
+        <div className="relative bg-card rounded-xl p-8 shadow-card border border-border">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             <p className="text-lg font-medium text-muted-foreground">Redirecting to login...</p>

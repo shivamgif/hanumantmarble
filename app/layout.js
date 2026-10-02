@@ -1,4 +1,5 @@
 import '@/styles/globals.css'
+import { DM_Sans, DM_Serif_Display, Geist, Geist_Mono, Inter, Noto_Sans_Devanagari } from 'next/font/google'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { LanguageProvider } from '@/contexts/LanguageContext'
 import { ClientProviders } from '@/contexts/ClientProviders'
@@ -6,6 +7,38 @@ import Layout from '@/components/Layout'
 import PWAInstall from '@/components/PWAInstall'
 
 const BASE_URL = "https://hanumantmarble.com";
+
+// Self-hosted at build time rather than a render-blocking @import from Google.
+// Weights mirror the old import exactly: DM Sans stops at 700, which is what
+// every font-bold in the app has always rendered as. Only DM Sans is preloaded;
+// the rest are fallbacks or Hindi-only.
+const dmSans = DM_Sans({
+  subsets: ['latin', 'latin-ext'],
+  weight: ['300', '400', '500', '600', '700'],
+  style: ['normal', 'italic'],
+  variable: '--font-dm-sans',
+  display: 'swap',
+});
+const dmSerif = DM_Serif_Display({
+  subsets: ['latin'],
+  weight: '400',
+  style: ['normal', 'italic'],
+  variable: '--font-dm-serif',
+  display: 'swap',
+  preload: false,
+});
+// The stock app's UI face: crisper than DM Sans at the 12-14px a dense
+// dashboard lives at, with a matching mono for SKUs and invoice numbers.
+const geist = Geist({ subsets: ['latin', 'latin-ext'], variable: '--font-geist', display: 'swap', preload: false });
+const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono', display: 'swap', preload: false });
+const inter = Inter({ subsets: ['latin', 'latin-ext'], variable: '--font-inter', display: 'swap', preload: false });
+const notoDevanagari = Noto_Sans_Devanagari({
+  subsets: ['devanagari', 'latin'],
+  weight: ['400', '500', '600', '700', '800', '900'],
+  variable: '--font-noto-devanagari',
+  display: 'swap',
+  preload: false,
+});
 
 export const viewport = {
   themeColor: '#E07A00',
@@ -117,7 +150,11 @@ export default function RootLayout({ children }) {
   };
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${dmSans.variable} ${dmSerif.variable} ${geist.variable} ${geistMono.variable} ${inter.variable} ${notoDevanagari.variable}`}
+    >
       <body>
         <script
           type="application/ld+json"

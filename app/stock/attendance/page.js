@@ -15,7 +15,7 @@ import { AttendanceSettings } from '../components/attendance-settings';
 import { AttendanceTeam } from '../components/attendance-team';
 import { AttendanceEntrySheet } from '../components/attendance-entry-sheet';
 import { AttendanceMonth } from '../components/attendance-month';
-import { CLASSES, tabButtonClass } from '../lib/stock-utils';
+import { CLASSES, tabButtonClass, tabTrackClass } from '../lib/stock-utils';
 import { useAttendanceText } from '@/lib/attendance-i18n';
 
 // Plain pill buttons rather than a Tabs primitive — components/ui has no
@@ -70,13 +70,13 @@ function AttendancePageInner() {
     <div className={CLASSES.contentWrap}>
       <header>
         <div className="space-y-2">
-          <nav className="flex items-center flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">
-            <Link href="/stock" className="hover:text-brand-primary transition-colors">{t('dashboard')}</Link>
-            <ChevronRight className="h-3 w-3 opacity-50" />
+          <nav className="flex items-center flex-wrap gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+            <Link href="/stock" className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors">{t('dashboard')}</Link>
+            <ChevronRight className="h-3 w-3 text-slate-300 dark:text-slate-600" />
             <span className="text-slate-900 dark:text-white">{t('title')}</span>
           </nav>
-          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-            <span className="text-brand-primary">{t('title')}</span>
+          <h1 className="page-title">
+            {t('title')}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-3xl">
             {t('subtitle')}
@@ -85,11 +85,9 @@ function AttendancePageInner() {
       </header>
 
       {tabs.length > 1 ? (
-        // Same strip as the dashboard, analytics and admin tabs: below sm only the
-        // active tab keeps its label, the rest collapse to icon circles. Six tabs
-        // is one more than those strips carry, so this one may still scroll on the
-        // narrowest phones rather than clip.
-        <div className="flex w-full min-w-0 items-center gap-1 overflow-x-auto rounded-xl border border-border/60 bg-muted p-1 scrollbar-none sm:w-fit sm:gap-0">
+        // Same strip as the dashboard, analytics and admin tabs: below sm, equal
+        // columns with the icon over a label of up to two lines (see tabButtonClass).
+        <div className={tabTrackClass(tabs.length)}>
           {tabs.map((tab) => {
             const isActive = view === tab.id;
             const Icon = tab.icon;
@@ -101,10 +99,10 @@ function AttendancePageInner() {
                 onClick={() => setView(tab.id)}
                 aria-label={label}
                 aria-current={isActive ? 'true' : undefined}
-                className={tabButtonClass(isActive)}
+                className={tabButtonClass(isActive, tabs.length)}
               >
                 <Icon className="h-4 w-4 shrink-0 sm:hidden" />
-                <span className={`overflow-hidden transition-all duration-300 ease-out sm:max-w-none sm:opacity-100 ${isActive ? 'max-w-[12rem] opacity-100' : 'max-w-0 opacity-0'}`}>
+                <span className="line-clamp-2 min-w-0 text-center sm:whitespace-nowrap">
                   {label}
                 </span>
               </button>

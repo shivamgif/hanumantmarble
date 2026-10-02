@@ -1,7 +1,7 @@
 'use client';
 
+import { BrandMark } from '@/components/ui/brand-mark';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   Bell, Languages, MoonStar, SunMedium, LogOut, Search,
@@ -17,7 +17,6 @@ const COMMANDS = [
     label: 'Dashboard',
     description: 'Go to stock dashboard',
     icon: Home,
-    color: 'text-slate-500',
     keywords: ['home', 'dashboard', 'main', 'overview'],
     href: '/stock',
   },
@@ -26,7 +25,6 @@ const COMMANDS = [
     label: 'New Purchase',
     description: 'Log a new inbound shipment',
     icon: PlusCircle,
-    color: 'text-emerald-600',
     keywords: ['new purchase', 'new arrival', 'np', 'purchase', 'buy', 'inbound', 'arrival'],
     href: '/stock?view=purchases&new=purchase',
   },
@@ -35,7 +33,6 @@ const COMMANDS = [
     label: 'New Dispatch',
     description: 'Create a new outbound dispatch',
     icon: Truck,
-    color: 'text-amber-600',
     keywords: ['new dispatch', 'nd', 'dispatch', 'outbound', 'sell', 'send'],
     href: '/stock?view=dispatches&new=dispatch',
   },
@@ -44,7 +41,6 @@ const COMMANDS = [
     label: 'Purchases',
     description: 'View all inbound shipments',
     icon: PackageCheck,
-    color: 'text-emerald-600',
     keywords: ['purchases', 'arrivals', 'inbound', 'purchase list'],
     href: '/stock?view=purchases',
   },
@@ -53,7 +49,6 @@ const COMMANDS = [
     label: 'Dispatches',
     description: 'View all outbound dispatches',
     icon: Truck,
-    color: 'text-amber-600',
     keywords: ['dispatches', 'outbound', 'dispatch list'],
     href: '/stock?view=dispatches',
   },
@@ -62,7 +57,6 @@ const COMMANDS = [
     label: 'Inventory',
     description: 'Browse current stock levels',
     icon: Boxes,
-    color: 'text-blue-600',
     keywords: ['inventory', 'items', 'stock', 'catalog', 'tiles'],
     href: '/stock?view=items',
   },
@@ -71,7 +65,6 @@ const COMMANDS = [
     label: 'Documents',
     description: 'View invoices and attached files',
     icon: FileText,
-    color: 'text-violet-600',
     keywords: ['documents', 'files', 'invoices', 'docs'],
     href: '/stock/documents',
   },
@@ -80,7 +73,6 @@ const COMMANDS = [
     label: 'Approvals',
     description: 'Review pending change requests',
     icon: Users,
-    color: 'text-rose-600',
     keywords: ['approvals', 'change request', 'pending', 'review'],
     href: '/stock/admin?focus=change-requests',
   },
@@ -89,7 +81,6 @@ const COMMANDS = [
     label: 'Admin Hub',
     description: 'User management and settings',
     icon: Users,
-    color: 'text-rose-600',
     keywords: ['admin', 'users', 'settings', 'management'],
     href: '/stock/admin',
   },
@@ -98,7 +89,6 @@ const COMMANDS = [
     label: 'Analytics',
     description: 'Sales and stock analytics',
     icon: BarChart2,
-    color: 'text-indigo-600',
     keywords: ['analytics', 'reports', 'charts', 'data', 'stats'],
     href: '/stock/analytics',
   },
@@ -132,7 +122,7 @@ function SearchDropdown({ query, onSelect, activeIndex, setActiveIndex }) {
 
   if (results.length === 0) {
     return (
-      <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[320px] rounded-2xl border border-border bg-popover p-4 shadow-card-hover">
+      <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[320px] rounded-xl border border-border bg-popover p-4 shadow-card-hover">
         <p className="text-center text-xs text-slate-400 dark:text-slate-500">No commands found for &ldquo;{query}&rdquo;</p>
       </div>
     );
@@ -140,16 +130,16 @@ function SearchDropdown({ query, onSelect, activeIndex, setActiveIndex }) {
 
   return (
     <div
-      className="absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[320px] overflow-hidden rounded-2xl border border-border bg-popover shadow-card-hover"
+      className="absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[320px] overflow-hidden rounded-xl border border-border bg-popover shadow-card-hover"
       role="listbox"
       aria-label="Search suggestions"
     >
       {!query && (
-        <div className="border-b border-slate-100 px-4 py-2 dark:border-white/5">
-          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Quick Actions</p>
+        <div className="px-3 pb-1 pt-2.5">
+          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Quick actions</p>
         </div>
       )}
-      <ul className="max-h-72 overflow-y-auto py-1.5">
+      <ul className="max-h-72 overflow-y-auto p-1.5">
         {results.map((cmd, i) => {
           const Icon = cmd.icon;
           const isActive = i === activeIndex;
@@ -159,20 +149,20 @@ function SearchDropdown({ query, onSelect, activeIndex, setActiveIndex }) {
                 type="button"
                 onMouseEnter={() => setActiveIndex(i)}
                 onClick={() => onSelect(cmd)}
-                className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors duration-100 ${
+                className={`flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left transition-colors duration-100 ${
                   isActive
-                    ? 'bg-brand-primary/5 dark:bg-brand-primary/10'
-                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                    ? 'bg-muted'
+                    : 'hover:bg-muted'
                 }`}
               >
-                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 ${cmd.color}`}>
-                  <Icon className="h-3.5 w-3.5" />
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-card text-slate-500 dark:text-slate-400">
+                  <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[11px] font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
+                  <span className="block text-sm font-medium text-slate-900 dark:text-slate-100">
                     {cmd.label}
                   </span>
-                  <span className="block truncate text-[10px] text-slate-400 dark:text-slate-500">
+                  <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
                     {cmd.description}
                   </span>
                 </span>
@@ -182,13 +172,13 @@ function SearchDropdown({ query, onSelect, activeIndex, setActiveIndex }) {
           );
         })}
       </ul>
-      <div className="border-t border-slate-100 px-4 py-2 dark:border-white/5">
-        <p className="text-[9px] text-slate-400 dark:text-slate-500">
-          <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-[8px] font-bold dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">↑↓</kbd>
+      <div className="border-t border-border px-3 py-2">
+        <p className="text-[11px] text-slate-400 dark:text-slate-500">
+          <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-[10px] font-bold dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">↑↓</kbd>
           {' '}navigate &nbsp;
-          <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-[8px] font-bold dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">↵</kbd>
+          <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-[10px] font-bold dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">↵</kbd>
           {' '}select &nbsp;
-          <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-[8px] font-bold dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">Esc</kbd>
+          <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-[10px] font-bold dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">Esc</kbd>
           {' '}close
         </p>
       </div>
@@ -273,7 +263,7 @@ function SearchBox({ dashboardSearchRef, runDashboardSearch, placeholder }) {
 
   return (
     <div ref={containerRef} className="relative flex items-center group">
-      <Search className="pointer-events-none absolute left-4 h-4 w-4 text-slate-400 group-focus-within:text-brand-primary transition-colors duration-300" />
+      <Search className="pointer-events-none absolute left-3 h-4 w-4 text-slate-400 group-focus-within:text-slate-700 dark:group-focus-within:text-slate-200 transition-colors" />
       <input
         ref={dashboardSearchRef}
         id="topbar-search"
@@ -291,7 +281,7 @@ function SearchBox({ dashboardSearchRef, runDashboardSearch, placeholder }) {
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={handleKeyDown}
-        className="h-11 w-44 lg:w-56 xl:w-80 rounded-xl border border-border bg-card pl-11 pr-9 text-sm font-bold text-foreground outline-none transition-all duration-200 focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10"
+        className="h-9 w-44 lg:w-56 xl:w-72 rounded-md border border-border bg-card pl-9 pr-9 text-sm text-foreground placeholder:text-slate-400 outline-none transition-[border-color,box-shadow] duration-150 focus:border-slate-400 focus:ring-2 focus:ring-brand-primary/15 dark:focus:border-slate-500"
       />
       {query && (
         <button
@@ -335,34 +325,21 @@ export default function StockTopbar({
   navigationItems,
   isActiveRoute,
 }) {
-  // The mobile nav keeps two labels open: the active entry and its companion —
-  // whichever entry the user was on before this one. Falls back to the entry
-  // after the active one until a second page has actually been visited.
-  const activeHref = navigationItems.find((item) => isActiveRoute(item.href))?.href;
-  const [previousHref, setPreviousHref] = useState(null);
-  const lastHrefRef = useRef(null);
-
-  useEffect(() => {
-    if (!activeHref || activeHref === lastHrefRef.current) return;
-    if (lastHrefRef.current) setPreviousHref(lastHrefRef.current);
-    lastHrefRef.current = activeHref;
-  }, [activeHref]);
-
-  const activeIndex = navigationItems.findIndex((item) => item.href === activeHref);
-  const fallbackHref = navigationItems[(activeIndex + 1) % Math.max(navigationItems.length, 1)]?.href;
-  const companionHref = previousHref && previousHref !== activeHref ? previousHref : fallbackHref;
 
   return (
-    <header className="sticky top-0 z-20 border-b border-border/60 bg-background/60 backdrop-blur-2xl">
+    <header className="sticky top-0 z-20 border-b border-border bg-card/90 backdrop-blur">
       <div className="mx-auto w-full max-w-[1600px]">
         {/* Desktop bar */}
-        <div className="hidden h-20 items-center justify-between gap-4 xl:gap-10 px-8 lg:flex">
+        <div className="hidden h-14 items-center justify-between gap-4 xl:gap-8 px-8 lg:flex">
           <div className="min-w-0 shrink-0">
-            <p className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-slate-100 mb-1 truncate">{t('erpWorkspace')}</p>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500 truncate">{t('stockOpsApprovals')}</p>
+            <p className="truncate text-sm">
+              <span className="font-semibold text-slate-900 dark:text-slate-100">{t('erpWorkspace')}</span>
+              <span className="mx-2 text-slate-300 dark:text-slate-600" aria-hidden="true">/</span>
+              <span className="text-slate-500 dark:text-slate-400">{t('stockOpsApprovals')}</span>
+            </p>
           </div>
 
-          <div className="flex flex-1 items-center justify-end gap-4 lg:gap-6">
+          <div className="flex flex-1 items-center justify-end gap-4 lg:gap-5">
             <SearchBox
               dashboardSearchRef={dashboardSearchRef}
               runDashboardSearch={runDashboardSearch}
@@ -370,42 +347,36 @@ export default function StockTopbar({
             />
 
             {/* Keyboard shortcuts */}
-            <div className="hidden xl:flex items-center gap-3" aria-label="Keyboard shortcuts">
+            <div className="hidden xl:flex items-center gap-4" aria-label="Keyboard shortcuts">
               {[
                 {
                   id: 'search',
                   label: 'Search',
-                  keys: [primaryModifierLabel, 'K'],
-                  color: 'text-brand-primary',
-                  bg: 'bg-brand-primary/5 border-brand-primary/10'
+                  keys: [primaryModifierLabel, 'K']
                 },
                 {
                   id: 'purchase',
                   label: 'Purchase',
-                  keys: [primaryModifierLabel, 'SHIFT', 'P'],
-                  color: 'text-emerald-600',
-                  bg: 'bg-emerald-500/5 border-emerald-500/10'
+                  keys: [primaryModifierLabel, 'SHIFT', 'P']
                 },
                 {
                   id: 'dispatch',
                   label: 'Dispatch',
-                  keys: [primaryModifierLabel, 'SHIFT', 'D'],
-                  color: 'text-amber-600',
-                  bg: 'bg-amber-500/5 border-amber-500/10'
+                  keys: [primaryModifierLabel, 'SHIFT', 'D']
                 },
               ].map((group) => (
                 <div
                   key={group.id}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border ${group.bg}`}
+                  className="flex items-center gap-1.5"
                 >
-                  <span className={`text-[9px] font-black uppercase tracking-wider ${group.color} opacity-80`}>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
                     {group.label}
                   </span>
-                  <div className="flex gap-1 items-center">
+                  <div className="flex gap-0.5 items-center">
                     {group.keys.map((k, i) => (
                       <kbd
                         key={i}
-                        className="min-w-[22px] h-5 flex items-center justify-center rounded-md border border-slate-200 bg-white px-1.5 text-[8px] font-black text-slate-600 shadow-sm dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 uppercase leading-none transition-colors group-hover:border-brand-primary/30"
+                        className="min-w-[20px] h-5 flex items-center justify-center rounded border border-border border-b-2 bg-card px-1 font-sans text-[11px] font-medium text-slate-600 dark:text-slate-300 leading-none"
                       >
                         {k.replace('+', '').trim()}
                       </kbd>
@@ -419,18 +390,15 @@ export default function StockTopbar({
 
         {/* Mobile / md bar */}
         <div className="lg:hidden">
-          <div className="flex h-16 items-center justify-between gap-4 px-6">
+          <div className="flex h-14 items-center justify-between gap-3 px-4">
             <Link href="/stock" className="flex items-center gap-3 min-w-0" aria-label={t('dashboardAria')}>
-              <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-center">
-                <Image src="/logo.png" alt="Hanumant Marble logo" width={22} height={22} className="object-contain" />
-              </div>
+              <BrandMark size={26} />
               <div className="min-w-0">
-                <p className="text-[9px] font-black tracking-[0.2em] text-slate-400 uppercase">Hanumant</p>
-                <p className="truncate text-[11px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest">{t('brand')}</p>
+                <p className="truncate text-[15px] font-semibold tracking-tight leading-tight text-slate-900 dark:text-slate-50">{language === 'hi' ? 'हनुमंत मार्बल' : 'Hanumant Marble'}</p>
               </div>
             </Link>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-0.5">
               {[
                 { onClick: toggleLanguage, icon: <Languages className="h-4 w-4" />, badge: null, ariaLabel: 'Toggle language' },
                 { onClick: () => setNotificationOpen(true), icon: <Bell className="h-4 w-4" />, badge: unreadCount > 0 ? unreadCount : null, ariaLabel: 'Notifications' },
@@ -443,11 +411,11 @@ export default function StockTopbar({
                   onClick={btn.onClick}
                   aria-label={btn.ariaLabel}
                   title={btn.ariaLabel}
-                  className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-slate-500 shadow-card transition-transform duration-100 ease-out active:scale-90 dark:text-slate-400 focus-ring"
+                  className="relative flex h-10 w-10 items-center justify-center rounded-md text-slate-500 transition-colors active:bg-muted hover:bg-muted dark:text-slate-400 focus-ring"
                 >
                   {btn.icon}
                   {btn.badge != null && (
-                    <span className="absolute -right-1 -top-1 inline-flex min-w-[18px] h-4.5 items-center justify-center rounded-full bg-rose-500 text-[8px] font-black leading-none text-white shadow-lg border border-white dark:border-slate-800">
+                    <span className="absolute right-1 top-1 inline-flex min-w-[16px] h-4 items-center justify-center rounded-full bg-brand-primary px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-background">
                       {btn.badge > 99 ? '99+' : btn.badge}
                     </span>
                   )}
@@ -456,37 +424,30 @@ export default function StockTopbar({
             </div>
           </div>
 
-          {/* Two labels at a time: the page you are on, and the one you came
-              from — the pair you actually bounce between. Everything else is an
-              icon, so the row never scrolls. Before any second visit the runner
-              up is the next entry in the list, which is where a first-time
-              session tends to go. */}
-          <nav className="flex items-center gap-1.5 border-t border-border/60 px-4 py-3" aria-label={t('mobileNav')}>
-            {navigationItems.map((item, index) => {
+          {/* Tab-bar pattern: equal columns, icon over a short label, so every
+              entry is named, nothing shifts between pages and the row never
+              scrolls. */}
+          <nav className="grid auto-cols-fr grid-flow-col gap-1 border-t border-border px-2 py-1" aria-label={t('mobileNav')}>
+            {navigationItems.map((item) => {
               const active = isActiveRoute(item.href);
-              const expanded = active || item.href === companionHref;
-
               return (
                 <Link
                   key={`mobile-top-${item.href}`}
                   href={item.href}
-                  aria-label={item.label}
                   aria-current={active ? 'page' : undefined}
-                  className={`inline-flex min-h-[44px] items-center justify-center overflow-hidden whitespace-nowrap rounded-full border text-[11px] font-black uppercase tracking-widest transition-all duration-300 ease-out active:scale-95 focus-ring ${
+                  className={`relative flex min-h-[48px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-md px-1 text-[11px] leading-tight transition-colors focus-ring ${
                     active
-                      ? 'border-brand-primary/20 bg-brand-primary/10 text-brand-primary'
-                      // Touch has no hover, so the icon-only entries carry the same
-                      // card-and-border chrome as the action buttons above them.
-                      : 'border-border bg-card text-slate-500 shadow-card hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                  } ${expanded ? 'flex-1 gap-1.5 px-3.5' : 'w-11 shrink-0 px-0'}`}
+                      ? 'font-semibold text-slate-900 dark:text-slate-50'
+                      : 'font-medium text-slate-500 active:bg-muted dark:text-slate-400'
+                  }`}
                 >
-                  <item.icon className="h-[18px] w-[18px] shrink-0" />
+                  {/* Saffron rule under the current page, same cue as the desktop rail. */}
+                  {active && <span aria-hidden="true" className="absolute inset-x-4 -bottom-1 h-0.5 rounded-full bg-brand-primary" />}
+                  <item.icon className={`h-[18px] w-[18px] shrink-0 ${active ? 'text-brand-primary' : ''}`} strokeWidth={active ? 2 : 1.75} />
                   {/* The label the layout already resolved. Deriving it from
                       href here instead meant any new nav entry silently fell
                       through to "Dashboard". */}
-                  <span className={`overflow-hidden transition-all duration-300 ease-out ${expanded ? 'max-w-[10rem] opacity-100' : 'max-w-0 opacity-0'}`}>
-                    {item.label}
-                  </span>
+                  <span className="w-full truncate text-center">{item.label}</span>
                 </Link>
               );
             })}

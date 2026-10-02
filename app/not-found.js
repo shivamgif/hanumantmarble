@@ -12,8 +12,6 @@ export default function NotFound() {
     <div className="min-h-[70vh] flex items-center justify-center relative overflow-hidden">
       {/* Background decorations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
       </div>
 
       <div className="container mx-auto px-4 text-center relative z-10">
@@ -22,7 +20,7 @@ export default function NotFound() {
           404
         </p>
 
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
+        <h1 className="font-semibold tracking-tight text-3xl sm:text-4xl mb-4">
           Page Not Found
         </h1>
 

@@ -4,7 +4,7 @@ import { useAuthUser, withPageAuthRequiredCompat } from '@/lib/auth-client';
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Heart, Trash2, ShoppingCart, ArrowRight, Sparkles, Package, Star } from 'lucide-react';
+import { Heart, Trash2, ShoppingCart, ArrowRight, Package, Star } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -53,10 +53,9 @@ function WishlistPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-muted/50 via-background to-muted/30 flex justify-center items-center">
+      <div className="min-h-screen bg-background flex justify-center items-center">
         <div className="relative">
-          <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse" />
-          <div className="relative bg-card/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-border/50">
+          <div className="relative bg-card rounded-xl p-8 shadow-card border border-border">
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               <p className="text-lg font-medium text-muted-foreground">Loading your wishlist...</p>
@@ -68,12 +67,8 @@ function WishlistPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-muted/50 via-background to-muted/30 relative overflow-hidden">
+    <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Decorative elements */}
-      <div className="absolute top-20 left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-
       <div className="container mx-auto px-4 py-12 relative z-10">
         {/* Header Section */}
         <div className="text-center mb-12">
@@ -84,7 +79,7 @@ function WishlistPage() {
             <Heart className="w-4 h-4 mr-2 fill-current" />
             {language === 'hi' ? 'सेव किए गए आइटम' : 'Saved Items'}
           </Badge>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-4">
+          <h1 className="font-semibold tracking-tight text-3xl sm:text-4xl md:text-5xl mb-4">
             {language === 'hi' ? 'मेरी विशलिस्ट' : 'My Wishlist'}
           </h1>
           <p className="text-muted-foreground max-w-md mx-auto">
@@ -101,13 +96,11 @@ function WishlistPage() {
 
         {wishlistItems.length === 0 ? (
           /* Empty State */
-          <Card className="max-w-md mx-auto bg-card/80 backdrop-blur-sm border-0 shadow-xl overflow-hidden">
+          <Card className="max-w-md mx-auto bg-card border border-border shadow-card overflow-hidden">
             <CardContent className="p-12 text-center relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 pointer-events-none" />
               <div className="relative">
                 <div className="relative mx-auto w-24 h-24 mb-6">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary/50 rounded-full blur-lg opacity-30" />
-                  <div className="relative h-full w-full rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+                  <div className="relative h-full w-full rounded-full bg-primary/10 flex items-center justify-center">
                     <Heart className="h-10 w-10 text-primary" />
                   </div>
                 </div>
@@ -120,9 +113,8 @@ function WishlistPage() {
                     : 'Start exploring our collection and save items you love!'
                   }
                 </p>
-                <Button className="rounded-full px-8 bg-primary hover:bg-primary/90 shadow-lg hover:shadow-primary/25 transition-all duration-300" asChild>
+                <Button className="px-6" asChild>
                   <Link href="/#products" className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4" />
                     {language === 'hi' ? 'उत्पाद देखें' : 'Explore Products'}
                     <ArrowRight className="h-4 w-4" />
                   </Link>
@@ -137,7 +129,7 @@ function WishlistPage() {
               <Card 
                 key={item.id} 
                 className={cn(
-                  "group bg-card/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden",
+                  "group bg-card border border-border shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden",
                   removingId === item.id ? "scale-95 opacity-0" : "hover:-translate-y-2"
                 )}
                 style={{ animationDelay: `${index * 100}ms` }}
@@ -145,7 +137,7 @@ function WishlistPage() {
                 <CardContent className="p-0 relative">
                   {/* Image Section */}
                   <Link href={`/products/${item.slug}`}>
-                    <div className="relative aspect-square bg-gradient-to-br from-muted to-muted/50 overflow-hidden">
+                    <div className="relative aspect-square bg-muted overflow-hidden">
                       {item.image ? (
                         <Image
                           src={item.image}
@@ -203,7 +195,7 @@ function WishlistPage() {
                     <Link href={`/products/${item.slug}`}>
                       <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors line-clamp-1">{item.name}</h3>
                     </Link>
-                    <p className="text-2xl font-bold text-primary mb-4">₹{item.price.toLocaleString()}</p>
+                    <p className="text-2xl font-semibold tabular-nums text-primary mb-4">₹{item.price.toLocaleString()}</p>
                     
                     <div className="flex gap-2">
                       <Button 
@@ -249,10 +241,9 @@ function WishlistPage() {
 
 export default withPageAuthRequiredCompat(WishlistPage, {
   onRedirecting: () => (
-    <div className="min-h-screen bg-gradient-to-b from-muted/50 via-background to-muted/30 flex justify-center items-center">
+    <div className="min-h-screen bg-background flex justify-center items-center">
       <div className="relative">
-        <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse" />
-        <div className="relative bg-card/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-border/50">
+        <div className="relative bg-card rounded-xl p-8 shadow-card border border-border">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             <p className="text-lg font-medium text-muted-foreground">Redirecting to login...</p>

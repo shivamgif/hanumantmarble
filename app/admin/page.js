@@ -213,7 +213,7 @@ export default function AdminPage() {
   // Loading state
   if (userLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
           <p className="text-muted-foreground">Loading admin panel...</p>
@@ -225,7 +225,7 @@ export default function AdminPage() {
   // Not logged in
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
             <Shield className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
@@ -243,7 +243,7 @@ export default function AdminPage() {
   // Not an admin
   if (!userIsAdmin) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-red-500/5 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md border-red-500/20">
           <CardContent className="pt-6 text-center">
             <AlertCircle className="h-16 w-16 mx-auto text-red-500 mb-4" />
@@ -261,7 +261,7 @@ export default function AdminPage() {
 
   // Admin panel
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+    <div className="min-h-screen bg-background">
       {/* Sticky Header */}
       <div className="border-b border-border/50 bg-card/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3">

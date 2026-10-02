@@ -2,7 +2,7 @@
 
 import { getLogoutHref, useAuthUser, withPageAuthRequiredCompat } from '@/lib/auth-client';
 import Link from 'next/link';
-import { User, ShoppingBag, Heart, Settings, LogOut, Mail, Calendar, Shield, ChevronRight, Sparkles } from 'lucide-react';
+import { User, ShoppingBag, Heart, Settings, LogOut, Mail, Calendar, Shield, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,10 +13,9 @@ function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-muted/50 via-background to-muted/30 flex justify-center items-center">
+      <div className="min-h-screen bg-background flex justify-center items-center">
         <div className="relative">
-          <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse" />
-          <div className="relative bg-card/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-border/50">
+          <div className="relative bg-card rounded-xl p-8 shadow-card border border-border">
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               <p className="text-lg font-medium text-muted-foreground">Loading your profile...</p>
@@ -28,50 +27,43 @@ function ProfilePage() {
   }
 
   const menuItems = [
-    { icon: ShoppingBag, label: 'My Orders', href: '/orders', description: 'View your order history', color: 'from-blue-500 to-cyan-500' },
-    { icon: Heart, label: 'Wishlist', href: '/wishlist', description: 'Items you\'ve saved', color: 'from-pink-500 to-rose-500' },
-    { icon: Settings, label: 'Settings', href: '/profile', description: 'Account preferences', color: 'from-violet-500 to-purple-500' },
+    { icon: ShoppingBag, label: 'My Orders', href: '/orders', description: 'View your order history' },
+    { icon: Heart, label: 'Wishlist', href: '/wishlist', description: 'Items you\'ve saved' },
+    { icon: Settings, label: 'Settings', href: '/profile', description: 'Account preferences' },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-muted/50 via-background to-muted/30 relative overflow-hidden">
+    <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Decorative elements */}
-      <div className="absolute top-20 left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-full blur-3xl pointer-events-none" />
-
       <div className="container mx-auto px-4 py-12 relative z-10">
         {/* Header Section */}
         <div className="text-center mb-12">
           <Badge
             variant="outline"
-            className="mb-4 px-4 py-2 bg-primary/10 backdrop-blur-md text-primary border-primary/20 hover:bg-primary/20 transition-all"
+            className="mb-4 px-3 py-1 bg-transparent text-primary border-primary/30"
           >
-            <Sparkles className="w-4 h-4 mr-2" />
             My Account
           </Badge>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-4">Profile Settings</h1>
+          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight mb-4">Profile Settings</h1>
           <p className="text-muted-foreground max-w-md mx-auto">Manage your account settings and preferences</p>
         </div>
 
         <div className="max-w-4xl mx-auto grid gap-8">
           {/* Profile Card */}
-          <Card className="bg-card/80 backdrop-blur-sm border-0 shadow-xl overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
+          <Card className="bg-card border border-border shadow-card overflow-hidden">
             <CardContent className="p-8 relative">
               <div className="flex flex-col sm:flex-row items-center gap-6">
                 {/* Avatar Section */}
                 <div className="relative group">
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full blur-lg opacity-50 group-hover:opacity-75 transition-opacity" />
                   {user?.picture ? (
                     <img
                       src={user.picture}
                       alt={user.name || 'Profile'}
-                      className="relative h-28 w-28 rounded-full object-cover border-4 border-background shadow-xl"
+                      className="relative h-28 w-28 rounded-full object-cover border-4 border-background shadow-card"
                     />
                   ) : (
-                    <div className="relative h-28 w-28 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center border-4 border-background shadow-xl">
-                      <User className="h-12 w-12 text-white" />
+                    <div className="relative h-28 w-28 rounded-full bg-muted flex items-center justify-center border-4 border-background shadow-card">
+                      <User className="h-12 w-12 text-muted-foreground" strokeWidth={1.5} />
                     </div>
                   )}
                   <div className="absolute -bottom-1 -right-1 h-8 w-8 bg-green-500 rounded-full border-4 border-background flex items-center justify-center">
@@ -112,13 +104,11 @@ function ProfilePage() {
             {menuItems.map((item, index) => (
               <Link key={item.href} href={item.href} className="group">
                 <Card className={cn(
-                  "h-full bg-card/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden"
+                  "h-full bg-card border border-border shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden"
                 )}>
                   <CardContent className="p-6 relative">
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                     <div className={cn(
-                      "h-12 w-12 rounded-xl bg-gradient-to-br flex items-center justify-center text-white shadow-lg mb-4 group-hover:scale-110 transition-transform duration-300",
-                      item.color
+                      "h-10 w-10 rounded-lg border border-border bg-muted text-foreground flex items-center justify-center mb-4"
                     )}>
                       <item.icon className="h-6 w-6" />
                     </div>
@@ -134,7 +124,7 @@ function ProfilePage() {
           </div>
 
           {/* Account Details Card */}
-          <Card className="bg-card/80 backdrop-blur-sm border-0 shadow-xl">
+          <Card className="bg-card border border-border shadow-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
@@ -177,10 +167,9 @@ function ProfilePage() {
 
 export default withPageAuthRequiredCompat(ProfilePage, {
   onRedirecting: () => (
-    <div className="min-h-screen bg-gradient-to-b from-muted/50 via-background to-muted/30 flex justify-center items-center">
+    <div className="min-h-screen bg-background flex justify-center items-center">
       <div className="relative">
-        <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse" />
-        <div className="relative bg-card/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-border/50">
+        <div className="relative bg-card rounded-xl p-8 shadow-card border border-border">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             <p className="text-lg font-medium text-muted-foreground">Redirecting to login...</p>
