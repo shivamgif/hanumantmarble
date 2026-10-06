@@ -18,7 +18,19 @@ import {
 } from './stock-form-fields';
 import { FORM_CARD_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS } from '../lib/stock-utils';
 
-const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control, allItems, t, tc, userRole, totalItems, onRemoveItem }) {
+// On an invoice a line carries its HSN and GST rate where a dispatch carries returns.
+function InvoiceTaxFields({ control, index, tc }) {
+  return (
+    <>
+      <StockFormField control={control} name={`items.${index}.hsnCode`} label={tc?.hsnCode ?? 'HSN'} inputMode="numeric" digitsOnly maxLength={8} placeholder="690721" />
+      <StockFormField control={control} name={`items.${index}.gstRate`} label={tc?.gstRate ?? 'GST %'} type="number" min="0" step="0.25" placeholder="18" />
+    </>
+  );
+}
+
+// `invoice`: the same row on the estimate form — no broken-stock toggle (broken
+// pieces are never billed) and no returns; HSN and GST % instead.
+export const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control, allItems, t, tc, userRole, totalItems, onRemoveItem, invoice = false }) {
   const canEditReturns = ['admin', 'manager'].includes(userRole);
   const { watch, setValue } = useFormContext();
   const itemCategory = watch(`items.${index}.itemCategory`);
@@ -55,7 +67,7 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
       </div>
       <div className="p-4 space-y-4">
         <div className="grid gap-4 lg:grid-cols-3 items-start">
-          <div className={isBag || isStone ? 'lg:col-span-3' : 'lg:col-span-2'}>
+          <div className={isBag || isStone || invoice ? 'lg:col-span-3' : 'lg:col-span-2'}>
             <FormField
               control={control}
               name={`items.${index}.itemId`}
@@ -68,7 +80,10 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
                       fallbackLabel={itemLabel}
                       onChange={field.onChange}
                       onBlur={field.onBlur}
-                      onItemSelect={(item) => setValue(`items.${index}.itemCategory`, item.unit_of_measure === 'bag' ? 'bag' : item.unit_of_measure === 'sqft' ? 'stone' : 'tile')}
+                      onItemSelect={(item) => {
+                        setValue(`items.${index}.itemCategory`, item.unit_of_measure === 'bag' ? 'bag' : item.unit_of_measure === 'sqft' ? 'stone' : 'tile');
+                        if (invoice && item.hsn_code) setValue(`items.${index}.hsnCode`, item.hsn_code);
+                      }}
                       items={allItems}
                       placeholder={t('selectItem')}
                     />
@@ -78,7 +93,7 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
               )}
             />
           </div>
-          {!isBag && (
+          {!isBag && !invoice && (
             <label
               className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2 cursor-pointer select-none transition-colors lg:mt-5 ${
                 fromBroken
@@ -126,13 +141,17 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <StockFormField control={control} name={`items.${index}.qtySqft`} label={tc?.qtySqft ?? 'Qty (Sqft)'} type="number" min="0" step="0.001" placeholder="0" />
             <StockMoneyField control={control} name={`items.${index}.ratePerUnit`} label={tc?.ratePerSqft ?? 'Rate / Sqft'} />
-            <StockFormField control={control} name={`items.${index}.returnQtySqft`} label={tc?.retSqft ?? 'Return Sqft'} type="number" min="0" step="0.001" placeholder="0" disabled={!canEditReturns} />
+            {invoice ? <InvoiceTaxFields control={control} index={index} tc={tc} /> : (
+              <StockFormField control={control} name={`items.${index}.returnQtySqft`} label={tc?.retSqft ?? 'Return Sqft'} type="number" min="0" step="0.001" placeholder="0" disabled={!canEditReturns} />
+            )}
           </div>
         ) : isBag ? (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <StockFormField control={control} name={`items.${index}.qtyBags`} label={tc?.qtyBags ?? 'Qty (Bags)'} type="number" min="0" placeholder="0" />
             <StockMoneyField control={control} name={`items.${index}.ratePerUnit`} label={tc?.ratePerBag ?? 'Rate / Bag'} />
-            <StockFormField control={control} name={`items.${index}.returnQtyBags`} label={tc?.retBags ?? 'Return Bags'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
+            {invoice ? <InvoiceTaxFields control={control} index={index} tc={tc} /> : (
+              <StockFormField control={control} name={`items.${index}.returnQtyBags`} label={tc?.retBags ?? 'Return Bags'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
+            )}
           </div>
         ) : (
           <div className="space-y-3">
@@ -169,8 +188,12 @@ const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, control
               <StockMoneyField control={control} name={`items.${index}.ratePerUnit`} label={sellUnit === 'piece' ? (tc?.ratePerPiece ?? 'Rate / Piece') : (tc?.ratePerBox ?? 'Rate / Box')} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <StockFormField control={control} name={`items.${index}.returnWholeQty`} label={tc?.retWhole ?? 'Ret. Whole'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
-              <StockFormField control={control} name={`items.${index}.returnBrokenQty`} label={tc?.retBrok ?? 'Ret. Broken'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
+              {invoice ? <InvoiceTaxFields control={control} index={index} tc={tc} /> : (
+                <>
+                  <StockFormField control={control} name={`items.${index}.returnWholeQty`} label={tc?.retWhole ?? 'Ret. Whole'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
+                  <StockFormField control={control} name={`items.${index}.returnBrokenQty`} label={tc?.retBrok ?? 'Ret. Broken'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
+                </>
+              )}
             </div>
           </div>
         )}

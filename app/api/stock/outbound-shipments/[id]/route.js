@@ -11,6 +11,7 @@ import {
 import { toSqft, toPositiveSqft, assertSqftAvailable } from '@/lib/stock-sqft';
 import { netRevenueExpr, sellerFilter } from '@/lib/stock-analytics-sql.mjs';
 import { showroomHint } from '@/lib/stock-showroom';
+import { dispatchMatchesInvoice } from '@/lib/gst-invoice.mjs';
 
 async function loadShipmentWithItems(id) {
   const schemaCaps = await getStockSchemaCapabilities();
@@ -643,6 +644,7 @@ export async function PATCH(request, context) {
       // Post-approval, only return-qty edits are permitted; they credit stock back via delta.
       const existingRows = await tx(
         `SELECT id, approval_status, locked_at, shipment_number, invoice_number
+                ${schemaCaps.hasSalesInvoices ? ', sales_invoice_id' : ''}
          FROM stock_outbound_shipments WHERE id = $1 FOR UPDATE`,
         [id]
       );
@@ -1004,6 +1006,31 @@ export async function PATCH(request, context) {
           salespersonUser: null,
           returnOnly: true,
         };
+      }
+
+      // A dispatch registered from an invoice QR keeps shipping exactly what was billed.
+      // Customer and seller stay the invoice's too, same as on create.
+      if (existing.sales_invoice_id) {
+        const invoiceRows = await tx(
+          `SELECT invoice_number, items, bill_to_name, bill_to_phone, salesperson_user_id
+           FROM stock_sales_invoices WHERE id = $1`,
+          [existing.sales_invoice_id]
+        );
+        const invoice = invoiceRows[0];
+        if (invoice && Array.isArray(body.items) && !dispatchMatchesInvoice(invoice.items, body.items)) {
+          const err = new Error(`Dispatch must match invoice ${invoice.invoice_number}: same items, quantities and rates.`);
+          err.statusCode = 400;
+          throw err;
+        }
+        if (invoice) {
+          Object.assign(body, {
+            customerName: invoice.bill_to_name,
+            customerPhoneNumber: invoice.bill_to_phone || undefined,
+            salespersonUserId: invoice.salesperson_user_id,
+            salespersonName: undefined,
+            invoiceNumber: invoice.invoice_number,
+          });
+        }
       }
 
       // If item lines are being (re)set, verify each line's qty does not exceed

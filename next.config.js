@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Dev only: lets a phone on the office Wi-Fi load the dev server (e.g. to
+  // scan an invoice QR). Next blocks dev assets for other origins otherwise.
+  allowedDevOrigins: ['192.168.*.*', '10.*.*.*'],
   compress: true,
   turbopack: {
     root: __dirname,

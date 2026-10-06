@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import {
   collectNotificationRecipients,
   ensureDatabaseAvailable,
+  findOrCreateCustomer,
   generateReference,
   getStockContext,
   hasAnyStockRole,
@@ -16,6 +17,8 @@ import { sellerFilter } from '@/lib/stock-analytics-sql.mjs';
 import { isPieceSale, totalPieces } from '@/lib/stock-piece-balance';
 import { toSqft, toPositiveSqft } from '@/lib/stock-sqft';
 import { showroomHint } from '@/lib/stock-showroom';
+import { dispatchMatchesInvoice } from '@/lib/gst-invoice.mjs';
+import { loadSalesInvoice } from '@/lib/sales-invoices';
 
 function toPositiveInteger(value) {
   const parsed = Number.parseInt(value, 10);
@@ -244,39 +247,7 @@ async function resolveCustomerContext(body) {
   }
 
   if (body.customerName) {
-    const trimmedName = body.customerName.trim();
-    const trimmedPhone = body.customerPhoneNumber?.trim() || null;
-
-    if (trimmedPhone) {
-      const byBoth = await sql(
-        `SELECT id AS customer_id, name AS customer_name, phone AS customer_phone,
-                whatsapp_phone AS customer_whatsapp_phone, email AS customer_email
-         FROM stock_customers
-         WHERE lower(name) = lower($1) AND phone = $2
-         LIMIT 1`,
-        [trimmedName, trimmedPhone]
-      );
-      if (byBoth[0]) return byBoth[0];
-    } else {
-      const byName = await sql(
-        `SELECT id AS customer_id, name AS customer_name, phone AS customer_phone,
-                whatsapp_phone AS customer_whatsapp_phone, email AS customer_email
-         FROM stock_customers
-         WHERE lower(name) = lower($1)
-         LIMIT 1`,
-        [trimmedName]
-      );
-      if (byName[0]) return byName[0];
-    }
-
-    const created = await sql(
-      `INSERT INTO stock_customers (name, phone)
-       VALUES ($1, $2)
-       RETURNING id AS customer_id, name AS customer_name, phone AS customer_phone,
-                 NULL AS customer_whatsapp_phone, NULL AS customer_email`,
-      [trimmedName, trimmedPhone]
-    );
-    return created[0];
+    return findOrCreateCustomer(body.customerName, body.customerPhoneNumber);
   }
 
   return null;
@@ -478,6 +449,45 @@ export async function POST(request) {
       return NextResponse.json({ error: 'At least one item row is required' }, { status: 400 });
     }
 
+    // Registered by scanning an approved invoice's QR: it must ship exactly what
+    // was billed. Checked before anything is created.
+    let salesInvoice = null;
+    if (body.salesInvoiceId) {
+      if (!(await getStockSchemaCapabilities()).hasSalesInvoices) {
+        return NextResponse.json({ error: 'Invoicing is not set up yet.' }, { status: 400 });
+      }
+      salesInvoice = await loadSalesInvoice(Number(body.salesInvoiceId));
+      if (!salesInvoice || salesInvoice.status !== 'approved') {
+        return NextResponse.json({ error: 'Only an approved invoice can be dispatched.' }, { status: 400 });
+      }
+      if (salesInvoice.dispatch_id) {
+        return NextResponse.json(
+          { error: `Invoice ${salesInvoice.invoice_number} is already dispatched as ${salesInvoice.dispatch_number}.` },
+          { status: 409 }
+        );
+      }
+      if (!dispatchMatchesInvoice(salesInvoice.items, items)) {
+        return NextResponse.json(
+          { error: `Dispatch must match invoice ${salesInvoice.invoice_number}: same items, quantities and rates.` },
+          { status: 400 }
+        );
+      }
+      // Who bought and who sold are what the invoice says, whatever the form
+      // sent — otherwise a scanned dispatch could credit another seller.
+      Object.assign(body, {
+        salesOrderId: undefined,
+        customerId: salesInvoice.customer_id || undefined,
+        customerName: salesInvoice.bill_to_name,
+        customerPhone: salesInvoice.bill_to_phone || undefined,
+        customerPhoneNumber: salesInvoice.bill_to_phone || undefined,
+        salespersonUserId: salesInvoice.salesperson_user_id,
+        salespersonId: undefined,
+        salespersonName: undefined,
+        salesPersonName: undefined,
+        invoiceNumber: salesInvoice.invoice_number,
+      });
+    }
+
     const resolvedCustomer = await resolveCustomerContext(body);
     const vehicleId = await resolveVehicleId(body);
     const schemaCaps = await getStockSchemaCapabilities();
@@ -628,6 +638,7 @@ export async function POST(request) {
       'recorded_by_user_id',
       'notes',
       'created_by',
+      ...(salesInvoice ? ['sales_invoice_id'] : []),
     ];
     const shipmentInsertValues = [
       shipmentNumber,
@@ -641,7 +652,7 @@ export async function POST(request) {
       driverName || null,
       driverPhone || null,
       normalizeText(body.gatepassNumber) || null,
-      normalizeText(body.invoiceNumber) || null,
+      salesInvoice?.invoice_number || normalizeText(body.invoiceNumber) || null,
       appUser?.id || null,
       approvalStatus,
       status,
@@ -653,6 +664,7 @@ export async function POST(request) {
       appUser?.id || null,
       normalizeText(body.notes) || null,
       session.user.email,
+      ...(salesInvoice ? [salesInvoice.id] : []),
     ];
     const shipmentValuePlaceholders = shipmentInsertColumns.map((_, index) => {
       if (shipmentInsertColumns[index] === 'submitted_at') {
@@ -763,6 +775,10 @@ export async function POST(request) {
       outcome: 'failed',
       reasonCode: error?.reasonCode || null,
     });
+    // uq_outbound_live_sales_invoice: two people scanned the same invoice at once.
+    if (error?.code === '23505' && String(error?.constraint || error?.message).includes('sales_invoice')) {
+      return NextResponse.json({ error: 'This invoice has already been dispatched.' }, { status: 409 });
+    }
     console.error('Failed to create outbound shipment:', error);
     const status = Number.isInteger(error?.statusCode) ? error.statusCode : 500;
     return NextResponse.json(

@@ -17,6 +17,10 @@ function buildNotificationActionHref(notification) {
     return `/stock?view=dispatches&entityType=outbound_shipment&entityId=${sourceId}`;
   }
 
+  if (sourceTable === 'stock_sales_invoices' && sourceId > 0) {
+    return `/stock/invoices/${sourceId}`;
+  }
+
   if (sourceTable === 'stock_leave_requests') {
     return '/stock/attendance?view=leave';
   }

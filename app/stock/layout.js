@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { BarChart2, Clock, Home, Users } from 'lucide-react';
+import { BarChart2, Clock, FileText, Home, Users } from 'lucide-react';
 import { getLogoutHref, useAuthUser } from '@/lib/auth-client';
 import { usePathname, useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
@@ -34,7 +34,7 @@ function FullScreenSpinner({ label }) {
 
 const CLASSES = {
   shell: 'relative min-h-screen bg-slate-50/80 font-sans text-slate-900 dark:bg-[#0b0f1a] dark:text-slate-100',
-  sidebar: 'fixed inset-y-0 left-0 z-30 hidden h-screen bg-white lg:flex lg:flex-col dark:bg-slate-900 transition-[width] duration-200',
+  sidebar: 'fixed inset-y-0 left-0 z-30 hidden h-screen bg-white lg:flex lg:flex-col dark:bg-slate-900 transition-[width] duration-200 print:!hidden',
 };
 
 export default function StockLayout({ children }) {
@@ -104,6 +104,11 @@ export default function StockLayout({ children }) {
     { href: '/stock/attendance', label: t('attendance'), icon: Clock },
   ];
 
+  // Sellers raise estimates, approvers issue them, stock staff open the ones
+  // they dispatch. read_only_admin can still open /stock/invoices directly.
+  if (accessRole !== 'read_only_admin') {
+    navigationItems.push({ href: '/stock/invoices', label: t('invoices'), icon: FileText });
+  }
   if (accessRole === 'admin' || accessRole === 'manager') {
     navigationItems.push({ href: '/stock/admin', label: t('adminDashboard'), icon: Users });
   }
@@ -245,7 +250,9 @@ export default function StockLayout({ children }) {
         handleStockLogout={handleStockLogout}
       />
 
-      <div className={`relative z-10 flex min-h-screen flex-col transition-[padding] duration-200 ${sidebarCollapsed ? 'lg:pl-[4.5rem]' : 'lg:pl-60'}`}>
+      <div className={`relative z-10 flex min-h-screen flex-col transition-[padding] duration-200 print:!pl-0 ${sidebarCollapsed ? 'lg:pl-[4.5rem]' : 'lg:pl-60'}`}>
+        {/* Printing an invoice prints the invoice, not the app around it. */}
+        <div className="contents print:hidden">
         <StockTopbar
           t={t}
           language={language}
@@ -265,6 +272,7 @@ export default function StockLayout({ children }) {
           navigationItems={navigationItems}
           isActiveRoute={isActiveRoute}
         />
+        </div>
 
         <main className="flex-1">
           <div className="mx-auto w-full max-w-[1600px]">
@@ -272,7 +280,7 @@ export default function StockLayout({ children }) {
           </div>
         </main>
 
-        <footer className="mx-auto w-full max-w-[1600px] px-4 pb-6 pt-2 sm:px-6 lg:px-8">
+        <footer className="mx-auto w-full max-w-[1600px] px-4 pb-6 pt-2 sm:px-6 lg:px-8 print:hidden">
           <p className="flex flex-wrap items-center gap-x-2 border-t border-border pt-4 text-xs text-muted-foreground">
             <span className="font-semibold text-foreground">{tc.brandFull}</span>
             <span aria-hidden="true">·</span>

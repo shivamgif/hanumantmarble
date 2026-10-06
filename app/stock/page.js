@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuthUser } from '@/lib/auth-client';
@@ -49,6 +49,7 @@ import { ShipmentPreviewSheet } from './components/shipment-preview-sheet';
 import { ShowroomPanel } from './components/showroom-panel';
 import { showroomSplit } from '@/lib/stock-showroom';
 import { StockToast } from './components/stock-toast';
+import { useInvoiceText } from './components/invoice-form';
 import { ReasonDialog } from '@/components/ui/reason-dialog';
 
 export default function StockDashboard() {
@@ -250,6 +251,11 @@ export default function StockDashboard() {
   const [editingArrivalId, setEditingArrivalId] = useState(null);
   const [editingBagArrivalId, setEditingBagArrivalId] = useState(null);
   const [editingDispatchId, setEditingDispatchId] = useState(null);
+  // Set when the dispatch form was prefilled by scanning an invoice QR; sent with
+  // the dispatch so the server links them and checks the items still match.
+  const [salesInvoiceId, setSalesInvoiceId] = useState(null);
+  const processedInvoiceRef = useRef('');
+  const ti = useInvoiceText();
   const [previewItemsPage, setPreviewItemsPage] = useState(1);
   const [pageSize, setPageSize] = usePageSize();
   const [toast, setToast] = useState(null);
@@ -902,6 +908,7 @@ export default function StockDashboard() {
 
   const handleNewDispatch = useCallback(() => {
     setEditingDispatchId(null);
+    setSalesInvoiceId(null);
     dispatchForm.reset(createInitialDispatchDraft());
     setDispatchNotice(null);
     setDispatchSheetOpen(true);
@@ -911,6 +918,7 @@ export default function StockDashboard() {
     setDispatchNotice({ type: 'info', message: t('loadingDispatchDetails') });
     setDispatchSheetOpen(true);
     setEditingDispatchId(row.id);
+    setSalesInvoiceId(null);
 
     try {
       const json = await fetchShipmentDetails('dispatch', row.id);
@@ -1012,6 +1020,7 @@ export default function StockDashboard() {
         transportCost: 0,
         loadingLabourCost: 0,
         notes: trimText(values.notes) || undefined,
+        ...(salesInvoiceId && !editingDispatchId ? { salesInvoiceId } : {}),
         items: items.map((item) => ({
           itemId: Number(item.itemId),
           itemCategory: item.itemCategory,
@@ -1055,6 +1064,7 @@ export default function StockDashboard() {
       setDispatchNotice({ type: 'success', message: successMsg });
       setToast({ type: 'success', message: successMsg });
       setEditingDispatchId(null);
+      setSalesInvoiceId(null);
 
       try {
         await uploadShipmentDocument({ entityType: 'outbound_shipment', entityId: json.shipment?.id, documentType: 'sales_invoice', file: dispatchAttachments.salesInvoice, documentNumber: trimText(values.invoiceNumber) || undefined, notes: trimText(values.notes) || undefined });
@@ -1074,7 +1084,7 @@ export default function StockDashboard() {
     } finally {
       setDispatchSubmitting(false);
     }
-  }, [dispatchForm, dispatchAttachments, resetDispatchAttachments, setDispatchSheetOpen, refreshDashboard, editingDispatchId]);
+  }, [dispatchForm, dispatchAttachments, resetDispatchAttachments, setDispatchSheetOpen, refreshDashboard, editingDispatchId, salesInvoiceId]);
 
   const handleArrivalInvalid = useCallback(() => {
     setArrivalNotice({ type: 'error', message: t('fixPurchaseFields') });
@@ -1224,6 +1234,7 @@ export default function StockDashboard() {
     } else if (requestedNewForm === 'dispatch') {
       setActiveTableView('dispatches');
       setEditingDispatchId(null);
+      if (!searchParams.get('invoice')) setSalesInvoiceId(null);
       setArrivalSheetOpen(false);
       setDispatchSheetOpen(true);
     }
@@ -1233,6 +1244,84 @@ export default function StockDashboard() {
     const nextQuery = params.toString();
     router.replace(nextQuery ? `/stock?${nextQuery}` : '/stock');
   }, [router, searchParams]);
+
+  // ?invoice=<id>, from scanning the QR on a printed tax invoice: prefill the
+  // dispatch form with what was billed. Waits for the dashboard so the viewer's
+  // role is known. The truck and driver are left for the person loading it.
+  useEffect(() => {
+    const invoiceId = searchParams.get('invoice');
+    if (!data || !invoiceId || processedInvoiceRef.current === invoiceId) return;
+    processedInvoiceRef.current = invoiceId;
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('invoice');
+    const nextQuery = params.toString();
+    router.replace(nextQuery ? `/stock?${nextQuery}` : '/stock');
+
+    if (getRoleFlags(accessRole).isReadOnly) {
+      setDispatchSheetOpen(false);
+      setToast({ type: 'error', message: ti('cannotDispatch') });
+      return;
+    }
+
+    setActiveTableView('dispatches');
+    setEditingDispatchId(null);
+    setSalesInvoiceId(null);
+    dispatchForm.reset(createInitialDispatchDraft());
+    setDispatchNotice({ type: 'info', message: t('loadingDispatchDetails') });
+    setDispatchSheetOpen(true);
+
+    (async () => {
+      try {
+        const response = await fetch(`/api/stock/sales-invoices/${invoiceId}`, { cache: 'no-store' });
+        const json = await response.json();
+        if (!response.ok) throw new Error(json.error || 'Failed to load invoice');
+        const invoice = json.invoice;
+
+        if (invoice.dispatch_id) {
+          setDispatchSheetOpen(false);
+          setDispatchNotice(null);
+          setToast({ type: 'success', message: ti('alreadyDispatched', { number: invoice.invoice_number, dispatch: invoice.dispatch_number }) });
+          openShipmentPreview('dispatch', { id: invoice.dispatch_id, shipment_number: invoice.dispatch_number });
+          return;
+        }
+        if (invoice.status !== 'approved') {
+          throw new Error(ti('notDispatchable', { number: invoice.invoice_number || `#${invoice.id}`, status: invoice.status }));
+        }
+
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        dispatchForm.reset({
+          ...createInitialDispatchDraft(),
+          customerName: invoice.bill_to_name,
+          customerPhoneNumber: invoice.bill_to_phone || '',
+          invoiceNumber: invoice.invoice_number,
+          salespersonName: invoice.salesperson_name || '',
+          salespersonUserId: invoice.salesperson_user_id != null ? String(invoice.salesperson_user_id) : '',
+          dispatchDate: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`,
+          notes: invoice.notes || '',
+          // Invoice lines are stored in the dispatch row shape; only the
+          // quantity field that matches the category is filled.
+          items: invoice.items.map((item) => ({
+            ...createDispatchItemRow(),
+            itemId: String(item.itemId),
+            itemLabel: item.itemLabel,
+            itemCategory: item.itemCategory,
+            sellUnit: item.sellUnit,
+            loadedWholeQty: item.itemCategory === 'tile' ? String(item.loadedWholeQty) : '',
+            qtyBags: item.itemCategory === 'bag' ? String(item.qtyBags) : '',
+            qtySqft: item.itemCategory === 'stone' ? String(item.qtySqft) : '',
+            ratePerUnit: String(item.ratePerUnit),
+          })),
+        });
+        setSalesInvoiceId(invoice.id);
+        setDispatchNotice({ type: 'info', message: ti('prefilledFrom', { number: invoice.invoice_number }) });
+      } catch (err) {
+        setDispatchNotice({ type: 'error', message: err.message });
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once per scanned invoice id
+  }, [data, searchParams]);
 
   useEffect(() => {
     if (!highlightedShipmentKey) return;

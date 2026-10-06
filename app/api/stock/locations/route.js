@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getRoleFlags, getStockContext } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { logTimeline, readCoordinate } from '@/lib/attendance-db';
+import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 
 /**
  * Branches — the one place that writes stock_locations.
@@ -26,6 +27,20 @@ const LOCATION_TYPES = ['warehouse', 'yard', 'showroom', 'in_transit', 'customer
 
 const COLUMNS = 'id, name, location_type, address, latitude, longitude, is_active';
 
+// business_id (the GSTIN a branch trades under) arrives with
+// scripts/migrate-sales-invoices.mjs; before it, branches work as they always did.
+async function locationColumns() {
+  return (await getStockSchemaCapabilities()).hasSalesInvoices ? `${COLUMNS}, business_id` : COLUMNS;
+}
+
+/** body.businessId → undefined (not sent), null (cleared) or a positive id, or { error }. */
+function readBusinessId(body) {
+  if (body?.businessId === undefined) return undefined;
+  if (body.businessId === null || body.businessId === '') return null;
+  const id = Number(body.businessId);
+  return Number.isInteger(id) && id > 0 ? id : { error: 'Invalid businessId' };
+}
+
 function serializeLocation(row) {
   return {
     id: Number(row.id),
@@ -35,6 +50,7 @@ function serializeLocation(row) {
     latitude: row.latitude === null ? null : Number(row.latitude),
     longitude: row.longitude === null ? null : Number(row.longitude),
     isActive: row.is_active !== false,
+    businessId: row.business_id == null ? null : Number(row.business_id),
   };
 }
 
@@ -88,7 +104,7 @@ export async function GET(request) {
     const includeInactive = searchParams.get('includeInactive') === 'true';
 
     const rows = await sql(
-      `SELECT ${COLUMNS} FROM stock_locations
+      `SELECT ${await locationColumns()} FROM stock_locations
         ${includeInactive ? '' : 'WHERE is_active'}
         ORDER BY is_active DESC, name`,
       []
@@ -121,16 +137,22 @@ export async function POST(request) {
     const anchor = readAnchor(body);
     if (anchor.error) return NextResponse.json({ error: anchor.error }, { status: 400 });
 
+    const columns = await locationColumns();
+    const businessId = columns === COLUMNS ? undefined : readBusinessId(body);
+    if (businessId?.error) return NextResponse.json({ error: businessId.error }, { status: 400 });
+    const withBusiness = businessId !== undefined;
+
     const rows = await sql(
-      `INSERT INTO stock_locations (name, location_type, address, latitude, longitude)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING ${COLUMNS}`,
+      `INSERT INTO stock_locations (name, location_type, address, latitude, longitude${withBusiness ? ', business_id' : ''})
+       VALUES ($1, $2, $3, $4, $5${withBusiness ? ', $6' : ''})
+       RETURNING ${columns}`,
       [
         name,
         locationType,
         body?.address ? String(body.address).trim() : null,
         anchor.latitude ?? null,
         anchor.longitude ?? null,
+        ...(withBusiness ? [businessId] : []),
       ]
     );
 
@@ -193,13 +215,18 @@ export async function PATCH(request) {
       push('longitude', anchor.longitude);
     }
 
+    const columns = await locationColumns();
+    const businessId = columns === COLUMNS ? undefined : readBusinessId(body);
+    if (businessId?.error) return NextResponse.json({ error: businessId.error }, { status: 400 });
+    if (businessId !== undefined) push('business_id', businessId);
+
     if (!updates.length) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
 
     values.push(locationId);
     const rows = await sql(
       `UPDATE stock_locations SET ${updates.join(', ')}, updated_at = NOW()
         WHERE id = $${values.length}
-        RETURNING ${COLUMNS}`,
+        RETURNING ${columns}`,
       values
     );
     if (!rows[0]) return NextResponse.json({ error: 'Branch not found' }, { status: 404 });

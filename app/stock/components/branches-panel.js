@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Crosshair, MapPin, Plus, RotateCcw } from 'lucide-react';
+import { Building2, Crosshair, MapPin, Plus, RotateCcw } from 'lucide-react';
 import { CLASSES, FORM_INPUT_CLASS, FORM_LABEL_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../lib/stock-utils';
 import { SelectField } from '@/components/ui/select';
+import { GST_STATES, PLACEHOLDER_GSTIN } from '@/lib/gst-invoice.mjs';
 
 /**
  * Branches — add a site, set its geofence anchor, retire it.
@@ -69,9 +70,10 @@ function useMyLocation(onFix) {
  * One branch. The "use my location" button is the point of this row: a manager
  * standing in the branch gets its coordinates without looking up a map.
  */
-function BranchRow({ branch, onSave, onRetire, onRestore }) {
+function BranchRow({ branch, businesses, onSave, onRetire, onRestore }) {
   const [name, setName] = useState(branch.name);
   const [locationType, setLocationType] = useState(branch.locationType);
+  const [businessId, setBusinessId] = useState(branch.businessId == null ? '' : String(branch.businessId));
   const [lat, setLat] = useState(branch.latitude ?? '');
   const [lng, setLng] = useState(branch.longitude ?? '');
   const { locate, locating, geoError } = useMyLocation((a, b) => {
@@ -84,7 +86,8 @@ function BranchRow({ branch, onSave, onRetire, onRestore }) {
     name.trim() !== branch.name ||
     locationType !== branch.locationType ||
     String(lat) !== String(branch.latitude ?? '') ||
-    String(lng) !== String(branch.longitude ?? '');
+    String(lng) !== String(branch.longitude ?? '') ||
+    businessId !== (branch.businessId == null ? '' : String(branch.businessId));
 
   return (
     <div className={`rounded-xl border p-3 ${branch.isActive ? 'border-border/60' : 'border-border/40 opacity-60'}`}>
@@ -133,6 +136,23 @@ function BranchRow({ branch, onSave, onRetire, onRestore }) {
           </SelectField>
         </div>
 
+        {businesses ? (
+          <div>
+            <label className={FORM_LABEL_CLASS} htmlFor={`business-${branch.id}`}>Business (GSTIN)</label>
+            <SelectField
+              id={`business-${branch.id}`}
+              value={businessId}
+              onChange={(e) => setBusinessId(e.target.value)}
+              className={FORM_INPUT_CLASS}
+            >
+              <option value="">None — cannot invoice</option>
+              {businesses.map((biz) => (
+                <option key={biz.id} value={String(biz.id)}>{biz.legalName} · {biz.gstin}</option>
+              ))}
+            </SelectField>
+          </div>
+        ) : null}
+
         <div className="w-32">
           <label className={FORM_LABEL_CLASS} htmlFor={`lat-${branch.id}`}>Latitude</label>
           <input
@@ -168,6 +188,7 @@ function BranchRow({ branch, onSave, onRetire, onRestore }) {
               locationType,
               latitude: lat === '' ? null : lat,
               longitude: lng === '' ? null : lng,
+              ...(businesses ? { businessId: businessId || null } : {}),
             })
           }
           disabled={!dirty}
@@ -195,8 +216,86 @@ function BranchRow({ branch, onSave, onRetire, onRestore }) {
   );
 }
 
+const BLANK_BUSINESS = {
+  legalName: '', tradeName: '', gstin: '', stateCode: '08', address: '', phone: '', email: '',
+  bankName: '', bankAccount: '', bankIfsc: '', invoicePrefix: '',
+};
+
+/**
+ * A legal entity (one GSTIN). Branches below pick the business they trade
+ * under; an invoice raised at a branch prints this name, GSTIN and bank, and
+ * numbers in this business's series. Used for both "add" and each existing row.
+ */
+function BusinessForm({ business, canManage, onSubmit, onToggleActive }) {
+  const initial = business ? { ...BLANK_BUSINESS, ...business } : BLANK_BUSINESS;
+  const [form, setForm] = useState(initial);
+  const field = (key) => ({
+    id: `biz-${business?.id ?? 'new'}-${key}`,
+    value: form[key] ?? '',
+    onChange: (e) => setForm((f) => ({ ...f, [key]: e.target.value })),
+    className: FORM_INPUT_CLASS,
+    disabled: !canManage,
+  });
+  const dirty = Object.keys(BLANK_BUSINESS).some((key) => String(form[key] ?? '') !== String(initial[key] ?? ''));
+  const label = (key, text) => <label className={FORM_LABEL_CLASS} htmlFor={`biz-${business?.id ?? 'new'}-${key}`}>{text}</label>;
+
+  return (
+    <form
+      className={`rounded-xl border p-3 ${business && !business.isActive ? 'border-border/40 opacity-60' : 'border-border/60'}`}
+      onSubmit={async (e) => {
+        e.preventDefault();
+        const ok = await onSubmit(form);
+        if (ok && !business) setForm(BLANK_BUSINESS);
+      }}
+    >
+      {business?.gstin === PLACEHOLDER_GSTIN ? (
+        <p className="mb-2 text-[11px] font-bold text-amber-600">
+          Placeholder GSTIN — enter the real one before approving any invoice.
+        </p>
+      ) : null}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="sm:col-span-2">{label('legalName', 'Legal name')}<input required {...field('legalName')} /></div>
+        <div>{label('gstin', 'GSTIN')}<input required maxLength={15} {...field('gstin')} placeholder="08ABCDE1234F1Z5" /></div>
+        <div>
+          {label('stateCode', 'State')}
+          <SelectField {...field('stateCode')}>
+            {Object.entries(GST_STATES).map(([code, name]) => (
+              <option key={code} value={code}>{code} · {name}</option>
+            ))}
+          </SelectField>
+        </div>
+        <div className="sm:col-span-2">{label('address', 'Registered address')}<textarea rows={2} {...field('address')} /></div>
+        <div>{label('tradeName', 'Trade name')}<input {...field('tradeName')} placeholder="Optional" /></div>
+        <div>{label('invoicePrefix', 'Invoice prefix')}<input required maxLength={4} {...field('invoicePrefix')} placeholder="HM" /></div>
+        <div>{label('phone', 'Phone')}<input {...field('phone')} /></div>
+        <div>{label('email', 'Email')}<input type="email" {...field('email')} /></div>
+        <div>{label('bankName', 'Bank')}<input {...field('bankName')} /></div>
+        <div>{label('bankAccount', 'Account no.')}<input {...field('bankAccount')} /></div>
+        <div>{label('bankIfsc', 'IFSC')}<input {...field('bankIfsc')} /></div>
+      </div>
+      {canManage ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button type="submit" disabled={business && !dirty} className={PILL_PRIMARY_BUTTON_CLASS}>
+            {business ? <Building2 className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+            {business ? 'Save business' : 'Add business'}
+          </button>
+          {/* Retire, never delete: issued invoices point at this row. */}
+          {business ? (
+            <button type="button" onClick={onToggleActive} className={PILL_BUTTON_CLASS}>
+              {business.isActive ? 'Retire' : <><RotateCcw className="h-3.5 w-3.5" /> Restore</>}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </form>
+  );
+}
+
 export function BranchesPanel({ onChanged }) {
   const [branches, setBranches] = useState([]);
+  // null until /api/stock/businesses answers; stays null before the sales
+  // invoices migration, which hides every business control.
+  const [businesses, setBusinesses] = useState(null);
   const [loading, setLoading] = useState(true);
   const [canManage, setCanManage] = useState(false);
   const [feedback, setFeedback] = useState({ kind: '', message: '' });
@@ -219,14 +318,18 @@ export function BranchesPanel({ onChanged }) {
       })
       .catch((err) => setFeedback({ kind: 'error', message: err.message }))
       .finally(() => setLoading(false));
+    fetch('/api/stock/businesses', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => setBusinesses(json ? json.businesses || [] : null))
+      .catch(() => setBusinesses(null));
   }, []);
 
   useEffect(load, [load]);
 
-  async function send(options, successMessage) {
+  async function send(options, successMessage, url = '/api/stock/locations') {
     setFeedback({ kind: '', message: '' });
     try {
-      const res = await fetch('/api/stock/locations', {
+      const res = await fetch(url, {
         headers: { 'Content-Type': 'application/json' },
         ...options,
       });
@@ -328,6 +431,44 @@ export function BranchesPanel({ onChanged }) {
         </form>
       ) : null}
 
+      {businesses ? (
+        <div className="mt-4 space-y-2">
+          <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Businesses (GSTIN)</h3>
+          <p className="text-[11px] font-bold text-slate-500">
+            The legal entities that issue invoices. Each branch below trades under one of them.
+          </p>
+          {businesses.map((business) => (
+            <BusinessForm
+              key={`${business.id}-${business.gstin}-${business.isActive}`}
+              business={business}
+              canManage={canManage}
+              onSubmit={(form) =>
+                send(
+                  { method: 'PATCH', body: JSON.stringify({ businessId: business.id, ...form }) },
+                  `Saved ${form.legalName}`,
+                  '/api/stock/businesses'
+                )
+              }
+              onToggleActive={() =>
+                send(
+                  { method: 'PATCH', body: JSON.stringify({ businessId: business.id, isActive: !business.isActive }) },
+                  business.isActive ? `${business.legalName} retired` : `${business.legalName} restored`,
+                  '/api/stock/businesses'
+                )
+              }
+            />
+          ))}
+          {canManage ? (
+            <BusinessForm
+              canManage
+              onSubmit={(form) =>
+                send({ method: 'POST', body: JSON.stringify(form) }, `Business "${form.legalName}" added`, '/api/stock/businesses')
+              }
+            />
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="mt-4 space-y-2">
         {loading ? (
           <p className="py-8 text-center text-xs font-bold text-slate-400">Loading…</p>
@@ -336,8 +477,9 @@ export function BranchesPanel({ onChanged }) {
         ) : (
           branches.map((branch) => (
             <BranchRow
-              key={branch.id}
+              key={`${branch.id}-${branch.businessId}`}
               branch={branch}
+              businesses={businesses}
               onSave={(changes) =>
                 send(
                   { method: 'PATCH', body: JSON.stringify({ locationId: branch.id, ...changes }) },
