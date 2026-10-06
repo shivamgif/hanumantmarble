@@ -80,10 +80,18 @@ async function loadShipmentWithItems(id) {
     `SELECT soi.*, i.sku, i.name AS item_name, i.unit_of_measure,
             ${schemaCaps.hasStockItemsWeightPerUnitKg ? 'i.weight_per_unit_kg,' : 'NULL AS weight_per_unit_kg,'}
             t.name AS type_name,
+            i.finish,
+            sz.label AS size_label,
+            ${schemaCaps.hasStoneSqft
+              ? `(SELECT isi.slab_size_label FROM stock_inbound_shipment_items isi
+                   WHERE isi.item_id = i.id AND isi.slab_size_label IS NOT NULL
+                   ORDER BY isi.id DESC LIMIT 1) AS slab_size_label,`
+              : 'NULL::text AS slab_size_label,'}
             i.current_whole_qty, i.current_broken_qty
      FROM stock_outbound_shipment_items soi
      JOIN stock_items i ON i.id = soi.item_id
      LEFT JOIN stock_types t ON t.id = i.type_id
+     LEFT JOIN stock_sizes sz ON sz.id = i.size_id
      WHERE soi.outbound_shipment_id = $1
      ORDER BY soi.created_at ASC`,
     [id]
