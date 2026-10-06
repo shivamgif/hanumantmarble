@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { formatDateTime, getStatusVariant } from '../lib/stock-utils';
 import { ShowroomSection } from './showroom-section';
+import { EwayBillPanel } from './ewaybill-panel';
 import { showroomSplit } from '@/lib/stock-showroom';
 
 const num = (v, digits = 2) => Number(v || 0).toLocaleString('en-IN', { maximumFractionDigits: digits });
@@ -411,6 +412,10 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
       sections={sections}
       footer={
         !isStock && !previewState.loading && !previewState.error ? (
+          <div className="space-y-3">
+          {previewState.kind === 'dispatch' && previewState.record?.sales_invoice_id ? (
+            <EwayBillPanel key={previewState.record.id} shipment={previewState.record} userRole={userRole} />
+          ) : null}
           <ActionFooter
             record={previewState.record}
             kind={previewState.kind}
@@ -422,6 +427,7 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
             onMarkPaid={onMarkPaid}
             onMarkDelivered={onMarkDelivered}
           />
+          </div>
         ) : null
       }
     />

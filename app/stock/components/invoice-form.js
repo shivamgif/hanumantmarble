@@ -135,7 +135,10 @@ export function InvoiceFormContent({
                 />
               ) : null}
               <TextareaFormField control={form.control} name="billToAddress" label={t('billToAddress')} />
+              <StockFormField control={form.control} name="billToCity" label={t('city')} placeholder="Ahmedabad" />
+              <StockFormField control={form.control} name="billToPincode" label={t('pincode')} inputMode="numeric" digitsOnly maxLength={6} placeholder="380001" />
               <TextareaFormField control={form.control} name="shipToAddress" label={t('shipToAddress')} />
+              <StockFormField control={form.control} name="shipToPincode" label={t('shipToPincode')} inputMode="numeric" digitsOnly maxLength={6} placeholder="Optional" />
             </div>
           </div>
 

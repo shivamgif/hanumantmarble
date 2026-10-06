@@ -165,6 +165,15 @@ export async function POST(request) {
       throw badRequest('Customer GSTIN must be 15 characters and start with their state code.');
     }
 
+    // City and PIN go on every invoice: the e-invoice and e-way bill portals
+    // reject an address without them, and an issued invoice cannot be edited.
+    const billToCity = normalizeText(body.billToCity).slice(0, 50);
+    if (billToCity.length < 3) throw badRequest('Enter the customer’s city.');
+    const billToPincode = normalizeText(body.billToPincode);
+    if (!/^[1-9]\d{5}$/.test(billToPincode)) throw badRequest('Enter the customer’s 6-digit PIN code.');
+    const shipToPincode = normalizeText(body.shipToPincode) || null;
+    if (shipToPincode && !/^[1-9]\d{5}$/.test(shipToPincode)) throw badRequest('Delivery PIN code must be 6 digits.');
+
     const seller = await resolveSeller(appUser, body);
     const items = await resolveItems(body.items, seller);
     const totals = computeInvoiceTotals(items, location.state_code, billToStateCode);
@@ -174,8 +183,9 @@ export async function POST(request) {
       `INSERT INTO stock_sales_invoices (
          location_id, business_id, customer_id,
          bill_to_name, bill_to_phone, bill_to_address, bill_to_gstin, bill_to_state_code, ship_to_address,
-         salesperson_user_id, items, taxable_total, cgst, sgst, igst, grand_total, notes, created_by_user_id
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+         salesperson_user_id, items, taxable_total, cgst, sgst, igst, grand_total, notes, created_by_user_id,
+         bill_to_city, bill_to_pincode, ship_to_pincode
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
        RETURNING *`,
       [
         location.id,
@@ -196,6 +206,9 @@ export async function POST(request) {
         totals.grandTotal,
         multiline(body.notes),
         appUser.id,
+        billToCity,
+        billToPincode,
+        shipToPincode,
       ]
     );
     const invoice = rows[0];

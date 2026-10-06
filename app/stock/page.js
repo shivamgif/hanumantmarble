@@ -1288,6 +1288,9 @@ export default function StockDashboard() {
         if (invoice.status !== 'approved') {
           throw new Error(ti('notDispatchable', { number: invoice.invoice_number || `#${invoice.id}`, status: invoice.status }));
         }
+        if (invoice.einvoice_status === 'pending') {
+          throw new Error(ti('needsIrnFirst', { number: invoice.invoice_number }));
+        }
 
         const now = new Date();
         const pad = (n) => String(n).padStart(2, '0');

@@ -128,6 +128,35 @@ async function migrateSalesInvoices() {
     `;
     console.log('Ensured stock_outbound_shipments.sales_invoice_id + live-dispatch unique index.');
 
+    // E-invoice (IRN) and e-way bill. Turnover above ₹5 crore makes IRN
+    // mandatory on B2B invoices; both portals need a structured address.
+    await sql`
+      ALTER TABLE stock_businesses
+        ADD COLUMN IF NOT EXISTS city TEXT,
+        ADD COLUMN IF NOT EXISTS pincode TEXT,
+        ADD COLUMN IF NOT EXISTS upi_id TEXT,
+        ADD COLUMN IF NOT EXISTS einvoice_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+        ADD COLUMN IF NOT EXISTS ewb_threshold NUMERIC(14, 2) NOT NULL DEFAULT 50000
+    `;
+    await sql`
+      ALTER TABLE stock_sales_invoices
+        ADD COLUMN IF NOT EXISTS bill_to_city TEXT,
+        ADD COLUMN IF NOT EXISTS bill_to_pincode TEXT,
+        ADD COLUMN IF NOT EXISTS ship_to_pincode TEXT,
+        ADD COLUMN IF NOT EXISTS einvoice_status TEXT NOT NULL DEFAULT 'not_required'
+          CHECK (einvoice_status IN ('not_required', 'pending', 'generated', 'cancelled')),
+        ADD COLUMN IF NOT EXISTS irn TEXT UNIQUE,
+        ADD COLUMN IF NOT EXISTS ack_no TEXT,
+        ADD COLUMN IF NOT EXISTS ack_date TEXT,
+        ADD COLUMN IF NOT EXISTS signed_qr TEXT
+    `;
+    await sql`
+      ALTER TABLE stock_outbound_shipments
+        ADD COLUMN IF NOT EXISTS ewb_no TEXT,
+        ADD COLUMN IF NOT EXISTS ewb_date TIMESTAMP
+    `;
+    console.log('Ensured e-invoice and e-way bill columns.');
+
     console.log('sales invoices migration completed successfully.');
   } catch (error) {
     console.error('Failed to run sales invoices migration:', error.message);

@@ -219,6 +219,7 @@ function BranchRow({ branch, businesses, onSave, onRetire, onRestore }) {
 const BLANK_BUSINESS = {
   legalName: '', tradeName: '', gstin: '', stateCode: '08', address: '', phone: '', email: '',
   bankName: '', bankAccount: '', bankIfsc: '', invoicePrefix: '',
+  city: '', pincode: '', upiId: '', ewbThreshold: '50000', einvoiceEnabled: true,
 };
 
 /**
@@ -272,6 +273,20 @@ function BusinessForm({ business, canManage, onSubmit, onToggleActive }) {
         <div>{label('bankName', 'Bank')}<input {...field('bankName')} /></div>
         <div>{label('bankAccount', 'Account no.')}<input {...field('bankAccount')} /></div>
         <div>{label('bankIfsc', 'IFSC')}<input {...field('bankIfsc')} /></div>
+        {/* The e-invoice and e-way bill portals need a structured address. */}
+        <div>{label('city', 'City')}<input required {...field('city')} placeholder="Kishangarh" /></div>
+        <div>{label('pincode', 'PIN code')}<input required inputMode="numeric" maxLength={6} {...field('pincode')} /></div>
+        <div>{label('upiId', 'UPI ID (payment QR)')}<input {...field('upiId')} placeholder="name@bank" /></div>
+        <div>{label('ewbThreshold', 'E-way bill above ₹')}<input inputMode="decimal" {...field('ewbThreshold')} /></div>
+        <label className="flex items-center gap-2 text-sm sm:col-span-2">
+          <input
+            type="checkbox"
+            checked={form.einvoiceEnabled !== false}
+            disabled={!canManage}
+            onChange={(e) => setForm((f) => ({ ...f, einvoiceEnabled: e.target.checked }))}
+          />
+          E-invoicing (IRN) on B2B invoices — required above ₹5 crore turnover
+        </label>
       </div>
       {canManage ? (
         <div className="mt-3 flex flex-wrap gap-2">

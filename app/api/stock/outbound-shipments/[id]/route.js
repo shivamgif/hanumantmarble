@@ -251,6 +251,22 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
       throw new Error('Shipment not found');
     }
 
+    // Goods worth more than the business's e-way bill threshold cannot leave
+    // without one; approval is the point the truck is cleared to go.
+    if (shipment.sales_invoice_id && !shipment.ewb_no && shipment.approval_status !== 'approved') {
+      const [invoice] = await tx(
+        `SELECT si.invoice_number, si.grand_total, b.ewb_threshold
+         FROM stock_sales_invoices si JOIN stock_businesses b ON b.id = si.business_id
+         WHERE si.id = $1`,
+        [shipment.sales_invoice_id]
+      );
+      if (invoice && Number(invoice.grand_total) > Number(invoice.ewb_threshold ?? 50000)) {
+        const err = new Error(`Invoice ${invoice.invoice_number} is over ₹${Number(invoice.ewb_threshold ?? 50000).toLocaleString('en-IN')}: record its e-way bill number before approving.`);
+        err.statusCode = 409;
+        throw err;
+      }
+    }
+
     const issueCaps = await getStockSchemaCapabilities();
     const items = await tx(
       `SELECT soi.*, i.sku, i.name AS item_name, i.unit_of_measure,

@@ -986,7 +986,26 @@
       "prefilledFrom": "Prefilled from invoice {number}. Add the truck and driver. Items, customer and salesperson come from the invoice and cannot be changed here.",
       "notDispatchable": "Invoice {number} cannot be dispatched (status: {status}).",
       "alreadyDispatched": "Invoice {number} is already dispatched as {dispatch}.",
-      "cannotDispatch": "Your role cannot register dispatches. Ask a stock manager to scan this invoice."
+      "cannotDispatch": "Your role cannot register dispatches. Ask a stock manager to scan this invoice.",
+      "needs_irn": "Needs IRN",
+      "irnPending": "IRN pending",
+      "irnPendingHint": "This B2B invoice has no IRN yet, so it is not a valid tax invoice. Generate it from Invoices → Needs IRN before printing or dispatching.",
+      "irnSteps": "1. Download the JSON. 2. Upload it on the e-invoice portal (Bulk upload). 3. Import the portal's response file here — each IRN attaches to its invoice.",
+      "downloadEinvoice": "Download e-invoice JSON",
+      "importIrp": "Import portal response",
+      "irnImported": "IRN recorded for {count} invoice(s).",
+      "needsIrnFirst": "Invoice {number} needs its e-invoice (IRN) before it can be dispatched.",
+      "einvoiceQr": "e-Invoice (signed QR)",
+      "scanToPay": "Scan to pay (UPI)",
+      "city": "City",
+      "pincode": "PIN code",
+      "shipToPincode": "Delivery PIN code",
+      "ewayBill": "E-way bill",
+      "downloadEwb": "Download e-way bill JSON",
+      "ewbNumber": "12-digit EWB no.",
+      "save": "Save",
+      "ewbSaved": "E-way bill number saved.",
+      "ewbNotRequired": "This invoice is under the e-way bill threshold; an e-way bill is optional."
     }
   },
   "shop": {

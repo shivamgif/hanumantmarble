@@ -68,7 +68,8 @@ async function approve(invoiceId, appUser) {
       `UPDATE stock_sales_invoices
           SET status = 'approved', invoice_number = $1, fiscal_year = $2, invoice_seq = $3, invoice_date = $4,
               seller_snapshot = $5, taxable_total = $6, cgst = $7, sgst = $8, igst = $9, grand_total = $10,
-              approved_by_user_id = $11, approved_at = NOW(), updated_at = NOW()
+              approved_by_user_id = $11, approved_at = NOW(), updated_at = NOW(),
+              einvoice_status = $13
         WHERE id = $12
         RETURNING *`,
       [
@@ -84,6 +85,8 @@ async function approve(invoiceId, appUser) {
         totals.grandTotal,
         appUser.id,
         invoiceId,
+        // Turnover above ₹5 crore: a B2B invoice is not valid until it has an IRN.
+        business.einvoice_enabled !== false && invoice.bill_to_gstin ? 'pending' : 'not_required',
       ]
     );
     return { invoice: rows[0], idempotent: false };
@@ -142,14 +145,17 @@ export async function PATCH(request, context) {
       const canCancel = isOwnPending || (isApprover && !isOwn && ['pending', 'approved'].includes(current.status));
       if (!canCancel) return NextResponse.json({ error: 'You cannot cancel this invoice' }, { status: 403 });
       invoice = (await withTransaction((tx) => tx(
-        `UPDATE stock_sales_invoices SET status = 'cancelled', updated_at = NOW()
+        `UPDATE stock_sales_invoices
+            SET status = 'cancelled', updated_at = NOW(),
+                einvoice_status = CASE WHEN einvoice_status = 'generated' THEN 'cancelled' ELSE einvoice_status END
           WHERE id = $1 AND status IN ('pending', 'approved')
             AND NOT EXISTS (SELECT 1 FROM stock_outbound_shipments
                             WHERE sales_invoice_id = $1 AND approval_status <> 'rejected')
           RETURNING *`,
         [invoiceId]
       )))[0];
-      summary = `${current.invoice_number || 'Estimate'} for ${current.bill_to_name} cancelled`;
+      summary = `${current.invoice_number || 'Estimate'} for ${current.bill_to_name} cancelled`
+        + (current.irn ? '. Cancel its IRN on the e-invoice portal too (allowed within 24 hours of generation).' : '');
     } else {
       return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
     }
@@ -178,7 +184,7 @@ export async function PATCH(request, context) {
       console.error('Failed to log invoice action:', sideEffectError);
     }
 
-    return NextResponse.json({ invoice });
+    return NextResponse.json({ invoice, message: summary });
   } catch (error) {
     const status = Number.isInteger(error?.statusCode) ? error.statusCode : 500;
     if (status === 500) console.error('Failed to update invoice:', error);

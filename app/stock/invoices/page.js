@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check, ExternalLink, FileText, Plus, X } from 'lucide-react';
+import { Ban, Check, Download, ExternalLink, FileText, Plus, Upload, X } from 'lucide-react';
 import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -24,7 +24,7 @@ import {
   PILL_PRIMARY_BUTTON_CLASS,
 } from '../lib/stock-utils';
 
-const FILTERS = ['pending', 'approved', 'dispatched', 'all'];
+const FILTERS = ['pending', 'needs_irn', 'approved', 'dispatched', 'all'];
 
 const STATUS_TONE = {
   pending: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
@@ -43,7 +43,10 @@ const blankInvoice = (branch) => ({
   billToAddress: '',
   billToGstin: '',
   billToStateCode: branch?.stateCode || '',
+  billToCity: '',
+  billToPincode: '',
   shipToAddress: '',
+  shipToPincode: '',
   salespersonName: '',
   salespersonUserId: '',
   notes: '',
@@ -79,6 +82,15 @@ export default function InvoicesPage() {
   const { accessRole, accessUser } = useStockAccess(user);
   const isApprover = getRoleFlags(accessRole).canApprove;
   const canRaise = canSell(accessUser) || isApprover;
+  // Mirrors the server: sellers withdraw their own pending estimate; another
+  // approver may void an issued invoice that never shipped.
+  const canCancel = (invoice) => {
+    if (invoice.dispatch_id) return false;
+    const me = Number(accessUser?.id);
+    const own = [invoice.created_by_user_id, invoice.salesperson_user_id].map(Number).includes(me);
+    if (invoice.status === 'pending' && Number(invoice.created_by_user_id) === me) return true;
+    return isApprover && !own && ['pending', 'approved'].includes(invoice.status);
+  };
 
   const [filter, setFilter] = useState('pending');
   const [invoices, setInvoices] = useState([]);
@@ -88,6 +100,8 @@ export default function InvoicesPage() {
   const [toast, setToast] = useState(null);
   const [reasonDialog, setReasonDialog] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const [irnReport, setIrnReport] = useState(null);
+  const importRef = useRef(null);
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [formSetup, setFormSetup] = useState(null);
@@ -150,13 +164,44 @@ export default function InvoicesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, ...extra }),
       }));
-      const message = action === 'approve' ? `${t('taxInvoice')} ${json.invoice.invoice_number}` : t(action === 'reject' ? 'rejected' : 'cancelled');
-      setToast({ type: 'success', message });
+      setToast({ type: 'success', message: json.message || t(action === 'reject' ? 'rejected' : 'cancelled') });
       setRefreshKey((k) => k + 1);
     } catch (err) {
       setToast({ type: 'error', message: err.message });
     } finally {
       setBusyId(null);
+    }
+  }, [t]);
+
+  const downloadEinvoiceJson = useCallback(async () => {
+    try {
+      const { documents, problems } = await readJson(await fetch('/api/stock/sales-invoices/einvoice', { cache: 'no-store' }));
+      setIrnReport({ problems, skipped: [] });
+      if (!documents.length) return;
+      const url = URL.createObjectURL(new Blob([JSON.stringify(documents, null, 2)], { type: 'application/json' }));
+      const link = Object.assign(document.createElement('a'), { href: url, download: `einvoice-${new Date().toISOString().slice(0, 10)}.json` });
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setToast({ type: 'error', message: err.message });
+    }
+  }, []);
+
+  const importIrpResponse = useCallback(async (file) => {
+    if (!file) return;
+    try {
+      const json = await readJson(await fetch('/api/stock/sales-invoices/einvoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: await file.text() }),
+      }));
+      setIrnReport({ problems: [], skipped: json.skipped.map((row) => `${row.docNo}: ${row.reason}`) });
+      setToast({ type: 'success', message: t('irnImported', { count: json.updated.length }) });
+      setRefreshKey((k) => k + 1);
+    } catch (err) {
+      setToast({ type: 'error', message: err.message });
+    } finally {
+      if (importRef.current) importRef.current.value = '';
     }
   }, [t]);
 
@@ -177,7 +222,7 @@ export default function InvoicesPage() {
       </div>
 
       <div className="flex flex-wrap gap-2" role="tablist">
-        {FILTERS.map((key) => (
+        {FILTERS.filter((key) => key !== 'needs_irn' || isApprover).map((key) => (
           <button
             key={key}
             type="button"
@@ -190,6 +235,26 @@ export default function InvoicesPage() {
           </button>
         ))}
       </div>
+
+      {filter === 'needs_irn' && isApprover ? (
+        <div className="glass-panel space-y-2 rounded-xl p-4">
+          <p className="text-sm text-slate-600 dark:text-slate-300">{t('irnSteps')}</p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={downloadEinvoiceJson} className={PILL_PRIMARY_BUTTON_CLASS}>
+              <Download className="h-3.5 w-3.5" /> {t('downloadEinvoice')}
+            </button>
+            <button type="button" onClick={() => importRef.current?.click()} className={PILL_BUTTON_CLASS}>
+              <Upload className="h-3.5 w-3.5" /> {t('importIrp')}
+            </button>
+            <input ref={importRef} type="file" accept=".json,application/json" hidden onChange={(e) => importIrpResponse(e.target.files?.[0])} />
+          </div>
+          {irnReport && [...irnReport.problems, ...irnReport.skipped].length ? (
+            <ul className="list-disc space-y-0.5 pl-5 text-xs text-amber-700 dark:text-amber-400">
+              {[...irnReport.problems, ...irnReport.skipped].map((line) => <li key={line}>{line}</li>)}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
 
       <section className="glass-panel overflow-hidden rounded-xl">
         {loading ? (
@@ -211,6 +276,9 @@ export default function InvoicesPage() {
                         {invoice.invoice_number || `${t('estimate')} #${invoice.id}`}
                       </span>
                       <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${STATUS_TONE[status]}`}>{t(status)}</span>
+                      {invoice.status === 'approved' && invoice.einvoice_status === 'pending' ? (
+                        <span className="rounded-md bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-700 dark:text-rose-400">{t('irnPending')}</span>
+                      ) : null}
                       {invoice.dispatch_number ? <span className="text-xs text-slate-500">{invoice.dispatch_number}</span> : null}
                     </div>
                     <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-300">{invoice.bill_to_name}</p>
@@ -247,6 +315,23 @@ export default function InvoicesPage() {
                           <X className="h-3.5 w-3.5" /> {t('reject')}
                         </button>
                       </>
+                    ) : null}
+                    {canCancel(invoice) ? (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className={PILL_BUTTON_CLASS}
+                        onClick={() => setReasonDialog({
+                          title: t('cancel'),
+                          description: `${invoice.invoice_number || `${t('estimate')} #${invoice.id}`} · ${t('cancelConfirm')}`,
+                          placeholder: t('notes'),
+                          confirmText: t('cancel'),
+                          tone: 'rose',
+                          onSubmit: () => act(invoice, 'cancel'),
+                        })}
+                      >
+                        <Ban className="h-3.5 w-3.5" /> {t('cancel')}
+                      </button>
                     ) : null}
                   </div>
                 </li>

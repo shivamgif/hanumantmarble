@@ -460,7 +460,13 @@ export async function POST(request) {
       if (!salesInvoice || salesInvoice.status !== 'approved') {
         return NextResponse.json({ error: 'Only an approved invoice can be dispatched.' }, { status: 400 });
       }
-      if (salesInvoice.dispatch_id) {
+      if (salesInvoice.einvoice_status === 'pending') {
+        return NextResponse.json(
+          { error: `Invoice ${salesInvoice.invoice_number} needs its e-invoice (IRN) before it can be dispatched.` },
+          { status: 400 }
+        );
+      }
+            if (salesInvoice.dispatch_id) {
         return NextResponse.json(
           { error: `Invoice ${salesInvoice.invoice_number} is already dispatched as ${salesInvoice.dispatch_number}.` },
           { status: 409 }

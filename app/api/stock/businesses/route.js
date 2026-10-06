@@ -15,7 +15,8 @@ import { GST_STATES, INVOICE_PREFIX_PATTERN, isValidGstin, serializeBusiness } f
  */
 
 const COLUMNS = `id, legal_name, trade_name, gstin, state_code, address, phone, email,
-  bank_name, bank_account, bank_ifsc, invoice_prefix, is_active`;
+  bank_name, bank_account, bank_ifsc, invoice_prefix, is_active,
+  city, pincode, upi_id, einvoice_enabled, ewb_threshold`;
 
 async function guard(request, { requireManage = true } = {}) {
   const { session, appUser } = await getStockContext(request);
@@ -73,8 +74,18 @@ function readFields(body, { partial }) {
   for (const [key, column] of [
     ['tradeName', 'trade_name'], ['address', 'address'], ['phone', 'phone'], ['email', 'email'],
     ['bankName', 'bank_name'], ['bankAccount', 'bank_account'], ['bankIfsc', 'bank_ifsc'],
+    ['city', 'city'], ['pincode', 'pincode'], ['upiId', 'upi_id'],
   ]) {
     if (!partial || has(key)) fields[column] = text(body[key]);
+  }
+  // The e-invoice and e-way bill portals reject anything but a 6-digit PIN.
+  if (fields.pincode && !/^[1-9]\d{5}$/.test(fields.pincode)) return { error: 'PIN code must be 6 digits' };
+  if (fields.upi_id && !/^[\w.-]{2,}@[a-zA-Z]{2,}$/.test(fields.upi_id)) return { error: 'UPI ID looks like name@bank' };
+  if (!partial || has('einvoiceEnabled')) fields.einvoice_enabled = body.einvoiceEnabled !== false;
+  if (!partial || has('ewbThreshold')) {
+    const threshold = body.ewbThreshold === '' || body.ewbThreshold == null ? 50000 : Number(body.ewbThreshold);
+    if (!Number.isFinite(threshold) || threshold < 0) return { error: 'E-way bill threshold must be a positive amount' };
+    fields.ewb_threshold = threshold;
   }
   if (partial && has('isActive')) fields.is_active = Boolean(body.isActive);
   return { fields };
