@@ -19,6 +19,7 @@ import { toSqft, toPositiveSqft } from '@/lib/stock-sqft';
 import { showroomHint } from '@/lib/stock-showroom';
 import { dispatchMatchesInvoice } from '@/lib/gst-invoice.mjs';
 import { loadSalesInvoice } from '@/lib/sales-invoices';
+import { istToday } from '@/lib/attendance.mjs';
 
 function toPositiveInteger(value) {
   const parsed = Number.parseInt(value, 10);
@@ -451,6 +452,23 @@ export async function POST(request) {
 
     // Registered by scanning an approved invoice's QR: it must ship exactly what
     // was billed. Checked before anything is created.
+    // Once the books have started, every sale must reach them: a dispatch has to
+    // come from an approved app invoice, not a number typed in from elsewhere.
+    if (!body.salesInvoiceId && (await getStockSchemaCapabilities()).hasAccounts) {
+      const [live] = await sql(
+        `SELECT legal_name, books_start_date::text AS since FROM stock_businesses
+         WHERE is_active AND books_start_date IS NOT NULL AND books_start_date <= $1
+         ORDER BY books_start_date LIMIT 1`,
+        [istToday()]
+      );
+      if (live) {
+        return NextResponse.json(
+          { error: `Books for ${live.legal_name} started on ${live.since}: raise and approve an invoice, then scan its QR to dispatch.` },
+          { status: 400 }
+        );
+      }
+    }
+
     let salesInvoice = null;
     if (body.salesInvoiceId) {
       if (!(await getStockSchemaCapabilities()).hasSalesInvoices) {

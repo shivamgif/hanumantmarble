@@ -3,6 +3,7 @@ import { ensureDatabaseAvailable, getRoleFlags, getStockContext, recordTimelineE
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { GST_STATES, INVOICE_PREFIX_PATTERN, isValidGstin, serializeBusiness } from '@/lib/gst-invoice.mjs';
+import { systemLedgers, withBooks } from '@/lib/accounts-db';
 
 /**
  * Businesses — the legal entities (one GSTIN each) that branches trade under.
@@ -123,6 +124,11 @@ export async function POST(request) {
        RETURNING ${COLUMNS}`,
       Object.values(fields)
     );
+
+    // A new business gets its standard ledgers right away.
+    if ((await getStockSchemaCapabilities()).hasAccounts) {
+      await withBooks(gate.appUser, (tx) => systemLedgers(tx, rows[0].id));
+    }
 
     await recordTimelineEvent({
       eventType: 'other',

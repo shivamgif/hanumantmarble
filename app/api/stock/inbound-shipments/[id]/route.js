@@ -6,6 +6,7 @@ import { computeInboundTotals } from '@/lib/stock-pricing';
 import { recomputeInboundShipmentTotals } from '@/lib/stock-inbound-recompute';
 import { toPositiveSqft, sqftLineTotal } from '@/lib/stock-sqft';
 import { assignShipmentToTrip, deleteTripIfEmpty, findTrip, parseFreight } from '@/lib/stock-inbound-trips.mjs';
+import { syncPurchaseVoucher, withBooks } from '@/lib/accounts-db';
 
 function computeSqmValues(item, size) {
   const widthMm = size?.width_mm;
@@ -558,7 +559,32 @@ export async function GET(request, context) {
   }
 }
 
+/**
+ * Every successful change to a purchase — approval, reversal, price or
+ * quantity edits — re-syncs its purchase voucher, so the books follow the bill
+ * from this one place instead of from each of the handler's exits. The sync is
+ * idempotent; a failure is reported, not hidden, and Accounts → Setup →
+ * "Re-sync purchases" repairs it later.
+ */
 export async function PATCH(request, context) {
+  const response = await patchInboundShipment(request, context);
+  if (response.status >= 300 || !(await getStockSchemaCapabilities()).hasAccounts) return response;
+  const { appUser } = await getStockContext(request);
+  const { id } = await context.params;
+  try {
+    await withBooks(appUser, (tx) => syncPurchaseVoucher(tx, Number(id), appUser));
+    return response;
+  } catch (error) {
+    console.error('Failed to sync purchase voucher:', error);
+    const json = await response.json();
+    return NextResponse.json(
+      { ...json, warnings: [...(json.warnings || []), `Saved, but the purchase entry in the books did not update: ${error.message}`] },
+      { status: response.status }
+    );
+  }
+}
+
+async function patchInboundShipment(request, context) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getStockContext, normalizeStockRole } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { recomputeInboundShipmentTotals } from '@/lib/stock-inbound-recompute';
+import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
+import { syncPurchaseVoucher, withBooks } from '@/lib/accounts-db';
 
 export async function POST(request) {
   try {
@@ -32,10 +34,13 @@ export async function POST(request) {
       targets = await sql(`SELECT id FROM stock_inbound_shipments ORDER BY id`);
     }
 
+    const { hasAccounts } = await getStockSchemaCapabilities();
     const results = [];
     for (const { id } of targets) {
       try {
         const updated = await recomputeInboundShipmentTotals(id);
+        // A recomputed bill must move its purchase entry with it.
+        if (hasAccounts) await withBooks(appUser, (tx) => syncPurchaseVoucher(tx, Number(id), appUser));
         results.push({ id, grand_total: updated?.grand_total ?? null, ok: true });
       } catch (err) {
         results.push({ id, ok: false, error: err.message });

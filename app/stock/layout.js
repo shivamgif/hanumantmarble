@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { BarChart2, Clock, FileText, Home, Users } from 'lucide-react';
+import { BarChart2, BookOpen, Clock, FileText, Home, Users } from 'lucide-react';
 import { getLogoutHref, useAuthUser } from '@/lib/auth-client';
 import { usePathname } from 'next/navigation';
 import { useRef, useState } from 'react';
@@ -101,6 +101,10 @@ export default function StockLayout({ children }) {
   // they dispatch. read_only_admin can still open /stock/invoices directly.
   if (accessRole !== 'read_only_admin') {
     navigationItems.push({ href: '/stock/invoices', label: t('invoices'), icon: FileText });
+  }
+  // Books: approvers run them, read_only_admin reads, salespeople record receipts.
+  if (['admin', 'manager', 'read_only_admin', 'salesperson'].includes(accessRole)) {
+    navigationItems.push({ href: '/stock/accounts', label: t('accounts'), icon: BookOpen });
   }
   if (accessRole === 'admin' || accessRole === 'manager') {
     navigationItems.push({ href: '/stock/admin', label: t('adminDashboard'), icon: Users });

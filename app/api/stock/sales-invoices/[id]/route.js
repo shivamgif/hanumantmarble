@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getRoleFlags, queueNotification, recordTimelineEvent } from '@/lib/stock-workflow';
-import { withTransaction } from '@/lib/db';
+import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
+import { cancelSourceVoucher, ensurePartyLedger, postSalesInvoice, withBooks } from '@/lib/accounts-db';
 import { istToday } from '@/lib/attendance.mjs';
 import {
   computeInvoiceTotals,
@@ -40,8 +41,9 @@ export async function GET(request, context) {
  * invoice_seq) is the backstop. Totals are recomputed here because the
  * business's state may have been corrected since the estimate was raised.
  */
-async function approve(invoiceId, appUser) {
-  return withTransaction(async (tx) => {
+async function approve(invoiceId, appUser, { acknowledgeCreditLimit = false } = {}) {
+  const { hasAccounts } = await getStockSchemaCapabilities();
+  return withBooks(appUser, async (tx) => {
     const invoice = (await tx('SELECT * FROM stock_sales_invoices WHERE id = $1 FOR UPDATE', [invoiceId]))[0];
     if (!invoice) throw Object.assign(new Error('Invoice not found'), { statusCode: 404 });
     if (invoice.status === 'approved') return { invoice, idempotent: true };
@@ -89,6 +91,33 @@ async function approve(invoiceId, appUser) {
         business.einvoice_enabled !== false && invoice.bill_to_gstin ? 'pending' : 'not_required',
       ]
     );
+
+    if (hasAccounts) {
+      // Credit limit: warn before taking the customer past it. The approver can
+      // go ahead after confirming (acknowledgeCreditLimit).
+      if (invoice.customer_id && !acknowledgeCreditLimit) {
+        const ledgerId = await ensurePartyLedger(tx, business.id, 'customer', invoice.customer_id);
+        const [party] = await tx(
+          `SELECT l.name, l.credit_limit,
+                  COALESCE((SELECT SUM(vl.amount) FROM acc_voucher_lines vl
+                            JOIN acc_vouchers v ON v.id = vl.voucher_id AND v.status = 'posted'
+                            WHERE vl.ledger_id = l.id), 0) AS balance
+           FROM acc_ledgers l WHERE l.id = $1`,
+          [ledgerId]
+        );
+        const limit = Number(party.credit_limit);
+        const after = Number(party.balance) + totals.grandTotal;
+        if (limit > 0 && after > limit) {
+          throw Object.assign(
+            new Error(`${party.name} would owe ₹${after.toLocaleString('en-IN')} against a credit limit of ₹${limit.toLocaleString('en-IN')}.`),
+            { statusCode: 409, code: 'credit_limit' }
+          );
+        }
+      }
+      // Issued and booked together: once the books have started, an invoice
+      // never exists without its sales entry.
+      await postSalesInvoice(tx, rows[0], invoiceDate, appUser);
+    }
     return { invoice: rows[0], idempotent: false };
   });
 }
@@ -121,7 +150,7 @@ export async function PATCH(request, context) {
     if (body.action === 'approve') {
       if (!isApprover) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       if (isOwn) return ownError();
-      const result = await approve(invoiceId, appUser);
+      const result = await approve(invoiceId, appUser, { acknowledgeCreditLimit: body.acknowledgeCreditLimit === true });
       invoice = result.invoice;
       if (result.idempotent) return NextResponse.json({ invoice, idempotent: true });
       summary = `Invoice ${invoice.invoice_number} issued to ${invoice.bill_to_name}`;
@@ -131,7 +160,7 @@ export async function PATCH(request, context) {
       const reason = String(body.reason || '').trim().slice(0, 1000);
       if (!reason) return NextResponse.json({ error: 'Give a reason for rejecting' }, { status: 400 });
       if (current.status !== 'pending') throw conflict('Only a pending estimate can be rejected.');
-      invoice = (await withTransaction((tx) => tx(
+      invoice = (await withBooks(appUser, (tx) => tx(
         `UPDATE stock_sales_invoices SET status = 'rejected', rejection_reason = $1, updated_at = NOW()
           WHERE id = $2 AND status = 'pending' RETURNING *`,
         [reason, invoiceId]
@@ -144,16 +173,22 @@ export async function PATCH(request, context) {
       const isOwnPending = current.status === 'pending' && Number(current.created_by_user_id) === me;
       const canCancel = isOwnPending || (isApprover && !isOwn && ['pending', 'approved'].includes(current.status));
       if (!canCancel) return NextResponse.json({ error: 'You cannot cancel this invoice' }, { status: 403 });
-      invoice = (await withTransaction((tx) => tx(
-        `UPDATE stock_sales_invoices
-            SET status = 'cancelled', updated_at = NOW(),
-                einvoice_status = CASE WHEN einvoice_status = 'generated' THEN 'cancelled' ELSE einvoice_status END
-          WHERE id = $1 AND status IN ('pending', 'approved')
-            AND NOT EXISTS (SELECT 1 FROM stock_outbound_shipments
-                            WHERE sales_invoice_id = $1 AND approval_status <> 'rejected')
-          RETURNING *`,
-        [invoiceId]
-      )))[0];
+      const { hasAccounts } = await getStockSchemaCapabilities();
+      invoice = await withBooks(appUser, async (tx) => {
+        const [row] = await tx(
+          `UPDATE stock_sales_invoices
+              SET status = 'cancelled', updated_at = NOW(),
+                  einvoice_status = CASE WHEN einvoice_status = 'generated' THEN 'cancelled' ELSE einvoice_status END
+            WHERE id = $1 AND status IN ('pending', 'approved')
+              AND NOT EXISTS (SELECT 1 FROM stock_outbound_shipments
+                              WHERE sales_invoice_id = $1 AND approval_status <> 'rejected')
+            RETURNING *`,
+          [invoiceId]
+        );
+        // The sales entry goes with the invoice.
+        if (row && hasAccounts) await cancelSourceVoucher(tx, 'stock_sales_invoices', invoiceId, appUser.id);
+        return row;
+      });
       summary = `${current.invoice_number || 'Estimate'} for ${current.bill_to_name} cancelled`
         + (current.irn ? '. Cancel its IRN on the e-invoice portal too (allowed within 24 hours of generation).' : '');
     } else {
@@ -189,7 +224,7 @@ export async function PATCH(request, context) {
     const status = Number.isInteger(error?.statusCode) ? error.statusCode : 500;
     if (status === 500) console.error('Failed to update invoice:', error);
     return NextResponse.json(
-      { error: status === 500 ? 'Failed to update invoice' : error.message, detail: error.message },
+      { error: status === 500 ? 'Failed to update invoice' : error.message, code: error.code, detail: error.message },
       { status }
     );
   }

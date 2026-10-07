@@ -56,7 +56,7 @@ const blankInvoice = (branch) => ({
 
 async function readJson(response) {
   const json = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(json.error || json.detail || 'Request failed');
+  if (!response.ok) throw Object.assign(new Error(json.error || json.detail || 'Request failed'), { code: json.code });
   return json;
 }
 
@@ -182,7 +182,18 @@ export default function InvoicesPage() {
       setToast({ type: 'success', message: json.message || t(action === 'reject' ? 'rejected' : 'cancelled') });
       setRefreshKey((k) => k + 1);
     } catch (err) {
-      setToast({ type: 'error', message: err.message });
+      // Over the customer's credit limit: the approver decides, with the numbers in front of them.
+      if (err.code === 'credit_limit' && action === 'approve') {
+        setReasonDialog({
+          title: t('approve'),
+          description: err.message,
+          placeholder: t('notes'),
+          confirmText: t('approve'),
+          onSubmit: () => act(invoice, 'approve', { acknowledgeCreditLimit: true }),
+        });
+      } else {
+        setToast({ type: 'error', message: err.message });
+      }
     } finally {
       setBusyId(null);
     }

@@ -1,0 +1,114 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import { BookOpen, Plus } from 'lucide-react';
+import { useAuthUser } from '@/lib/auth-client';
+import { useStockAccess } from '@/hooks/useStockAccess';
+import { getRoleFlags } from '@/lib/stock-roles.mjs';
+import { CLASSES, PILL_PRIMARY_BUTTON_CLASS, tabButtonClass, tabTrackClass } from '../lib/stock-utils';
+import { StockToast } from '../components/stock-toast';
+import { useAccountsText, VoucherSheet } from '../components/voucher-form';
+import { DayBookPanel, LedgersPanel, OutstandingPanel, SetupPanel } from '../components/accounts-panels';
+
+/**
+ * Books per business. Approvers run everything; read_only_admin reads;
+ * salespeople record receipts (as drafts) and see their own.
+ */
+export default function AccountsPage() {
+  const t = useAccountsText();
+  const { user } = useAuthUser();
+  const { accessRole, accessUser } = useStockAccess(user);
+  const isApprover = getRoleFlags(accessRole).canApprove;
+  const isSalesperson = accessRole === 'salesperson';
+  const canEnter = isApprover || isSalesperson;
+
+  const [businesses, setBusinesses] = useState(null);
+  const [businessId, setBusinessId] = useState(null);
+  const [ledgers, setLedgers] = useState([]);
+  const [tab, setTab] = useState('daybook');
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [toast, setToast] = useState(null);
+  const [error, setError] = useState('');
+  const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
+
+  useEffect(() => {
+    fetch('/api/stock/businesses', { cache: 'no-store' })
+      .then(async (res) => {
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Failed to load businesses');
+        const active = json.businesses.filter((b) => b.isActive);
+        setBusinesses(active);
+        setBusinessId((id) => id ?? active[0]?.id ?? null);
+      })
+      .catch((err) => setError(err.message));
+  }, []);
+
+  // Ledgers for the voucher form; the panels load their own views.
+  useEffect(() => {
+    if (!businessId) return;
+    fetch(`/api/stock/accounts/ledgers?businessId=${businessId}`, { cache: 'no-store' })
+      .then(async (res) => {
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Failed to load ledgers');
+        setLedgers(json.ledgers);
+      })
+      .catch((err) => setError(err.message));
+  }, [businessId, refreshKey]);
+
+  const business = businesses?.find((b) => b.id === businessId);
+  const view = business ? { id: business.id, legal_name: business.legalName } : null;
+  const tabs = isSalesperson ? ['daybook'] : ['daybook', 'outstanding', 'ledgers', 'setup'];
+  const panelProps = { business: view, isApprover, refreshKey, onChanged: refresh, notify: setToast, t };
+
+  return (
+    <div className={CLASSES.contentWrap}>
+      <div className={`${CLASSES.topCard} flex flex-wrap items-start justify-between gap-4`}>
+        <div className="min-w-0">
+          <h1 className="flex items-center gap-2 text-lg font-semibold">
+            <BookOpen className="h-5 w-5 text-brand-primary" /> {t('title')}
+          </h1>
+          <p className="mt-1 max-w-2xl text-sm text-slate-500">{isSalesperson ? t('salespersonHint') : t('subtitle')}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {businesses?.length > 1 ? (
+            <select aria-label={t('business')} value={businessId ?? ''} onChange={(e) => setBusinessId(Number(e.target.value))}
+              className="rounded-lg border border-input bg-card px-3 py-2 text-sm">
+              {businesses.map((b) => <option key={b.id} value={b.id}>{b.legalName}</option>)}
+            </select>
+          ) : null}
+          {canEnter && view ? (
+            <button type="button" onClick={() => setSheetOpen(true)} className={PILL_PRIMARY_BUTTON_CLASS}>
+              <Plus className="h-3.5 w-3.5" /> {t('newVoucher')}
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      {error ? <p className="text-sm text-rose-500">{error}</p> : null}
+
+      {tabs.length > 1 ? (
+        <div className={tabTrackClass(tabs.length)} role="tablist">
+          {tabs.map((key) => (
+            <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className={tabButtonClass(tab === key, tabs.length)}>
+              {t(key)}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {view ? (
+        <>
+          {tab === 'daybook' ? <DayBookPanel {...panelProps} role={accessRole} me={accessUser?.id} /> : null}
+          {tab === 'outstanding' ? <OutstandingPanel {...panelProps} /> : null}
+          {tab === 'ledgers' ? <LedgersPanel {...panelProps} /> : null}
+          {tab === 'setup' ? <SetupPanel {...panelProps} /> : null}
+          <VoucherSheet open={sheetOpen} onOpenChange={setSheetOpen} business={view} ledgers={ledgers} role={accessRole}
+            onSaved={(message) => { setToast({ type: 'success', message }); refresh(); }} t={t} />
+        </>
+      ) : !error ? <p className="text-sm text-slate-400">{t('loading')}</p> : null}
+
+      <StockToast toast={toast} onDismiss={() => setToast(null)} />
+    </div>
+  );
+}

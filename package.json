@@ -29,6 +29,7 @@
     "db:migrate-inbound-trips": "node --env-file-if-exists=.env.local scripts/migrate-inbound-trips.mjs",
     "db:migrate-admin-can-sell": "node --env-file-if-exists=.env.local scripts/migrate-admin-can-sell.mjs",
     "db:migrate-sales-invoices": "node --env-file-if-exists=.env.local scripts/migrate-sales-invoices.mjs",
+    "db:migrate-accounts": "node --env-file-if-exists=.env.local scripts/migrate-accounts.mjs",
     "check:analytics-sql": "node scripts/check-analytics-sql.mjs"
   },
   "dependencies": {
