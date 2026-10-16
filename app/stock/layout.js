@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { BarChart2, Clock, FileText, Home, Users } from 'lucide-react';
 import { getLogoutHref, useAuthUser } from '@/lib/auth-client';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { useTheme } from 'next-themes';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -19,6 +19,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import StockSidebar from '@/components/stock/layout/StockSidebar';
 import StockTopbar from '@/components/stock/layout/StockTopbar';
 import StockNotificationsSheet from '@/components/stock/layout/StockNotificationsSheet';
+import ClockInReminder from '@/components/stock/layout/ClockInReminder';
 import { BrandMark } from '@/components/ui/brand-mark';
 
 function FullScreenSpinner({ label }) {
@@ -42,16 +43,14 @@ export default function StockLayout({ children }) {
   const { language, toggleLanguage } = useLanguage();
   const { resolvedTheme, setTheme } = useTheme();
   const pathname = usePathname();
-  const router = useRouter();
 
   const dashboardSearchRef = useRef(null);
-  const [dashboardSearchValue, setDashboardSearchValue] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const { accessLoading, hasResolvedAccessOnce, accessApproved, accessMessage, accessRole } = useStockAccess(user);
 
   const notificationsState = useStockNotifications({ user, accessApproved });
-  const { isApplePlatform } = useStockShortcuts({ dashboardSearchRef });
+  const { isApplePlatform } = useStockShortcuts({ dashboardSearchRef, accessRole });
 
   const t = (key) => getTranslation(`stock.layout.${key}`, language);
   const tc = {
@@ -62,9 +61,6 @@ export default function StockLayout({ children }) {
     switchToDark: language === 'hi' ? 'डार्क थीम में बदलें' : 'Switch to dark theme',
     light: language === 'hi' ? 'लाइट' : 'Light',
     dark: language === 'hi' ? 'डार्क' : 'Dark',
-    erpWorkspace: language === 'hi' ? 'ईआरपी कार्यक्षेत्र' : 'ERP Workspace',
-    stockOpsApprovals: language === 'hi' ? 'स्टॉक संचालन और अनुमोदन' : 'Stock operations and approvals',
-    searchHub: language === 'hi' ? 'हब खोजें (CMD+K)' : 'Search Hub (CMD+K)',
     dashboardAria: language === 'hi' ? 'हनुमंत मार्बल स्टॉक डैशबोर्ड' : 'Hanumant Marble stock dashboard',
     mobileNav: language === 'hi' ? 'मोबाइल स्टॉक नेविगेशन' : 'Mobile stock navigation',
     adminHub: language === 'hi' ? 'एडमिन हब' : 'Admin Hub',
@@ -83,13 +79,10 @@ export default function StockLayout({ children }) {
     departmentsShort: language === 'hi' ? 'विभाग' : 'dept',
     departmentsCount: language === 'hi' ? 'विभाग' : 'departments',
     open: language === 'hi' ? 'खोलें' : 'Open',
-    searchHint: language === 'hi' ? 'खोजें या कमांड चलाएं…' : 'Search or run commands…',
   };
 
   const isDarkTheme = resolvedTheme === 'dark';
   const primaryModifierLabel = isApplePlatform ? 'CMD + ' : 'Ctrl + ';
-  const shiftModifierLabel = isApplePlatform ? 'Shift +' : 'Shift + ';
-  const primaryModifierAriaLabel = isApplePlatform ? 'Command' : 'Control';
   const isUnauthorizedError = error?.message === 'Unauthorized' || error?.status === 401;
 
   function handleStockLogout() {
@@ -123,64 +116,6 @@ export default function StockLayout({ children }) {
     }
     return pathname?.startsWith(cleanHref);
   };
-
-  // Returns false when nothing matched, so the caller can keep the palette open
-  // on its "no commands found" state rather than silently navigating away.
-  function runDashboardSearch(rawQuery) {
-    const query = String(rawQuery || '').trim().toLowerCase();
-    if (!query) {
-      return false;
-    }
-
-    if (query.includes('new purchase') || query.includes('new arrival') || query === 'np') {
-      router.push('/stock?view=purchases&new=purchase');
-      return true;
-    }
-
-    if (query.includes('new dispatch') || query === 'nd') {
-      router.push('/stock?view=dispatches&new=dispatch');
-      return true;
-    }
-
-    if (query.includes('purchase') || query.includes('arrival') || query.includes('inbound')) {
-      router.push('/stock?view=purchases');
-      return true;
-    }
-
-    if (query.includes('dispatch') || query.includes('outbound')) {
-      router.push('/stock?view=dispatches');
-      return true;
-    }
-
-    if (query.includes('item') || query.includes('stock') || query.includes('inventory')) {
-      router.push('/stock?view=items');
-      return true;
-    }
-
-    if (query.includes('document')) {
-      router.push('/stock/documents');
-      return true;
-    }
-
-    if (query.includes('approval') || query.includes('change request')) {
-      router.push('/stock/admin?focus=change-requests');
-      return true;
-    }
-
-    if (query.includes('admin') || query.includes('analytics') || query.includes('user')) {
-      router.push('/stock/admin');
-      return true;
-    }
-
-    // The palette's Dashboard entry searches for 'home', which matched nothing
-    // above and used to reach /stock only via the blind fallback.
-    if (query.includes('dashboard') || query.includes('home') || query.includes('overview') || query === 'main') {
-      router.push('/stock');
-      return true;
-    }
-
-    return false;
-  }
 
   if (isLoading) {
     return <FullScreenSpinner label="Loading…" />;
@@ -263,12 +198,8 @@ export default function StockLayout({ children }) {
           isDarkTheme={isDarkTheme}
           handleStockLogout={handleStockLogout}
           dashboardSearchRef={dashboardSearchRef}
-          dashboardSearchValue={dashboardSearchValue}
-          setDashboardSearchValue={setDashboardSearchValue}
-          runDashboardSearch={runDashboardSearch}
-          primaryModifierAriaLabel={primaryModifierAriaLabel}
+          accessRole={accessRole}
           primaryModifierLabel={primaryModifierLabel}
-          shiftModifierLabel={shiftModifierLabel}
           navigationItems={navigationItems}
           isActiveRoute={isActiveRoute}
         />
@@ -276,6 +207,11 @@ export default function StockLayout({ children }) {
 
         <main className="flex-1">
           <div className="mx-auto w-full max-w-[1600px]">
+            {accessRole === 'salesperson' ? (
+              <div className="print:hidden">
+                <ClockInReminder t={t} onAttendancePage={isActiveRoute('/stock/attendance')} />
+              </div>
+            ) : null}
             {children}
           </div>
         </main>

@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { getRoleFlags } from '@/lib/stock-roles.mjs';
 
-export function useStockShortcuts({ dashboardSearchRef }) {
+export function useStockShortcuts({ dashboardSearchRef, accessRole }) {
   const router = useRouter();
   const [isApplePlatform, setIsApplePlatform] = useState(false);
 
@@ -30,7 +31,8 @@ export function useStockShortcuts({ dashboardSearchRef }) {
         return;
       }
 
-      if (isTypingTarget) {
+      // Read-only roles cannot log purchases or dispatches.
+      if (isTypingTarget || getRoleFlags(accessRole).isReadOnly) {
         return;
       }
 
@@ -50,7 +52,7 @@ export function useStockShortcuts({ dashboardSearchRef }) {
 
     window.addEventListener('keydown', handleGlobalShortcuts);
     return () => window.removeEventListener('keydown', handleGlobalShortcuts);
-  }, [isApplePlatform, router, dashboardSearchRef]);
+  }, [isApplePlatform, router, dashboardSearchRef, accessRole]);
 
   return { isApplePlatform };
 }

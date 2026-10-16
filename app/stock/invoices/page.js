@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -135,6 +136,20 @@ export default function InvoicesPage() {
       setNotice({ type: 'error', message: err.message });
     }
   }, [form, formSetup, t]);
+
+  // ?new=estimate, from the topbar's "New estimate" command. Waits for the
+  // access user so a viewer who cannot raise one just lands on the list.
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const wantsNewEstimate = searchParams.get('new') === 'estimate';
+  const handledNewRef = useRef(false);
+  useEffect(() => {
+    if (!wantsNewEstimate) { handledNewRef.current = false; return; }
+    if (!accessUser || handledNewRef.current) return;
+    handledNewRef.current = true;
+    router.replace('/stock/invoices');
+    if (canRaise) openNewEstimate();
+  }, [wantsNewEstimate, accessUser, canRaise, openNewEstimate, router]);
 
   const submitEstimate = useCallback(async (values) => {
     setSubmitting(true);

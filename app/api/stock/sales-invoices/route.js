@@ -121,9 +121,12 @@ export async function GET(request) {
 
   try {
     const { searchParams } = new URL(request.url);
+    const search = searchParams.get('search')?.trim().slice(0, 100) || '';
     const invoices = await listSalesInvoices({
       status: searchParams.get('status') || null,
       ownerUserId: normalizeStockRole(appUser.role) === 'salesperson' ? Number(appUser.id) : null,
+      search,
+      ...(search ? { limit: 5 } : {}),
     });
     return NextResponse.json({ invoices });
   } catch (error) {

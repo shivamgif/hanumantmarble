@@ -2,101 +2,61 @@
 
 import { BrandMark } from '@/components/ui/brand-mark';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   Bell, Languages, MoonStar, SunMedium, LogOut, Search,
   PackageCheck, Truck, Boxes, FileText, Users, BarChart2,
-  Home, PlusCircle, ArrowRight, X,
+  Home, PlusCircle, ArrowRight, X, Receipt, Clock, CalendarOff,
+  CheckCheck, Loader2, Plus,
 } from 'lucide-react';
+import { getRoleFlags } from '@/lib/stock-roles.mjs';
 
 // ─── Command catalogue ────────────────────────────────────────────────────────
-// Each entry has: id, label, description, icon, href (used by runDashboardSearch)
+// `show` hides a command the viewer's role cannot use; it mirrors the nav
+// gating in app/stock/layout.js.
+const isApprover = (flags, role) => role === 'admin' || role === 'manager';
+const canWrite = (flags) => !flags.isReadOnly;
+const canInvoice = (flags, role) => role !== 'read_only_admin';
+
 const COMMANDS = [
-  {
-    id: 'dashboard',
-    label: 'Dashboard',
-    description: 'Go to stock dashboard',
-    icon: Home,
-    keywords: ['home', 'dashboard', 'main', 'overview'],
-    href: '/stock',
-  },
-  {
-    id: 'new-purchase',
-    label: 'New Purchase',
-    description: 'Log a new inbound shipment',
-    icon: PlusCircle,
+  { id: 'dashboard', label: 'Dashboard', description: 'Go to stock dashboard', icon: Home,
+    keywords: ['home', 'dashboard', 'main', 'overview'], href: '/stock' },
+  { id: 'new-purchase', label: 'New Purchase', description: 'Log a new inbound shipment', icon: PlusCircle,
     keywords: ['new purchase', 'new arrival', 'np', 'purchase', 'buy', 'inbound', 'arrival'],
-    href: '/stock?view=purchases&new=purchase',
-  },
-  {
-    id: 'new-dispatch',
-    label: 'New Dispatch',
-    description: 'Create a new outbound dispatch',
-    icon: Truck,
+    href: '/stock?view=purchases&new=purchase', show: canWrite },
+  { id: 'new-dispatch', label: 'New Dispatch', description: 'Create a new outbound dispatch', icon: Truck,
     keywords: ['new dispatch', 'nd', 'dispatch', 'outbound', 'sell', 'send'],
-    href: '/stock?view=dispatches&new=dispatch',
-  },
-  {
-    id: 'purchases',
-    label: 'Purchases',
-    description: 'View all inbound shipments',
-    icon: PackageCheck,
-    keywords: ['purchases', 'arrivals', 'inbound', 'purchase list'],
-    href: '/stock?view=purchases',
-  },
-  {
-    id: 'dispatches',
-    label: 'Dispatches',
-    description: 'View all outbound dispatches',
-    icon: Truck,
-    keywords: ['dispatches', 'outbound', 'dispatch list'],
-    href: '/stock?view=dispatches',
-  },
-  {
-    id: 'inventory',
-    label: 'Inventory',
-    description: 'Browse current stock levels',
-    icon: Boxes,
-    keywords: ['inventory', 'items', 'stock', 'catalog', 'tiles'],
-    href: '/stock?view=items',
-  },
-  {
-    id: 'documents',
-    label: 'Documents',
-    description: 'View invoices and attached files',
-    icon: FileText,
-    keywords: ['documents', 'files', 'invoices', 'docs'],
-    href: '/stock/documents',
-  },
-  {
-    id: 'approvals',
-    label: 'Approvals',
-    description: 'Review pending change requests',
-    icon: Users,
+    href: '/stock?view=dispatches&new=dispatch', show: canWrite },
+  { id: 'new-estimate', label: 'New Estimate', description: 'Raise a sales estimate', icon: Receipt,
+    keywords: ['new estimate', 'ne', 'estimate', 'quote', 'quotation', 'bill'],
+    href: '/stock/invoices?new=estimate', show: canInvoice },
+  { id: 'dispatches', label: 'Dispatches', description: 'View all outbound dispatches', icon: Truck,
+    keywords: ['dispatches', 'outbound', 'dispatch list'], href: '/stock?view=dispatches' },
+  { id: 'purchases', label: 'Purchases', description: 'View all inbound shipments', icon: PackageCheck,
+    keywords: ['purchases', 'arrivals', 'inbound', 'purchase list'], href: '/stock?view=purchases' },
+  { id: 'inventory', label: 'Inventory', description: 'Browse current stock levels', icon: Boxes,
+    keywords: ['inventory', 'items', 'stock', 'catalog', 'tiles'], href: '/stock?view=items' },
+  { id: 'invoices', label: 'Invoices', description: 'Estimates, tax invoices and e-invoices', icon: FileText,
+    keywords: ['invoices', 'estimates', 'gst', 'tax invoice', 'irn', 'e-invoice', 'eway'],
+    href: '/stock/invoices', show: canInvoice },
+  { id: 'attendance', label: 'Attendance', description: 'Punch in/out and timesheets', icon: Clock,
+    keywords: ['attendance', 'punch', 'timesheet', 'payroll'], href: '/stock/attendance' },
+  { id: 'leave', label: 'Leave', description: 'Apply for or review leave', icon: CalendarOff,
+    keywords: ['leave', 'holiday', 'off'], href: '/stock/attendance?view=leave' },
+  { id: 'documents', label: 'Documents', description: 'Attached files and bills', icon: FileText,
+    keywords: ['documents', 'files', 'docs'], href: '/stock/documents' },
+  { id: 'approvals', label: 'Approvals', description: 'Review pending change requests', icon: CheckCheck,
     keywords: ['approvals', 'change request', 'pending', 'review'],
-    href: '/stock/admin?focus=change-requests',
-  },
-  {
-    id: 'admin',
-    label: 'Admin Hub',
-    description: 'User management and settings',
-    icon: Users,
-    keywords: ['admin', 'users', 'settings', 'management'],
-    href: '/stock/admin',
-  },
-  {
-    id: 'analytics',
-    label: 'Analytics',
-    description: 'Sales and stock analytics',
-    icon: BarChart2,
-    keywords: ['analytics', 'reports', 'charts', 'data', 'stats'],
-    href: '/stock/analytics',
-  },
+    href: '/stock/admin?focus=change-requests', show: isApprover },
+  { id: 'admin', label: 'Admin Hub', description: 'Users, locations and settings', icon: Users,
+    keywords: ['admin', 'users', 'settings', 'management'], href: '/stock/admin', show: isApprover },
+  { id: 'analytics', label: 'Analytics', description: 'Sales and stock analytics', icon: BarChart2,
+    keywords: ['analytics', 'reports', 'charts', 'data', 'stats'], href: '/stock/analytics',
+    show: (flags, role) => flags.canViewAllAnalytics || role === 'salesperson' },
 ];
 
-const DEFAULT_COMMANDS = COMMANDS.filter((c) =>
-  ['dashboard', 'new-purchase', 'new-dispatch', 'purchases', 'dispatches', 'inventory'].includes(c.id)
-);
+const DEFAULT_COMMAND_IDS = ['new-dispatch', 'new-purchase', 'new-estimate', 'dispatches', 'purchases', 'inventory', 'invoices'];
 
 function scoreCommand(cmd, query) {
   const q = query.toLowerCase().trim();
@@ -112,138 +72,122 @@ function scoreCommand(cmd, query) {
   return 0;
 }
 
-// ─── SearchDropdown ───────────────────────────────────────────────────────────
-function SearchDropdown({ query, onSelect, activeIndex, setActiveIndex }) {
-  const results = query
-    ? COMMANDS.map((c) => ({ ...c, score: scoreCommand(c, query) }))
-        .filter((c) => c.score > 0)
-        .sort((a, b) => b.score - a.score)
-    : DEFAULT_COMMANDS;
+const rupees = (value) => `₹${Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 
-  if (results.length === 0) {
-    return (
-      <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[320px] glass rounded-xl border p-4 animate-in fade-in-0 zoom-in-[0.98] slide-in-from-top-1 duration-150">
-        <p className="text-center text-xs text-slate-400 dark:text-slate-500">No commands found for &ldquo;{query}&rdquo;</p>
-      </div>
-    );
-  }
+// Live record lookups. Each endpoint already scopes rows to the viewer (a
+// salesperson sees their divisions / own invoices); a 403 just yields [].
+async function searchRecords(q, { signal, withInvoices }) {
+  const enc = encodeURIComponent(q);
+  const get = (url, map) => fetch(url, { signal, cache: 'no-store' })
+    .then((res) => (res.ok ? res.json() : {}))
+    .then(map)
+    .catch(() => []);
 
-  return (
-    <div
-      className="absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[320px] glass overflow-hidden rounded-xl border animate-in fade-in-0 zoom-in-[0.98] slide-in-from-top-1 duration-150"
-      role="listbox"
-      aria-label="Search suggestions"
-    >
-      {!query && (
-        <div className="px-3 pb-1 pt-2.5">
-          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Quick actions</p>
-        </div>
-      )}
-      <ul className="max-h-72 overflow-y-auto p-1.5">
-        {results.map((cmd, i) => {
-          const Icon = cmd.icon;
-          const isActive = i === activeIndex;
-          return (
-            <li key={cmd.id} role="option" aria-selected={isActive}>
-              <button
-                type="button"
-                onMouseEnter={() => setActiveIndex(i)}
-                onClick={() => onSelect(cmd)}
-                className={`flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left transition-colors duration-100 ${
-                  isActive
-                    ? 'bg-muted'
-                    : 'hover:bg-muted'
-                }`}
-              >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-card text-slate-500 dark:text-slate-400">
-                  <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium text-slate-900 dark:text-slate-100">
-                    {cmd.label}
-                  </span>
-                  <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
-                    {cmd.description}
-                  </span>
-                </span>
-                <ArrowRight className={`h-3 w-3 shrink-0 transition-opacity ${isActive ? 'text-brand-primary opacity-100' : 'opacity-0'}`} />
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-      <div className="border-t border-border px-3 py-2">
-        <p className="text-[11px] text-slate-400 dark:text-slate-500">
-          <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-[10px] font-bold dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">↑↓</kbd>
-          {' '}navigate &nbsp;
-          <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-[10px] font-bold dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">↵</kbd>
-          {' '}select &nbsp;
-          <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-[10px] font-bold dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">Esc</kbd>
-          {' '}close
-        </p>
-      </div>
-    </div>
-  );
+  const groups = await Promise.all([
+    get(`/api/stock/dispatches?search=${enc}&pageSize=5`, (json) => (json.dispatches || []).map((row) => ({
+      id: `dispatch-${row.id}`,
+      group: 'Dispatches',
+      icon: Truck,
+      label: row.shipment_number || `OUT-${row.id}`,
+      description: [row.customer_name, row.truck_license_plate].filter(Boolean).join(' · '),
+      href: `/stock?view=dispatches&entityType=outbound_shipment&entityId=${row.id}`,
+    }))),
+    get(`/api/stock/arrivals?search=${enc}&pageSize=5`, (json) => (json.arrivals || []).map((row) => ({
+      id: `purchase-${row.id}`,
+      group: 'Purchases',
+      icon: PackageCheck,
+      label: row.shipment_number || `INB-${row.id}`,
+      description: [row.supplier_name, row.truck_license_plate].filter(Boolean).join(' · '),
+      href: `/stock?view=purchases&entityType=inbound_shipment&entityId=${row.id}`,
+    }))),
+    withInvoices
+      ? get(`/api/stock/sales-invoices?search=${enc}`, (json) => (json.invoices || []).map((row) => ({
+        id: `invoice-${row.id}`,
+        group: 'Invoices',
+        icon: Receipt,
+        label: row.invoice_number || `Estimate #${row.id}`,
+        description: [row.bill_to_name, rupees(row.grand_total), row.status].filter(Boolean).join(' · '),
+        href: `/stock/invoices/${row.id}`,
+      })))
+      : [],
+  ]);
+  return groups.flat();
 }
 
 // ─── SearchBox ────────────────────────────────────────────────────────────────
-function SearchBox({ dashboardSearchRef, runDashboardSearch, placeholder }) {
+function SearchBox({ dashboardSearchRef, placeholder, accessRole, primaryModifierLabel }) {
+  const router = useRouter();
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [records, setRecords] = useState([]);
+  const [searching, setSearching] = useState(false);
   const containerRef = useRef(null);
 
-  const results = query
-    ? COMMANDS.map((c) => ({ ...c, score: scoreCommand(c, query) }))
+  const flags = getRoleFlags(accessRole);
+  const commands = COMMANDS.filter((c) => !c.show || c.show(flags, accessRole));
+  const withInvoices = canInvoice(flags, accessRole);
+  const trimmed = query.trim();
+
+  const commandResults = trimmed
+    ? commands.map((c) => ({ ...c, score: scoreCommand(c, trimmed) }))
         .filter((c) => c.score > 0)
         .sort((a, b) => b.score - a.score)
-    : DEFAULT_COMMANDS;
+        .slice(0, 6)
+    : DEFAULT_COMMAND_IDS.map((id) => commands.find((c) => c.id === id)).filter(Boolean);
+  const results = [...commandResults.map((c) => ({ ...c, group: trimmed ? 'Commands' : 'Quick actions' })), ...records];
 
-  const handleSelect = useCallback((cmd) => {
-    runDashboardSearch(cmd.keywords[0]);
+  useEffect(() => {
+    if (trimmed.length < 2) {
+      setRecords([]);
+      setSearching(false);
+      return undefined;
+    }
+    const controller = new AbortController();
+    setSearching(true);
+    const timer = setTimeout(async () => {
+      const found = await searchRecords(trimmed, { signal: controller.signal, withInvoices });
+      if (controller.signal.aborted) return;
+      setRecords(found);
+      setSearching(false);
+    }, 250);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [trimmed, withInvoices]);
+
+  const close = useCallback(() => {
     setQuery('');
     setOpen(false);
     setActiveIndex(0);
-  }, [runDashboardSearch]);
+  }, []);
+
+  const handleSelect = useCallback((item) => {
+    router.push(item.href);
+    close();
+    dashboardSearchRef?.current?.blur();
+  }, [router, close, dashboardSearchRef]);
 
   const handleKeyDown = useCallback((e) => {
-    if (!open) {
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        setOpen(true);
-        return;
-      }
-    }
     if (e.key === 'Escape') {
-      setOpen(false);
-      setQuery('');
+      close();
       dashboardSearchRef?.current?.blur();
       return;
     }
+    if (!open && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      setOpen(true);
+      return;
+    }
+    if (!results.length) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setActiveIndex((prev) => (prev + 1) % results.length);
-      return;
-    }
-    if (e.key === 'ArrowUp') {
+    } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setActiveIndex((prev) => (prev - 1 + results.length) % results.length);
-      return;
-    }
-    if (e.key === 'Enter') {
+    } else if (e.key === 'Enter' && results[activeIndex]) {
       e.preventDefault();
-      if (open && results[activeIndex]) {
-        handleSelect(results[activeIndex]);
-      } else if (runDashboardSearch(query)) {
-        setQuery('');
-        setOpen(false);
-      } else {
-        // Nothing matched. Leave the query in place and keep the dropdown on
-        // its "no commands found" state instead of navigating somewhere the
-        // user did not ask for.
-        setOpen(true);
-      }
+      handleSelect(results[activeIndex]);
     }
-  }, [open, results, activeIndex, query, dashboardSearchRef, handleSelect, runDashboardSearch]);
+  }, [open, results, activeIndex, close, dashboardSearchRef, handleSelect]);
 
   // Close on outside click
   useEffect(() => {
@@ -256,13 +200,13 @@ function SearchBox({ dashboardSearchRef, runDashboardSearch, placeholder }) {
     return () => document.removeEventListener('mousedown', onOutside);
   }, []);
 
-  // Reset active index when results change
+  // Keep the highlight on the first row as results change under it.
   useEffect(() => {
     setActiveIndex(0);
-  }, [query]);
+  }, [query, records]);
 
   return (
-    <div ref={containerRef} className="relative flex items-center group">
+    <div ref={containerRef} className="relative flex w-full max-w-xl items-center group">
       <Search className="pointer-events-none absolute left-3 h-4 w-4 text-slate-400 group-focus-within:text-slate-700 dark:group-focus-within:text-slate-200 transition-colors" />
       <input
         ref={dashboardSearchRef}
@@ -281,26 +225,112 @@ function SearchBox({ dashboardSearchRef, runDashboardSearch, placeholder }) {
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={handleKeyDown}
-        className="h-9 w-44 lg:w-56 xl:w-72 rounded-md border border-border bg-card pl-9 pr-9 text-sm text-foreground placeholder:text-slate-400 outline-none transition-[border-color,box-shadow] duration-150 focus:border-slate-400 focus:ring-2 focus:ring-brand-primary/15 dark:focus:border-slate-500"
+        className="h-9 w-full rounded-md border border-border bg-card pl-9 pr-16 text-sm text-foreground placeholder:text-slate-400 outline-none transition-[border-color,box-shadow] duration-150 focus:border-slate-400 focus:ring-2 focus:ring-brand-primary/15 dark:focus:border-slate-500"
       />
-      {query && (
+      {query ? (
         <button
           type="button"
           aria-label="Clear search"
-          onClick={() => { setQuery(''); setOpen(false); dashboardSearchRef?.current?.focus(); }}
+          onClick={() => { setQuery(''); dashboardSearchRef?.current?.focus(); }}
           className="absolute right-3 flex h-5 w-5 items-center justify-center rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
         >
           <X className="h-3.5 w-3.5" />
         </button>
+      ) : (
+        <span className="pointer-events-none absolute right-2.5 flex gap-0.5" aria-hidden="true">
+          <Kbd>{primaryModifierLabel.replace('+', '').trim()}</Kbd>
+          <Kbd>K</Kbd>
+        </span>
       )}
       {open && (
         <SearchDropdown
-          query={query}
+          query={trimmed}
+          results={results}
+          searching={searching}
           onSelect={handleSelect}
           activeIndex={activeIndex}
           setActiveIndex={setActiveIndex}
         />
       )}
+    </div>
+  );
+}
+
+function Kbd({ children }) {
+  return (
+    <kbd className="min-w-[20px] h-5 flex items-center justify-center rounded border border-border border-b-2 bg-card px-1 font-sans text-[11px] font-medium text-slate-600 dark:text-slate-300 leading-none">
+      {children}
+    </kbd>
+  );
+}
+
+// ─── SearchDropdown ───────────────────────────────────────────────────────────
+function SearchDropdown({ query, results, searching, onSelect, activeIndex, setActiveIndex }) {
+  return (
+    <div
+      id="topbar-search-listbox"
+      className="absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[320px] glass overflow-hidden rounded-xl border animate-in fade-in-0 zoom-in-[0.98] slide-in-from-top-1 duration-150"
+      role="listbox"
+      aria-label="Search results"
+    >
+      <ul className="max-h-[26rem] overflow-y-auto p-1.5">
+        {results.map((item, i) => {
+          const Icon = item.icon;
+          const isActive = i === activeIndex;
+          const startsGroup = i === 0 || results[i - 1].group !== item.group;
+          return (
+            <li key={item.id} role="option" aria-selected={isActive}>
+              {startsGroup && (
+                <p className="px-2.5 pb-1 pt-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">{item.group}</p>
+              )}
+              <button
+                type="button"
+                onMouseEnter={() => setActiveIndex(i)}
+                onClick={() => onSelect(item)}
+                className={`flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left transition-colors duration-100 ${
+                  isActive ? 'bg-muted' : 'hover:bg-muted'
+                }`}
+              >
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-card text-slate-500 dark:text-slate-400">
+                  <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {item.label}
+                  </span>
+                  {item.description && (
+                    <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
+                      {item.description}
+                    </span>
+                  )}
+                </span>
+                <ArrowRight className={`h-3 w-3 shrink-0 transition-opacity ${isActive ? 'text-brand-primary opacity-100' : 'opacity-0'}`} />
+              </button>
+            </li>
+          );
+        })}
+        {searching && (
+          <li className="flex items-center gap-2 px-2.5 py-2 text-xs text-slate-400 dark:text-slate-500" aria-live="polite">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching records…
+          </li>
+        )}
+        {!searching && results.length === 0 && (
+          <li className="px-2.5 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+            Nothing found for &ldquo;{query}&rdquo;
+          </li>
+        )}
+      </ul>
+      <div className="border-t border-border px-3 py-2">
+        <p className="text-[11px] text-slate-400 dark:text-slate-500">
+          <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-[10px] font-bold dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">↑↓</kbd>
+          {' '}navigate &nbsp;
+          <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-[10px] font-bold dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">↵</kbd>
+          {' '}open &nbsp;
+          <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-[10px] font-bold dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">Esc</kbd>
+          {' '}close
+          {query.length < 2 && <span className="ml-2">· type a shipment no., party, truck or invoice no.</span>}
+        </p>
+      </div>
     </div>
   );
 }
@@ -316,75 +346,43 @@ export default function StockTopbar({
   isDarkTheme,
   handleStockLogout,
   dashboardSearchRef,
-  dashboardSearchValue,
-  setDashboardSearchValue,
-  runDashboardSearch,
-  primaryModifierAriaLabel,
+  accessRole,
   primaryModifierLabel,
-  shiftModifierLabel,
   navigationItems,
   isActiveRoute,
 }) {
+  const mod = primaryModifierLabel.replace('+', '').trim();
+  const quickActions = getRoleFlags(accessRole).isReadOnly ? [] : [
+    { label: 'Purchase', href: '/stock?view=purchases&new=purchase', keys: [mod, '⇧', 'P'] },
+    { label: 'Dispatch', href: '/stock?view=dispatches&new=dispatch', keys: [mod, '⇧', 'D'] },
+  ];
 
   return (
     <header className="glass-bar sticky top-0 z-20">
       <div className="mx-auto w-full max-w-[1600px]">
         {/* Desktop bar */}
-        <div className="hidden h-14 items-center justify-between gap-4 xl:gap-8 px-8 lg:flex">
-          <div className="min-w-0 shrink-0">
-            <p className="truncate text-sm">
-              <span className="font-semibold text-slate-900 dark:text-slate-100">{t('erpWorkspace')}</span>
-              <span className="mx-2 text-slate-300 dark:text-slate-600" aria-hidden="true">/</span>
-              <span className="text-slate-500 dark:text-slate-400">{t('stockOpsApprovals')}</span>
-            </p>
-          </div>
+        <div className="hidden h-14 items-center gap-4 px-8 lg:flex">
+          <SearchBox
+            dashboardSearchRef={dashboardSearchRef}
+            placeholder={t('searchHint')}
+            accessRole={accessRole}
+            primaryModifierLabel={primaryModifierLabel}
+          />
 
-          <div className="flex flex-1 items-center justify-end gap-4 lg:gap-5">
-            <SearchBox
-              dashboardSearchRef={dashboardSearchRef}
-              runDashboardSearch={runDashboardSearch}
-              placeholder={t('searchHint')}
-            />
-
-            {/* Keyboard shortcuts */}
-            <div className="hidden xl:flex items-center gap-4" aria-label="Keyboard shortcuts">
-              {[
-                {
-                  id: 'search',
-                  label: 'Search',
-                  keys: [primaryModifierLabel, 'K']
-                },
-                {
-                  id: 'purchase',
-                  label: 'Purchase',
-                  keys: [primaryModifierLabel, 'SHIFT', 'P']
-                },
-                {
-                  id: 'dispatch',
-                  label: 'Dispatch',
-                  keys: [primaryModifierLabel, 'SHIFT', 'D']
-                },
-              ].map((group) => (
-                <div
-                  key={group.id}
-                  className="flex items-center gap-1.5"
-                >
-                  <span className="text-xs text-slate-500 dark:text-slate-400">
-                    {group.label}
-                  </span>
-                  <div className="flex gap-0.5 items-center">
-                    {group.keys.map((k, i) => (
-                      <kbd
-                        key={i}
-                        className="min-w-[20px] h-5 flex items-center justify-center rounded border border-border border-b-2 bg-card px-1 font-sans text-[11px] font-medium text-slate-600 dark:text-slate-300 leading-none"
-                      >
-                        {k.replace('+', '').trim()}
-                      </kbd>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="ml-auto flex items-center gap-2">
+            {quickActions.map((action) => (
+              <Link
+                key={action.href}
+                href={action.href}
+                className="flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-muted dark:text-slate-200 focus-ring"
+              >
+                <Plus className="h-4 w-4 text-brand-primary" />
+                {action.label}
+                <span className="hidden xl:flex gap-0.5" aria-hidden="true">
+                  {action.keys.map((k) => <Kbd key={k}>{k}</Kbd>)}
+                </span>
+              </Link>
+            ))}
           </div>
         </div>
 

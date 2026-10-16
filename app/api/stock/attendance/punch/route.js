@@ -283,7 +283,15 @@ export async function GET(request) {
   if (!appUser) return NextResponse.json({ error: 'No employee record for this account' }, { status: 403 });
 
   try {
-    const [open, settings] = await Promise.all([getOpenEntry(appUser.id), loadSettings()]);
+    const [open, settings, todayRows] = await Promise.all([
+      getOpenEntry(appUser.id),
+      loadSettings(),
+      // Any punch today, open or closed — drives the layout's clock-in reminder.
+      sql(
+        `SELECT 1 FROM stock_attendance_entries WHERE user_id = $1 AND work_date = $2 AND is_active LIMIT 1`,
+        [appUser.id, istToday()]
+      ),
+    ]);
 
     // Two different branches, and the difference matters to the employee:
     // homeBranch is where they usually work, currentBranch is where the open
@@ -300,6 +308,7 @@ export async function GET(request) {
       // Still open from an earlier day: the clock warns before the next tap
       // closes it at shift end (see closeStaleEntry).
       staleOpen: Boolean(entry && entry.work_date < istToday()),
+      punchedToday: todayRows.length > 0,
       elapsedMinutes: open ? openEntryMinutes(open) : 0,
       onBreak: Boolean(open?.break_started_at),
       tracksAttendance: appUser.tracks_attendance !== false,
