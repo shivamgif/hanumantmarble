@@ -25,8 +25,7 @@ import {
   generateReference,
   getStockContext,
   hasAnyStockRole,
-  normalizeText,
-} from '@/lib/stock-workflow';
+  normalizeText, stockRoute } from '@/lib/stock-workflow';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { logAudit } from '@/lib/audit-logger';
 import { toSqft } from '@/lib/stock-sqft';
@@ -66,7 +65,7 @@ async function resolveShowroomLocation(locationId) {
   return rows[0] ? { location: rows[0] } : { error: null };
 }
 
-export async function POST(request) {
+export const POST = stockRoute(async function POST(request) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {
@@ -298,9 +297,9 @@ export async function POST(request) {
       { status }
     );
   }
-}
+});
 
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {
@@ -356,4 +355,4 @@ export async function GET(request) {
     console.error('Error fetching showroom movements:', error);
     return NextResponse.json({ error: 'Failed to fetch showroom movements' }, { status: 500 });
   }
-}
+});

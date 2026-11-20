@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getRoleFlags, getStockContext } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getRoleFlags, getStockContext, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { DATE_RE } from '@/lib/attendance-db';
 
@@ -17,7 +17,7 @@ async function guard(request) {
   return { appUser };
 }
 
-export async function POST(request) {
+export const POST = stockRoute(async function POST(request) {
   const gate = await guard(request);
   if (gate.error) return gate.error;
 
@@ -32,7 +32,7 @@ export async function POST(request) {
     const rows = await sql(
       `INSERT INTO stock_holidays (holiday_date, name, created_by)
        VALUES ($1::date, $2, $3)
-       ON CONFLICT (holiday_date) DO UPDATE SET name = EXCLUDED.name
+       ON CONFLICT (tenant_id, holiday_date) DO UPDATE SET name = EXCLUDED.name
        RETURNING id, holiday_date, name`,
       [date, name, gate.appUser.id]
     );
@@ -44,9 +44,9 @@ export async function POST(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to save holiday', detail: error.message }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(request) {
+export const DELETE = stockRoute(async function DELETE(request) {
   const gate = await guard(request);
   if (gate.error) return gate.error;
 
@@ -63,4 +63,4 @@ export async function DELETE(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to delete holiday', detail: error.message }, { status: 500 });
   }
-}
+});

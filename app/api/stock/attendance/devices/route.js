@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getRoleFlags, getStockContext } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getRoleFlags, getStockContext, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { logTimeline, wallClock } from '@/lib/attendance-db';
 
@@ -19,7 +19,7 @@ async function guard(request) {
   return { session, appUser };
 }
 
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const gate = await guard(request);
   if (gate.error) return gate.error;
 
@@ -56,10 +56,10 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load devices', detail: error.message }, { status: 500 });
   }
-}
+});
 
 /** Pair a tablet. The plaintext token is returned ONCE and never stored. */
-export async function POST(request) {
+export const POST = stockRoute(async function POST(request) {
   const gate = await guard(request);
   if (gate.error) return gate.error;
 
@@ -112,10 +112,10 @@ export async function POST(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to pair device', detail: error.message }, { status: 500 });
   }
-}
+});
 
 /** Revoke a device. Hard delete: a revoked tablet must stop working now. */
-export async function DELETE(request) {
+export const DELETE = stockRoute(async function DELETE(request) {
   const gate = await guard(request);
   if (gate.error) return gate.error;
 
@@ -140,4 +140,4 @@ export async function DELETE(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to revoke device', detail: error.message }, { status: 500 });
   }
-}
+});

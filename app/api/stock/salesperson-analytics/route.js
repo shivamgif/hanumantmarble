@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { canSell, ensureDatabaseAvailable, getStockContext } from '@/lib/stock-workflow';
+import { canSell, ensureDatabaseAvailable, getStockContext, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import {
@@ -14,7 +14,7 @@ import {
 } from '@/lib/stock-analytics-sql.mjs';
 import { normalizeSettings } from '@/lib/attendance.mjs';
 
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {
@@ -232,4 +232,4 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load analytics', detail: error.message }, { status: 500 });
   }
-}
+});

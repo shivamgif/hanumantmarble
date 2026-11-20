@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getRoleFlags, getStockContext, normalizeStockRole } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getRoleFlags, getStockContext, normalizeStockRole, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { netRevenueExpr } from '@/lib/stock-analytics-sql.mjs';
@@ -35,7 +35,7 @@ function fetchDashboardUsers() {
     );
 }
 
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
   const userRole = normalizeStockRole(appUser?.role);
 
@@ -139,4 +139,4 @@ export async function GET(request) {
     console.error('Failed to load admin dashboard:', error);
     return NextResponse.json({ error: 'Failed to load admin dashboard', detail: error.message }, { status: 500 });
   }
-}
+});

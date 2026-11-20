@@ -2,13 +2,14 @@ import { NextResponse } from 'next/server';
 import { istToday } from '@/lib/attendance.mjs';
 import { accountsError, accountsGuard, loadBusiness, loadOutstanding } from '@/lib/accounts-db';
 import { addDays, ageBucket, AGE_BUCKETS, daysBetween } from '@/lib/accounts.mjs';
+import { stockRoute } from '@/lib/stock-workflow';
 
 /**
  * Receivables (customers) or payables (suppliers, transporters), bill by bill,
  * aged by days past due (bill date + the party's credit days). Amounts are
  * returned positive for the side asked about; an advance shows negative.
  */
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const gate = await accountsGuard(request);
   if (gate.error) return gate.error;
   try {
@@ -56,4 +57,4 @@ export async function GET(request) {
   } catch (error) {
     return accountsError(error, 'Failed to load outstanding');
   }
-}
+});

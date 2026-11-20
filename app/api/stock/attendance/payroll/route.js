@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getRoleFlags, getStockContext } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getRoleFlags, getStockContext, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { istMonth, istToday, summarizeMonth, workingDaysInMonth } from '@/lib/attendance.mjs';
 import { MONTH_RE, loadSettings } from '@/lib/attendance-db';
@@ -13,7 +13,7 @@ import { MONTH_RE, loadSettings } from '@/lib/attendance-db';
  * Salary is sensitive, so this needs canViewAllAttendance. A plain employee
  * gets their OWN figures from ?scope=self.
  */
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!(await ensureDatabaseAvailable())) {
@@ -130,4 +130,4 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to build payroll', detail: error.message }, { status: 500 });
   }
-}
+});

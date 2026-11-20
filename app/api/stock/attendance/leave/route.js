@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getRoleFlags, getStockContext, queueNotification } from '@/lib/stock-workflow';
-import { sql } from '@/lib/db';
+import { ensureDatabaseAvailable, getRoleFlags, getStockContext, queueNotification, stockRoute } from '@/lib/stock-workflow';
+import { sql, withTransaction } from '@/lib/db';
 import { DATE_RE, serializeLeave } from '@/lib/attendance-db';
 
 const LEAVE_TYPES = ['paid', 'unpaid', 'sick', 'casual'];
 
 /** Own requests always; everyone's only with canViewAllAttendance. */
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!(await ensureDatabaseAvailable())) {
@@ -56,13 +56,13 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load leave requests', detail: error.message }, { status: 500 });
   }
-}
+});
 
 /**
  * Request leave. Employees request for themselves; a manager may file one on
  * behalf of someone else (the non-login staff have no way to ask otherwise).
  */
-export async function POST(request) {
+export const POST = stockRoute(async function POST(request) {
   const { session, appUser } = await getStockContext(request);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!(await ensureDatabaseAvailable())) {
@@ -124,13 +124,15 @@ export async function POST(request) {
     // visible to every stock role. A failed notice must not fail the request.
     if (selfFiled) {
       try {
-        await queueNotification({
-          channel: 'internal',
-          eventType: 'other',
-          messageText: `${appUser.name} requested leave: ${fromDate}${toDate !== fromDate ? ` to ${toDate}` : ''}. Review in Attendance → Leave.`,
-          sourceTable: 'stock_leave_requests',
-          sourceId: rows[0].id,
-          createdBy: session.user?.email || null,
+        await withTransaction(async () => {
+          await queueNotification({
+            channel: 'internal',
+            eventType: 'other',
+            messageText: `${appUser.name} requested leave: ${fromDate}${toDate !== fromDate ? ` to ${toDate}` : ''}. Review in Attendance → Leave.`,
+            sourceTable: 'stock_leave_requests',
+            sourceId: rows[0].id,
+            createdBy: session.user?.email || null,
+          });
         });
       } catch (error) {
         console.error('[attendance] leave notification failed:', error.message);
@@ -142,4 +144,4 @@ export async function POST(request) {
     if (error?.code === '23503') return NextResponse.json({ error: 'Unknown employee' }, { status: 400 });
     return NextResponse.json({ error: 'Failed to create leave request', detail: error.message }, { status: 500 });
   }
-}
+});

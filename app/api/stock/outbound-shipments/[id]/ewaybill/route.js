@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole, recordTimelineEvent } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole, recordTimelineEvent, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { buildEwbJson, EWB_NUMBER_PATTERN, needsEwayBill } from '@/lib/ewaybill.mjs';
@@ -39,7 +39,7 @@ async function load(request, context) {
   return { appUser, shipment, invoice, business };
 }
 
-export async function GET(request, context) {
+export const GET = stockRoute(async function GET(request, context) {
   const ctx = await load(request, context);
   if (ctx.error) return ctx.error;
   try {
@@ -51,9 +51,9 @@ export async function GET(request, context) {
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
-}
+});
 
-export async function POST(request, context) {
+export const POST = stockRoute(async function POST(request, context) {
   const ctx = await load(request, context);
   if (ctx.error) return ctx.error;
 
@@ -80,4 +80,4 @@ export async function POST(request, context) {
     userId: ctx.appUser.id,
   });
   return NextResponse.json({ shipment: rows[0] });
-}
+});

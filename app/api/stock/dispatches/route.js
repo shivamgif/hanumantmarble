@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getStockContext } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getStockContext, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { netRevenueExpr } from '@/lib/stock-analytics-sql.mjs';
@@ -13,7 +13,7 @@ const SORT_COLS = {
   status: 'status',
 };
 
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!(await ensureDatabaseAvailable())) {
@@ -141,4 +141,4 @@ export async function GET(request) {
     console.error('Failed to fetch dispatches:', error);
     return NextResponse.json({ error: 'Failed to fetch dispatches', detail: error.message }, { status: 500 });
   }
-}
+});

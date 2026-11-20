@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 
 const STOCK_NOTIFICATION_ROLES = ['admin', 'manager', 'stock_maintainer', 'salesperson', 'read_only_admin'];
@@ -41,7 +41,7 @@ function buildNotificationActionHref(notification) {
 }
 
 
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {
@@ -104,9 +104,9 @@ export async function GET(request) {
     console.error('Failed to load stock notifications:', error);
     return NextResponse.json({ error: 'Failed to load notifications', detail: error.message }, { status: 500 });
   }
-}
+});
 
-export async function PATCH(request) {
+export const PATCH = stockRoute(async function PATCH(request) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {
@@ -164,4 +164,4 @@ export async function PATCH(request) {
     console.error('Failed to update stock notifications:', error);
     return NextResponse.json({ error: 'Failed to update notifications', detail: error.message }, { status: 500 });
   }
-}
+});

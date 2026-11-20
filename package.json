@@ -9,7 +9,8 @@
     "lint": "next lint",
     "test": "node --test 'lib/**/*.test.mjs'",
     "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.mjs",
-    "db:migrate:prod": "DATABASE_URL=$(netlify env:get DATABASE_URL --context production) node",
+    "db:migrate:prod": "DATABASE_OWNER_URL=$(netlify env:get DATABASE_OWNER_URL --context production) DATABASE_URL=$(netlify env:get DATABASE_URL --context production) node",
+    "check:rls": "node --no-warnings --env-file-if-exists=.env.local scripts/check-rls.mjs",
     "db:reset-seed-stock-ops": "node scripts/reset-and-seed-stock-ops.mjs",
     "db:check-showroom-reconcile": "node --env-file-if-exists=.env.local scripts/check-showroom-reconcile.mjs",
     "check:analytics-sql": "node scripts/check-analytics-sql.mjs"

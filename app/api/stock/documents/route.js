@@ -9,8 +9,7 @@ import {
   normalizeText,
   normalizeStockRole,
   readUploadFile,
-  recordTimelineEvent,
-} from '@/lib/stock-workflow';
+  recordTimelineEvent, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 
 const allowedDocumentTypes = new Set([
@@ -38,7 +37,7 @@ const allowedEntityTypes = new Set([
 
 const imageOnlyDocumentTypes = new Set(['transporter_bill', 'gatepass', 'delivery_receipt', 'customer_acknowledgement']);
 
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {
@@ -94,9 +93,9 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load documents', detail: error.message }, { status: 500 });
   }
-}
+});
 
-export async function POST(request) {
+export const POST = stockRoute(async function POST(request) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {
@@ -189,4 +188,4 @@ export async function POST(request) {
     console.error('Failed to upload document:', error);
     return NextResponse.json({ error: 'Failed to upload document', detail: error.message }, { status: 500 });
   }
-}
+});

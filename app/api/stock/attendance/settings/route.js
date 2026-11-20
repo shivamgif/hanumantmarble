@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getRoleFlags, getStockContext } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getRoleFlags, getStockContext, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { normalizeSettings } from '@/lib/attendance.mjs';
 import { IST_NOW, loadSettings } from '@/lib/attendance-db';
 
 // Every employee reads these — the clock-in screen needs the shift times to say
 // "you are 10 minutes late". Only a manager writes them.
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!(await ensureDatabaseAvailable())) {
@@ -30,11 +30,11 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load settings', detail: error.message }, { status: 500 });
   }
-}
+});
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-export async function PUT(request) {
+export const PUT = stockRoute(async function PUT(request) {
   const { session, appUser } = await getStockContext(request);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!(await ensureDatabaseAvailable())) {
@@ -99,4 +99,4 @@ export async function PUT(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to save settings', detail: error.message }, { status: 500 });
   }
-}
+});

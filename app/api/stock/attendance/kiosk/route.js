@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable } from '@/lib/stock-workflow';
 import { sql, withTransaction } from '@/lib/db';
 import { openEntryMinutes } from '@/lib/attendance.mjs';
-import { IST_NOW, KIOSK_COOKIE, closeStaleEntry, isoDate, loadSettings, logTimeline, serializeEntry } from '@/lib/attendance-db';
+import { IST_NOW, KIOSK_COOKIE, closeStaleEntry, isoDate, loadSettings, logTimeline, parseKioskToken, serializeEntry, withKioskTenant } from '@/lib/attendance-db';
 
 /**
  * Shared-tablet punching. This is the ONE route in the stock app that runs
@@ -54,16 +54,9 @@ function recordFailure(key) {
 
 /** Resolve the paired device from the cookie, or null. */
 async function resolveDevice(request) {
-  const raw = request.cookies.get(KIOSK_COOKIE)?.value;
-  if (!raw) return null;
-
-  // Token is "<deviceId>.<secret>" — see the pairing route for why.
-  const separator = raw.indexOf('.');
-  if (separator <= 0) return null;
-
-  const deviceId = Number(raw.slice(0, separator));
-  const secret = raw.slice(separator + 1);
-  if (!Number.isInteger(deviceId) || deviceId <= 0 || !secret) return null;
+  const token = parseKioskToken(request.cookies.get(KIOSK_COOKIE)?.value);
+  if (!token) return null;
+  const { deviceId, secret } = token;
 
   const rows = await sql(
     `SELECT d.id, d.label, d.token_hash, d.location_id, l.name AS location_name
@@ -82,8 +75,16 @@ async function resolveDevice(request) {
   return device;
 }
 
+/** Scope the request to the tenant that owns the paired device. */
+function kioskRoute(handler) {
+  return (request) => withKioskTenant(
+    parseKioskToken(request.cookies.get(KIOSK_COOKIE)?.value)?.deviceId,
+    () => handler(request)
+  );
+}
+
 /** Who can punch at this kiosk. Names and ids only — nothing else. */
-export async function GET(request) {
+export const GET = kioskRoute(async function GET(request) {
   if (!(await ensureDatabaseAvailable())) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
   }
@@ -127,9 +128,9 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load roster', detail: error.message }, { status: 500 });
   }
-}
+});
 
-export async function POST(request) {
+export const POST = kioskRoute(async function POST(request) {
   if (!(await ensureDatabaseAvailable())) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
   }
@@ -251,4 +252,4 @@ export async function POST(request) {
     }
     return NextResponse.json({ error: 'Failed to record punch', detail: error.message }, { status: 500 });
   }
-}
+});

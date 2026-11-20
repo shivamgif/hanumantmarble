@@ -101,6 +101,30 @@ grep DATABASE_URL .env.local | sed -E 's#.*@##; s#/.*##'
 
 Production is the `-pooler` host.
 
+## 🏢 Multi-tenancy (row-level security)
+
+Every business table has `tenant_id` and a policy that only shows rows of the
+tenant in the transaction setting `app.tenant_id` (`db/migrations/0001_tenancy.sql`).
+
+- **Two roles.** `DATABASE_URL` is the app login `app_rw` (RLS applies);
+  `DATABASE_OWNER_URL` is the owner (migrations only, exempt from RLS). On Netlify
+  the owner URL must be scoped to *Builds*, never *Functions*.
+  `app_rw` is created NOLOGIN by the migration; enable it once per database:
+  `ALTER ROLE app_rw LOGIN PASSWORD '<random>';`
+- **Every request** runs in one transaction scoped to the caller's tenant
+  (`stockRoute` in `lib/stock-workflow.js` → `withTenant` in `lib/db.js`). It
+  commits only when the response status is below 400. A query outside a request
+  sees no rows.
+- **A new table** in a migration needs, in the same file:
+  ```sql
+  tenant_id INT NOT NULL DEFAULT COALESCE(app_tenant(), 1) REFERENCES tenants(id),
+  ALTER TABLE x ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY tenant_isolation ON x USING (tenant_id = (SELECT app_tenant())) WITH CHECK (tenant_id = (SELECT app_tenant()));
+  ```
+  and any business-unique column is unique on `(tenant_id, column)`.
+- **Check after every migration:** `npm run check:rls` (catalog, safe anywhere) and
+  `npm run check:rls -- --data` (leak tests as app_rw, everything rolled back).
+
 ## 📝 Manual Database Operations
 
 If you need to run custom SQL:

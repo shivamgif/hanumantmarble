@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getRoleFlags, getStockContext, recordTimelineEvent } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getRoleFlags, getStockContext, recordTimelineEvent, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { GST_STATES, INVOICE_PREFIX_PATTERN, isValidGstin, serializeBusiness } from '@/lib/gst-invoice.mjs';
@@ -92,7 +92,7 @@ function readFields(body, { partial }) {
   return { fields };
 }
 
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const gate = await guard(request, { requireManage: false });
   if (gate.error) return gate.error;
 
@@ -106,9 +106,9 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load businesses', detail: error.message }, { status: 500 });
   }
-}
+});
 
-export async function POST(request) {
+export const POST = stockRoute(async function POST(request) {
   const gate = await guard(request);
   if (gate.error) return gate.error;
 
@@ -145,9 +145,9 @@ export async function POST(request) {
     }
     return NextResponse.json({ error: 'Failed to add business', detail: error.message }, { status: 500 });
   }
-}
+});
 
-export async function PATCH(request) {
+export const PATCH = stockRoute(async function PATCH(request) {
   const gate = await guard(request);
   if (gate.error) return gate.error;
 
@@ -207,4 +207,4 @@ export async function PATCH(request) {
     }
     return NextResponse.json({ error: 'Failed to update business', detail: error.message }, { status: 500 });
   }
-}
+});

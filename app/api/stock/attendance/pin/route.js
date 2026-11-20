@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getRoleFlags, getStockContext } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getRoleFlags, getStockContext, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { IST_NOW, logTimeline } from '@/lib/attendance-db';
 
@@ -19,7 +19,7 @@ const WEAK_PINS = new Set([
  * The PIN is a kiosk credential, never a login. It is stored bcrypt-hashed and
  * is never read back — a lost PIN is reset, not recovered.
  */
-export async function PUT(request) {
+export const PUT = stockRoute(async function PUT(request) {
   const { session, appUser } = await getStockContext(request);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!(await ensureDatabaseAvailable())) {
@@ -88,4 +88,4 @@ export async function PUT(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to set PIN', detail: error.message }, { status: 500 });
   }
-}
+});

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import {
@@ -314,7 +314,7 @@ async function loadReview(schemaCaps, startDate, endDate) {
   };
 }
 
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
   if (!session || !hasAnyStockRole(appUser, ['admin', 'manager', 'read_only_admin'])) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -998,4 +998,4 @@ export async function GET(request) {
     console.error('Failed to load admin analytics:', error);
     return NextResponse.json({ error: 'Failed to load admin analytics', detail: error.message }, { status: 500 });
   }
-}
+});

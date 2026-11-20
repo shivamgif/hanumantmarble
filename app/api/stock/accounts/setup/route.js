@@ -4,11 +4,12 @@ import {
   accountsError, accountsGuard, createVoucher, loadBusiness, syncPurchaseVoucher, systemLedgers, withBooks,
 } from '@/lib/accounts-db';
 import { addDays, openingLines, parseOpeningBills, parseTrialBalance, PARTY_GROUPS } from '@/lib/accounts.mjs';
+import { stockRoute } from '@/lib/stock-workflow';
 
 const bad = (message, extra = {}) => Object.assign(new Error(message), { statusCode: 400, ...extra });
 
 /** Books status for one business: start date, opening entry, what is posted and pending. */
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const gate = await accountsGuard(request);
   if (gate.error) return gate.error;
   try {
@@ -29,7 +30,7 @@ export async function GET(request) {
   } catch (error) {
     return accountsError(error, 'Failed to load books setup');
   }
-}
+});
 
 /** Trial balance + bills → ledgers created (party ones linked by name) and one opening voucher. */
 async function importOpening(tx, business, body, appUser) {
@@ -107,7 +108,7 @@ async function importOpening(tx, business, body, appUser) {
  * opening          — import Tally's trial balance (+ outstanding bills) as one opening voucher.
  * resync_purchases — post or repair purchase entries from the start date on.
  */
-export async function POST(request) {
+export const POST = stockRoute(async function POST(request) {
   const gate = await accountsGuard(request, { write: true });
   if (gate.error) return gate.error;
   try {
@@ -159,4 +160,4 @@ export async function POST(request) {
     if (error.details) return NextResponse.json({ error: error.message, details: error.details }, { status: 400 });
     return accountsError(error, 'Failed to update books setup');
   }
-}
+});

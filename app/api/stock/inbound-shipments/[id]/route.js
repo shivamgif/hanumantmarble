@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, generateReference, getStockContext, hasAnyStockRole, normalizeText, queueNotification, recordTimelineEvent, upsertNamedRecord } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, generateReference, getStockContext, hasAnyStockRole, normalizeText, queueNotification, recordTimelineEvent, upsertNamedRecord, stockRoute } from '@/lib/stock-workflow';
 import { sql, withTransaction } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { computeInboundTotals } from '@/lib/stock-pricing';
@@ -65,7 +65,7 @@ async function resolveBagItemMaster(item, schemaCaps) {
   const rows = await sql(
     `INSERT INTO stock_items (${columns.join(', ')})
      VALUES (${placeholders})
-     ON CONFLICT (sku) DO UPDATE SET ${updates.join(', ')}
+     ON CONFLICT (tenant_id, sku) DO UPDATE SET ${updates.join(', ')}
      RETURNING *`,
     values
   );
@@ -422,7 +422,7 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
   });
 }
 
-export async function GET(request, context) {
+export const GET = stockRoute(async function GET(request, context) {
   const { session } = await getStockContext(request);
 
   if (!session) {
@@ -557,7 +557,7 @@ export async function GET(request, context) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load shipment', detail: error.message }, { status: 500 });
   }
-}
+});
 
 /**
  * Every successful change to a purchase — approval, reversal, price or
@@ -566,7 +566,7 @@ export async function GET(request, context) {
  * idempotent; a failure is reported, not hidden, and Accounts → Setup →
  * "Re-sync purchases" repairs it later.
  */
-export async function PATCH(request, context) {
+export const PATCH = stockRoute(async function PATCH(request, context) {
   const response = await patchInboundShipment(request, context);
   if (response.status >= 300 || !(await getStockSchemaCapabilities()).hasAccounts) return response;
   const { appUser } = await getStockContext(request);
@@ -582,7 +582,7 @@ export async function PATCH(request, context) {
       { status: response.status }
     );
   }
-}
+});
 
 async function patchInboundShipment(request, context) {
   const { session, appUser } = await getStockContext(request);
@@ -613,13 +613,15 @@ async function patchInboundShipment(request, context) {
       const warnings = [];
 
       try {
-        await recordTimelineEvent({
-          eventType: 'inbound_approved',
-          entityType: 'inbound_shipment',
-          entityId: id,
-          summary: `Inbound shipment ${result.shipment.shipment_number} approved and added to inventory`,
-          details: { shipmentId: id },
-          userId: appUser?.id || null,
+        await withTransaction(async () => {
+          await recordTimelineEvent({
+            eventType: 'inbound_approved',
+            entityType: 'inbound_shipment',
+            entityId: id,
+            summary: `Inbound shipment ${result.shipment.shipment_number} approved and added to inventory`,
+            details: { shipmentId: id },
+            userId: appUser?.id || null,
+          });
         });
       } catch (timelineError) {
         console.error('Failed to record inbound approval timeline event:', timelineError);
@@ -627,55 +629,57 @@ async function patchInboundShipment(request, context) {
       }
 
       try {
-        if (!result.idempotent) {
-          const recipientsByDepartment = Array.isArray(result.salespersonRecipients)
-            ? result.salespersonRecipients
-            : [];
+        await withTransaction(async () => {
+          if (!result.idempotent) {
+            const recipientsByDepartment = Array.isArray(result.salespersonRecipients)
+              ? result.salespersonRecipients
+              : [];
 
-          const receivedItems = (Array.isArray(result.items) ? result.items : []).filter(
-            (item) => Number(item.received_whole_qty || 0) > 0 || Number(item.received_broken_qty || 0) > 0
-          );
-          const primaryItem = receivedItems[0] || null;
-          const totalReceived = receivedItems.reduce(
-            (sum, item) => sum + Number(item.received_whole_qty || 0) + Number(item.received_broken_qty || 0),
-            0
-          );
+            const receivedItems = (Array.isArray(result.items) ? result.items : []).filter(
+              (item) => Number(item.received_whole_qty || 0) > 0 || Number(item.received_broken_qty || 0) > 0
+            );
+            const primaryItem = receivedItems[0] || null;
+            const totalReceived = receivedItems.reduce(
+              (sum, item) => sum + Number(item.received_whole_qty || 0) + Number(item.received_broken_qty || 0),
+              0
+            );
 
-          for (const recipient of recipientsByDepartment) {
-            const department = String(recipient.department || 'Adhesive').trim() || 'Adhesive';
-            const messageText = `Stock purchase approved: ${result.shipment.shipment_number}. New ${department} inventory is available.`;
+            for (const recipient of recipientsByDepartment) {
+              const department = String(recipient.department || 'Adhesive').trim() || 'Adhesive';
+              const messageText = `Stock purchase approved: ${result.shipment.shipment_number}. New ${department} inventory is available.`;
 
-            await queueNotification({
-              channel: 'whatsapp',
-              eventType: 'inbound_received',
-              messageText,
-              recipients: [
-                {
-                  kind: 'salesperson',
-                  userId: recipient.id,
-                  name: recipient.name,
-                  email: recipient.email,
-                  phone: recipient.phone,
-                  department,
-                  whatsappPayload: {
-                    to: recipient.phone || recipient.email,
-                    template: 'stock_department_arrival',
-                    variables: {
-                      shipmentNumber: result.shipment.shipment_number,
-                      department,
-                      brandName: primaryItem?.brand_name || 'Generic',
-                      itemName: primaryItem?.item_name || 'Stock',
-                      totalQty: String(totalReceived),
+              await queueNotification({
+                channel: 'whatsapp',
+                eventType: 'inbound_received',
+                messageText,
+                recipients: [
+                  {
+                    kind: 'salesperson',
+                    userId: recipient.id,
+                    name: recipient.name,
+                    email: recipient.email,
+                    phone: recipient.phone,
+                    department,
+                    whatsappPayload: {
+                      to: recipient.phone || recipient.email,
+                      template: 'stock_department_arrival',
+                      variables: {
+                        shipmentNumber: result.shipment.shipment_number,
+                        department,
+                        brandName: primaryItem?.brand_name || 'Generic',
+                        itemName: primaryItem?.item_name || 'Stock',
+                        totalQty: String(totalReceived),
+                      },
                     },
                   },
-                },
-              ],
-              sourceTable: 'stock_inbound_shipments',
-              sourceId: id,
-              createdBy: session.user.email,
-            });
+                ],
+                sourceTable: 'stock_inbound_shipments',
+                sourceId: id,
+                createdBy: session.user.email,
+              });
+            }
           }
-        }
+        });
       } catch (notificationError) {
         console.error('Failed to queue inbound approval notification:', notificationError);
         warnings.push('Notification could not be queued.');

@@ -5,12 +5,13 @@ import { accountsError, accountsGuard, createVoucher, loadBusiness, systemLedger
 import {
   assertBalanced, CASH_BANK_GROUPS, expenseLines, PARTY_GROUPS, settlementLines, toPaise, VOUCHER_TYPES,
 } from '@/lib/accounts.mjs';
+import { stockRoute } from '@/lib/stock-workflow';
 
 const MANUAL_TYPES = ['receipt', 'payment', 'contra', 'journal'];
 const bad = (message) => Object.assign(new Error(message), { statusCode: 400 });
 
 /** Day book: vouchers of one business, newest first. Salespeople see only their own drafts. */
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const gate = await accountsGuard(request, { allowSalesperson: true });
   if (gate.error) return gate.error;
   try {
@@ -46,7 +47,7 @@ export async function GET(request) {
   } catch (error) {
     return accountsError(error, 'Failed to load vouchers');
   }
-}
+});
 
 /** Ledgers referenced by a voucher, all in this business and active. */
 async function ledgersById(businessId, ids) {
@@ -135,7 +136,7 @@ async function buildLines(business, body, role) {
  * Enter a receipt, payment, contra or journal. Every manual voucher starts as
  * a draft; a different approver posts it (no self-approval).
  */
-export async function POST(request) {
+export const POST = stockRoute(async function POST(request) {
   const gate = await accountsGuard(request, { allowSalesperson: true });
   if (gate.error) return gate.error;
   try {
@@ -166,4 +167,4 @@ export async function POST(request) {
   } catch (error) {
     return accountsError(error, 'Failed to save voucher');
   }
-}
+});

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, generateReference, getStockContext, hasAnyStockRole, normalizeStockRole, queueNotification, recordTimelineEvent } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, generateReference, getStockContext, hasAnyStockRole, normalizeStockRole, queueNotification, recordTimelineEvent, stockRoute } from '@/lib/stock-workflow';
 import { sql, withTransaction } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import {
@@ -197,31 +197,33 @@ async function recordDivisionValidationTimeline({
   validation = null,
 }) {
   try {
-    await recordTimelineEvent({
-      eventType: 'other',
-      entityType: 'outbound_shipment',
-      entityId,
-      summary: `Dispatch division validation ${outcome}`,
-      details: {
-        division_validation: outcome,
-        reason_code: reasonCode,
-        shipmentNumber,
-        actor: {
-          userId: appUser?.id || null,
-          role: normalizeStockRole(appUser?.role),
-          email: appUser?.email || null,
+    await withTransaction(async () => {
+      await recordTimelineEvent({
+        eventType: 'other',
+        entityType: 'outbound_shipment',
+        entityId,
+        summary: `Dispatch division validation ${outcome}`,
+        details: {
+          division_validation: outcome,
+          reason_code: reasonCode,
+          shipmentNumber,
+          actor: {
+            userId: appUser?.id || null,
+            role: normalizeStockRole(appUser?.role),
+            email: appUser?.email || null,
+          },
+          salesperson: salespersonUser ? {
+            id: Number(salespersonUser.id),
+            name: salespersonUser.name,
+            divisionIds: (salespersonUser.division_ids || []).map(Number),
+            divisionNames: salespersonUser.division_names || null,
+          } : null,
+          itemIds: validation?.itemIds || [],
+          itemDivisionIds: validation?.itemDivisionIds || [],
+          itemDivisionNames: validation?.itemDivisionNames || [],
         },
-        salesperson: salespersonUser ? {
-          id: Number(salespersonUser.id),
-          name: salespersonUser.name,
-          divisionIds: (salespersonUser.division_ids || []).map(Number),
-          divisionNames: salespersonUser.division_names || null,
-        } : null,
-        itemIds: validation?.itemIds || [],
-        itemDivisionIds: validation?.itemDivisionIds || [],
-        itemDivisionNames: validation?.itemDivisionNames || [],
-      },
-      userId: appUser?.id || null,
+        userId: appUser?.id || null,
+      });
     });
   } catch (error) {
     console.error('Failed to record dispatch division validation timeline:', error);
@@ -461,7 +463,7 @@ async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKe
   });
 }
 
-export async function GET(request, context) {
+export const GET = stockRoute(async function GET(request, context) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -490,9 +492,9 @@ export async function GET(request, context) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load shipment', detail: error.message }, { status: 500 });
   }
-}
+});
 
-export async function PATCH(request, context) {
+export const PATCH = stockRoute(async function PATCH(request, context) {
   const { session, appUser } = await getStockContext(request);
   let shipmentIdForLogging = null;
 
@@ -515,13 +517,15 @@ export async function PATCH(request, context) {
       const warnings = [];
 
       try {
-        await recordTimelineEvent({
-          eventType: 'outbound_approved',
-          entityType: 'outbound_shipment',
-          entityId: id,
-          summary: 'Outbound shipment approved',
-          details: { shipmentId: id },
-          userId: appUser?.id || null,
+        await withTransaction(async () => {
+          await recordTimelineEvent({
+            eventType: 'outbound_approved',
+            entityType: 'outbound_shipment',
+            entityId: id,
+            summary: 'Outbound shipment approved',
+            details: { shipmentId: id },
+            userId: appUser?.id || null,
+          });
         });
       } catch (timelineError) {
         console.error('Failed to record outbound approval timeline event:', timelineError);
@@ -529,14 +533,16 @@ export async function PATCH(request, context) {
       }
 
       try {
-        await queueNotification({
-          channel: 'whatsapp',
-          eventType: 'outbound_dispatch',
-          messageText: `Stock dispatch approved: ${result.shipment.shipment_number}.`,
-          recipients: [],
-          sourceTable: 'stock_outbound_shipments',
-          sourceId: id,
-          createdBy: session.user.email,
+        await withTransaction(async () => {
+          await queueNotification({
+            channel: 'whatsapp',
+            eventType: 'outbound_dispatch',
+            messageText: `Stock dispatch approved: ${result.shipment.shipment_number}.`,
+            recipients: [],
+            sourceTable: 'stock_outbound_shipments',
+            sourceId: id,
+            createdBy: session.user.email,
+          });
         });
       } catch (notificationError) {
         console.error('Failed to queue outbound approval notification:', notificationError);
@@ -1300,4 +1306,4 @@ export async function PATCH(request, context) {
       { status }
     );
   }
-}
+});

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole, stockRoute } from '@/lib/stock-workflow';
 import { getAuthDatabase } from '@/lib/auth-db';
 import { validateStockPassword } from '@/lib/password-policy';
 import { sql } from '@/lib/db';
@@ -20,7 +20,7 @@ async function hashPasswordForBetterAuth(password) {
   return `${salt}:${key.toString('hex')}`;
 }
 
-export async function POST(request) {
+export const POST = stockRoute(async function POST(request) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {
@@ -134,4 +134,4 @@ export async function POST(request) {
       { status: 500 }
     );
   }
-}
+});

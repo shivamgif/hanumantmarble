@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getStockContext } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getStockContext, stockRoute } from '@/lib/stock-workflow';
 import { sql, withTransaction } from '@/lib/db';
 import { isMissingRequiredPosition, isOutsideGeofence, istToday, openEntryMinutes } from '@/lib/attendance.mjs';
 import {
@@ -32,7 +32,7 @@ const SELFIE_ACTIONS = { in: 'in_selfie_key', out: 'out_selfie_key' };
  * for a user id supplied by the client. Punching for someone else goes through
  * the manager edit route or the kiosk.
  */
-export async function POST(request) {
+export const POST = stockRoute(async function POST(request) {
   const { session, appUser } = await getStockContext(request);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!(await ensureDatabaseAvailable())) {
@@ -271,10 +271,10 @@ export async function POST(request) {
       { status: error.status || 500 }
     );
   }
-}
+});
 
 /** Current punch state for the signed-in employee. */
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!(await ensureDatabaseAvailable())) {
@@ -321,4 +321,4 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load punch state', detail: error.message }, { status: 500 });
   }
-}
+});

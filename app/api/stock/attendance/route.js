@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getRoleFlags, getStockContext } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getRoleFlags, getStockContext, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { AUTO_CLOSED_NOTE, classifyDay, entryMinutes, istMonth } from '@/lib/attendance.mjs';
 import { DATE_RE, IST_NOW, MONTH_RE, loadSettings, serializeEntry } from '@/lib/attendance-db';
@@ -11,7 +11,7 @@ import { DATE_RE, IST_NOW, MONTH_RE, loadSettings, serializeEntry } from '@/lib/
  *
  * ?month=YYYY-MM (default: current) | ?date=YYYY-MM-DD | ?userId=<id>
  */
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!(await ensureDatabaseAvailable())) {
@@ -143,13 +143,13 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load attendance', detail: error.message }, { status: 500 });
   }
-}
+});
 
 /**
  * Manager-entered attendance (the "admin marks it manually" path), and
  * corrections for staff who forgot to punch out.
  */
-export async function POST(request) {
+export const POST = stockRoute(async function POST(request) {
   const { session, appUser } = await getStockContext(request);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!(await ensureDatabaseAvailable())) {
@@ -202,4 +202,4 @@ export async function POST(request) {
     }
     return NextResponse.json({ error: 'Failed to create entry', detail: error.message }, { status: 500 });
   }
-}
+});

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getRoleFlags, getStockContext } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getRoleFlags, getStockContext, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { IST_NOW } from '@/lib/attendance-db';
 
@@ -11,7 +11,7 @@ import { IST_NOW } from '@/lib/attendance-db';
  * Salary is included only for canManageAttendance — the same pattern as the
  * canSeeRevenue flag in /api/stock/product-sales.
  */
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!(await ensureDatabaseAvailable())) {
@@ -58,10 +58,10 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load employees', detail: error.message }, { status: 500 });
   }
-}
+});
 
 /** Toggle whether someone is tracked, and set their monthly salary. */
-export async function PATCH(request) {
+export const PATCH = stockRoute(async function PATCH(request) {
   const { session, appUser } = await getStockContext(request);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!(await ensureDatabaseAvailable())) {
@@ -126,4 +126,4 @@ export async function PATCH(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to update employee', detail: error.message }, { status: 500 });
   }
-}
+});

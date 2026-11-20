@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getStockContext } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getStockContext, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { netRevenueExpr, shippedFilter } from '@/lib/stock-analytics-sql.mjs';
@@ -14,7 +14,7 @@ const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 // the AT TIME ZONE pattern in /api/stock/salesperson-analytics.
 const MONTH_BUCKET = `(sos.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')`;
 
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!(await ensureDatabaseAvailable())) {
@@ -89,4 +89,4 @@ export async function GET(request) {
     console.error('Failed to fetch product sales:', error);
     return NextResponse.json({ error: 'Failed to fetch product sales', detail: error.message }, { status: 500 });
   }
-}
+});

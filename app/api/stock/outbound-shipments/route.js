@@ -9,9 +9,8 @@ import {
   normalizeStockRole,
   normalizeText,
   queueNotification,
-  recordTimelineEvent,
-} from '@/lib/stock-workflow';
-import { sql } from '@/lib/db';
+  recordTimelineEvent, stockRoute } from '@/lib/stock-workflow';
+import { sql, withTransaction } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { sellerFilter } from '@/lib/stock-analytics-sql.mjs';
 import { isPieceSale, totalPieces } from '@/lib/stock-piece-balance';
@@ -180,31 +179,33 @@ async function recordDivisionValidationTimeline({
   validation = null,
 }) {
   try {
-    await recordTimelineEvent({
-      eventType: 'other',
-      entityType: 'outbound_shipment',
-      entityId,
-      summary: `Dispatch division validation ${outcome}`,
-      details: {
-        division_validation: outcome,
-        reason_code: reasonCode,
-        shipmentNumber,
-        actor: {
-          userId: appUser?.id || null,
-          role: normalizeStockRole(appUser?.role),
-          email: appUser?.email || null,
+    await withTransaction(async () => {
+      await recordTimelineEvent({
+        eventType: 'other',
+        entityType: 'outbound_shipment',
+        entityId,
+        summary: `Dispatch division validation ${outcome}`,
+        details: {
+          division_validation: outcome,
+          reason_code: reasonCode,
+          shipmentNumber,
+          actor: {
+            userId: appUser?.id || null,
+            role: normalizeStockRole(appUser?.role),
+            email: appUser?.email || null,
+          },
+          salesperson: salespersonUser ? {
+            id: Number(salespersonUser.id),
+            name: salespersonUser.name,
+            divisionIds: (salespersonUser.division_ids || []).map(Number),
+            divisionNames: salespersonUser.division_names || null,
+          } : null,
+          itemIds: validation?.itemIds || [],
+          itemDivisionIds: validation?.itemDivisionIds || [],
+          itemDivisionNames: validation?.itemDivisionNames || [],
         },
-        salesperson: salespersonUser ? {
-          id: Number(salespersonUser.id),
-          name: salespersonUser.name,
-          divisionIds: (salespersonUser.division_ids || []).map(Number),
-          divisionNames: salespersonUser.division_names || null,
-        } : null,
-        itemIds: validation?.itemIds || [],
-        itemDivisionIds: validation?.itemDivisionIds || [],
-        itemDivisionNames: validation?.itemDivisionNames || [],
-      },
-      userId: appUser?.id || null,
+        userId: appUser?.id || null,
+      });
     });
   } catch (error) {
     console.error('Failed to record dispatch division validation timeline:', error);
@@ -316,7 +317,7 @@ async function resolveVehicleId(body) {
       driver_name,
       driver_phone
     ) VALUES ($1, $2, $3, $4)
-    ON CONFLICT (vehicle_number) DO UPDATE SET
+    ON CONFLICT (tenant_id, vehicle_number) DO UPDATE SET
       vehicle_type = COALESCE(EXCLUDED.vehicle_type, stock_vehicles.vehicle_type),
       driver_name = COALESCE(EXCLUDED.driver_name, stock_vehicles.driver_name),
       driver_phone = COALESCE(EXCLUDED.driver_phone, stock_vehicles.driver_phone),
@@ -394,7 +395,7 @@ async function loadOutboundShipments({ approvalStatus = null, status = null, lim
   });
 }
 
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {
@@ -425,9 +426,9 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load outbound shipments', detail: error.message }, { status: 500 });
   }
-}
+});
 
-export async function POST(request) {
+export const POST = stockRoute(async function POST(request) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {
@@ -810,4 +811,4 @@ export async function POST(request) {
       { status }
     );
   }
-}
+});

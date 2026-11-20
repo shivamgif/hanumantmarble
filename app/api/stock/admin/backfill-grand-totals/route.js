@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getStockContext, normalizeStockRole } from '@/lib/stock-workflow';
-import { sql } from '@/lib/db';
+import { ensureDatabaseAvailable, getStockContext, normalizeStockRole, stockRoute } from '@/lib/stock-workflow';
+import { sql, withTransaction } from '@/lib/db';
 import { recomputeInboundShipmentTotals } from '@/lib/stock-inbound-recompute';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { syncPurchaseVoucher, withBooks } from '@/lib/accounts-db';
 
-export async function POST(request) {
+export const POST = stockRoute(async function POST(request) {
   try {
     await ensureDatabaseAvailable();
     const { session, appUser } = await getStockContext(request);
@@ -38,10 +38,12 @@ export async function POST(request) {
     const results = [];
     for (const { id } of targets) {
       try {
-        const updated = await recomputeInboundShipmentTotals(id);
-        // A recomputed bill must move its purchase entry with it.
-        if (hasAccounts) await withBooks(appUser, (tx) => syncPurchaseVoucher(tx, Number(id), appUser));
-        results.push({ id, grand_total: updated?.grand_total ?? null, ok: true });
+        await withTransaction(async () => {
+          const updated = await recomputeInboundShipmentTotals(id);
+          // A recomputed bill must move its purchase entry with it.
+          if (hasAccounts) await withBooks(appUser, (tx) => syncPurchaseVoucher(tx, Number(id), appUser));
+          results.push({ id, grand_total: updated?.grand_total ?? null, ok: true });
+        });
       } catch (err) {
         results.push({ id, ok: false, error: err.message });
       }
@@ -57,4 +59,4 @@ export async function POST(request) {
     console.error('Backfill grand totals failed:', error);
     return NextResponse.json({ error: 'Backfill failed', detail: error.message }, { status: 500 });
   }
-}
+});

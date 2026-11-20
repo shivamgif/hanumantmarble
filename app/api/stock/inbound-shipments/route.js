@@ -8,8 +8,7 @@ import {
   normalizeText,
   queueNotification,
   recordTimelineEvent,
-  upsertNamedRecord,
-} from '@/lib/stock-workflow';
+  upsertNamedRecord, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { computeInboundTotals } from '@/lib/stock-pricing';
@@ -227,7 +226,7 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
   const rows = await sql(
     `INSERT INTO stock_items (${columns.join(', ')})
      VALUES (${placeholders})
-     ON CONFLICT (sku) DO UPDATE SET
+     ON CONFLICT (tenant_id, sku) DO UPDATE SET
        ${updates.join(',\n       ')}
      RETURNING *`,
     values
@@ -236,7 +235,7 @@ async function upsertItemMaster(item, orderedBoxes = 0) {
   return rows[0];
 }
 
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const { session } = await getStockContext(request);
 
   if (!session) {
@@ -271,9 +270,9 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch purchases', detail: error.message }, { status: 500 });
   }
-}
+});
 
-export async function POST(request) {
+export const POST = stockRoute(async function POST(request) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {
@@ -301,7 +300,7 @@ export async function POST(request) {
     const vehicle = body.vehicleNumber ? await sql(
       `INSERT INTO stock_vehicles (vehicle_number, vehicle_type, driver_name, driver_phone, transporter_id)
        VALUES ($1,$2,$3,$4,$5)
-       ON CONFLICT (vehicle_number) DO UPDATE SET
+       ON CONFLICT (tenant_id, vehicle_number) DO UPDATE SET
          vehicle_type = EXCLUDED.vehicle_type,
          driver_name = EXCLUDED.driver_name,
          driver_phone = EXCLUDED.driver_phone,
@@ -362,7 +361,7 @@ export async function POST(request) {
       const locInsert = await sql(
         `INSERT INTO stock_locations (name, location_type, is_active)
          VALUES ($1, 'warehouse', TRUE)
-         ON CONFLICT (name) DO NOTHING
+         ON CONFLICT (tenant_id, name) DO NOTHING
          RETURNING id`,
         [locName]
       );
@@ -739,4 +738,4 @@ export async function POST(request) {
     console.error('Failed to create inbound shipment:', error);
     return NextResponse.json({ error: 'Failed to submit purchase', detail: error.message }, { status: 500 });
   }
-}
+});

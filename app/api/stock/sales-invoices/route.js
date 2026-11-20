@@ -7,9 +7,8 @@ import {
   normalizeStockRole,
   normalizeText,
   queueNotification,
-  recordTimelineEvent,
-} from '@/lib/stock-workflow';
-import { sql } from '@/lib/db';
+  recordTimelineEvent, stockRoute } from '@/lib/stock-workflow';
+import { sql, withTransaction } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { sellerFilter } from '@/lib/stock-analytics-sql.mjs';
 import { computeInvoiceTotals, DEFAULT_GST_RATE, GST_STATES, isValidGstin } from '@/lib/gst-invoice.mjs';
@@ -114,7 +113,7 @@ async function resolveItems(rawItems, seller) {
   });
 }
 
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const gate = await salesInvoiceGuard(request);
   if (gate.error) return gate.error;
   const { appUser } = gate;
@@ -132,9 +131,9 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load invoices', detail: error.message }, { status: 500 });
   }
-}
+});
 
-export async function POST(request) {
+export const POST = stockRoute(async function POST(request) {
   const gate = await salesInvoiceGuard(request);
   if (gate.error) return gate.error;
   const { session, appUser } = gate;
@@ -217,23 +216,25 @@ export async function POST(request) {
     const invoice = rows[0];
 
     try {
-      const divisionIds = [...new Set(items.map((item) => item.divisionId))];
-      await queueNotification({
-        channel: 'whatsapp',
-        eventType: 'other',
-        messageText: `New estimate from ${seller.name} for ${billToName}: ₹${totals.grandTotal}. Review and approve to issue the invoice.`,
-        recipients: await collectNotificationRecipients(divisionIds),
-        sourceTable: 'stock_sales_invoices',
-        sourceId: invoice.id,
-        createdBy: session.user.email,
-      });
-      await recordTimelineEvent({
-        eventType: 'other',
-        entityType: 'sales_invoice',
-        entityId: invoice.id,
-        summary: `Estimate for ${billToName} submitted for approval`,
-        details: { grandTotal: totals.grandTotal, salespersonUserId: seller.id },
-        userId: appUser.id,
+      await withTransaction(async () => {
+        const divisionIds = [...new Set(items.map((item) => item.divisionId))];
+        await queueNotification({
+          channel: 'whatsapp',
+          eventType: 'other',
+          messageText: `New estimate from ${seller.name} for ${billToName}: ₹${totals.grandTotal}. Review and approve to issue the invoice.`,
+          recipients: await collectNotificationRecipients(divisionIds),
+          sourceTable: 'stock_sales_invoices',
+          sourceId: invoice.id,
+          createdBy: session.user.email,
+        });
+        await recordTimelineEvent({
+          eventType: 'other',
+          entityType: 'sales_invoice',
+          entityId: invoice.id,
+          summary: `Estimate for ${billToName} submitted for approval`,
+          details: { grandTotal: totals.grandTotal, salespersonUserId: seller.id },
+          userId: appUser.id,
+        });
       });
     } catch (sideEffectError) {
       console.error('Failed to notify about new estimate:', sideEffectError);
@@ -248,4 +249,4 @@ export async function POST(request) {
       { status }
     );
   }
-}
+});

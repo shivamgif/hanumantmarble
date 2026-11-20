@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getRoleFlags, getStockContext } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getRoleFlags, getStockContext, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { IST_NOW, logTimeline, serializeEntry } from '@/lib/attendance-db';
 
@@ -21,7 +21,7 @@ async function guard(request, params) {
 }
 
 /** Correct an entry: times, break, or note. Every edit stamps edited_by. */
-export async function PATCH(request, { params }) {
+export const PATCH = stockRoute(async function PATCH(request, { params }) {
   const gate = await guard(request, params);
   if (gate.error) return gate.error;
 
@@ -79,10 +79,10 @@ export async function PATCH(request, { params }) {
     }
     return NextResponse.json({ error: 'Failed to update entry', detail: error.message }, { status: 500 });
   }
-}
+});
 
 /** Soft delete, matching the house convention for every other stock resource. */
-export async function DELETE(request, { params }) {
+export const DELETE = stockRoute(async function DELETE(request, { params }) {
   const gate = await guard(request, params);
   if (gate.error) return gate.error;
 
@@ -108,4 +108,4 @@ export async function DELETE(request, { params }) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to delete entry', detail: error.message }, { status: 500 });
   }
-}
+});

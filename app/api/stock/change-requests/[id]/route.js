@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole, recordTimelineEvent } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole, recordTimelineEvent, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 
-export async function PATCH(request, context) {
+export const PATCH = stockRoute(async function PATCH(request, context) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {
@@ -63,4 +63,4 @@ export async function PATCH(request, context) {
     console.error('Failed to update change request:', error);
     return NextResponse.json({ error: 'Failed to update change request', detail: error.message }, { status: 500 });
   }
-}
+});

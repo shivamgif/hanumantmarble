@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getRoleFlags, getStockContext } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getRoleFlags, getStockContext, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { IST_NOW, logTimeline, serializeLeave } from '@/lib/attendance-db';
 
 /** Approve or reject. Approved paid leave earns a day in payroll, so it is
  *  manager-only and the decision is stamped with who made it. */
-export async function PATCH(request, { params }) {
+export const PATCH = stockRoute(async function PATCH(request, { params }) {
   const { session, appUser } = await getStockContext(request);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!(await ensureDatabaseAvailable())) {
@@ -53,14 +53,14 @@ export async function PATCH(request, { params }) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to update leave request', detail: error.message }, { status: 500 });
   }
-}
+});
 
 /**
  * Withdraw your own request while it is still pending. A pending request has
  * no effect on payroll, so it is removed outright (the table has no cancelled
  * status); once decided it stays on record and only a manager can change it.
  */
-export async function DELETE(request, { params }) {
+export const DELETE = stockRoute(async function DELETE(request, { params }) {
   const { session, appUser } = await getStockContext(request);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!(await ensureDatabaseAvailable())) {
@@ -97,4 +97,4 @@ export async function DELETE(request, { params }) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to withdraw leave request', detail: error.message }, { status: 500 });
   }
-}
+});

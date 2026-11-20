@@ -8,8 +8,12 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { Pool } from '@neondatabase/serverless';
 
-const url = process.env.DATABASE_OWNER_URL || process.env.DATABASE_URL;
-if (!url) throw new Error('Set DATABASE_URL (or DATABASE_OWNER_URL).');
+// Migrations need the owner role; the app's app_rw login cannot ALTER tables.
+// `netlify env:get` prints a sentence, not nothing, for an unset variable, so
+// only take values that are actually connection strings.
+const isUrl = (value) => /^postgres(ql)?:\/\//.test(String(value || '').trim());
+const url = [process.env.DATABASE_OWNER_URL, process.env.DATABASE_URL].find(isUrl);
+if (!url) throw new Error('Set DATABASE_OWNER_URL (or DATABASE_URL) to a postgres:// connection string.');
 
 const dir = new URL('../db/migrations/', import.meta.url);
 const args = process.argv.slice(2);
@@ -19,6 +23,10 @@ const statusOnly = args.includes('--status');
 const pool = new Pool({ connectionString: url });
 const client = await pool.connect();
 try {
+  const { rows: [{ user }] } = await client.query('SELECT current_user AS user');
+  if (user === 'app_rw') {
+    throw new Error('Connected as app_rw, which cannot change the schema. Set DATABASE_OWNER_URL to the owner connection string.');
+  }
   // Two deploys migrating at once would race on the same file.
   await client.query('SELECT pg_advisory_lock(7262001)');
   await client.query(`CREATE TABLE IF NOT EXISTS schema_migrations (

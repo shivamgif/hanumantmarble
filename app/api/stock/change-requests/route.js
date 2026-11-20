@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, generateReference, getStockContext, hasAnyStockRole, recordTimelineEvent } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, generateReference, getStockContext, hasAnyStockRole, recordTimelineEvent, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {
@@ -30,9 +30,9 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load change requests', detail: error.message }, { status: 500 });
   }
-}
+});
 
-export async function POST(request) {
+export const POST = stockRoute(async function POST(request) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {
@@ -98,4 +98,4 @@ export async function POST(request) {
     console.error('Failed to create change request:', error);
     return NextResponse.json({ error: 'Failed to submit change request', detail: error.message }, { status: 500 });
   }
-}
+});

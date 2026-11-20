@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { accountsError, accountsGuard, loadBusiness, loadLedgers, withBooks } from '@/lib/accounts-db';
 import { canonicalGroup, CASH_BANK_GROUPS, PARTY_GROUPS } from '@/lib/accounts.mjs';
+import { stockRoute } from '@/lib/stock-workflow';
 
 /**
  * Ledgers of one business with their posted balances. Salespeople get only
  * customers and cash/bank — enough to record a receipt draft.
  */
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const gate = await accountsGuard(request, { allowSalesperson: true });
   if (gate.error) return gate.error;
   try {
@@ -23,7 +24,7 @@ export async function GET(request) {
   } catch (error) {
     return accountsError(error, 'Failed to load ledgers');
   }
-}
+});
 
 function readLedgerFields(body, { partial }) {
   const fields = {};
@@ -44,7 +45,7 @@ function readLedgerFields(body, { partial }) {
   return fields;
 }
 
-export async function POST(request) {
+export const POST = stockRoute(async function POST(request) {
   const gate = await accountsGuard(request, { write: true });
   if (gate.error) return gate.error;
   try {
@@ -61,9 +62,9 @@ export async function POST(request) {
     if (error?.code === '23505') return NextResponse.json({ error: 'A ledger with that name already exists' }, { status: 409 });
     return accountsError(error, 'Failed to create ledger');
   }
-}
+});
 
-export async function PATCH(request) {
+export const PATCH = stockRoute(async function PATCH(request) {
   const gate = await accountsGuard(request, { write: true });
   if (gate.error) return gate.error;
   try {
@@ -89,4 +90,4 @@ export async function PATCH(request) {
     if (error?.code === '23505') return NextResponse.json({ error: 'A ledger with that name already exists' }, { status: 409 });
     return accountsError(error, 'Failed to update ledger');
   }
-}
+});

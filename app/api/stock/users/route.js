@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getRoleFlags, getStockContext, hasAnyStockRole, normalizeStockRole, recordTimelineEvent, STOCK_ROLES } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getRoleFlags, getStockContext, hasAnyStockRole, normalizeStockRole, recordTimelineEvent, STOCK_ROLES, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { validateStockPassword } from '@/lib/password-policy';
@@ -76,7 +76,7 @@ async function resolveDivisionId(value) {
   const rows = await sql(
     `INSERT INTO stock_divisions (name)
      VALUES ($1)
-     ON CONFLICT (name) DO UPDATE SET updated_at = NOW()
+     ON CONFLICT (tenant_id, name) DO UPDATE SET updated_at = NOW()
      RETURNING id`,
     [divisionName]
   );
@@ -173,7 +173,7 @@ async function resolveDivisionIdFromPayload(body) {
   return resolveDivisionId(divisionName);
 }
 
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {
@@ -210,9 +210,9 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load users', detail: error.message }, { status: 500 });
   }
-}
+});
 
-export async function POST(request) {
+export const POST = stockRoute(async function POST(request) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {
@@ -261,7 +261,7 @@ export async function POST(request) {
     if (!phone) return NextResponse.json({ error: 'Phone is required' }, { status: 400 });
 
     try {
-      // A plain INSERT, not the ON CONFLICT (email) upsert the login path uses:
+      // A plain INSERT, not the ON CONFLICT (tenant_id, email) upsert the login path uses:
       // that conflict target cannot fire on a NULL email.
       const noLoginRows = await sql(
         `INSERT INTO stock_app_users
@@ -362,7 +362,7 @@ export async function POST(request) {
           default_location_id,
           created_by
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-        ON CONFLICT (email) DO UPDATE SET
+        ON CONFLICT (tenant_id, email) DO UPDATE SET
           auth0_sub = EXCLUDED.auth0_sub,
           name = EXCLUDED.name,
           phone = EXCLUDED.phone,
@@ -435,9 +435,9 @@ export async function POST(request) {
 
     return NextResponse.json({ error: 'Failed to save user', detail: errorDetail }, { status: 500 });
   }
-}
+});
 
-export async function PATCH(request) {
+export const PATCH = stockRoute(async function PATCH(request) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {
@@ -562,9 +562,9 @@ export async function PATCH(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to update user', detail: error.message }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(request) {
+export const DELETE = stockRoute(async function DELETE(request) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {
@@ -600,4 +600,4 @@ export async function DELETE(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to remove user', detail: error.message }, { status: 500 });
   }
-}
+});

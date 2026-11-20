@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getStockContext } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getStockContext, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { normalizePlate, TRIP_WINDOW_DAYS } from '@/lib/stock-inbound-trips.mjs';
@@ -7,7 +7,7 @@ import { normalizePlate, TRIP_WINDOW_DAYS } from '@/lib/stock-inbound-trips.mjs'
 // Trips this truck already made around a date, so the purchase form can offer
 // "add this invoice to that trip" before a second freight figure is keyed.
 //   GET /api/stock/inbound-trips?plate=RJ14GQ2253&date=2026-04-25
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const { session } = await getStockContext(request);
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -81,4 +81,4 @@ export async function GET(request) {
     console.error('Failed to load inbound trips:', error);
     return NextResponse.json({ error: 'Failed to load truck trips', detail: error.message }, { status: 500 });
   }
-}
+});

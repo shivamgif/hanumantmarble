@@ -1,5 +1,6 @@
+import { withTransaction } from '@/lib/db';
 import { NextResponse } from 'next/server';
-import { getRoleFlags, queueNotification, recordTimelineEvent } from '@/lib/stock-workflow';
+import { getRoleFlags, queueNotification, recordTimelineEvent, stockRoute } from '@/lib/stock-workflow';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { cancelSourceVoucher, ensurePartyLedger, postSalesInvoice, withBooks } from '@/lib/accounts-db';
 import { istToday } from '@/lib/attendance.mjs';
@@ -18,7 +19,7 @@ function conflict(message) {
   return error;
 }
 
-export async function GET(request, context) {
+export const GET = stockRoute(async function GET(request, context) {
   const gate = await salesInvoiceGuard(request);
   if (gate.error) return gate.error;
 
@@ -32,7 +33,7 @@ export async function GET(request, context) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load invoice', detail: error.message }, { status: 500 });
   }
-}
+});
 
 /**
  * Numbering: gap-free per business per financial year, as GST requires. The
@@ -122,7 +123,7 @@ async function approve(invoiceId, appUser, { acknowledgeCreditLimit = false } = 
   });
 }
 
-export async function PATCH(request, context) {
+export const PATCH = stockRoute(async function PATCH(request, context) {
   const gate = await salesInvoiceGuard(request);
   if (gate.error) return gate.error;
   const { session, appUser } = gate;
@@ -198,22 +199,24 @@ export async function PATCH(request, context) {
     if (!invoice) throw conflict('The invoice changed while you were looking at it. Reload and try again.');
 
     try {
-      await recordTimelineEvent({
-        eventType: 'other',
-        entityType: 'sales_invoice',
-        entityId: invoiceId,
-        summary,
-        details: { action: body.action, status: invoice.status },
-        userId: appUser.id,
-      });
-      await queueNotification({
-        channel: 'whatsapp',
-        eventType: 'other',
-        messageText: summary,
-        recipients: [],
-        sourceTable: 'stock_sales_invoices',
-        sourceId: invoiceId,
-        createdBy: session.user.email,
+      await withTransaction(async () => {
+        await recordTimelineEvent({
+          eventType: 'other',
+          entityType: 'sales_invoice',
+          entityId: invoiceId,
+          summary,
+          details: { action: body.action, status: invoice.status },
+          userId: appUser.id,
+        });
+        await queueNotification({
+          channel: 'whatsapp',
+          eventType: 'other',
+          messageText: summary,
+          recipients: [],
+          sourceTable: 'stock_sales_invoices',
+          sourceId: invoiceId,
+          createdBy: session.user.email,
+        });
       });
     } catch (sideEffectError) {
       console.error('Failed to log invoice action:', sideEffectError);
@@ -228,4 +231,4 @@ export async function PATCH(request, context) {
       { status }
     );
   }
-}
+});

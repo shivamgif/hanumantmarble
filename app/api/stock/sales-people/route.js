@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {
@@ -23,9 +23,9 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load sales people', detail: error.message }, { status: 500 });
   }
-}
+});
 
-export async function POST(request) {
+export const POST = stockRoute(async function POST(request) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {
@@ -55,9 +55,9 @@ export async function POST(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to save sales person', detail: error.message }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(request) {
+export const DELETE = stockRoute(async function DELETE(request) {
   const { session, appUser } = await getStockContext(request);
 
   if (!session) {
@@ -93,4 +93,4 @@ export async function DELETE(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to remove sales person', detail: error.message }, { status: 500 });
   }
-}
+});

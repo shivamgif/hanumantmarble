@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { accountsError, accountsGuard, loadOutstanding, postDraft, withBooks } from '@/lib/accounts-db';
 import { PARTY_GROUPS, settlementLines, toPaise } from '@/lib/accounts.mjs';
+import { stockRoute } from '@/lib/stock-workflow';
 
 async function loadVoucher(id) {
   const [voucher] = await sql(
@@ -24,7 +25,7 @@ async function loadVoucher(id) {
   return { voucher, lines };
 }
 
-export async function GET(request, context) {
+export const GET = stockRoute(async function GET(request, context) {
   const gate = await accountsGuard(request, { allowSalesperson: true });
   if (gate.error) return gate.error;
   try {
@@ -37,7 +38,7 @@ export async function GET(request, context) {
   } catch (error) {
     return accountsError(error, 'Failed to load voucher');
   }
-}
+});
 
 /**
  * Settle a receipt/payment draft against the party's open bills before posting.
@@ -79,7 +80,7 @@ async function settleDraft(tx, voucher, lines, allocations) {
  * cancel  — reverse a posted manual voucher. Auto-posted entries are cancelled
  *           through their invoice or purchase instead.
  */
-export async function PATCH(request, context) {
+export const PATCH = stockRoute(async function PATCH(request, context) {
   const gate = await accountsGuard(request, { allowSalesperson: true });
   if (gate.error) return gate.error;
   try {
@@ -129,4 +130,4 @@ export async function PATCH(request, context) {
   } catch (error) {
     return accountsError(error, 'Failed to update voucher');
   }
-}
+});

@@ -30,14 +30,9 @@ export default async () => {
   const sql = neon(databaseUrl);
   const store = getStore(SELFIE_STORE_NAME);
 
-  const rows = await sql`
-    SELECT id, in_selfie_key, out_selfie_key
-      FROM stock_attendance_entries
-     WHERE work_date < (CURRENT_DATE - ${SELFIE_RETENTION_DAYS}::int)
-       AND (in_selfie_key IS NOT NULL OR out_selfie_key IS NOT NULL)
-     ORDER BY work_date
-     LIMIT ${BATCH}
-  `;
+  // All tenants at once. The app role sees no rows without a tenant, so this
+  // goes through the SECURITY DEFINER functions in 0001_tenancy.sql.
+  const rows = await sql`SELECT * FROM selfie_purge_batch(${SELFIE_RETENTION_DAYS}::int, ${BATCH}::int)`;
 
   let deleted = 0;
   let failed = 0;
@@ -54,11 +49,7 @@ export default async () => {
     }
     deleted += keys.length;
 
-    await sql`
-      UPDATE stock_attendance_entries
-         SET in_selfie_key = NULL, out_selfie_key = NULL
-       WHERE id = ${row.id}
-    `;
+    await sql`SELECT clear_selfie_keys(${row.id}::bigint)`;
   }
 
   const summary = `purge-selfies: ${deleted} deleted, ${failed} failed, ${rows.length} rows scanned (older than ${SELFIE_RETENTION_DAYS} days)`;

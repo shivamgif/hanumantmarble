@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getRoleFlags, recordTimelineEvent } from '@/lib/stock-workflow';
-import { sql } from '@/lib/db';
+import { getRoleFlags, recordTimelineEvent, stockRoute } from '@/lib/stock-workflow';
+import { sql, withTransaction } from '@/lib/db';
 import { buildEinvoiceJson, parseIrpResponse } from '@/lib/einvoice.mjs';
 import { listSalesInvoices, loadSalesInvoice, salesInvoiceGuard, sellerFor } from '@/lib/sales-invoices';
 
@@ -22,7 +22,7 @@ async function approverGate(request) {
   return gate;
 }
 
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const gate = await approverGate(request);
   if (gate.error) return gate.error;
 
@@ -50,9 +50,9 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to build e-invoice JSON', detail: error.message }, { status: 500 });
   }
-}
+});
 
-export async function POST(request) {
+export const POST = stockRoute(async function POST(request) {
   const gate = await approverGate(request);
   if (gate.error) return gate.error;
 
@@ -87,23 +87,29 @@ export async function POST(request) {
         continue;
       }
       try {
-        const result = await sql(
-          `UPDATE stock_sales_invoices
-              SET irn = $1, ack_no = $2, ack_date = $3, signed_qr = $4, einvoice_status = 'generated', updated_at = NOW()
-            WHERE id = $5 AND einvoice_status IN ('pending', 'generated')
-            RETURNING id`,
-          [row.irn, row.ackNo, row.ackDate, row.signedQr, invoice.id]
-        );
-        if (!result[0]) { skipped.push({ docNo: row.docNo, reason: 'Invoice does not need an IRN.' }); continue; }
-        updated.push(row.docNo);
-        await recordTimelineEvent({
-          eventType: 'other',
-          entityType: 'sales_invoice',
-          entityId: invoice.id,
-          summary: `IRN recorded for ${row.docNo}`,
-          details: { irn: row.irn, ackNo: row.ackNo },
-          userId: gate.appUser.id,
+        // A savepoint per row: one duplicate IRN must not abort the request's
+        // transaction and with it every row after it.
+        const recorded = await withTransaction(async (tx) => {
+          const result = await tx(
+            `UPDATE stock_sales_invoices
+                SET irn = $1, ack_no = $2, ack_date = $3, signed_qr = $4, einvoice_status = 'generated', updated_at = NOW()
+              WHERE id = $5 AND einvoice_status IN ('pending', 'generated')
+              RETURNING id`,
+            [row.irn, row.ackNo, row.ackDate, row.signedQr, invoice.id]
+          );
+          if (!result[0]) return false;
+          await recordTimelineEvent({
+            eventType: 'other',
+            entityType: 'sales_invoice',
+            entityId: invoice.id,
+            summary: `IRN recorded for ${row.docNo}`,
+            details: { irn: row.irn, ackNo: row.ackNo },
+            userId: gate.appUser.id,
+          });
+          return true;
         });
+        if (!recorded) { skipped.push({ docNo: row.docNo, reason: 'Invoice does not need an IRN.' }); continue; }
+        updated.push(row.docNo);
       } catch (error) {
         skipped.push({ docNo: row.docNo, reason: error?.code === '23505' ? 'This IRN is already on another invoice.' : error.message });
       }
@@ -112,4 +118,4 @@ export async function POST(request) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to import IRP response', detail: error.message }, { status: 500 });
   }
-}
+});

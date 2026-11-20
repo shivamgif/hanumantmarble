@@ -3,9 +3,10 @@ import { sql } from '@/lib/db';
 import { istToday } from '@/lib/attendance.mjs';
 import { fiscalYearOf } from '@/lib/gst-invoice.mjs';
 import { accountsError, accountsGuard, loadStatement } from '@/lib/accounts-db';
+import { stockRoute } from '@/lib/stock-workflow';
 
 /** Ledger statement (also the cash book and bank book): opening, lines, running balance. */
-export async function GET(request) {
+export const GET = stockRoute(async function GET(request) {
   const gate = await accountsGuard(request);
   if (gate.error) return gate.error;
   try {
@@ -32,4 +33,4 @@ export async function GET(request) {
   } catch (error) {
     return accountsError(error, 'Failed to load statement');
   }
-}
+});

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getRoleFlags, getStockContext } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getRoleFlags, getStockContext, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { selfieStore } from '@/lib/attendance-selfie.mjs';
 
@@ -17,7 +17,7 @@ import { selfieStore } from '@/lib/attendance-selfie.mjs';
  *
  * GET /api/stock/attendance/selfie/<entryId>?which=in|out
  */
-export async function GET(request, { params }) {
+export const GET = stockRoute(async function GET(request, { params }) {
   const { session, appUser } = await getStockContext(request);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!(await ensureDatabaseAvailable())) {
@@ -71,4 +71,4 @@ export async function GET(request, { params }) {
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load selfie', detail: error.message }, { status: 500 });
   }
-}
+});
