@@ -78,6 +78,6 @@ export async function POST(request, context) {
     summary: `E-way bill ${ewbNo} recorded for ${ctx.shipment.shipment_number}`,
     details: { ewbNo, previous: ctx.shipment.ewb_no || null },
     userId: ctx.appUser.id,
-  }).catch(() => null);
+  });
   return NextResponse.json({ shipment: rows[0] });
 }

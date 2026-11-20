@@ -15,17 +15,16 @@ This guide will help you set up the Neon PostgreSQL database for your applicatio
 
 ### 2. Initialize the Database
 
-Once `DATABASE_URL` is set in your environment:
+The schema lives in `db/migrations/*.sql`, applied in name order by `scripts/migrate.mjs`
+and recorded in the `schema_migrations` table.
 
 ```bash
-# Run the setup script
-npm run db:setup
+npm run db:migrate                 # fresh database: applies 0000_baseline.sql and everything after
+npm run db:migrate -- --status     # list pending migrations, change nothing
 ```
 
-This script will:
-- ✅ Create the `products` table
-- ✅ Create indexes for better performance
-- ✅ Import all 6 products from `data/products.json`
+A database that already had the schema before the runner existed (prod, branches of it)
+was marked once with `--mark-applied 0000_baseline.sql`.
 
 ### 3. Verify the Setup
 
@@ -57,7 +56,7 @@ For local development with database:
    ```
    DATABASE_URL=postgres://user:password@host.neon.tech/database?sslmode=require
    ```
-4. Run setup: `npm run db:setup`
+4. Run migrations: `npm run db:migrate`
 
 ## 🎯 Fallback Mechanism
 
@@ -76,34 +75,31 @@ Only emails listed in `lib/admin-config.js` can:
 
 ## 🔀 Local and production are DIFFERENT databases
 
-`.env.local` and the `DATABASE_URL` in Netlify point at two separate Neon databases.
-Every `npm run db:migrate-*` script reads `.env.local`, so running one migrates **only
-the dev database**. Production stays behind until a request hits the new column and the
-API returns `column "..." does not exist`.
+`.env.local` must point at a Neon **dev branch**, never at production. On 2026-11-20 it
+was found pointing at the production endpoint, so "local" migrations and seed scripts had
+been hitting live data.
 
-After a migration lands, run it a second time against production:
+To add a schema change: create the next numbered file in `db/migrations/` (e.g.
+`0001_tenancy.sql`), run `npm run db:migrate` locally, then after review run it on
+production from the main checkout:
 
 ```bash
-npm run db:migrate:prod -- scripts/migrate-attendance-selfie.mjs
+npm run db:migrate:prod scripts/migrate.mjs -- --status   # what will run
+npm run db:migrate:prod scripts/migrate.mjs               # run it
 ```
 
-The `--` is required so npm forwards the script path. Migrations are idempotent single
-transactions, so re-running is safe.
+**Do not use `netlify dev:exec` for this.** It injects `.env.local` over the site's
+settings, so the migration silently runs against the dev database. `db:migrate:prod`
+resolves `netlify env:get DATABASE_URL --context production` explicitly.
 
-**Do not use `netlify dev:exec` for this.** It injects `.env.local` *over* the site's
-project settings, so `DATABASE_URL` resolves back to the dev database and the migration
-silently runs against the wrong one — the exact failure this section exists to prevent.
-`db:migrate:prod` instead resolves the value explicitly with
-`netlify env:get DATABASE_URL --context production` and runs plain `node`, which never
-reads `.env.local`.
-
-To confirm which database you are about to hit:
+Before any write, compare the endpoint ids. They must differ:
 
 ```bash
 netlify env:get DATABASE_URL --context production | sed -E 's#.*@##; s#/.*##'
+grep DATABASE_URL .env.local | sed -E 's#.*@##; s#/.*##'
 ```
 
-Production is the `-pooler` host; local is not.
+Production is the `-pooler` host.
 
 ## 📝 Manual Database Operations
 

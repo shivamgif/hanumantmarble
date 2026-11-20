@@ -12,11 +12,6 @@ function normalizeDepartment(value, fallback = null) {
   return normalized || fallback;
 }
 
-function isMissingExternalAuthColumnError(error) {
-  const message = String(error?.message || '').toLowerCase();
-  return message.includes('external_auth_provider') || message.includes('external_auth_id');
-}
-
 function isExistingUserError(error) {
   const message = String(error?.message || '').toLowerCase();
   const code = String(error?.code || '').toLowerCase();
@@ -29,42 +24,13 @@ function isExistingUserError(error) {
 }
 
 async function ensureCredentialIdentity({ email, password, name, role }) {
+  // Manager-created users log in without an email confirmation step.
   async function markEmailVerified() {
-    try {
-      const authDb = getAuthDatabase();
-      if (authDb?.db) {
-        await authDb.db
-          .updateTable('user')
-          .set({
-            emailVerified: true,
-            updatedAt: new Date(),
-          })
-          .where('email', '=', email)
-          .execute();
-        return;
-      }
-    } catch {
-      // Fallback to raw SQL variants below.
-    }
-
-    try {
-      await sql(
-        `UPDATE "user" SET "emailVerified" = true, "updatedAt" = NOW() WHERE email = $1`,
-        [email]
-      );
-      return;
-    } catch {
-      // Last fallback for snake_case legacy schemas.
-    }
-
-    try {
-      await sql(
-        `UPDATE "user" SET email_verified = true, updated_at = NOW() WHERE email = $1`,
-        [email]
-      );
-    } catch {
-      // Do not block user creation if verify flag cannot be persisted.
-    }
+    await getAuthDatabase().db
+      .updateTable('user')
+      .set({ emailVerified: true, updatedAt: new Date() })
+      .where('email', '=', email)
+      .execute();
   }
 
   try {
@@ -380,67 +346,7 @@ export async function POST(request) {
       auth_provider: 'better-auth',
     });
 
-    let rows = [];
-
-    try {
-      rows = await sql(
-        `INSERT INTO stock_app_users (
-          auth0_sub,
-          external_auth_provider,
-          external_auth_id,
-          name,
-          phone,
-          email,
-          role,
-          department,
-          division_id,
-          status,
-          can_manage_users,
-          can_approve_changes,
-          can_view_dashboard,
-          default_location_id,
-          created_by
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-        ON CONFLICT (email) DO UPDATE SET
-          auth0_sub = EXCLUDED.auth0_sub,
-          external_auth_provider = EXCLUDED.external_auth_provider,
-          external_auth_id = EXCLUDED.external_auth_id,
-          name = EXCLUDED.name,
-          phone = EXCLUDED.phone,
-          role = EXCLUDED.role,
-          department = COALESCE(EXCLUDED.department, stock_app_users.department),
-          division_id = COALESCE(EXCLUDED.division_id, stock_app_users.division_id),
-          status = EXCLUDED.status,
-          can_manage_users = EXCLUDED.can_manage_users,
-          can_approve_changes = EXCLUDED.can_approve_changes,
-          can_view_dashboard = EXCLUDED.can_view_dashboard,
-          default_location_id = COALESCE(EXCLUDED.default_location_id, stock_app_users.default_location_id),
-          updated_at = NOW()
-        RETURNING *`,
-        [
-          identity.externalAuthId,
-          identity.provider,
-          identity.externalAuthId,
-          body.name,
-          body.phone,
-          body.email || null,
-          roleFlags.role,
-          department,
-          primaryDivisionId,
-          autoApprovedStatus,
-          roleFlags.canManageUsers,
-          roleFlags.canApproveChanges,
-          autoApprovedCanViewDashboard,
-          defaultLocationId,
-          session.user.email,
-        ]
-      );
-    } catch (insertError) {
-      if (!isMissingExternalAuthColumnError(insertError)) {
-        throw insertError;
-      }
-
-      rows = await sql(
+    const rows = await sql(
         `INSERT INTO stock_app_users (
           auth0_sub,
           name,
@@ -485,8 +391,7 @@ export async function POST(request) {
           defaultLocationId,
           session.user.email,
         ]
-      );
-    }
+    );
 
     const savedUser = rows[0];
 

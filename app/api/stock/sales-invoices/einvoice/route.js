@@ -103,7 +103,7 @@ export async function POST(request) {
           summary: `IRN recorded for ${row.docNo}`,
           details: { irn: row.irn, ackNo: row.ackNo },
           userId: gate.appUser.id,
-        }).catch(() => null);
+        });
       } catch (error) {
         skipped.push({ docNo: row.docNo, reason: error?.code === '23505' ? 'This IRN is already on another invoice.' : error.message });
       }

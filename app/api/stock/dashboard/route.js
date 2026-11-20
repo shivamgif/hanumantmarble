@@ -152,8 +152,8 @@ export async function GET(request) {
       sql('SELECT DISTINCT hsn_code FROM stock_inbound_shipment_items WHERE hsn_code IS NOT NULL ORDER BY hsn_code', []),
       sql('SELECT DISTINCT origin_city FROM stock_inbound_shipments WHERE origin_city IS NOT NULL ORDER BY origin_city', []),
       sql(`SELECT name AS destination_warehouse_name FROM stock_locations WHERE name IS NOT NULL AND trim(name) <> '' AND is_active = true AND location_type = 'warehouse' ORDER BY name`, []),
-      sql('SELECT DISTINCT driver_name FROM stock_inbound_shipments WHERE driver_name IS NOT NULL ORDER BY driver_name', []),
-      sql('SELECT DISTINCT truck_license_plate FROM stock_inbound_shipments WHERE truck_license_plate IS NOT NULL ORDER BY truck_license_plate', []),
+      sql("SELECT DISTINCT driver_name_snapshot AS driver_name FROM stock_inbound_shipments WHERE driver_name_snapshot IS NOT NULL AND driver_name_snapshot <> '' ORDER BY driver_name", []),
+      sql("SELECT DISTINCT truck_license_plate_snapshot AS truck_license_plate FROM stock_inbound_shipments WHERE truck_license_plate_snapshot IS NOT NULL AND truck_license_plate_snapshot <> '' ORDER BY truck_license_plate", []),
       sql("SELECT DISTINCT payment_mode FROM stock_inbound_shipments WHERE payment_mode IS NOT NULL AND payment_mode <> '' ORDER BY payment_mode", []),
       schemaCaps.hasStockTypesCategory
         ? sql(`SELECT name AS bag_type FROM stock_types WHERE category = 'bag' AND is_active = true ORDER BY name`, [])

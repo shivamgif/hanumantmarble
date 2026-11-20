@@ -123,17 +123,16 @@ export async function GET(request) {
     ]);
 
     // Days off for the streak: the same weekly off day and holidays attendance
-    // uses, so a quiet Wednesday is not a broken streak. A database without the
-    // attendance tables just gets no days off, as before.
+    // uses, so a quiet Wednesday is not a broken streak.
     const [settingsRows, holidayRows] = await Promise.all([
-      sql('SELECT weekly_off_dow FROM stock_attendance_settings ORDER BY id LIMIT 1', []).catch(() => []),
+      sql('SELECT weekly_off_dow FROM stock_attendance_settings ORDER BY id LIMIT 1', []),
       sql(
         `SELECT TO_CHAR(holiday_date, 'YYYY-MM-DD') AS day
            FROM stock_holidays
           WHERE holiday_date >= (NOW() AT TIME ZONE 'Asia/Kolkata')::date - INTERVAL '120 days'
             AND holiday_date <= (NOW() AT TIME ZONE 'Asia/Kolkata')::date`,
         []
-      ).catch(() => []),
+      ),
     ]);
 
     // Full last month for reference, plus the same days of it (1st..today's
@@ -153,14 +152,13 @@ export async function GET(request) {
       [appUser.id]
     );
 
-    // The "close the gap" lists and the anonymous rank. Each degrades to empty
-    // on its own so a failure here never takes the page down.
+    // The "close the gap" lists and the anonymous rank.
     const isSalesperson = appUser.role === 'salesperson';
     const [sellFirstRows, followUpRows, goalRows] = await Promise.all([
       // Same list the /stock home strip shows, from the same query. Only the
       // salesperson role has divisions to draw it from.
       isSalesperson
-        ? sql(sellFirstSql(schemaCaps), [appUser.division_ids?.length ? appUser.division_ids : [-1]]).catch(() => [])
+        ? sql(sellFirstSql(schemaCaps), [appUser.division_ids?.length ? appUser.division_ids : [-1]])
         : Promise.resolve([]),
       // Customers who bought from this person before but have gone quiet for
       // 45-180 days: the cheapest money to win back. Past 180 days they are
@@ -185,8 +183,8 @@ export async function GET(request) {
          ORDER BY lifetime_value DESC
          LIMIT 5`,
         [appUser.id]
-      ).catch(() => []),
-      sql(goalProgressSql(schemaCaps), []).catch(() => []),
+      ),
+      sql(goalProgressSql(schemaCaps), []),
     ]);
 
     return NextResponse.json({

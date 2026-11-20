@@ -37,8 +37,8 @@ npm install
 # 2. Start dev server
 npm run dev
 
-# 2a. (Recommended) apply external auth identity migration
-npm run db:migrate-external-auth-identity
+# 2a. Apply pending schema migrations (.env.local must be a Neon dev branch)
+npm run db:migrate
 
 # 3. Open browser
 open http://localhost:3000

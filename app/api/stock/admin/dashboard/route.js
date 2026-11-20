@@ -4,19 +4,11 @@ import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { netRevenueExpr } from '@/lib/stock-analytics-sql.mjs';
 
-function isMissingExternalAuthColumnError(error) {
-  const message = String(error?.message || '').toLowerCase();
-  return message.includes('external_auth_provider') || message.includes('external_auth_id');
-}
-
-async function fetchDashboardUsers() {
-  try {
-    const rows = await sql(
+function fetchDashboardUsers() {
+  return sql(
       `SELECT
          u.id,
          u.auth0_sub,
-         u.external_auth_provider,
-         u.external_auth_id,
          u.email,
          u.name AS full_name,
          u.phone AS phone_number,
@@ -41,44 +33,6 @@ async function fetchDashboardUsers() {
        ORDER BY u.created_at DESC`,
       []
     );
-    return rows;
-  } catch (error) {
-    if (!isMissingExternalAuthColumnError(error)) {
-      throw error;
-    }
-
-    const rows = await sql(
-      `SELECT
-         u.id,
-         u.auth0_sub,
-         NULL::TEXT AS external_auth_provider,
-         NULL::TEXT AS external_auth_id,
-         u.email,
-         u.name AS full_name,
-         u.phone AS phone_number,
-         u.role,
-         u.department,
-         u.division_id,
-         ARRAY_AGG(d.name ORDER BY d.name) FILTER (WHERE d.name IS NOT NULL) AS division_names,
-         STRING_AGG(d.name, ', ' ORDER BY d.name) AS division_name,
-         u.status,
-         u.can_manage_users,
-         u.can_approve_changes,
-         u.can_view_dashboard,
-         (u.status = 'active') AS is_active,
-         u.salary,
-         u.monthly_sales_goal,
-         u.default_location_id,
-         u.last_login_at
-       FROM stock_app_users u
-       LEFT JOIN stock_user_divisions ud ON ud.user_id = u.id
-       LEFT JOIN stock_divisions d ON d.id = ud.division_id
-       GROUP BY u.id
-       ORDER BY u.created_at DESC`,
-      []
-    );
-    return rows;
-  }
 }
 
 export async function GET(request) {
