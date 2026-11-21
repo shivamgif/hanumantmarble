@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Ban, Check, Download, ExternalLink, FileText, Plus, Upload, X } from 'lucide-react';
+import { Ban, Check, Download, ExternalLink, FileMinus, FileText, Plus, Upload, X } from 'lucide-react';
 import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -16,6 +16,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { ReasonDialog } from '@/components/ui/reason-dialog';
 import { InvoiceFormContent, formatRupees, invoiceStatus, useInvoiceText } from '../components/invoice-form';
 import { StockToast } from '../components/stock-toast';
+import { CreditNoteSheet, CreditNotesList, STATUS_TONE } from '../components/credit-notes';
 import {
   CLASSES,
   createDispatchItemRow,
@@ -25,15 +26,7 @@ import {
   PILL_PRIMARY_BUTTON_CLASS,
 } from '../lib/stock-utils';
 
-const FILTERS = ['pending', 'needs_irn', 'approved', 'dispatched', 'all'];
-
-const STATUS_TONE = {
-  pending: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
-  approved: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
-  dispatched: 'bg-sky-500/10 text-sky-700 dark:text-sky-400',
-  rejected: 'bg-rose-500/10 text-rose-700 dark:text-rose-400',
-  cancelled: 'bg-slate-500/10 text-slate-500',
-};
+const FILTERS = ['pending', 'needs_irn', 'approved', 'dispatched', 'all', 'creditNotes'];
 
 const invoiceItemRow = () => ({ ...createDispatchItemRow(), hsnCode: '', gstRate: '18' });
 
@@ -95,6 +88,8 @@ export default function InvoicesPage() {
 
   const [filter, setFilter] = useState('pending');
   const [invoices, setInvoices] = useState([]);
+  const [notes, setNotes] = useState([]);
+  const [creditNoteRequest, setCreditNoteRequest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState('');
@@ -115,9 +110,15 @@ export default function InvoicesPage() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/stock/sales-invoices${filter === 'all' ? '' : `?status=${filter}`}`, { cache: 'no-store' })
+    const url = filter === 'creditNotes' ? '/api/stock/notes'
+      : `/api/stock/sales-invoices${filter === 'all' ? '' : `?status=${filter}`}`;
+    fetch(url, { cache: 'no-store' })
       .then(readJson)
-      .then((json) => { if (!cancelled) { setInvoices(json.invoices || []); setError(''); } })
+      .then((json) => {
+        if (cancelled) return;
+        if (filter === 'creditNotes') setNotes(json.notes || []); else setInvoices(json.invoices || []);
+        setError('');
+      })
       .catch((err) => { if (!cancelled) setError(err.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -142,6 +143,14 @@ export default function InvoicesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const wantsNewEstimate = searchParams.get('new') === 'estimate';
+  // ?creditNote=<invoiceId>[&shipment=<id>], from a dispatch's "Raise credit note".
+  const creditNoteParam = searchParams.get('creditNote');
+  const shipmentParam = searchParams.get('shipment');
+  useEffect(() => {
+    if (!creditNoteParam) return;
+    setCreditNoteRequest({ invoiceId: Number(creditNoteParam), shipmentId: Number(shipmentParam) || null });
+    router.replace('/stock/invoices');
+  }, [creditNoteParam, shipmentParam, router]);
   const handledNewRef = useRef(false);
   useEffect(() => {
     if (!wantsNewEstimate) { handledNewRef.current = false; return; }
@@ -198,6 +207,23 @@ export default function InvoicesPage() {
       setBusyId(null);
     }
   }, [t]);
+
+  const actNote = useCallback(async (note, action, extra = {}) => {
+    setBusyId(`note-${note.id}`);
+    try {
+      const json = await readJson(await fetch(`/api/stock/notes/${note.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, ...extra }),
+      }));
+      setToast({ type: 'success', message: json.message });
+      setRefreshKey((k) => k + 1);
+    } catch (err) {
+      setToast({ type: 'error', message: err.message });
+    } finally {
+      setBusyId(null);
+    }
+  }, []);
 
   const downloadEinvoiceJson = useCallback(async () => {
     try {
@@ -287,6 +313,16 @@ export default function InvoicesPage() {
           <p className="py-12 text-center text-sm text-slate-400">…</p>
         ) : error ? (
           <p className="py-12 text-center text-sm text-rose-500">{error}</p>
+        ) : filter === 'creditNotes' ? (
+          <CreditNotesList
+            notes={notes}
+            accessUser={accessUser}
+            isApprover={isApprover}
+            busyId={busyId}
+            onAct={actNote}
+            setReasonDialog={setReasonDialog}
+            t={t}
+          />
         ) : !invoices.length ? (
           <p className="py-12 text-center text-sm text-slate-400">{t('noInvoices')}</p>
         ) : (
@@ -342,6 +378,11 @@ export default function InvoicesPage() {
                         </button>
                       </>
                     ) : null}
+                    {canRaise && invoice.status === 'approved' ? (
+                      <button type="button" onClick={() => setCreditNoteRequest({ invoiceId: invoice.id })} className={PILL_BUTTON_CLASS}>
+                        <FileMinus className="h-3.5 w-3.5" /> {t('creditNote')}
+                      </button>
+                    ) : null}
                     {canCancel(invoice) ? (
                       <button
                         type="button"
@@ -396,6 +437,18 @@ export default function InvoicesPage() {
           )}
         </SheetContent>
       </Sheet>
+
+      <CreditNoteSheet
+        request={creditNoteRequest}
+        onClose={() => setCreditNoteRequest(null)}
+        onSaved={(message) => {
+          setCreditNoteRequest(null);
+          setToast({ type: 'success', message });
+          setFilter('creditNotes');
+          setRefreshKey((k) => k + 1);
+        }}
+        t={t}
+      />
 
       <ReasonDialog request={reasonDialog} onClose={() => setReasonDialog(null)} />
       <StockToast toast={toast} onDismiss={() => setToast(null)} />

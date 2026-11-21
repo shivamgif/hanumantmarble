@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useMemo } from 'react';
-import { Check, X, MessageSquare, IndianRupee, PackageCheck, Loader2, ExternalLink, FileText } from 'lucide-react';
+import { Check, X, MessageSquare, IndianRupee, PackageCheck, Loader2, ExternalLink, FileMinus, FileText } from 'lucide-react';
 import EntryPreviewSheet, { PreviewKeyValueGrid, PreviewStats } from '@/components/ui/entry-preview-sheet';
 import { Badge } from '@/components/ui/badge';
 import PaginationControls from '@/components/ui/pagination-controls';
@@ -415,6 +416,18 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
           <div className="space-y-3">
           {previewState.kind === 'dispatch' && previewState.record?.sales_invoice_id ? (
             <EwayBillPanel key={previewState.record.id} shipment={previewState.record} userRole={userRole} />
+          ) : null}
+          {/* A return moves stock back but not money: the credit note does that. */}
+          {previewState.kind === 'dispatch' && previewState.record?.sales_invoice_id
+            && previewState.record.approval_status === 'approved'
+            && ['admin', 'manager', 'salesperson'].includes(userRole)
+            && (previewState.items || []).some((item) => Number(item.returned_whole_qty) > 0 || Number(item.returned_qty_sqft) > 0) ? (
+            <Link
+              href={`/stock/invoices?creditNote=${previewState.record.sales_invoice_id}&shipment=${previewState.record.id}`}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-sm font-medium text-slate-700 hover:bg-muted dark:text-slate-200"
+            >
+              <FileMinus className="h-4 w-4" /> {tc.raiseCreditNote ?? 'Raise credit note'}
+            </Link>
           ) : null}
           <ActionFooter
             record={previewState.record}

@@ -1,4 +1,4 @@
-import { withTransaction } from '@/lib/db';
+import { sql, withTransaction } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import { getRoleFlags, queueNotification, recordTimelineEvent, stockRoute } from '@/lib/stock-workflow';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
@@ -174,6 +174,11 @@ export const PATCH = stockRoute(async function PATCH(request, context) {
       const isOwnPending = current.status === 'pending' && Number(current.created_by_user_id) === me;
       const canCancel = isOwnPending || (isApprover && !isOwn && ['pending', 'approved'].includes(current.status));
       if (!canCancel) return NextResponse.json({ error: 'You cannot cancel this invoice' }, { status: 403 });
+      const liveNotes = await sql(
+        `SELECT 1 FROM acc_notes WHERE sales_invoice_id = $1 AND status IN ('pending', 'approved') LIMIT 1`,
+        [invoiceId]
+      );
+      if (liveNotes.length) throw conflict('This invoice has credit notes. Cancel them first.');
       const { hasAccounts } = await getStockSchemaCapabilities();
       invoice = await withBooks(appUser, async (tx) => {
         const [row] = await tx(
