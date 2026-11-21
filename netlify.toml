@@ -1,4 +1,4 @@
-# Netlify configuration for stock management subdomain
+# Netlify configuration: Hanumant Marble storefront + the stock ERP
 
 [build]
   command = "npm run build"
@@ -9,6 +9,10 @@
   NODE_VERSION = "24.14.1"
   # Next.js specific
   NEXT_PUBLIC_ENV = "production"
+  # The only hosts that serve Hanumant Marble's public storefront (proxy.js).
+  # Every other host (stock.hanumantmarble.com, previews, other companies'
+  # domains) serves just the stock ERP.
+  NEXT_PUBLIC_STOREFRONT_HOSTS = "hanumantmarble.com,www.hanumantmarble.com"
 
 [[plugins]]
 package = "@netlify/plugin-nextjs"
@@ -16,11 +20,6 @@ package = "@netlify/plugin-nextjs"
 # Environment-based behavior
 [context.production]
   command = "npm run build"
-  
-  [context.production.environment]
-    NEXT_PUBLIC_APP_TYPE = "stock"
-    NEXT_PUBLIC_REQUIRE_AUTH = "true"
-    NEXT_PUBLIC_INTERNAL_ONLY = "true"
 
 [context.deploy-preview]
   command = "npm run build"

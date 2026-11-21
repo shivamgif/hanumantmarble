@@ -7,7 +7,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Github, ArrowRight, LogOut, Shield, User } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BrandMark } from '@/components/ui/brand-mark';
+import { CompanyMark } from '@/components/ui/brand-mark';
+import { PRODUCT_NAME } from '@/lib/product';
 
 export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
   const { user, error, isLoading } = useAuthUser();
@@ -165,8 +166,8 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-10 text-foreground">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <BrandMark size={44} priority className="mb-4" />
-          <p className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">Hanumant Marble</p>
+          <CompanyMark name={PRODUCT_NAME} size={44} priority className="mb-4" />
+          <p className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">{PRODUCT_NAME}</p>
           <h1 className="mt-1 text-sm text-muted-foreground">Stock Portal</h1>
         </div>
 
@@ -214,7 +215,7 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
                     type="email"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
-                    placeholder="you@hanumantmarble.com"
+                    placeholder="you@company.com"
                     className={inputClass}
                     autoComplete="email"
                   />

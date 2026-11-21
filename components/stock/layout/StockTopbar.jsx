@@ -1,6 +1,6 @@
 'use client';
 
-import { BrandMark } from '@/components/ui/brand-mark';
+import { CompanyMark } from '@/components/ui/brand-mark';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -350,6 +350,7 @@ export default function StockTopbar({
   primaryModifierLabel,
   navigationItems,
   isActiveRoute,
+  tenant,
 }) {
   const mod = primaryModifierLabel.replace('+', '').trim();
   const quickActions = getRoleFlags(accessRole).isReadOnly ? [] : [
@@ -390,9 +391,9 @@ export default function StockTopbar({
         <div className="lg:hidden">
           <div className="flex h-14 items-center justify-between gap-3 px-4">
             <Link href="/stock" className="flex items-center gap-3 min-w-0" aria-label={t('dashboardAria')}>
-              <BrandMark size={26} />
+              <CompanyMark name={tenant?.name} logo={tenant?.logo} logoDark={tenant?.logoDark} size={26} />
               <div className="min-w-0">
-                <p className="truncate text-[15px] font-semibold tracking-tight leading-tight text-slate-900 dark:text-slate-50">{language === 'hi' ? 'हनुमंत मार्बल' : 'Hanumant Marble'}</p>
+                <p className="truncate text-[15px] font-semibold tracking-tight leading-tight text-slate-900 dark:text-slate-50">{tenant?.name}</p>
               </div>
             </Link>
 

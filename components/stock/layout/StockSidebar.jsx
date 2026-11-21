@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { Bell, Languages, MoonStar, SunMedium, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { BrandMark } from '@/components/ui/brand-mark';
+import { CompanyMark } from '@/components/ui/brand-mark';
+import { TENANT_COOKIE } from '@/lib/tenant-cookie';
 
 function SidebarNavItem({ Icon, Label, Href, IsActive, Collapsed }) {
   return (
@@ -43,6 +44,8 @@ export default function StockSidebar({
   handleStockLogout,
   collapsed,
   onToggleCollapse,
+  tenant,
+  tenants = [],
 }) {
   const iconButtonClass = 'h-9 w-9 flex items-center justify-center rounded-md text-slate-500 dark:text-slate-400 transition-colors hover:bg-muted hover:text-slate-900 dark:hover:text-slate-100 focus-ring';
   const collapseLabel = collapsed ? t('expandSidebar') : t('collapseSidebar');
@@ -51,10 +54,26 @@ export default function StockSidebar({
     <aside className={`${classes.sidebar} border-r border-border flex flex-col`}>
       {/* Logo */}
       <div className={`flex shrink-0 items-center mb-2 ${collapsed ? 'flex-col gap-3 px-3 pt-4' : 'h-16 gap-2.5 pl-4 pr-2'}`}>
-        <BrandMark size={28} priority />
+        <CompanyMark name={tenant?.name} logo={tenant?.logo} logoDark={tenant?.logoDark} size={28} priority />
         {!collapsed && (
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold tracking-tight leading-tight text-slate-900 dark:text-slate-50">{language === 'hi' ? 'हनुमंत मार्बल' : 'Hanumant Marble'}</p>
+            {tenants.length > 1 ? (
+              // Someone on several companies' staff picks which one to work in.
+              // The cookie only chooses; the server still checks the staff row.
+              <select
+                aria-label="Switch company"
+                value={tenant?.id ?? ''}
+                onChange={(event) => {
+                  document.cookie = `${TENANT_COOKIE}=${event.target.value}; Path=/; Max-Age=31536000; SameSite=Lax`;
+                  window.location.assign('/stock');
+                }}
+                className="w-full truncate bg-transparent text-sm font-semibold tracking-tight leading-tight text-slate-900 dark:text-slate-50 focus-ring rounded"
+              >
+                {tenants.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+              </select>
+            ) : (
+              <p className="truncate text-sm font-semibold tracking-tight leading-tight text-slate-900 dark:text-slate-50">{tenant?.name}</p>
+            )}
             <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">{t('stockOpsApprovals')}</p>
           </div>
         )}

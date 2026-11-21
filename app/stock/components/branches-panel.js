@@ -217,7 +217,7 @@ function BranchRow({ branch, businesses, onSave, onRetire, onRestore }) {
 }
 
 const BLANK_BUSINESS = {
-  legalName: '', tradeName: '', gstin: '', stateCode: '08', address: '', phone: '', email: '',
+  legalName: '', tradeName: '', gstin: '', stateCode: '', address: '', phone: '', email: '',
   bankName: '', bankAccount: '', bankIfsc: '', invoicePrefix: '',
   city: '', pincode: '', upiId: '', ewbThreshold: '50000', einvoiceEnabled: true,
 };
@@ -256,10 +256,25 @@ function BusinessForm({ business, canManage, onSubmit, onToggleActive }) {
       ) : null}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="sm:col-span-2">{label('legalName', 'Legal name')}<input required {...field('legalName')} /></div>
-        <div>{label('gstin', 'GSTIN')}<input required maxLength={15} {...field('gstin')} placeholder="08ABCDE1234F1Z5" /></div>
+        <div>
+          {label('gstin', 'GSTIN')}
+          <input
+            required
+            maxLength={15}
+            {...field('gstin')}
+            onChange={(e) => {
+              const gstin = e.target.value.toUpperCase();
+              // A GSTIN's first two digits are its state: fill State from them.
+              const stateCode = GST_STATES[gstin.slice(0, 2)] ? gstin.slice(0, 2) : null;
+              setForm((f) => ({ ...f, gstin, ...(stateCode ? { stateCode } : {}) }));
+            }}
+            placeholder="27ABCDE1234F1Z5"
+          />
+        </div>
         <div>
           {label('stateCode', 'State')}
-          <SelectField {...field('stateCode')}>
+          <SelectField required {...field('stateCode')}>
+            <option value="" disabled>Select state</option>
             {Object.entries(GST_STATES).map(([code, name]) => (
               <option key={code} value={code}>{code} · {name}</option>
             ))}
@@ -267,14 +282,14 @@ function BusinessForm({ business, canManage, onSubmit, onToggleActive }) {
         </div>
         <div className="sm:col-span-2">{label('address', 'Registered address')}<textarea rows={2} {...field('address')} /></div>
         <div>{label('tradeName', 'Trade name')}<input {...field('tradeName')} placeholder="Optional" /></div>
-        <div>{label('invoicePrefix', 'Invoice prefix')}<input required maxLength={4} {...field('invoicePrefix')} placeholder="HM" /></div>
+        <div>{label('invoicePrefix', 'Invoice prefix')}<input required maxLength={4} {...field('invoicePrefix')} placeholder="INV" /></div>
         <div>{label('phone', 'Phone')}<input {...field('phone')} /></div>
         <div>{label('email', 'Email')}<input type="email" {...field('email')} /></div>
         <div>{label('bankName', 'Bank')}<input {...field('bankName')} /></div>
         <div>{label('bankAccount', 'Account no.')}<input {...field('bankAccount')} /></div>
         <div>{label('bankIfsc', 'IFSC')}<input {...field('bankIfsc')} /></div>
         {/* The e-invoice and e-way bill portals need a structured address. */}
-        <div>{label('city', 'City')}<input required {...field('city')} placeholder="Kishangarh" /></div>
+        <div>{label('city', 'City')}<input required {...field('city')} placeholder="City" /></div>
         <div>{label('pincode', 'PIN code')}<input required inputMode="numeric" maxLength={6} {...field('pincode')} /></div>
         <div>{label('upiId', 'UPI ID (payment QR)')}<input {...field('upiId')} placeholder="name@bank" /></div>
         <div>{label('ewbThreshold', 'E-way bill above ₹')}<input inputMode="decimal" {...field('ewbThreshold')} /></div>

@@ -117,6 +117,24 @@ tenant in the transaction setting `app.tenant_id` (`db/migrations/0001_tenancy.s
   (`stockRoute` in `lib/stock-workflow.js` → `withTenant` in `lib/db.js`). It
   commits only when the response status is below 400. A query outside a request
   sees no rows.
+- **Only approved staff reach a route.** `stockRoute` answers 403 unless the
+  caller has an active staff row with dashboard access in the chosen company,
+  so a route cannot forget the check. Only `/api/stock/access` opts out
+  (`allowUnapproved`), to tell people where they stand.
+- **Onboarding a company** (operator only; there is no self-serve signup yet):
+  ```bash
+  npm run db:migrate:prod scripts/create-tenant.mjs -- \
+    --name "Sharma Traders" --owner-email owner@sharma.in --owner-name "R. Sharma" \
+    --gstin 27ABCDE1234F1Z5 --legal-name "Sharma Traders Pvt Ltd" --invoice-prefix ST
+  ```
+  The owner becomes the company's manager and adds branches and staff in the app.
+  They sign in with Google, or with email/password followed by
+  `... scripts/create-tenant.mjs -- --verify-email owner@sharma.in` (the app sends
+  no verification mail, and an unverified email never matches a staff row).
+  Someone on several companies' staff gets a company switcher in the sidebar.
+- **Storefront** (Hanumant Marble's public site) only answers on the hosts in
+  `NEXT_PUBLIC_STOREFRONT_HOSTS` (`netlify.toml`); every other host serves just
+  the ERP. Set the same variable in `.env.local` to work on the storefront locally.
 - **A new table** in a migration needs, in the same file:
   ```sql
   tenant_id INT NOT NULL DEFAULT COALESCE(app_tenant(), 1) REFERENCES tenants(id),

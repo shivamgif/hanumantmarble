@@ -2,18 +2,30 @@ import { NextResponse } from 'next/server';
 import { authMiddleware } from './lib/auth-server';
 
 const INTERNAL_ROUTES = ['/stock', '/api/stock'];
-const ALLOWED_INTERNAL_EMAILS = (process.env.ALLOWED_INTERNAL_EMAILS || ''  ).split(',').map(e => e.trim());
+
+// One deploy serves both Hanumant Marble's public storefront and the stock ERP
+// that other companies use. The storefront (catalogue, cart, checkout, product
+// admin) only answers on these hosts; everywhere else only the ERP exists.
+// NEXT_PUBLIC_ so it is inlined at build time (netlify.toml sets it).
+const STOREFRONT_HOSTS = new Set(
+  String(process.env.NEXT_PUBLIC_STOREFRONT_HOSTS || '').split(',').map((h) => h.trim().toLowerCase()).filter(Boolean)
+);
+const ERP_PATHS = ['/stock', '/api/stock', '/api/auth', '/login', '/logout', '/attendance'];
+const isErpPath = (pathname) => ERP_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+const isStaticFile = (pathname) => /\.[a-z0-9]+$/i.test(pathname);
 
 export async function proxy(request) {
   const { pathname } = request.nextUrl;
-  const hostname = request.nextUrl.hostname;
+  // The Host header is the domain the visitor typed; nextUrl can carry the
+  // server's own host (it does in `next dev`).
+  const hostname = String(request.headers.get('host') || request.nextUrl.hostname).split(':')[0].toLowerCase();
   const postLogoutReturnTo = request.cookies.get('hm-login-return-to')?.value;
 
   if (pathname === '/' && postLogoutReturnTo) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  if (hostname === 'stock.hanumantmarble.com' && pathname === '/') {
+  if (!STOREFRONT_HOSTS.has(hostname) && !isErpPath(pathname) && !isStaticFile(pathname)) {
     return NextResponse.redirect(new URL('/stock', request.url));
   }
 
