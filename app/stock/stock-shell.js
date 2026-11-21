@@ -3,7 +3,8 @@
 import { BarChart2, BookOpen, Clock, FileText, Home, Settings, Users } from 'lucide-react';
 import { getLogoutHref, useAuthUser } from '@/lib/auth-client';
 import { usePathname } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { ACCENTS, accentOf } from '@/lib/accent.mjs';
 import { useTheme } from 'next-themes';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
@@ -48,6 +49,20 @@ export default function StockShell({ children }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const { accessLoading, hasResolvedAccessOnce, accessApproved, accessMessage, accessRole, accessTenant, accessTenants } = useStockAccess(user);
+
+  // The company's accent. On <body>, not the shell, so Radix sheets and menus
+  // (portalled into <body>) pick it up too. globals.css reads these.
+  const accentKey = accessTenant?.accent;
+  useEffect(() => {
+    const accent = ACCENTS[accentOf(accentKey)];
+    const style = document.body.style;
+    style.setProperty('--accent-light', accent.light);
+    style.setProperty('--accent-dark', accent.dark);
+    return () => {
+      style.removeProperty('--accent-light');
+      style.removeProperty('--accent-dark');
+    };
+  }, [accentKey]);
 
   const notificationsState = useStockNotifications({ user, accessApproved });
   const { isApplePlatform } = useStockShortcuts({ dashboardSearchRef, accessRole });

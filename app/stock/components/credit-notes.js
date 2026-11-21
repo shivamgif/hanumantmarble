@@ -1,4 +1,5 @@
 'use client';
+import { SelectField } from '@/components/ui/select';
 
 // Credit notes on the Invoices page: the "raise" sheet and the list.
 import Link from 'next/link';
@@ -116,9 +117,9 @@ export function CreditNoteSheet({ request, onClose, onSaved, t }) {
 
             <label className="block max-w-xs">
               <span className={FORM_LABEL_CLASS}>{t('reason')}</span>
-              <select value={reason} onChange={(e) => setReason(e.target.value)} className={FORM_INPUT_CLASS}>
+              <SelectField value={reason} onChange={(e) => setReason(e.target.value)} className={FORM_INPUT_CLASS}>
                 {NOTE_REASONS.map((key) => <option key={key} value={key}>{t(`reason_${key}`)}</option>)}
-              </select>
+              </SelectField>
             </label>
 
             <div className="overflow-x-auto">
@@ -207,7 +208,7 @@ function noteRights(note, accessUser, isApprover) {
 }
 
 export function CreditNotesList({ notes, accessUser, isApprover, busyId, onAct, setReasonDialog, t }) {
-  if (!notes.length) return <p className="py-12 text-center text-sm text-slate-400">{t('noNotes')}</p>;
+  if (!notes.length) return <p className="py-8 text-center text-sm text-slate-400">{t('noNotes')}</p>;
   return (
     <ul className="divide-y divide-border">
       {notes.map((note) => {

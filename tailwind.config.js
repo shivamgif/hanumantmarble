@@ -18,7 +18,8 @@ module.exports = {
     extend: {
       colors: {
         brand: {
-          primary: "#E07A00",
+          // Follows the company accent inside /stock; the storefront's --primary is the same saffron.
+          primary: "rgb(var(--primary) / <alpha-value>)",
           secondary: "#1A1A54",
           accent: "#0d9488",
           slateSidebar: "#0f172a",

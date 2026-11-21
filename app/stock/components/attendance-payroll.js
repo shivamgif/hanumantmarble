@@ -117,7 +117,7 @@ export function AttendancePayroll() {
               </tr>
             ) : !rows.length ? (
               <tr>
-                <td colSpan={10} className="px-4 py-10 text-center text-xs font-bold text-slate-500">
+                <td colSpan={10} className="px-4 py-8 text-center text-xs font-bold text-slate-500">
                   No tracked employees.
                 </td>
               </tr>

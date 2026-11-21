@@ -8,7 +8,13 @@ import { Github, ArrowRight, LogOut, Shield, User } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CompanyMark } from '@/components/ui/brand-mark';
-import { PRODUCT_NAME } from '@/lib/product';
+import { PRODUCT_NAME, PRODUCT_TAGLINE } from '@/lib/product';
+import { LoginIllustration } from '@/components/login-illustration';
+
+// Setup details help a developer and confuse a customer: show them in dev only.
+const devHint = (hint) => (process.env.NODE_ENV === 'production' ? '' : ` (dev: ${hint})`);
+
+const FEATURES = ['Stock, dispatch and showrooms', 'GST invoices, e-invoices and e-way bills', 'Books, attendance and insights'];
 
 export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
   const { user, error, isLoading } = useAuthUser();
@@ -38,7 +44,7 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
     }
 
     if (!socialProvider) {
-      setSignInError('Social sign-in is not configured in this environment. Use email/password or configure NEXT_PUBLIC_BETTER_AUTH_SOCIAL_PROVIDER and provider credentials.');
+      setSignInError(`This sign-in option is not available. Use your email and password.${devHint('set NEXT_PUBLIC_BETTER_AUTH_SOCIAL_PROVIDER and provider credentials')}`);
       return;
     }
 
@@ -54,13 +60,13 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
         const message = String(error.message || '').toLowerCase();
 
         if (message.includes('provider not found')) {
-          setSignInError(`Sign-in provider "${socialProvider}" is not configured on the server yet.`);
+          setSignInError(`This sign-in option is not available. Use your email and password.${devHint(`provider "${socialProvider}" is not configured on the server`)}`);
         } else if (message.includes('too many requests') || message.includes('429') || message.includes('rate limit')) {
           const retryAt = Date.now() + 60_000;
           setSocialRetryAfter(retryAt);
           setSignInError('Too many sign-in attempts. Please wait 60 seconds and try again.');
         } else if (message.includes('invalid origin') || message.includes('forbidden') || message.includes('403')) {
-          setSignInError('This app origin is not trusted by Better Auth. Add the current localhost origin to trusted origins and restart the dev server.');
+          setSignInError(`Sign-in is blocked from this address. Please contact support.${devHint('add this origin to Better Auth trusted origins and restart')}`);
         } else {
           setSignInError(error.message || 'Unable to start sign-in. Please try again.');
         }
@@ -97,7 +103,7 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
         const message = String(signinError.message || '').toLowerCase();
 
         if (message.includes('invalid') || message.includes('credentials') || message.includes('not found')) {
-          setSignInError('Invalid email or password. If this user was created before Better Auth migration, use "Create account" once with the same email/password to provision credentials.');
+          setSignInError('Incorrect email or password.');
         } else if (message.includes('too many requests') || message.includes('429')) {
           setSignInError('Too many attempts. Please try again later.');
         } else {
@@ -163,12 +169,33 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
   const inputClass = 'w-full rounded-lg border border-input bg-card px-3 py-2.5 text-sm outline-none transition-[border-color,box-shadow] placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-primary/15';
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-10 text-foreground">
+    <div className="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-[1.1fr_1fr]">
+      <aside className="relative hidden flex-col justify-between overflow-hidden border-r border-border bg-primary/[0.06] p-10 lg:flex xl:p-14">
+        <div className="flex items-center gap-3">
+          <CompanyMark name={PRODUCT_NAME} size={36} priority />
+          <span className="text-lg font-semibold tracking-tight">{PRODUCT_NAME}</span>
+        </div>
+        <div className="mx-auto w-full max-w-lg">
+          <LoginIllustration className="w-full" />
+          <h2 className="mt-8 text-2xl font-semibold tracking-tight xl:text-3xl">Every decision, from your own numbers.</h2>
+          <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+            {FEATURES.map((feature) => (
+              <li key={feature} className="flex items-center gap-2">
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-primary" />
+                {feature}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} {PRODUCT_NAME}</p>
+      </aside>
+
+      <div className="flex min-h-screen flex-col items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <CompanyMark name={PRODUCT_NAME} size={44} priority className="mb-4" />
-          <p className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">{PRODUCT_NAME}</p>
-          <h1 className="mt-1 text-sm text-muted-foreground">Stock Portal</h1>
+          <CompanyMark name={PRODUCT_NAME} size={44} priority className="mb-4 lg:hidden" />
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">{user ? PRODUCT_NAME : 'Sign in'}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{user ? PRODUCT_TAGLINE : `to ${PRODUCT_NAME}`}</p>
         </div>
 
         <section className="rounded-xl border border-border bg-card p-6 shadow-card sm:p-7">
@@ -267,7 +294,7 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
             </div>
           )}
         </section>
-        <p className="mt-6 text-center text-xs text-muted-foreground">Use the same login for stock access and the rest of the site.</p>
+      </div>
       </div>
     </div>
   );

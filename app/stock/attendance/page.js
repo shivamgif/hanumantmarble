@@ -1,9 +1,8 @@
 'use client';
 
 import { Suspense, useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { CalendarDays, CalendarOff, ChevronRight, Clock, Settings, Users, Wallet } from 'lucide-react';
+import { CalendarDays, CalendarOff, Clock, Settings, Users, Wallet } from 'lucide-react';
 import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { getRoleFlags } from '@/lib/stock-roles.mjs';
@@ -16,6 +15,7 @@ import { AttendanceTeam } from '../components/attendance-team';
 import { AttendanceEntrySheet } from '../components/attendance-entry-sheet';
 import { AttendanceMonth } from '../components/attendance-month';
 import { CLASSES, tabButtonClass, tabTrackClass } from '../lib/stock-utils';
+import { PageHeader } from '../components/page-header';
 import { useAttendanceText } from '@/lib/attendance-i18n';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -69,21 +69,7 @@ function AttendancePageInner() {
 
   return (
     <div className={CLASSES.contentWrap}>
-      <header>
-        <div className="space-y-2">
-          <nav className="flex items-center flex-wrap gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
-            <Link href="/stock" className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors">{t('dashboard')}</Link>
-            <ChevronRight className="h-3 w-3 text-slate-300 dark:text-slate-600" />
-            <span className="text-slate-900 dark:text-white">{t('title')}</span>
-          </nav>
-          <h1 className="page-title">
-            {t('title')}
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-3xl">
-            {t('subtitle')}
-          </p>
-        </div>
-      </header>
+      <PageHeader icon={Clock} crumbs={[{ label: t('dashboard'), href: '/stock' }, { label: t('title') }]} title={t('title')} subtitle={t('subtitle')} />
 
       {tabs.length > 1 ? (
         // Same strip as the dashboard, analytics and admin tabs: below sm, equal

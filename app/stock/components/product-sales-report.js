@@ -240,7 +240,7 @@ export function ProductSalesReport({ open, onOpenChange }) {
               })}
               {loading ? (
                 <tr>
-                  <td colSpan={colSpan} className="px-3 py-10">
+                  <td colSpan={colSpan} className="px-3 py-8">
                     <div className="flex items-center justify-center gap-2 text-slate-400">
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-brand-primary" />
                       <span className="text-sm">Loading…</span>
@@ -249,7 +249,7 @@ export function ProductSalesReport({ open, onOpenChange }) {
                 </tr>
               ) : !visible.length && !error ? (
                 <tr>
-                  <td colSpan={colSpan} className="px-3 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
+                  <td colSpan={colSpan} className="px-3 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
                     {query ? 'No products match that filter.' : 'No sales in this month.'}
                   </td>
                 </tr>

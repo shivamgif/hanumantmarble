@@ -12,7 +12,8 @@ const Layout = ({ children }) => {
   // /attendance is the unauthenticated kiosk. It lives outside /stock because
   // that layout is the auth gate, but it is an app screen, not a storefront
   // page — no marketing header or footer on a showroom tablet.
-  const isAppRoute = pathname?.startsWith('/stock') || pathname?.startsWith('/attendance');
+  // /login is the product's own full-screen sign-in, so no storefront chrome either.
+  const isAppRoute = pathname?.startsWith('/stock') || pathname?.startsWith('/attendance') || pathname === '/login';
 
   // Menus, sheets and dialogs portal into <body>, outside the wrapper below, so
   // without this they'd take the storefront's tokens and font in the app.

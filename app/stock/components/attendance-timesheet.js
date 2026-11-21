@@ -163,7 +163,7 @@ export function AttendanceTimesheet({ scope = 'self', employees = [], canManage 
               </tr>
             ) : !rows.length ? (
               <tr>
-                <td colSpan={COLUMNS.length + 1} className="px-4 py-10 text-center text-xs font-bold text-slate-500">
+                <td colSpan={COLUMNS.length + 1} className="px-4 py-8 text-center text-xs font-bold text-slate-500">
                   No attendance recorded for this month.
                 </td>
               </tr>

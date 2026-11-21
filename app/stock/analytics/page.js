@@ -1,5 +1,4 @@
 'use client';
-import Link from 'next/link';
 import { ReasonDialog } from '@/components/ui/reason-dialog';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
@@ -8,10 +7,11 @@ import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { canSell, getRoleFlags } from '@/lib/stock-roles.mjs';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Boxes, ChevronRight, Download, LayoutGrid, TrendingUp, UserCheck, Users } from 'lucide-react';
+import { Boxes, Download, LayoutGrid, TrendingUp, UserCheck, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CLASSES, paceAdjustedTarget } from '../components/dashboard-ui';
-import { PILL_BUTTON_CLASS, tabButtonClass, tabTrackClass } from '../lib/stock-utils';
+import { ERROR_BOX_CLASS, PILL_BUTTON_CLASS, tabButtonClass, tabTrackClass } from '../lib/stock-utils';
+import { PageHeader } from '../components/page-header';
 import {
   SalesRevenueChart,
   TopDivisionsChart,
@@ -208,42 +208,33 @@ function AnalyticsDashboardInner() {
   const hasData = Boolean(adminAnalytics || salespersonAnalytics);
   if (loading && !hasData)
     return (
-      <div className="mx-auto max-w-[1600px] space-y-10 lg:space-y-12 p-4 sm:p-6 lg:p-8">
-        <div className="flex flex-col gap-4">
+      <div className={CLASSES.contentWrap} aria-busy="true">
+        <div className="flex flex-col gap-3">
           <Skeleton className="h-4 w-32 rounded" />
-          <Skeleton className="h-16 sm:h-20 w-full sm:w-3/4 max-w-lg rounded-xl" />
+          <Skeleton className="h-8 w-64 max-w-full rounded-lg" />
         </div>
         <div className={CLASSES.heroGrid}>
           {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={`hero-skeleton-${index}`} className="rounded-xl h-40 sm:h-48" />
+            <Skeleton key={`hero-skeleton-${index}`} className="rounded-xl h-36" />
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Skeleton className="rounded-xl h-80 sm:h-96" />
-          <Skeleton className="rounded-xl h-80 sm:h-96" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
+          <Skeleton className="rounded-xl h-80" />
+          <Skeleton className="rounded-xl h-80" />
         </div>
       </div>
     );
-  if (error && !hasData) return <div className="p-8 text-rose-500 font-bold bg-rose-50 rounded-xl border border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40">{error}</div>;
+  if (error && !hasData) return <div className={CLASSES.contentWrap}><div role="alert" className={ERROR_BOX_CLASS}>{error}</div></div>;
 
   if (isSalesperson) {
     return (
-      <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-rise font-sans selection:bg-brand-primary/20 overflow-x-clip">
-        <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <nav className="flex items-center flex-wrap gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
-              <Link href="/stock" className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors">{t('me.crumbHome')}</Link>
-              <ChevronRight className="h-3 w-3 text-slate-300 dark:text-slate-600" />
-              <span className="text-slate-900 dark:text-white">{t('me.crumbMine')}</span>
-            </nav>
-            <h1 className="page-title">
-              {t('tabMyPerformance')}
-            </h1>
-            <p className="text-sm text-slate-600 dark:text-slate-400 font-medium leading-relaxed max-w-3xl">
-              {t('me.pageSubtitle')}
-            </p>
-          </div>
-        </header>
+      <div className={`${CLASSES.contentWrap} overflow-x-clip`}>
+        <PageHeader
+          icon={TrendingUp}
+          crumbs={[{ label: t('me.crumbHome'), href: '/stock' }, { label: t('me.crumbMine') }]}
+          title={t('tabMyPerformance')}
+          subtitle={t('me.pageSubtitle')}
+        />
 
         <MyPerformancePanel data={salespersonAnalytics} goal={ownGoal} />
       </div>
@@ -272,19 +263,12 @@ function AnalyticsDashboardInner() {
   const abcItems = adminAnalytics?.abcItems || [];
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-rise font-sans selection:bg-brand-primary/20 overflow-x-clip">
-      <header>
-        <div className="space-y-2">
-          <nav className="flex items-center flex-wrap gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
-            <Link href="/stock/admin" className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors">{t('operationalCore')}</Link>
-            <ChevronRight className="h-3 w-3 text-slate-300 dark:text-slate-600" />
-            <span className="text-slate-900 dark:text-white">{t('businessIntelligence')}</span>
-          </nav>
-          <h1 className="page-title">
-            {t('executiveDashboard')}
-          </h1>
-        </div>
-      </header>
+    <div className={`${CLASSES.contentWrap} overflow-x-clip`}>
+      <PageHeader
+        icon={LayoutGrid}
+        crumbs={[{ label: t('operationalCore'), href: '/stock/admin' }, { label: t('businessIntelligence') }]}
+        title={t('executiveDashboard')}
+      />
 
       <HeroCallouts
         stockedOut={Number(stockRisk?.zeroStock || 0)}
@@ -319,15 +303,14 @@ function AnalyticsDashboardInner() {
         </div>
 
         <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-3">
-          <div className="flex min-h-[38px] shrink-0 items-center rounded-full border border-border/60 bg-muted p-1 sm:min-h-[44px]">
+          <div className={`${tabTrackClass(3)} !w-fit`} role="group" aria-label="Range">
             {[3, 6, 12].map((m) => (
               <button
                 key={m}
+                type="button"
                 onClick={() => setAnalyticsRangeMonths(m)}
-                className={`flex h-[30px] items-center rounded-full px-3 text-xs font-semibold transition sm:h-9 sm:px-4 sm:text-[11px] ${analyticsRangeMonths === m
-                  ? 'bg-white dark:bg-slate-800 text-brand-primary shadow-sm'
-                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                  }`}
+                aria-pressed={analyticsRangeMonths === m}
+                className={`${tabButtonClass(analyticsRangeMonths === m, 5)} !h-8 px-3`}
               >
                 {m}M
               </button>
@@ -346,7 +329,7 @@ function AnalyticsDashboardInner() {
       </div>
 
       {actionError || (error && hasData) ? (
-        <div role="alert" className="flex items-start justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-600 dark:border-rose-900/40 dark:bg-rose-950/20">
+        <div role="alert" className={`${ERROR_BOX_CLASS} flex items-start justify-between gap-3`}>
           <span>{actionError || error}</span>
           <button
             type="button"
@@ -361,7 +344,7 @@ function AnalyticsDashboardInner() {
         </div>
       ) : null}
 
-      <div aria-busy={loading} className={`space-y-6 transition-opacity duration-200 lg:space-y-8 ${loading ? 'pointer-events-none opacity-60' : ''}`}>
+      <div aria-busy={loading} className={`space-y-4 transition-opacity duration-200 lg:space-y-5 ${loading ? 'pointer-events-none opacity-60' : ''}`}>
       {currentTab === 'overview' && (
         <div className="space-y-6">
           <StockHealthScorecard
@@ -372,7 +355,7 @@ function AnalyticsDashboardInner() {
             elapsedFraction={Number(adminAnalytics?.range?.elapsedFraction || 1)}
           />
           <SalesRevenueChart data={dispatchTrend} partial={partialLastMonth} />
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
             <div className="lg:col-span-7 min-w-0" id="widget-reorder">
               <ReorderNowWidget items={reorderNow} months={analyticsRangeMonths} />
             </div>
@@ -389,7 +372,7 @@ function AnalyticsDashboardInner() {
       )}
 
       {currentTab === 'sales' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
           <div className="lg:col-span-8 min-w-0">
             <MonthlyProfitChart data={monthlyProfit} partial={partialLastMonth} />
           </div>
@@ -411,7 +394,7 @@ function AnalyticsDashboardInner() {
       {currentTab === 'me' && <MyPerformancePanel data={salespersonAnalytics} goal={ownGoal} />}
 
       {currentTab === 'inventory' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
           <div className="lg:col-span-12 min-w-0">
             <TopSellersWidget items={abcItems} />
           </div>
@@ -425,7 +408,7 @@ function AnalyticsDashboardInner() {
       )}
 
       {currentTab === 'team' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
           <div className="lg:col-span-12 min-w-0">
             <SalespersonSpotlight
               trend={salespersonTrend}

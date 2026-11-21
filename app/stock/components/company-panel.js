@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ImageUp, Save, Trash2 } from 'lucide-react';
-import { CLASSES, FORM_INPUT_CLASS, FORM_LABEL_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../lib/stock-utils';
+import { Check, ImageUp, Save, Trash2 } from 'lucide-react';
+import { ACCENTS } from '@/lib/accent.mjs';
+import { CLASSES, ERROR_BOX_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../lib/stock-utils';
 import { CompanyMark } from '@/components/ui/brand-mark';
 
 const MAX_KB = 300;
@@ -53,13 +54,13 @@ export function CompanyPanel() {
   }
 
   if (!company) {
-    return <div className={CLASSES.card}>{state.error ? <p className="text-sm text-rose-500">{state.error}</p> : <p className="text-sm text-muted-foreground">Loading…</p>}</div>;
+    return <div className={CLASSES.card}>{state.error ? <p role="alert" className={ERROR_BOX_CLASS}>{state.error}</p> : <p className="text-sm text-muted-foreground">Loading…</p>}</div>;
   }
 
   return (
     <div className={CLASSES.card}>
       <h2 className={CLASSES.title}>Company</h2>
-      <p className="mt-1 text-[11px] font-bold text-slate-500">
+      <p className="mt-1 text-xs text-muted-foreground">
         Shown in the app header for everyone on your staff, and on printed invoices.
       </p>
 
@@ -84,7 +85,7 @@ export function CompanyPanel() {
       <div className="mt-5 flex flex-wrap items-center gap-4">
         <CompanyMark name={company.name} logo={company.logo} logoDark={company.logoDark} size={64} />
         <div className="space-y-2">
-          <p className="text-[11px] font-bold text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Logo: PNG, JPEG or WebP, at most {MAX_KB} KB. A square image looks best. Without one, your initials are shown.
           </p>
           {canManage ? (
@@ -103,15 +104,41 @@ export function CompanyPanel() {
         </div>
       </div>
 
+      <div className="mt-5">
+        <p id="accent-label" className={FORM_LABEL_CLASS}>Accent colour</p>
+        <div role="radiogroup" aria-labelledby="accent-label" className="flex flex-wrap gap-2">
+          {Object.entries(ACCENTS).map(([key, { label, light }]) => {
+            const selected = company.accent === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                aria-label={label}
+                title={label}
+                disabled={!canManage || state.busy}
+                onClick={() => !selected && send('/api/stock/company', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accent: key }) })}
+                className={`flex h-9 w-9 items-center justify-center rounded-full text-white ring-offset-2 ring-offset-card transition disabled:cursor-not-allowed disabled:opacity-60 ${selected ? 'ring-2 ring-foreground/70' : 'hover:scale-105'}`}
+                style={{ backgroundColor: `rgb(${light})` }}
+              >
+                {selected ? <Check className="h-4 w-4" strokeWidth={3} /> : null}
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-1.5 text-xs text-muted-foreground">Buttons, links and highlights across the app use this colour for everyone in your company.</p>
+      </div>
+
       {/* Fixed by the app today; shown so nobody hunts for a setting that does not exist yet. */}
       <dl className="mt-5 grid gap-2 text-sm sm:grid-cols-3">
-        <div><dt className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Financial year</dt><dd>April to March</dd></div>
-        <div><dt className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Time zone</dt><dd>India (IST)</dd></div>
-        <div><dt className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Currency</dt><dd>Indian rupee (₹)</dd></div>
+        <div><dt className="text-xs font-medium text-muted-foreground">Financial year</dt><dd>April to March</dd></div>
+        <div><dt className="text-xs font-medium text-muted-foreground">Time zone</dt><dd>India (IST)</dd></div>
+        <div><dt className="text-xs font-medium text-muted-foreground">Currency</dt><dd>Indian rupee (₹)</dd></div>
       </dl>
 
-      {state.error ? <p className="mt-3 text-[11px] font-bold text-rose-600">{state.error}</p> : null}
-      {!canManage ? <p className="mt-3 text-[11px] font-bold text-slate-500">Only a manager can change these.</p> : null}
+      {state.error ? <p className="mt-3 text-xs text-rose-600">{state.error}</p> : null}
+      {!canManage ? <p className="mt-3 text-xs text-muted-foreground">Only a manager can change these.</p> : null}
     </div>
   );
 }

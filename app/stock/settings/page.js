@@ -8,6 +8,7 @@ import { useStockAccess } from '@/hooks/useStockAccess';
 import { getRoleFlags } from '@/lib/stock-roles.mjs';
 import { CLASSES, tabButtonClass, tabTrackClass } from '../lib/stock-utils';
 import { CompanyPanel } from '../components/company-panel';
+import { PageHeader } from '../components/page-header';
 import { BranchesPanel } from '../components/branches-panel';
 import { ItemTypesPanel } from '../components/item-types-panel';
 
@@ -31,19 +32,14 @@ export default function SettingsPage() {
   if (!getRoleFlags(accessRole).canApprove) {
     return (
       <div className={CLASSES.contentWrap}>
-        <p className="text-sm text-slate-500">Settings are for your company&apos;s admins and managers.</p>
+        <p className="text-sm text-muted-foreground">Settings are for your company&apos;s admins and managers.</p>
       </div>
     );
   }
 
   return (
     <div className={CLASSES.contentWrap}>
-      <div className={CLASSES.topCard}>
-        <h1 className="flex items-center gap-2 text-lg font-semibold">
-          <Settings className="h-5 w-5 text-brand-primary" /> Settings
-        </h1>
-        <p className="mt-1 max-w-2xl text-sm text-slate-500">Your company&apos;s name and logo, GST registrations, branches and units.</p>
-      </div>
+      <PageHeader icon={Settings} title="Settings" subtitle="Your company's name, logo and colour, GST registrations, branches and units." />
 
       <div className={tabTrackClass(TABS.length)} role="tablist">
         {TABS.map(({ key, label }) => (

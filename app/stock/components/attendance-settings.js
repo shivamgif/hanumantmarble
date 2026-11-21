@@ -87,7 +87,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
 
   if (!settings) {
     return error ? (
-      <p className="py-10 text-center text-sm text-rose-600 dark:text-rose-400">{error}</p>
+      <p className="py-8 text-center text-sm text-rose-600 dark:text-rose-400">{error}</p>
     ) : (
       <div className="space-y-4" aria-busy="true">
         {[0, 1, 2].map((i) => (

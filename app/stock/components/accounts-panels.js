@@ -1,4 +1,5 @@
 'use client';
+import { SelectField } from '@/components/ui/select';
 
 import Link from 'next/link';
 import { Fragment, useCallback, useEffect, useState } from 'react';
@@ -6,7 +7,7 @@ import { Ban, Check, ChevronDown, ChevronRight, MessageCircle, RefreshCw, Trash2
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { istToday } from '@/lib/attendance.mjs';
 import { AGE_BUCKETS, GROUPS, PARTY_GROUPS, VOUCHER_TYPES } from '@/lib/accounts.mjs';
-import { CLASSES, FORM_INPUT_CLASS, FORM_LABEL_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../lib/stock-utils';
+import { CLASSES, ERROR_BOX_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../lib/stock-utils';
 import { formatRupees } from './invoice-form';
 import { BillAllocator, drCr } from './voucher-form';
 
@@ -40,9 +41,9 @@ const STATUS_TONE = {
 const monthStart = () => `${istToday().slice(0, 8)}01`;
 
 function Empty({ state, t }) {
-  if (state.loading) return <p className="py-10 text-center text-sm text-slate-400">{t('loading')}</p>;
-  if (state.error) return <p className="py-10 text-center text-sm text-rose-500">{state.error}</p>;
-  return <p className="py-10 text-center text-sm text-slate-400">{t('nothingHere')}</p>;
+  if (state.loading) return <div className="space-y-2 py-2" aria-busy="true">{[0, 1, 2].map((i) => <div key={i} className="h-10 skeleton rounded-lg" />)}</div>;
+  if (state.error) return <p role="alert" className={ERROR_BOX_CLASS}>{state.error}</p>;
+  return <p className="py-8 text-center text-sm text-slate-400">{t('nothingHere')}</p>;
 }
 
 /** Lines of one voucher, loaded on expand. */
@@ -101,17 +102,17 @@ export function DayBookPanel({ business, role, me, isApprover, refreshKey, onCha
         ))}
         <label className="text-xs">
           <span className={FORM_LABEL_CLASS}>{t('type')}</span>
-          <select value={filters.type} onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value }))} className={`${FORM_INPUT_CLASS} w-40`}>
+          <SelectField value={filters.type} onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value }))} className={`${FORM_INPUT_CLASS} w-40`}>
             <option value="">{t('all')}</option>
             {Object.keys(VOUCHER_TYPES).map((type) => <option key={type} value={type}>{t(type)}</option>)}
-          </select>
+          </SelectField>
         </label>
         <label className="text-xs">
           <span className={FORM_LABEL_CLASS}>{t('status')}</span>
-          <select value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))} className={`${FORM_INPUT_CLASS} w-36`}>
+          <SelectField value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))} className={`${FORM_INPUT_CLASS} w-36`}>
             <option value="">{t('all')}</option>
             {['draft', 'posted', 'cancelled'].map((s) => <option key={s} value={s}>{t(s)}</option>)}
-          </select>
+          </SelectField>
         </label>
       </div>
       {!vouchers.length ? <Empty state={state} t={t} /> : (
@@ -310,9 +311,9 @@ export function LedgersPanel({ business, isApprover, refreshKey, onChanged, noti
           <div className="sm:col-span-2"><label className={FORM_LABEL_CLASS} htmlFor="nl-name">{t('newLedger')}</label>
             <input id="nl-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={FORM_INPUT_CLASS} placeholder="HDFC Bank / Rent / …" /></div>
           <div><label className={FORM_LABEL_CLASS} htmlFor="nl-group">{t('group')}</label>
-            <select id="nl-group" value={form.group} onChange={(e) => setForm({ ...form, group: e.target.value })} className={FORM_INPUT_CLASS}>
+            <SelectField id="nl-group" value={form.group} onChange={(e) => setForm({ ...form, group: e.target.value })} className={FORM_INPUT_CLASS}>
               {Object.keys(GROUPS).map((g) => <option key={g} value={g}>{g}</option>)}
-            </select></div>
+            </SelectField></div>
           <div><label className={FORM_LABEL_CLASS} htmlFor="nl-phone">{t('phone')}</label>
             <input id="nl-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={FORM_INPUT_CLASS} /></div>
           <div><label className={FORM_LABEL_CLASS} htmlFor="nl-gstin">{t('gstin')}</label>

@@ -1,10 +1,10 @@
 'use client';
 import { TrendingUp, TrendingDown, Download, Inbox } from 'lucide-react';
+import { CLASSES as BASE_CLASSES } from '../lib/stock-utils';
 
-export const BRAND_PRIMARY = '#E07A00';
 export const BRAND_SECONDARY = '#1A1A54';
-// Chart-mark orange: brand #E07A00 fails contrast on chart surfaces (2.94:1 light, too light on dark)
-export const CHART_ORANGE = '#C96E00';
+// Single-series chart marks follow the company accent (lib/accent.mjs).
+export const CHART_ORANGE = 'rgb(var(--primary))';
 
 export const INDUSTRIAL_COLORS = [
   '#C96E00',
@@ -20,13 +20,10 @@ export const INDUSTRIAL_COLORS = [
 // Line-series palette: same hues minus brand navy, which is invisible on dark surfaces (1.1:1 contrast)
 export const SERIES_COLORS = ['#C96E00', '#2563EB', '#059669', '#7C3AED', '#DC2626'];
 
+// The page-wide classes, plus the few only dashboards use.
 export const CLASSES = {
-  heroGrid: 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 lg:gap-6',
-  card: 'rounded-xl p-5 sm:p-6 bg-card border border-border shadow-card',
-  title: 'text-sm font-semibold text-slate-900 dark:text-slate-100',
+  ...BASE_CLASSES,
   value: 'mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100 font-sans tracking-tight tabular-nums',
-  grid: 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
-  mobileScroll: 'flex overflow-x-auto scrollbar-none gap-2 pb-2 snap-x snap-mandatory overscroll-x-contain',
   sectionHead: 'text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3',
 };
 

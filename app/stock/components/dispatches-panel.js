@@ -487,7 +487,7 @@ export function DispatchesPanel({
               )))}
               {dispatchFetching ? (
                 <tr>
-                  <td colSpan={canEdit ? 7 : 4} className="px-3 py-10">
+                  <td colSpan={canEdit ? 7 : 4} className="px-3 py-8">
                     <div className="flex items-center justify-center gap-2 text-slate-400">
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-brand-primary" />
                       <span className="text-sm">Loading…</span>
@@ -496,7 +496,7 @@ export function DispatchesPanel({
                 </tr>
               ) : dispatchPagination.total === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 7 : 4} className="px-3 py-10">
+                  <td colSpan={canEdit ? 7 : 4} className="px-3 py-8">
                     <div className="flex flex-col items-center justify-center gap-3 text-center">
                       <PackageCheck className="h-6 w-6 text-slate-400" />
                       <p className="text-sm text-slate-500 dark:text-slate-400">{tc.noDispatches}</p>

@@ -1,7 +1,7 @@
 {
-  "name": "Hanumant Marble Intelligence Hub",
-  "short_name": "Stock Portal",
-  "description": "Stock management and operations dashboard for Hanumant Marble.",
+  "name": "Nirnay",
+  "short_name": "Nirnay",
+  "description": "Stock, GST billing, books and people for growing businesses.",
   "start_url": "/stock",
   "scope": "/stock",
   "display": "standalone",

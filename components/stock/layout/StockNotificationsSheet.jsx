@@ -67,7 +67,7 @@ export default function StockNotificationsSheet({
           {notificationLoading ? (
             <div className="text-xs font-medium text-slate-400 text-center py-20">{t('loadingNotifications')}</div>
           ) : notifications.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border px-6 py-16 text-center">
+            <div className="rounded-lg border border-dashed border-border px-6 py-8 text-center">
               <p className="text-sm text-slate-500 dark:text-slate-400">{t('noNotifications')}</p>
             </div>
           ) : (

@@ -149,7 +149,7 @@ export function ShowroomPanel({ tabs, tc, pageSize, setPageSize, refreshKey }) {
               })}
               {pagination.total === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-16 text-center">
+                  <td colSpan={7} className="px-4 py-8 text-center">
                     <Store className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-700" />
                     <div className="mt-3 text-xs font-medium text-slate-400">
                       {loading ? 'Loading…' : search ? 'No matching movements' : 'Nothing has moved to the showroom yet'}

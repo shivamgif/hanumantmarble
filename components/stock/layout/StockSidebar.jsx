@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Bell, Languages, MoonStar, SunMedium, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Bell, Check, ChevronsUpDown, Languages, MoonStar, SunMedium, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { CompanyMark } from '@/components/ui/brand-mark';
 import { TENANT_COOKIE } from '@/lib/tenant-cookie';
@@ -60,17 +61,30 @@ export default function StockSidebar({
             {tenants.length > 1 ? (
               // Someone on several companies' staff picks which one to work in.
               // The cookie only chooses; the server still checks the staff row.
-              <select
-                aria-label="Switch company"
-                value={tenant?.id ?? ''}
-                onChange={(event) => {
-                  document.cookie = `${TENANT_COOKIE}=${event.target.value}; Path=/; Max-Age=31536000; SameSite=Lax`;
-                  window.location.assign('/stock');
-                }}
-                className="w-full truncate bg-transparent text-sm font-semibold tracking-tight leading-tight text-slate-900 dark:text-slate-50 focus-ring rounded"
-              >
-                {tenants.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
-              </select>
+              <DropdownMenu>
+                <DropdownMenuTrigger className="flex w-full items-center gap-1 rounded text-left text-sm font-semibold leading-tight tracking-tight text-slate-900 focus-ring dark:text-slate-50">
+                  <span className="truncate">{tenant?.name}</span>
+                  <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden="true" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">Switch company</DropdownMenuLabel>
+                  {tenants.map((option) => (
+                    <DropdownMenuItem
+                      key={option.id}
+                      onSelect={() => {
+                        if (option.id === tenant?.id) return;
+                        document.cookie = `${TENANT_COOKIE}=${option.id}; Path=/; Max-Age=31536000; SameSite=Lax`;
+                        window.location.assign('/stock');
+                      }}
+                      className="gap-2"
+                    >
+                      <CompanyMark name={option.name} size={20} />
+                      <span className="flex-1 truncate">{option.name}</span>
+                      {option.id === tenant?.id ? <Check className="h-4 w-4 text-brand-primary" aria-hidden="true" /> : null}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <p className="truncate text-sm font-semibold tracking-tight leading-tight text-slate-900 dark:text-slate-50">{tenant?.name}</p>
             )}

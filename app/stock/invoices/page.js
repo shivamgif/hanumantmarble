@@ -24,7 +24,11 @@ import {
   formatDateTime,
   PILL_BUTTON_CLASS,
   PILL_PRIMARY_BUTTON_CLASS,
+  ERROR_BOX_CLASS,
+  tabButtonClass,
+  tabTrackClass,
 } from '../lib/stock-utils';
+import { PageHeader } from '../components/page-header';
 
 const FILTERS = ['pending', 'needs_irn', 'approved', 'dispatched', 'all', 'creditNotes'];
 
@@ -257,31 +261,30 @@ export default function InvoicesPage() {
     }
   }, [t]);
 
+  const visibleFilters = FILTERS.filter((key) => key !== 'needs_irn' || isApprover);
+
   return (
     <div className={CLASSES.contentWrap}>
-      <div className={`${CLASSES.topCard} flex flex-wrap items-start justify-between gap-4`}>
-        <div className="min-w-0">
-          <h1 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
-            <FileText className="h-5 w-5 text-brand-primary" /> {t('title')}
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm text-slate-500">{t('subtitle')}</p>
-        </div>
-        {canRaise ? (
+      <PageHeader
+        icon={FileText}
+        title={t('title')}
+        subtitle={t('subtitle')}
+        actions={canRaise ? (
           <button type="button" onClick={openNewEstimate} className={PILL_PRIMARY_BUTTON_CLASS}>
-            <Plus className="h-3.5 w-3.5" /> {t('newEstimate')}
+            <Plus /> {t('newEstimate')}
           </button>
         ) : null}
-      </div>
+      />
 
-      <div className="flex flex-wrap gap-2" role="tablist">
-        {FILTERS.filter((key) => key !== 'needs_irn' || isApprover).map((key) => (
+      <div className={tabTrackClass(visibleFilters.length)} role="tablist">
+        {visibleFilters.map((key) => (
           <button
             key={key}
             type="button"
             role="tab"
             aria-selected={filter === key}
             onClick={() => setFilter(key)}
-            className={filter === key ? PILL_PRIMARY_BUTTON_CLASS : PILL_BUTTON_CLASS}
+            className={tabButtonClass(filter === key, visibleFilters.length)}
           >
             {t(key)}
           </button>
@@ -310,9 +313,9 @@ export default function InvoicesPage() {
 
       <section className="glass-panel overflow-hidden rounded-xl">
         {loading ? (
-          <p className="py-12 text-center text-sm text-slate-400">…</p>
+          <div className="space-y-2 p-4" aria-busy="true">{[0, 1, 2, 3, 4].map((i) => <div key={i} className="h-12 skeleton rounded-lg" />)}</div>
         ) : error ? (
-          <p className="py-12 text-center text-sm text-rose-500">{error}</p>
+          <div className="p-4"><p role="alert" className={ERROR_BOX_CLASS}>{error}</p></div>
         ) : filter === 'creditNotes' ? (
           <CreditNotesList
             notes={notes}
@@ -324,7 +327,7 @@ export default function InvoicesPage() {
             t={t}
           />
         ) : !invoices.length ? (
-          <p className="py-12 text-center text-sm text-slate-400">{t('noInvoices')}</p>
+          <p className="py-8 text-center text-sm text-muted-foreground">{t('noInvoices')}</p>
         ) : (
           <ul className="divide-y divide-border">
             {invoices.map((invoice) => {

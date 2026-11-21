@@ -490,12 +490,14 @@ export function getSortedRows(rows, sortState, accessors) {
 }
 
 export const FORM_LABEL_CLASS = 'block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5';
-export const FORM_INPUT_CLASS = 'w-full rounded-lg border border-input bg-card px-3 py-2.5 text-sm text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-brand-primary/15 dark:focus:border-slate-500';
+export const FORM_INPUT_CLASS = 'w-full rounded-lg border border-input bg-card px-3 py-[7px] text-sm text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-brand-primary/15 dark:focus:border-slate-500';
 export const FORM_CARD_CLASS = 'glass-panel rounded-xl p-4 sm:p-5';
 
+// One control height across the app: inputs, selects, pills and tab strips
+// are all 36px, so a toolbar mixing them lines up.
 // Panel header action pills. Smaller text, padding and gap below sm so three of
 // them still fit one line on a 360px viewport; the row holding them is flex-wrap.
-const PILL_BASE = 'flex min-h-[36px] sm:min-h-[38px] shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 sm:px-3.5 text-[13px] font-medium [&>svg]:h-4 [&>svg]:w-4 transition hover:-translate-y-px hover:shadow-card-hover active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50';
+const PILL_BASE = 'flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 sm:px-3.5 text-[13px] font-medium [&>svg]:h-4 [&>svg]:w-4 transition hover:-translate-y-px hover:shadow-card-hover active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50';
 export const PILL_BUTTON_CLASS = `${PILL_BASE} border border-border bg-card text-slate-700 hover:bg-muted dark:text-slate-200`;
 export const PILL_PRIMARY_BUTTON_CLASS = `${PILL_BASE} bg-primary font-semibold text-primary-foreground hover:bg-primary/90`;
 
@@ -505,7 +507,7 @@ export const PILL_PRIMARY_BUTTON_CLASS = `${PILL_BASE} bg-primary font-semibold 
 // tabs ~52px each and "Timesheets" needs ~63, and hyphenation isn't on every
 // device. Either way every tab stays named and nothing scrolls. From sm up it's
 // a row of text tabs.
-export const tabTrackClass = (count) => `grid w-full min-w-0 gap-0.5 rounded-lg bg-muted p-1 scrollbar-none sm:flex sm:w-fit sm:items-center sm:overflow-x-auto ${count > 4 ? 'grid-cols-3' : 'auto-cols-[minmax(0,1fr)] grid-flow-col'}`;
+export const tabTrackClass = (count) => `grid w-full min-w-0 gap-0.5 rounded-lg bg-muted p-0.5 scrollbar-none sm:flex sm:w-fit sm:items-center sm:overflow-x-auto ${count > 4 ? 'grid-cols-3' : 'auto-cols-[minmax(0,1fr)] grid-flow-col'}`;
 
 export const tabButtonClass = (isActive, count = 4) => `relative flex min-w-0 items-center justify-center rounded-md text-[11px] leading-tight transition duration-300 sm:h-8 sm:flex-none sm:flex-row sm:gap-1.5 sm:px-3.5 sm:py-0 sm:text-[13px] ${count > 4
   ? 'h-9 flex-row gap-1.5 px-1.5'
@@ -514,20 +516,23 @@ export const tabButtonClass = (isActive, count = 4) => `relative flex min-w-0 it
   : 'font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'}`;
 
 export const CLASSES = {
-  contentWrap: 'mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 animate-rise',
-  topCard: 'glass-panel rounded-xl p-4 sm:p-6 lg:p-8',
+  contentWrap: 'mx-auto w-full max-w-[1600px] p-4 sm:p-6 space-y-4 sm:space-y-5 animate-rise',
+  topCard: 'glass-panel rounded-xl p-4 sm:p-5',
   interactiveCard: 'glass-panel rounded-xl transition-[box-shadow,border-color] duration-200 hover:border-slate-300 dark:hover:border-slate-600',
-  card: 'glass-panel rounded-xl p-4 sm:p-6 lg:p-8 group/card',
-  cardCompact: 'glass-panel rounded-xl p-3 sm:p-4 lg:p-6 group/card',
+  card: 'glass-panel rounded-xl p-4 sm:p-5 group/card',
+  cardCompact: 'glass-panel rounded-xl p-3 sm:p-4 group/card',
   title: 'text-sm font-semibold text-slate-900 dark:text-slate-100',
-  grid: 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
-  heroGrid: 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 lg:gap-6',
+  grid: 'grid grid-cols-1 gap-4 lg:gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
+  heroGrid: 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5',
   statGrid: 'grid grid-cols-2 gap-3 lg:grid-cols-4',
   statCard: 'min-w-0 glass-panel rounded-xl p-4 sm:p-5',
   statLabel: 'text-xs font-medium text-slate-500 dark:text-slate-400',
   statValue: 'mt-1.5 text-2xl font-semibold text-slate-900 sm:text-[1.75rem] dark:text-slate-100 leading-none tracking-tight tabular-nums',
   mobileScroll: 'flex overflow-x-auto scrollbar-none gap-2 pb-2 snap-x snap-mandatory overscroll-x-contain',
 };
+
+// Every inline error box in the app.
+export const ERROR_BOX_CLASS = 'rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300';
 
 export const INVOICE_CLASSES = {
   surface: 'glass-panel rounded-xl overflow-hidden',

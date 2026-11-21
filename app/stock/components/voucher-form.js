@@ -1,4 +1,5 @@
 'use client';
+import { SelectField } from '@/components/ui/select';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, Send, Trash2 } from 'lucide-react';
@@ -220,10 +221,10 @@ export function VoucherSheet({ open, onOpenChange, business, ledgers, role, onSa
                 <LedgerPicker id="v-party" ledgers={isSalesperson ? others.filter((l) => l.group_name === 'Sundry Debtors') : others}
                   value={form.ledgerId} onChange={(id) => set({ ledgerId: id, allocations: [] })} />, 'v-party')}
               {field(t('cashBank'),
-                <select id="v-cash" required value={form.cashBankLedgerId || ''} onChange={(e) => set({ cashBankLedgerId: Number(e.target.value) || null })} className={FORM_INPUT_CLASS}>
+                <SelectField id="v-cash" required value={form.cashBankLedgerId || ''} onChange={(e) => set({ cashBankLedgerId: Number(e.target.value) || null })} className={FORM_INPUT_CLASS}>
                   <option value="">—</option>
                   {cashBank.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-                </select>, 'v-cash')}
+                </SelectField>, 'v-cash')}
               {field(t('amount'), <input id="v-amount" type="number" min="0.01" step="0.01" required value={form.amount} onChange={(e) => set({ amount: e.target.value })} className={FORM_INPUT_CLASS} />, 'v-amount')}
               {form.type === 'payment' && counter && !counterIsParty ? (
                 <>
@@ -245,10 +246,10 @@ export function VoucherSheet({ open, onOpenChange, business, ledgers, role, onSa
           {form.type === 'contra' ? (
             <div className="grid gap-3 sm:grid-cols-3">
               {['fromLedgerId', 'toLedgerId'].map((key) => field(t(key === 'fromLedgerId' ? 'fromAccount' : 'toAccount'),
-                <select id={`v-${key}`} required value={form[key] || ''} onChange={(e) => set({ [key]: Number(e.target.value) || null })} className={FORM_INPUT_CLASS}>
+                <SelectField id={`v-${key}`} required value={form[key] || ''} onChange={(e) => set({ [key]: Number(e.target.value) || null })} className={FORM_INPUT_CLASS}>
                   <option value="">—</option>
                   {cashBank.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-                </select>, `v-${key}`))}
+                </SelectField>, `v-${key}`))}
               {field(t('amount'), <input id="v-camount" type="number" min="0.01" step="0.01" required value={form.amount} onChange={(e) => set({ amount: e.target.value })} className={FORM_INPUT_CLASS} />, 'v-camount')}
             </div>
           ) : null}

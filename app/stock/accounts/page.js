@@ -5,7 +5,9 @@ import { BookOpen, Plus } from 'lucide-react';
 import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { getRoleFlags } from '@/lib/stock-roles.mjs';
-import { CLASSES, PILL_PRIMARY_BUTTON_CLASS, tabButtonClass, tabTrackClass } from '../lib/stock-utils';
+import { CLASSES, ERROR_BOX_CLASS, PILL_PRIMARY_BUTTON_CLASS, tabButtonClass, tabTrackClass } from '../lib/stock-utils';
+import { PageHeader } from '../components/page-header';
+import { SelectField } from '@/components/ui/select';
 import { StockToast } from '../components/stock-toast';
 import { useAccountsText, VoucherSheet } from '../components/voucher-form';
 import { DayBookPanel, LedgersPanel, OutstandingPanel, SetupPanel } from '../components/accounts-panels';
@@ -63,29 +65,27 @@ export default function AccountsPage() {
 
   return (
     <div className={CLASSES.contentWrap}>
-      <div className={`${CLASSES.topCard} flex flex-wrap items-start justify-between gap-4`}>
-        <div className="min-w-0">
-          <h1 className="flex items-center gap-2 text-lg font-semibold">
-            <BookOpen className="h-5 w-5 text-brand-primary" /> {t('title')}
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm text-slate-500">{isSalesperson ? t('salespersonHint') : t('subtitle')}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {businesses?.length > 1 ? (
-            <select aria-label={t('business')} value={businessId ?? ''} onChange={(e) => setBusinessId(Number(e.target.value))}
-              className="rounded-lg border border-input bg-card px-3 py-2 text-sm">
-              {businesses.map((b) => <option key={b.id} value={b.id}>{b.legalName}</option>)}
-            </select>
-          ) : null}
-          {canEnter && view ? (
-            <button type="button" onClick={() => setSheetOpen(true)} className={PILL_PRIMARY_BUTTON_CLASS}>
-              <Plus className="h-3.5 w-3.5" /> {t('newVoucher')}
-            </button>
-          ) : null}
-        </div>
-      </div>
+      <PageHeader
+        icon={BookOpen}
+        title={t('title')}
+        subtitle={isSalesperson ? t('salespersonHint') : t('subtitle')}
+        actions={(
+          <>
+            {businesses?.length > 1 ? (
+              <SelectField aria-label={t('business')} value={businessId ?? ''} onChange={(e) => setBusinessId(Number(e.target.value))} className="w-auto min-w-[12rem]">
+                {businesses.map((b) => <option key={b.id} value={b.id}>{b.legalName}</option>)}
+              </SelectField>
+            ) : null}
+            {canEnter && view ? (
+              <button type="button" onClick={() => setSheetOpen(true)} className={PILL_PRIMARY_BUTTON_CLASS}>
+                <Plus /> {t('newVoucher')}
+              </button>
+            ) : null}
+          </>
+        )}
+      />
 
-      {error ? <p className="text-sm text-rose-500">{error}</p> : null}
+      {error ? <p role="alert" className={ERROR_BOX_CLASS}>{error}</p> : null}
 
       {tabs.length > 1 ? (
         <div className={tabTrackClass(tabs.length)} role="tablist">

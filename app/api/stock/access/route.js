@@ -42,7 +42,7 @@ export const GET = stockRoute(async function GET(request) {
     user: appUser,
     // The company this request opened, and every company this person can switch to.
     tenant: appUser && tenant && profile
-      ? { id: profile.id, name: profile.name, logo: profile.logo, logoDark: profile.logoDark }
+      ? { id: profile.id, name: profile.name, logo: profile.logo, logoDark: profile.logoDark, accent: profile.accent }
       : null,
     tenants,
     message,

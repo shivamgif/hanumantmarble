@@ -288,7 +288,7 @@
 
   /* Page titles across the stock app. */
   .page-title {
-    @apply text-2xl sm:text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-slate-900 dark:text-slate-50;
+    @apply text-xl sm:text-2xl font-semibold leading-tight tracking-[-0.02em] text-slate-900 dark:text-slate-50;
   }
 
   .focus-ring {
@@ -386,6 +386,9 @@
    Unlayered on purpose so it outranks the @layer base :root/.dark tokens.
    ========================================================================= */
 .stock-scope {
+  /* The company's accent (lib/accent.mjs), set on <body> by stock-shell.js. */
+  --primary: var(--accent-light, 224 122 0);
+  --ring: var(--accent-light, 224 122 0);
   --background: 241 245 249; /* slate-100: cool canvas that white cards and chrome sit on */
   --card: 255 255 255;
   --popover: 255 255 255;
@@ -401,6 +404,8 @@
 }
 
 .dark .stock-scope {
+  --primary: var(--accent-dark, 224 122 0);
+  --ring: var(--accent-dark, 224 122 0);
   --background: 20 29 46;    /* #141d2e deep slate canvas */
   --card: 30 41 59;          /* slate-800: cards and chrome clearly lift off it */
   --popover: 36 49 69;

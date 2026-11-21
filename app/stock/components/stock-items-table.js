@@ -240,7 +240,7 @@ export function StockItemsTable({ tabs, kpis, pagination, sort, setSort, search,
         </div>
 
         {pagination.total === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+          <div className="flex flex-col items-center justify-center gap-3 px-6 py-8 text-center">
             <div className="h-10 w-10 rounded-lg flex items-center justify-center border border-border">
               <Boxes className="h-5 w-5 text-slate-400" strokeWidth={1.75} />
             </div>

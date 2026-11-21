@@ -8,6 +8,9 @@ import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { usePageSize } from '@/hooks/usePageSize';
 import { SelectField } from '@/components/ui/select';
+import { FolderOpen } from 'lucide-react';
+import { PageHeader } from '../components/page-header';
+import { CLASSES, ERROR_BOX_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../lib/stock-utils';
 
 const copy = {
   en: {
@@ -321,66 +324,67 @@ export default function StockDocumentsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">{t.title}</p>
-          <h1 className="mt-2 text-3xl font-bold text-foreground">{t.subtitle}</h1>
-        </div>
-        <div className="flex gap-3">
-          <Link href="/stock" className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/60">{t.backToDashboard}</Link>
-          <button type="button" onClick={() => window.location.reload()} className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">{t.refresh}</button>
-        </div>
-      </div>
+    <div className={CLASSES.contentWrap}>
+      <PageHeader
+        icon={FolderOpen}
+        crumbs={[{ label: t.title }]}
+        title={t.subtitle}
+        actions={(
+          <>
+            <Link href="/stock" className={PILL_BUTTON_CLASS}>{t.backToDashboard}</Link>
+            <button type="button" onClick={() => window.location.reload()} className={PILL_PRIMARY_BUTTON_CLASS}>{t.refresh}</button>
+          </>
+        )}
+      />
 
-      {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-900 dark:bg-red-950/30 dark:text-red-200">{error}</div>}
+      {error && <div role="alert" className={ERROR_BOX_CLASS}>{error}</div>}
 
-      <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
-        <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground">{t.uploadTitle}</h2>
-          <label className="block text-sm font-medium text-foreground/80">
+      <div className="grid gap-4 lg:gap-5 lg:grid-cols-[380px_1fr]">
+        <form onSubmit={handleSubmit} className={`${CLASSES.card} space-y-4`}>
+          <h2 className={CLASSES.title}>{t.uploadTitle}</h2>
+          <label className={FORM_LABEL_CLASS}>
             {t.documentType}
-            <SelectField className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" value={form.documentType} onChange={(event) => setForm((prev) => ({ ...prev, documentType: event.target.value }))}>
+            <SelectField className={`mt-1 font-normal ${FORM_INPUT_CLASS}`} value={form.documentType} onChange={(event) => setForm((prev) => ({ ...prev, documentType: event.target.value }))}>
               {documentTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </SelectField>
           </label>
-          <label className="block text-sm font-medium text-foreground/80">
+          <label className={FORM_LABEL_CLASS}>
             {t.entityType}
-            <SelectField className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" value={form.entityType} onChange={(event) => setForm((prev) => ({ ...prev, entityType: event.target.value }))}>
+            <SelectField className={`mt-1 font-normal ${FORM_INPUT_CLASS}`} value={form.entityType} onChange={(event) => setForm((prev) => ({ ...prev, entityType: event.target.value }))}>
               {entityTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </SelectField>
           </label>
-          <label className="block text-sm font-medium text-foreground/80">
+          <label className={FORM_LABEL_CLASS}>
             {t.entityId}
-            <input autoFocus className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder={t.shipmentOrOrderId} value={form.entityId} onChange={(event) => setForm((prev) => ({ ...prev, entityId: event.target.value }))} />
+            <input autoFocus className={`mt-1 font-normal ${FORM_INPUT_CLASS}`} placeholder={t.shipmentOrOrderId} value={form.entityId} onChange={(event) => setForm((prev) => ({ ...prev, entityId: event.target.value }))} />
           </label>
-          <label className="block text-sm font-medium text-foreground/80">
+          <label className={FORM_LABEL_CLASS}>
             {t.documentNumber}
-            <input className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder={t.invoiceOrGatepassNo} value={form.documentNumber} onChange={(event) => setForm((prev) => ({ ...prev, documentNumber: event.target.value }))} />
+            <input className={`mt-1 font-normal ${FORM_INPUT_CLASS}`} placeholder={t.invoiceOrGatepassNo} value={form.documentNumber} onChange={(event) => setForm((prev) => ({ ...prev, documentNumber: event.target.value }))} />
           </label>
-          <label className="block text-sm font-medium text-foreground/80">
+          <label className={FORM_LABEL_CLASS}>
             {t.notes}
-            <textarea className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" rows="3" placeholder={t.optionalComments} value={form.notes} onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))} />
+            <textarea className={`mt-1 font-normal ${FORM_INPUT_CLASS}`} rows="3" placeholder={t.optionalComments} value={form.notes} onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))} />
           </label>
-          <label className="block text-sm font-medium text-foreground/80">
+          <label className={FORM_LABEL_CLASS}>
             {t.file}
-            <input type="file" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" onChange={(event) => setForm((prev) => ({ ...prev, file: event.target.files?.[0] || null }))} />
+            <input type="file" className={`mt-1 font-normal ${FORM_INPUT_CLASS}`} onChange={(event) => setForm((prev) => ({ ...prev, file: event.target.files?.[0] || null }))} />
           </label>
-          <button type="submit" disabled={uploading} className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
+          <button type="submit" disabled={uploading} className={`${PILL_PRIMARY_BUTTON_CLASS} w-full justify-center`}>
             {uploading ? t.upload : t.upload}
           </button>
         </form>
 
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+        <div className={CLASSES.card}>
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold text-foreground">{t.recentDocuments}</h2>
+            <h2 className={CLASSES.title}>{t.recentDocuments}</h2>
             <div className="text-xs text-muted-foreground">{documents.length}</div>
           </div>
 
           {loading ? (
-            <div className="py-12 text-center text-muted-foreground">{t.loading}</div>
+            <div className="space-y-2" aria-busy="true">{[0, 1, 2, 3].map((i) => <div key={i} className="h-12 skeleton rounded-lg" />)}</div>
           ) : documents.length === 0 ? (
-            <div className="py-12 text-center text-muted-foreground">{t.empty}</div>
+            <div className="py-8 text-center text-sm text-muted-foreground">{t.empty}</div>
           ) : (
             <>
               <div className="overflow-x-auto">

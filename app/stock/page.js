@@ -39,8 +39,9 @@ import {
   fetchShipmentDocuments,
   invalidateShipmentCache,
   shipmentCache,
-  tabButtonClass, tabTrackClass,
+  tabButtonClass, tabTrackClass, ERROR_BOX_CLASS,
 } from './lib/stock-utils';
+import { PageHeader } from './components/page-header';
 import { StockStatsGrid } from './components/stock-stats-grid';
 import { StockItemsTable } from './components/stock-items-table';
 import { PurchasesPanel } from './components/purchases-panel';
@@ -1365,7 +1366,7 @@ export default function StockDashboard() {
   }, [data?.activeItems, data?.pendingArrivalCount, data?.pendingDispatchCount]);
 
   const stockStats = useMemo(() => [
-    { label: t('totalStock'), value: totalStockUnits, trend: totalStockUnits ? Math.round((totalWholeStock / totalStockUnits) * 100) : 0, trendLabel: t('wholeRatio'), icon: Boxes, accent: 'from-[#E07A00]/20 to-[#E07A00]/5', isNeutral: true, breakdown: divisionBreakdown },
+    { label: t('totalStock'), value: totalStockUnits, trend: totalStockUnits ? Math.round((totalWholeStock / totalStockUnits) * 100) : 0, trendLabel: t('wholeRatio'), icon: Boxes, accent: 'from-brand-primary/20 to-brand-primary/5', isNeutral: true, breakdown: divisionBreakdown },
     { label: t('pendingPurchases'), value: pendingArrivals, trend: pendingArrivals === 0 ? 100 : -Math.min(pendingArrivals * 10, 100), trendLabel: t('queueHealth'), icon: PackageCheck, accent: 'from-[#1A1A54]/25 to-[#1A1A54]/10', isNeutral: true },
     { label: t('pendingDispatches'), value: pendingDispatches, trend: pendingDispatches === 0 ? 100 : -Math.min(pendingDispatches * 10, 100), trendLabel: t('dispatchReadiness'), icon: BarChart3, accent: 'from-[#F59E0B]/25 to-[#F59E0B]/10', isNeutral: true },
   ], [totalStockUnits, totalWholeStock, pendingArrivals, pendingDispatches, divisionBreakdown, t]);
@@ -1374,37 +1375,26 @@ export default function StockDashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-10 lg:space-y-12 p-4 sm:p-6 lg:p-8" aria-busy="true">
-        <div className="flex flex-col gap-4">
+      <div className={CLASSES.contentWrap} aria-busy="true">
+        <div className="flex flex-col gap-3">
           <div className="h-4 w-32 skeleton rounded" />
-          <div className="h-16 sm:h-20 w-full sm:w-3/4 max-w-lg skeleton rounded-xl" />
+          <div className="h-8 w-64 max-w-full skeleton rounded-lg" />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={`op-stat-skeleton-${index}`} className="h-40 rounded-xl skeleton" />
+            <div key={`op-stat-skeleton-${index}`} className="h-36 rounded-xl skeleton" />
           ))}
         </div>
         <div className="h-96 rounded-xl skeleton" />
       </div>
     );
   }
-  if (error) return <div className="p-8 text-red-500">{error}</div>;
+  if (error) return <div className={CLASSES.contentWrap}><div role="alert" className={ERROR_BOX_CLASS}>{error}</div></div>;
   if (!data) return null;
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-rise font-sans selection:bg-brand-primary/20 overflow-x-hidden">
-      <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
-        <div className="space-y-2">
-          <nav className="flex items-center flex-wrap gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
-            <span className="text-slate-400">{t('inventory')}</span>
-            <ChevronRight className="h-3 w-3 text-slate-300 dark:text-slate-600" />
-            <span className="text-slate-900 dark:text-white">{t('operationalNode')}</span>
-          </nav>
-          <h1 className="page-title">
-            {t('stockControl')}
-          </h1>
-        </div>
-      </header>
+    <div className={`${CLASSES.contentWrap} overflow-x-hidden`}>
+      <PageHeader icon={Boxes} crumbs={[{ label: t('inventory') }, { label: t('operationalNode') }]} title={t('stockControl')} />
 
 
       {canSell(accessUser) && accessUser?.monthly_sales_goal != null && (() => {
@@ -1423,7 +1413,7 @@ export default function StockDashboard() {
         return (
           <Link
             href="/stock/analytics"
-            className="flex items-center gap-3 rounded-xl border border-slate-200/60 bg-white px-3 py-2 shadow-sm transition-shadow hover:shadow-md dark:border-slate-800/60 dark:bg-slate-900/50"
+            className="glass-panel flex items-center gap-3 rounded-xl px-3 py-2 transition-shadow hover:shadow-card-hover"
           >
             <p className="w-16 shrink-0 text-xs font-medium leading-tight text-slate-500">{getTranslation('stock.analytics.me.monthlyGoal', language)}</p>
             {/* The figure sits inside the bar, printed twice: dark over the empty

@@ -362,7 +362,7 @@ export default function StockTopbar({
     <header className="glass-bar sticky top-0 z-20">
       <div className="mx-auto w-full max-w-[1600px]">
         {/* Desktop bar */}
-        <div className="hidden h-14 items-center gap-4 px-8 lg:flex">
+        <div className="hidden h-14 items-center gap-4 px-6 lg:flex">
           <SearchBox
             dashboardSearchRef={dashboardSearchRef}
             placeholder={t('searchHint')}

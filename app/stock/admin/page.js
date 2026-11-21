@@ -10,7 +10,8 @@ import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { arrivalFormSchema, bagArrivalFormSchema, dispatchFormSchema } from '@/lib/forms/stock-forms';
 import { useStockFormStore } from '@/lib/stores/stock-form-store';
-import { createArrivalItemRow, createBagArrivalItemRow, createDispatchItemRow, createInitialArrivalDraft, createInitialBagArrivalDraft, createInitialDispatchDraft, formatLineVolume, formatShipmentVolume, toNumber, trimText, parseSizeLabelDimensions, tabButtonClass, tabTrackClass, CLASSES } from '@/app/stock/lib/stock-utils';
+import { createArrivalItemRow, createBagArrivalItemRow, createDispatchItemRow, createInitialArrivalDraft, createInitialBagArrivalDraft, createInitialDispatchDraft, formatLineVolume, formatShipmentVolume, toNumber, trimText, parseSizeLabelDimensions, tabButtonClass, tabTrackClass, CLASSES, ERROR_BOX_CLASS, PILL_BUTTON_CLASS } from '@/app/stock/lib/stock-utils';
+import { PageHeader } from '@/app/stock/components/page-header';
 import { ArrivalFormContent, BagArrivalFormContent } from '@/app/stock/components/arrival-form';
 import { DispatchFormContent } from '@/app/stock/components/dispatch-form';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -27,7 +28,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   ChevronDown,
-  ChevronRight,
   Eye,
   EyeOff,
   ShieldAlert,
@@ -1158,19 +1158,19 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-10 lg:space-y-12 p-4 sm:p-6 lg:p-8">
-        <div className="flex flex-col gap-4">
+      <div className={CLASSES.contentWrap} aria-busy="true">
+        <div className="flex flex-col gap-3">
           <div className="h-4 w-32 skeleton rounded" />
-          <div className="h-16 sm:h-20 w-full sm:w-3/4 max-w-lg skeleton rounded-xl" />
+          <div className="h-8 w-64 max-w-full skeleton rounded-lg" />
         </div>
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 gap-4">
           <div className="skeleton rounded-xl h-96" />
           <div className="skeleton rounded-xl h-96" />
         </div>
       </div>
     );
   }
-  if (!data && error) return <div className="p-8 text-red-500">{error}</div>;
+  if (!data && error) return <div className={CLASSES.contentWrap}><div role="alert" className={ERROR_BOX_CLASS}>{error}</div></div>;
   if (!data) return null;
 
   const adminTabs = [
@@ -1190,36 +1190,30 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-rise font-sans selection:bg-brand-primary/20 overflow-x-hidden">
-      <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
-        <div className="space-y-2">
-          <nav className="flex items-center flex-wrap gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
-            <span className="text-slate-400">Stock</span>
-            <ChevronRight className="h-3 w-3 text-slate-300 dark:text-slate-600" />
-            <span className="text-slate-900 dark:text-white">{t('adminTitle')}</span>
-          </nav>
-          <h1 className="page-title">
-            {t('adminTitle')}
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowInsights(!showInsights)}
-            className={`flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card hover:bg-muted transition-colors ${showInsights ? 'text-brand-primary' : 'text-slate-500'}`}
-            title={t('toggleInsights')}
-          >
-            <Activity className="h-5 w-5" />
-          </button>
-          <button
-            onClick={() => refreshDashboard()}
-            className="flex h-9 items-center justify-center gap-2 px-3.5 rounded-lg border border-border bg-card text-slate-700 dark:text-slate-200 text-[13px] font-medium hover:bg-muted transition-colors"
-          >
-            <FileText className="h-4 w-4" />
-            {t('syncLogs')}
-          </button>
-        </div>
-      </header>
+    <div className={`${CLASSES.contentWrap} overflow-x-hidden`}>
+      <PageHeader
+        icon={UsersRound}
+        crumbs={[{ label: 'Stock', href: '/stock' }, { label: t('adminTitle') }]}
+        title={t('adminTitle')}
+        actions={(
+          <>
+            <button
+              type="button"
+              onClick={() => setShowInsights(!showInsights)}
+              className={`${PILL_BUTTON_CLASS} ${showInsights ? '!text-brand-primary' : ''}`}
+              title={t('toggleInsights')}
+              aria-label={t('toggleInsights')}
+              aria-pressed={showInsights}
+            >
+              <Activity />
+            </button>
+            <button type="button" onClick={() => refreshDashboard()} className={PILL_BUTTON_CLASS}>
+              <FileText />
+              {t('syncLogs')}
+            </button>
+          </>
+        )}
+      />
 
       {actionNotice ? (
         <div
@@ -1296,24 +1290,24 @@ export default function AdminDashboard() {
                         className="group cursor-pointer transition-colors duration-100 hover:bg-muted/60"
                         onClick={() => openShipmentPreview('arrival', item)}
                       >
-                        <td className="px-4 py-2.5 text-slate-900 dark:text-slate-100 font-bold text-xs">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</td>
+                        <td className="px-4 py-2.5 text-slate-900 dark:text-slate-100 font-semibold text-xs">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</td>
                         <td className="px-4 py-2.5">
                           <div className="flex flex-col gap-1">
-                            <span className="w-fit bg-brand-primary/5 px-2 py-0.5 rounded border border-brand-primary/20 font-bold text-brand-primary dark:text-orange-400 text-[11px]">{item.shipment_number}</span>
+                            <span className="w-fit bg-brand-primary/5 px-2 py-0.5 rounded border border-brand-primary/20 font-semibold text-brand-primary text-[11px]">{item.shipment_number}</span>
                             <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">{item.maintainer_name || '-'}</span>
                           </div>
                         </td>
                         <td className="px-4 py-2.5">
                           <div className="flex flex-col gap-1">
-                            <span className="text-slate-900 dark:text-slate-100 font-bold text-xs truncate max-w-[150px]">{item.supplier_name || '—'}</span>
+                            <span className="text-slate-900 dark:text-slate-100 font-semibold text-xs truncate max-w-[150px]">{item.supplier_name || '—'}</span>
                             <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">{item.truck_license_plate || '—'}</span>
                           </div>
                         </td>
                         <td className="px-4 py-2.5">
                           <div className="flex flex-col gap-1">
-                            {Number(item.total_bag_qty) > 0 && <span className="text-amber-600 dark:text-amber-400 font-bold text-xs font-sans">{item.total_bag_qty} <span className="text-xs">Bags</span></span>}
-                            {Number(item.total_sqft_qty) > 0 && <span className="text-sky-600 dark:text-sky-400 font-bold text-xs font-sans">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-xs">Sqft</span></span>}
-                            {Number(item.total_whole_qty) > 0 && <span className="text-slate-900 dark:text-slate-100 font-bold text-xs font-sans">{item.total_whole_qty} <span className="text-xs text-slate-400">Whole</span></span>}
+                            {Number(item.total_bag_qty) > 0 && <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs font-sans">{item.total_bag_qty} <span className="text-xs">Bags</span></span>}
+                            {Number(item.total_sqft_qty) > 0 && <span className="text-sky-600 dark:text-sky-400 font-semibold text-xs font-sans">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-xs">Sqft</span></span>}
+                            {Number(item.total_whole_qty) > 0 && <span className="text-slate-900 dark:text-slate-100 font-semibold text-xs font-sans">{item.total_whole_qty} <span className="text-xs text-slate-400">Whole</span></span>}
                             {Number(item.total_broken_qty) > 0 && <span className="text-rose-700 dark:text-rose-400 font-semibold text-xs font-sans">{item.total_broken_qty} <span className="font-normal">Broken</span></span>}
                           </div>
                         </td>
@@ -1376,25 +1370,25 @@ export default function AdminDashboard() {
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-xs font-medium text-slate-400 mb-1">{t('date')}</p>
-                        <p className="text-xs font-bold text-slate-900 dark:text-white">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</p>
+                        <p className="text-xs font-semibold text-slate-900 dark:text-white">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs font-medium text-slate-400 mb-1">Source</p>
-                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 max-w-[120px] truncate">{item.supplier_name || '—'}</p>
+                        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 max-w-[120px] truncate">{item.supplier_name || '—'}</p>
                       </div>
                     </div>
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-xs font-medium text-slate-400 mb-1">{t('shipmentNo')} & Maintainer</p>
-                        <p className="text-sm font-bold text-brand-primary dark:text-orange-400 mb-1">{item.shipment_number}</p>
+                        <p className="text-sm font-semibold text-brand-primary mb-1">{item.shipment_number}</p>
                         <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{item.maintainer_name || '-'}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs font-medium text-slate-400 mb-1">Quantities</p>
-                        {Number(item.total_bag_qty) > 0 && <p className="text-xs font-bold text-amber-600 dark:text-amber-400">{item.total_bag_qty} Bags</p>}
-                        {Number(item.total_sqft_qty) > 0 && <p className="text-xs font-bold text-sky-600 dark:text-sky-400">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} Sqft</p>}
-                        {Number(item.total_whole_qty) > 0 && <p className="text-xs font-bold text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>}
-                        {Number(item.total_broken_qty) > 0 && <p className="text-xs font-bold text-rose-500">{item.total_broken_qty} Broken</p>}
+                        {Number(item.total_bag_qty) > 0 && <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">{item.total_bag_qty} Bags</p>}
+                        {Number(item.total_sqft_qty) > 0 && <p className="text-xs font-semibold text-sky-600 dark:text-sky-400">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} Sqft</p>}
+                        {Number(item.total_whole_qty) > 0 && <p className="text-xs font-semibold text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>}
+                        {Number(item.total_broken_qty) > 0 && <p className="text-xs font-semibold text-rose-500">{item.total_broken_qty} Broken</p>}
                       </div>
                     </div>
                     <div className="flex gap-2 pt-2">
@@ -1474,24 +1468,24 @@ export default function AdminDashboard() {
                           className="group cursor-pointer transition-colors duration-100 hover:bg-muted/60"
                           onClick={() => openShipmentPreview('arrival', item)}
                         >
-                          <td className="px-4 py-2.5 text-slate-900 dark:text-slate-100 font-bold text-xs">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</td>
+                          <td className="px-4 py-2.5 text-slate-900 dark:text-slate-100 font-semibold text-xs">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</td>
                           <td className="px-4 py-2.5">
                             <div className="flex flex-col gap-1">
-                              <span className="w-fit bg-amber-500/5 px-2 py-0.5 rounded border border-amber-500/20 font-bold text-amber-600 dark:text-amber-400 text-[11px]">{item.shipment_number}</span>
+                              <span className="w-fit bg-amber-500/5 px-2 py-0.5 rounded border border-amber-500/20 font-semibold text-amber-600 dark:text-amber-400 text-[11px]">{item.shipment_number}</span>
                               <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">{item.maintainer_name || '-'}</span>
                             </div>
                           </td>
                           <td className="px-4 py-2.5">
                             <div className="flex flex-col gap-1">
-                              <span className="text-slate-900 dark:text-slate-100 font-bold text-xs truncate max-w-[150px]">{item.supplier_name || '—'}</span>
+                              <span className="text-slate-900 dark:text-slate-100 font-semibold text-xs truncate max-w-[150px]">{item.supplier_name || '—'}</span>
                               <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">{item.truck_license_plate || '—'}</span>
                             </div>
                           </td>
                           <td className="px-4 py-2.5">
                             <div className="flex flex-col gap-1">
                               {Number(item.total_sqft_qty || 0) > 0
-                                ? <span className="text-sky-600 dark:text-sky-400 font-bold text-xs font-sans">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-xs">Sqft</span></span>
-                                : <span className="text-slate-900 dark:text-slate-100 font-bold text-xs font-sans">{item.total_whole_qty} <span className="text-xs text-slate-400">Whole</span></span>}
+                                ? <span className="text-sky-600 dark:text-sky-400 font-semibold text-xs font-sans">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-xs">Sqft</span></span>
+                                : <span className="text-slate-900 dark:text-slate-100 font-semibold text-xs font-sans">{item.total_whole_qty} <span className="text-xs text-slate-400">Whole</span></span>}
                               {Number(item.total_broken_qty) > 0 && <span className="text-rose-700 dark:text-rose-400 font-semibold text-xs font-sans">{item.total_broken_qty} <span className="font-normal">Broken</span></span>}
                             </div>
                           </td>
@@ -1526,22 +1520,22 @@ export default function AdminDashboard() {
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <p className="text-xs font-medium text-slate-400 mb-1">{t('date')}</p>
-                          <p className="text-xs font-bold text-slate-900 dark:text-white">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</p>
+                          <p className="text-xs font-semibold text-slate-900 dark:text-white">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</p>
                         </div>
                         <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">Cancelled</Badge>
                       </div>
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="text-xs font-medium text-slate-400 mb-1">{t('shipmentNo')} & Maintainer</p>
-                          <p className="text-sm font-bold text-amber-600 dark:text-amber-400 mb-1">{item.shipment_number}</p>
+                          <p className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-1">{item.shipment_number}</p>
                           <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{item.maintainer_name || '-'}</p>
                         </div>
                         <div className="text-right">
                           <p className="text-xs font-medium text-slate-400 mb-1">Source & Quantities</p>
-                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300 max-w-[120px] truncate mb-1">{item.supplier_name || '—'}</p>
+                          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 max-w-[120px] truncate mb-1">{item.supplier_name || '—'}</p>
                           {Number(item.total_sqft_qty || 0) > 0
-                          ? <p className="text-xs font-bold text-sky-600 dark:text-sky-400">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} Sqft</p>
-                          : <p className="text-xs font-bold text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>}
+                          ? <p className="text-xs font-semibold text-sky-600 dark:text-sky-400">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} Sqft</p>
+                          : <p className="text-xs font-semibold text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>}
                         </div>
                       </div>
                       <div className="flex gap-2 pt-2">
@@ -1597,24 +1591,24 @@ export default function AdminDashboard() {
                         className="group cursor-pointer transition-colors duration-100 hover:bg-muted/60"
                         onClick={() => openShipmentPreview('dispatch', item)}
                       >
-                        <td className="px-4 py-2.5 text-slate-900 dark:text-slate-100 font-bold text-xs">{formatDateTime(item.dispatch_date).split(',')[0]}</td>
+                        <td className="px-4 py-2.5 text-slate-900 dark:text-slate-100 font-semibold text-xs">{formatDateTime(item.dispatch_date).split(',')[0]}</td>
                         <td className="px-4 py-2.5">
                           <div className="flex flex-col gap-1">
-                            <span className="w-fit bg-brand-secondary/5 px-2 py-0.5 rounded border border-brand-secondary/20 font-bold text-brand-secondary dark:text-indigo-400 text-[11px]">{item.shipment_number}</span>
+                            <span className="w-fit bg-brand-secondary/5 px-2 py-0.5 rounded border border-brand-secondary/20 font-semibold text-brand-secondary dark:text-indigo-400 text-[11px]">{item.shipment_number}</span>
                             <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">{item.driver_name || '-'}</span>
                           </div>
                         </td>
                         <td className="px-4 py-2.5">
                           <div className="flex flex-col gap-1">
-                            <span className="text-slate-900 dark:text-slate-100 font-bold text-xs truncate max-w-[150px]">{item.customer_name || '—'}</span>
+                            <span className="text-slate-900 dark:text-slate-100 font-semibold text-xs truncate max-w-[150px]">{item.customer_name || '—'}</span>
                             {Number(item.total_selling_price_excl) > 0 && <span className="text-emerald-600 dark:text-emerald-400 text-xs font-semibold">₹{Number(item.total_selling_price_excl).toLocaleString('en-IN')}</span>}
                           </div>
                         </td>
                         <td className="px-4 py-2.5">
                           <div className="flex flex-col gap-1">
                             {Number(item.total_sqft_qty || 0) > 0
-                                ? <span className="text-sky-600 dark:text-sky-400 font-bold text-xs font-sans">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-xs">Sqft</span></span>
-                                : <span className="text-slate-900 dark:text-slate-100 font-bold text-xs font-sans">{item.total_whole_qty} <span className="text-xs text-slate-400">Whole</span></span>}
+                                ? <span className="text-sky-600 dark:text-sky-400 font-semibold text-xs font-sans">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-xs">Sqft</span></span>
+                                : <span className="text-slate-900 dark:text-slate-100 font-semibold text-xs font-sans">{item.total_whole_qty} <span className="text-xs text-slate-400">Whole</span></span>}
                             {Number(item.total_broken_qty) > 0 && <span className="text-rose-700 dark:text-rose-400 font-semibold text-xs font-sans">{item.total_broken_qty} <span className="font-normal">Broken</span></span>}
                           </div>
                         </td>
@@ -1677,25 +1671,25 @@ export default function AdminDashboard() {
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-xs font-medium text-slate-400 mb-1">{t('date')}</p>
-                        <p className="text-xs font-bold text-slate-900 dark:text-white">{formatDateTime(item.dispatch_date).split(',')[0]}</p>
+                        <p className="text-xs font-semibold text-slate-900 dark:text-white">{formatDateTime(item.dispatch_date).split(',')[0]}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs font-medium text-slate-400 mb-1">Customer</p>
-                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 max-w-[120px] truncate">{item.customer_name || '—'}</p>
+                        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 max-w-[120px] truncate">{item.customer_name || '—'}</p>
                       </div>
                     </div>
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-xs font-medium text-slate-400 mb-1">{t('dispatchNo')} & {t('driver')}</p>
-                        <p className="text-sm font-bold text-brand-secondary dark:text-indigo-400 mb-1">{item.shipment_number}</p>
+                        <p className="text-sm font-semibold text-brand-secondary dark:text-indigo-400 mb-1">{item.shipment_number}</p>
                         <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{item.driver_name || '-'}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs font-medium text-slate-400 mb-1">Quantities</p>
                         {Number(item.total_sqft_qty || 0) > 0
-                          ? <p className="text-xs font-bold text-sky-600 dark:text-sky-400">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} Sqft</p>
-                          : <p className="text-xs font-bold text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>}
-                        {Number(item.total_broken_qty) > 0 && <p className="text-xs font-bold text-rose-500">{item.total_broken_qty} Broken</p>}
+                          ? <p className="text-xs font-semibold text-sky-600 dark:text-sky-400">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} Sqft</p>
+                          : <p className="text-xs font-semibold text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>}
+                        {Number(item.total_broken_qty) > 0 && <p className="text-xs font-semibold text-rose-500">{item.total_broken_qty} Broken</p>}
                       </div>
                     </div>
                     <div className="flex gap-2 pt-2">
@@ -1779,10 +1773,10 @@ export default function AdminDashboard() {
                         }`}
                       onClick={() => openChangeRequestPreview(requestRow)}
                     >
-                      <td className="px-4 py-2.5 font-bold text-brand-primary text-xs">
+                      <td className="px-4 py-2.5 font-semibold text-brand-primary text-xs">
                         <span className="bg-brand-primary/5 px-2 py-1 rounded-md border border-brand-primary/20">{requestRow.request_number || `CR-${requestRow.id}`}</span>
                       </td>
-                      <td className="px-4 py-2.5 text-slate-900 dark:text-slate-100 font-bold text-xs">{requestRow.source_entity_type} #{requestRow.source_entity_id}</td>
+                      <td className="px-4 py-2.5 text-slate-900 dark:text-slate-100 font-semibold text-xs">{requestRow.source_entity_type} #{requestRow.source_entity_id}</td>
                       <td className="px-4 py-2.5 text-slate-900 dark:text-slate-100 font-semibold text-xs">{requestRow.request_type}</td>
                       <td className="px-4 py-2.5">
                         <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getStatusVariant(requestRow.status) === 'approved' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
@@ -1817,7 +1811,7 @@ export default function AdminDashboard() {
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <p className="text-xs font-medium text-slate-400 mb-0.5">{t('requestNo')}</p>
-                      <p className="text-sm font-bold text-brand-primary">{item.request_number || `CR-${item.id}`}</p>
+                      <p className="text-sm font-semibold text-brand-primary">{item.request_number || `CR-${item.id}`}</p>
                     </div>
                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${getStatusVariant(item.status) === 'approved' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
                         getStatusVariant(item.status) === 'pending' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
@@ -1919,7 +1913,7 @@ export default function AdminDashboard() {
                   </div>
 
                   {userFormNotice && (
-                    <div className={`p-4 rounded-xl text-xs font-bold ring-1 ${userFormNotice.type === 'error' ? 'bg-rose-50 text-rose-600 ring-rose-200' : 'bg-emerald-50 text-emerald-600 ring-emerald-200'}`}>
+                    <div className={`p-4 rounded-xl text-xs font-semibold ring-1 ${userFormNotice.type === 'error' ? 'bg-rose-50 text-rose-600 ring-rose-200' : 'bg-emerald-50 text-emerald-600 ring-emerald-200'}`}>
                       {userFormNotice.message}
                     </div>
                   )}
@@ -1927,18 +1921,18 @@ export default function AdminDashboard() {
                   <div className="grid gap-6 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label className="text-xs font-medium text-slate-400 px-1">{t('name')}</Label>
-                      <Input {...createUserForm.register('name')} className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold" placeholder="Full legal name" />
+                      <Input {...createUserForm.register('name')} placeholder="Full legal name" />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-medium text-slate-400 px-1">{t('phone')}</Label>
-                      <Input {...createUserForm.register('phone')} className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold" placeholder="10-digit primary contact" />
+                      <Input {...createUserForm.register('phone')} placeholder="10-digit primary contact" />
                     </div>
                   </div>
 
                   <div className="grid gap-6 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label className="text-xs font-medium text-slate-400 px-1">{t('email')}</Label>
-                      <Input {...createUserForm.register('email')} type="email" className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold" placeholder="Official email address" />
+                      <Input {...createUserForm.register('email')} type="email" placeholder="Official email address" />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-medium text-slate-400 px-1">{t('role')}</Label>
@@ -2003,7 +1997,7 @@ export default function AdminDashboard() {
                                 }}
                                 className="accent-brand-primary"
                               />
-                              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{name}</span>
+                              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{name}</span>
                             </label>
                           );
                         })}
@@ -2015,8 +2009,8 @@ export default function AdminDashboard() {
                     <div className="space-y-2">
                       <Label className="text-xs font-medium text-slate-400 px-1">{t('password')}</Label>
                       <div className="relative">
-                        <Input {...createUserForm.register('password')} type={showPrimaryPassword ? 'text' : 'password'} className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold pr-12" placeholder="Secure token" />
-                        <button type="button" onClick={() => setShowPrimaryPassword(!showPrimaryPassword)} title={showPrimaryPassword ? 'Hide password' : 'Show password'} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                        <Input {...createUserForm.register('password')} type={showPrimaryPassword ? 'text' : 'password'} className="pr-10" placeholder="Secure token" />
+                        <button type="button" onClick={() => setShowPrimaryPassword(!showPrimaryPassword)} title={showPrimaryPassword ? 'Hide password' : 'Show password'} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
                           {showPrimaryPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
@@ -2024,8 +2018,8 @@ export default function AdminDashboard() {
                     <div className="space-y-2">
                       <Label className="text-xs font-medium text-slate-400 px-1">{t('confirmPassword')}</Label>
                       <div className="relative">
-                        <Input value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} type={showConfirmPassword ? 'text' : 'password'} className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold pr-12" placeholder="Verify token" />
-                        <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} title={showConfirmPassword ? 'Hide password' : 'Show password'} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                        <Input value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} type={showConfirmPassword ? 'text' : 'password'} className="pr-10" placeholder="Verify token" />
+                        <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} title={showConfirmPassword ? 'Hide password' : 'Show password'} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
                           {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
@@ -2138,7 +2132,7 @@ export default function AdminDashboard() {
                     </tr>
                   ))}
                   {userPagination.total === 0 && (
-                    <tr><td colSpan="4" className="px-8 py-12 text-center text-sm text-slate-500 dark:text-slate-400">{t('noUsersFound')}</td></tr>
+                    <tr><td colSpan="4" className="px-8 py-8 text-center text-sm text-slate-500 dark:text-slate-400">{t('noUsersFound')}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -2153,11 +2147,11 @@ export default function AdminDashboard() {
                   className="p-5 rounded-xl border border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-slate-900/10 space-y-4 active:scale-[0.98] transition-transform"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center font-bold text-sm border border-brand-primary/20 shadow-sm">
+                    <div className="h-12 w-12 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center font-semibold text-sm border border-brand-primary/20 shadow-sm">
                       {getInitials(u.full_name, u.email)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1.5 truncate">{u.full_name || 'N/A'}</p>
+                      <p className="font-semibold text-slate-900 dark:text-white tracking-tight leading-none mb-1.5 truncate">{u.full_name || 'N/A'}</p>
                       <p className="text-xs font-medium text-slate-400 truncate">{u.email}</p>
                     </div>
                     <span className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${u.role === 'admin' ? 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20' :
@@ -2227,7 +2221,7 @@ export default function AdminDashboard() {
       {confirmModal.open && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/25 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full p-6 sm:p-8 animate-in fade-in-0 zoom-in-95 duration-200">
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">{confirmModal.title}</h3>
+            <h3 className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight mb-2">{confirmModal.title}</h3>
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">{confirmModal.message}</p>
             <div className="flex items-center justify-end gap-3">
               <button
@@ -2394,7 +2388,7 @@ export default function AdminDashboard() {
                                         }}
                                         className="accent-brand-primary"
                                       />
-                                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{name}</span>
+                                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{name}</span>
                                     </label>
                                   );
                                 })}
@@ -2414,7 +2408,7 @@ export default function AdminDashboard() {
                                 className="accent-brand-primary mt-0.5"
                               />
                               <span className="space-y-0.5">
-                                <span className="block text-xs font-bold text-slate-700 dark:text-slate-300">Also sells</span>
+                                <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Also sells</span>
                                 <span className="block text-[11px] font-medium text-slate-400">
                                   Can be picked as the salesperson on a dispatch and sees their own performance. Keeps every existing permission.
                                 </span>
@@ -2435,7 +2429,7 @@ export default function AdminDashboard() {
                                     placeholder="e.g. 25000"
                                     value={previewUserForm.watch('salary')}
                                     onChange={(e) => previewUserForm.setValue('salary', e.target.value, { shouldDirty: true })}
-                                    className="w-full h-11 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+                                    className="w-full h-11 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
                                   />
                                 </div>
                                 <div className="space-y-2">
@@ -2447,7 +2441,7 @@ export default function AdminDashboard() {
                                     placeholder="e.g. 200000"
                                     value={previewUserForm.watch('monthlySalesGoal')}
                                     onChange={(e) => previewUserForm.setValue('monthlySalesGoal', e.target.value, { shouldDirty: true })}
-                                    className="w-full h-11 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+                                    className="w-full h-11 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
                                   />
                                 </div>
                               </div>
@@ -2464,7 +2458,7 @@ export default function AdminDashboard() {
                                   id="dashboard-flag"
                                 />
                                 <label htmlFor="dashboard-flag" className="flex-1 cursor-pointer">
-                                  <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Can See Dashboard</p>
+                                  <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">Can See Dashboard</p>
                                   <p className="text-[11px] text-slate-500 dark:text-slate-400">Access to analytics and dashboard features</p>
                                 </label>
                               </div>
@@ -2475,7 +2469,7 @@ export default function AdminDashboard() {
                                   id="manage-users-flag"
                                 />
                                 <label htmlFor="manage-users-flag" className="flex-1 cursor-pointer">
-                                  <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Can Manage Users</p>
+                                  <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">Can Manage Users</p>
                                   <p className="text-[11px] text-slate-500 dark:text-slate-400">Create, edit, and manage user accounts</p>
                                 </label>
                               </div>
@@ -2486,7 +2480,7 @@ export default function AdminDashboard() {
                                   id="approve-changes-flag"
                                 />
                                 <label htmlFor="approve-changes-flag" className="flex-1 cursor-pointer">
-                                  <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Can Approve Changes</p>
+                                  <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">Can Approve Changes</p>
                                   <p className="text-[11px] text-slate-500 dark:text-slate-400">Approve shipments and change requests</p>
                                 </label>
                               </div>
@@ -2574,7 +2568,7 @@ export default function AdminDashboard() {
                       ].map((item) => (
                         <div key={item.label} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/50">
                           <p className="text-xs font-medium text-slate-400 mb-1">{item.label}</p>
-                          <p className={`text-xs ${item.isBold ? 'font-bold text-brand-primary' : 'font-bold text-slate-900 dark:text-slate-100'}`}>
+                          <p className={`text-xs ${item.isBold ? 'font-semibold text-brand-primary' : 'font-semibold text-slate-900 dark:text-slate-100'}`}>
                             {item.value}
                           </p>
                         </div>
@@ -2599,9 +2593,9 @@ export default function AdminDashboard() {
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                               {previewItemPagination.rows.map((item) => (
                                 <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                  <td className="px-4 py-2.5 font-bold text-brand-primary">{item.sku}</td>
-                                  <td className="px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300">{item.item_name}</td>
-                                  <td className="px-4 py-2.5 text-right font-bold text-slate-900 dark:text-white">
+                                  <td className="px-4 py-2.5 font-semibold text-brand-primary">{item.sku}</td>
+                                  <td className="px-4 py-2.5 font-semibold text-slate-700 dark:text-slate-300">{item.item_name}</td>
+                                  <td className="px-4 py-2.5 text-right font-semibold text-slate-900 dark:text-white">
                                     {formatLineVolume(item)}
                                   </td>
                                 </tr>
@@ -2634,7 +2628,7 @@ export default function AdminDashboard() {
 
             {resetPasswordModal.success ? (
               <div className="space-y-4">
-                <p className="text-xs font-bold text-emerald-600">Password reset successfully. The user can now sign in with the new password.</p>
+                <p className="text-xs font-semibold text-emerald-600">Password reset successfully. The user can now sign in with the new password.</p>
                 <button
                   type="button"
                   onClick={() => setResetPasswordModal((s) => ({ ...s, open: false }))}
@@ -2668,7 +2662,7 @@ export default function AdminDashboard() {
                   />
                 </div>
                 {resetPasswordModal.error && (
-                  <p className="text-xs font-bold text-red-500">{resetPasswordModal.error}</p>
+                  <p className="text-xs font-semibold text-red-500">{resetPasswordModal.error}</p>
                 )}
                 <div className="flex gap-2 pt-1">
                   <button
