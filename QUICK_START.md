@@ -130,14 +130,9 @@ open http://localhost:3000
 ## 🔍 Verification Commands
 
 ```bash
-# Check database has data
-DATABASE_URL="..." node scripts/verify-seed.js
-
-# View users by role
-DATABASE_URL="..." npm run db:query "SELECT role, COUNT(*) FROM stock_app_users GROUP BY role"
-
-# View shipment statuses
-DATABASE_URL="..." npm run db:query "SELECT approval_status, COUNT(*) FROM stock_inbound_shipments GROUP BY approval_status"
+npm test                          # unit checks
+npm run db:migrate -- --status    # pending schema migrations
+npm run check:rls -- --data       # tenant isolation (rolled-back leak tests)
 ```
 
 ---
