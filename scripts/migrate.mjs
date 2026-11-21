@@ -12,8 +12,12 @@ import { Pool } from '@neondatabase/serverless';
 // `netlify env:get` prints a sentence, not nothing, for an unset variable, so
 // only take values that are actually connection strings.
 const isUrl = (value) => /^postgres(ql)?:\/\//.test(String(value || '').trim());
-const url = [process.env.DATABASE_OWNER_URL, process.env.DATABASE_URL].find(isUrl);
-if (!url) throw new Error('Set DATABASE_OWNER_URL (or DATABASE_URL) to a postgres:// connection string.');
+const configured = [process.env.DATABASE_OWNER_URL, process.env.DATABASE_URL].find(isUrl);
+if (!configured) throw new Error('Set DATABASE_OWNER_URL (or DATABASE_URL) to a postgres:// connection string.');
+// Neon's -pooler endpoint is PgBouncer in transaction mode: the session-level
+// advisory lock below could stay held on a pooled server connection after we
+// exit. Migrations always use the direct endpoint.
+const url = configured.trim().replace(/^(postgres(?:ql)?:\/\/[^@]+@[^./]+)-pooler\./, '$1.');
 
 const dir = new URL('../db/migrations/', import.meta.url);
 const args = process.argv.slice(2);
