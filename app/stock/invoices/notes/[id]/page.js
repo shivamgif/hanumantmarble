@@ -14,9 +14,9 @@ const state = (code) => (code ? `${GST_STATES[code] || ''} (${code})` : '—');
 const printDate = (iso) => (iso ? iso.split('-').reverse().join('-') : '—');
 
 /**
- * The printable credit note: the invoice print's layout, titled Credit Note,
- * with the invoice it adjusts and the reason (GST Rule 53). Tax splits follow
- * the original invoice's states.
+ * The printable credit or debit note: the invoice print's layout, with the
+ * document it adjusts and the reason (GST Rule 53). Tax splits follow the
+ * original document's states. A supplier debit note is from us to them.
  */
 export default function CreditNotePrintPage() {
   const { id } = useParams();
@@ -44,9 +44,9 @@ export default function CreditNotePrintPage() {
   if (error) return <div className={CLASSES.contentWrap}><p className="text-sm text-rose-500">{error}</p></div>;
   if (!data) return <div className={CLASSES.contentWrap} aria-busy="true"><div className="h-9 w-48 skeleton rounded-lg" /><div className="mx-auto h-[70vh] max-w-[210mm] skeleton rounded-xl" /></div>;
 
-  const { note, invoice } = data;
+  const { note, party, states } = data;
   const business = data.seller?.business || {};
-  const totals = computeInvoiceTotals(note.items, business.stateCode, invoice.bill_to_state_code);
+  const totals = computeInvoiceTotals(note.items, states.seller, states.buyer);
   const irnPending = note.status === 'approved' && note.einvoice_status === 'pending';
   const watermark = note.status === 'cancelled' ? t('cancelled') : note.status === 'rejected' ? t('rejected') : irnPending ? t('irnPending') : null;
 
@@ -90,14 +90,14 @@ export default function CreditNotePrintPage() {
             <p className="mt-1 text-[12px]"><b>GSTIN:</b> {business.gstin} · <b>State:</b> {state(business.stateCode)}</p>
           </div>
           <div className="text-right">
-            <p className="text-lg font-bold uppercase tracking-wide">{t('creditNoteTitle')}</p>
+            <p className="text-lg font-bold uppercase tracking-wide">{t(note.kind === 'debit' ? 'debitNoteTitle' : 'creditNoteTitle')}</p>
             <table className="ml-auto mt-1 text-[12px]">
               <tbody>
                 <tr><td className="pr-2 text-slate-500">{t('noteNo')}</td><td className="font-semibold">{note.note_number || '—'}</td></tr>
                 <tr><td className="pr-2 text-slate-500">{t('date')}</td><td>{printDate(note.note_date_text || note.created_at?.slice(0, 10))}</td></tr>
-                <tr><td className="pr-2 text-slate-500">{t('againstInvoice')}</td><td>{note.original_number} · {printDate(note.original_date_text)}</td></tr>
+                <tr><td className="pr-2 text-slate-500">{t(note.party_kind === 'supplier' ? 'againstPurchase' : 'againstInvoice')}</td><td>{note.original_number} · {printDate(note.original_date_text)}</td></tr>
                 <tr><td className="pr-2 text-slate-500">{t('reason')}</td><td>{t(`reason_${note.reason}`)}</td></tr>
-                <tr><td className="pr-2 text-slate-500">{t('billToState')}</td><td>{state(invoice.bill_to_state_code)}</td></tr>
+                <tr><td className="pr-2 text-slate-500">{t('billToState')}</td><td>{state(party.stateCode)}</td></tr>
               </tbody>
             </table>
           </div>
@@ -109,9 +109,9 @@ export default function CreditNotePrintPage() {
 
         <div className="mt-3 border border-slate-300 p-3 text-[13px] leading-snug whitespace-pre-line">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{t('billTo')}</p>
-          <b>{invoice.bill_to_name}</b>
-          {invoice.bill_to_address ? `\n${invoice.bill_to_address}` : ''}
-          {`\nGSTIN: ${invoice.bill_to_gstin || 'Unregistered'}`}
+          <b>{party.name}</b>
+          {party.address ? `\n${party.address}` : ''}
+          {`\nGSTIN: ${party.gstin || 'Unregistered'}`}
         </div>
 
         <table className="mt-3 w-full border-collapse text-[12px]">

@@ -1,12 +1,12 @@
 'use client';
 import { SelectField } from '@/components/ui/select';
 
-// Credit notes on the Invoices page: the "raise" sheet and the list.
+// Credit and debit notes on the Invoices page: the "raise" sheet and the list.
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Ban, Check, ExternalLink, X } from 'lucide-react';
 import { computeInvoiceTotals } from '@/lib/gst-invoice.mjs';
-import { NOTE_REASONS, withQtyRate } from '@/lib/notes.mjs';
+import { CUSTOMER_DEBIT_REASONS, NOTE_REASONS, withQtyRate } from '@/lib/notes.mjs';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { formatRupees } from './invoice-form';
 import { FORM_INPUT_CLASS, FORM_LABEL_CLASS, formatDateTime, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../lib/stock-utils';
@@ -26,10 +26,12 @@ async function readJson(response) {
 }
 
 /**
- * request: { invoiceId, shipmentId? } opens the sheet. From a dispatch return
- * the quantities it brought back are prefilled and the reason is "returned".
+ * request opens the sheet:
+ *   { invoiceId, shipmentId? }  credit note; from a dispatch return its quantities are prefilled
+ *   { invoiceId, kind: 'debit' } debit note to the customer: an extra rate on billed quantity
+ *   { purchaseId }               debit note to the supplier: goods sent back or a claim
  */
-export function CreditNoteSheet({ request, onClose, onSaved, t }) {
+export function NoteSheet({ request, onClose, onSaved, t }) {
   const [data, setData] = useState(null);
   const [rows, setRows] = useState([]);
   const [reason, setReason] = useState('sales_return');
@@ -43,14 +45,18 @@ export function CreditNoteSheet({ request, onClose, onSaved, t }) {
     setData(null);
     setError('');
     setNotes('');
-    setReason(request.shipmentId ? 'sales_return' : 'post_sale_discount');
-    const query = new URLSearchParams({ invoiceId: request.invoiceId, ...(request.shipmentId ? { shipmentId: request.shipmentId } : {}) });
+    setReason(request.kind === 'debit' ? 'rate_correction' : request.shipmentId || request.purchaseId ? 'sales_return' : 'post_sale_discount');
+    const query = new URLSearchParams(request.purchaseId
+      ? { purchaseId: request.purchaseId }
+      : { invoiceId: request.invoiceId, ...(request.kind ? { kind: request.kind } : {}), ...(request.shipmentId ? { shipmentId: request.shipmentId } : {}) });
     fetch(`/api/stock/notes?${query}`, { cache: 'no-store' })
       .then(readJson)
       .then((json) => {
         if (cancelled) return;
         setData(json);
-        setRows(json.lines.map((line) => ({ qty: line.prefillQty ? String(line.prefillQty) : '', rate: String(line.rate) })));
+        const adds = json.kind === 'debit' && json.original.partyKind === 'customer';
+        // Taking value off: the billed rate to start from. Adding: the extra rate, typed in.
+        setRows(json.lines.map((line) => ({ qty: line.prefillQty ? String(line.prefillQty) : '', rate: adds ? '' : String(line.rate) })));
       })
       .catch((err) => { if (!cancelled) setError(err.message); });
     return () => { cancelled = true; };
@@ -61,9 +67,11 @@ export function CreditNoteSheet({ request, onClose, onSaved, t }) {
     .filter((row) => row.qty > 0), [data, rows]);
   const totals = useMemo(() => computeInvoiceTotals(
     picked.map(({ line, qty, rate }) => ({ ...withQtyRate({ itemCategory: line.itemCategory }, qty, rate), gstRate: line.gstRate })),
-    data?.invoice.seller_state_code,
-    data?.invoice.bill_to_state_code
+    data?.original.sellerState,
+    data?.original.buyerState
   ), [picked, data]);
+  const adds = data?.kind === 'debit' && data?.original.partyKind === 'customer';
+  const supplier = data?.original.partyKind === 'supplier';
 
   const setRow = (index, key, value) => setRows((current) => current.map((row, i) => (i === index ? { ...row, [key]: value } : row)));
 
@@ -76,7 +84,7 @@ export function CreditNoteSheet({ request, onClose, onSaved, t }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          salesInvoiceId: request.invoiceId,
+          ...(request.purchaseId ? { inboundShipmentId: request.purchaseId } : { salesInvoiceId: request.invoiceId, kind: request.kind || 'credit' }),
           outboundShipmentId: request.shipmentId || null,
           reason,
           notes,
@@ -98,10 +106,13 @@ export function CreditNoteSheet({ request, onClose, onSaved, t }) {
       <SheetContent side="right" className="w-full max-w-none overflow-y-auto bg-white dark:bg-slate-950 md:w-[80vw] lg:w-[70vw] xl:w-[62vw] md:max-w-[1100px]">
         <SheetHeader className="border-b border-border pb-4">
           <SheetTitle className="text-base">
-            {data ? t('creditNoteFor', { number: data.invoice.invoice_number }) : t('creditNote')}
+            {data
+              ? t(data.kind === 'debit' ? 'debitNoteFor' : 'creditNoteFor', { number: data.original.number })
+              : t(request?.kind === 'debit' || request?.purchaseId ? 'debitNote' : 'creditNote')}
           </SheetTitle>
           <SheetDescription className="text-xs">
-            {data ? `${data.invoice.bill_to_name} · ${formatRupees(data.invoice.grand_total)}. ` : ''}{t('creditNoteDesc')}
+            {data ? `${data.original.partyName || '—'} · ${formatRupees(data.original.total)}. ` : ''}
+            {t(adds ? 'debitNoteDesc' : supplier ? 'supplierDebitNoteDesc' : 'creditNoteDesc')}
           </SheetDescription>
         </SheetHeader>
 
@@ -118,7 +129,7 @@ export function CreditNoteSheet({ request, onClose, onSaved, t }) {
             <label className="block max-w-xs">
               <span className={FORM_LABEL_CLASS}>{t('reason')}</span>
               <SelectField value={reason} onChange={(e) => setReason(e.target.value)} className={FORM_INPUT_CLASS}>
-                {NOTE_REASONS.map((key) => <option key={key} value={key}>{t(`reason_${key}`)}</option>)}
+                {(adds ? CUSTOMER_DEBIT_REASONS : NOTE_REASONS).map((key) => <option key={key} value={key}>{t(`reason_${key}`)}</option>)}
               </SelectField>
             </label>
 
@@ -128,9 +139,9 @@ export function CreditNoteSheet({ request, onClose, onSaved, t }) {
                   <tr className="text-left text-xs text-slate-500">
                     <th className="py-2 pr-3">{t('description')}</th>
                     <th className="py-2 pr-3 text-right">{t('billed')}</th>
-                    <th className="py-2 pr-3 text-right">{t('leftToCredit')}</th>
+                    {adds ? null : <th className="py-2 pr-3 text-right">{t('leftToCredit')}</th>}
                     <th className="py-2 pr-3">{t('creditQty')}</th>
-                    <th className="py-2 pr-3">{t('creditRate')}</th>
+                    <th className="py-2 pr-3">{t(adds ? 'extraRate' : 'creditRate')}</th>
                     <th className="py-2 text-right">{t('taxable')}</th>
                   </tr>
                 </thead>
@@ -139,7 +150,12 @@ export function CreditNoteSheet({ request, onClose, onSaved, t }) {
                     <tr key={line.lineIndex} className="align-middle">
                       <td className="py-2 pr-3">{line.itemLabel}</td>
                       <td className="py-2 pr-3 text-right tabular-nums">{line.billedQty} {line.unit} @ {formatRupees(line.rate)}</td>
-                      <td className="py-2 pr-3 text-right tabular-nums">{line.leftQty} {line.unit} · {formatRupees(line.leftValue)}</td>
+                      {adds ? null : (
+                        <td className="py-2 pr-3 text-right tabular-nums">
+                          {line.leftQty} {line.unit} · {formatRupees(line.leftValue)}
+                          {supplier ? <span className="block text-xs text-slate-500">{t('leftToReturn', { qty: line.leftToReturn, unit: line.unit })}</span> : null}
+                        </td>
+                      )}
                       <td className="py-2 pr-3">
                         <input
                           type="number"
@@ -157,7 +173,7 @@ export function CreditNoteSheet({ request, onClose, onSaved, t }) {
                           type="number"
                           min="0"
                           step="0.01"
-                          max={line.rate}
+                          max={adds ? undefined : line.rate}
                           value={rows[index]?.rate ?? ''}
                           onChange={(e) => setRow(index, 'rate', e.target.value)}
                           className={`${FORM_INPUT_CLASS} w-28`}
@@ -207,14 +223,14 @@ function noteRights(note, accessUser, isApprover) {
   };
 }
 
-export function CreditNotesList({ notes, accessUser, isApprover, busyId, onAct, setReasonDialog, t }) {
+export function NotesList({ notes, accessUser, isApprover, busyId, onAct, setReasonDialog, t }) {
   if (!notes.length) return <p className="py-8 text-center text-sm text-slate-400">{t('noNotes')}</p>;
   return (
     <ul className="divide-y divide-border">
       {notes.map((note) => {
         const rights = noteRights(note, accessUser, isApprover);
         const busy = busyId === `note-${note.id}`;
-        const label = note.note_number || `${t('creditNote')} #${note.id}`;
+        const label = note.note_number || `${t(note.kind === 'debit' ? 'debitNote' : 'creditNote')} #${note.id}`;
         return (
           <li key={note.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
             <div className="min-w-[12rem] flex-1">
@@ -226,7 +242,7 @@ export function CreditNotesList({ notes, accessUser, isApprover, busyId, onAct, 
                 ) : null}
               </div>
               <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-300">
-                {note.bill_to_name} · {t('againstInvoice')} {note.original_number}
+                {note.kind === 'debit' ? `${t('debitNote')} · ` : ''}{note.party_name} · {t(note.party_kind === 'supplier' ? 'againstPurchase' : 'againstInvoice')} {note.original_number}
               </p>
               <p className="text-xs text-slate-500">
                 {t(`reason_${note.reason}`)}{note.shipment_number ? ` · ${note.shipment_number}` : ''} · {note.created_by_name || '—'} · {formatDateTime(note.created_at)}
@@ -248,7 +264,7 @@ export function CreditNotesList({ notes, accessUser, isApprover, busyId, onAct, 
                     className={PILL_BUTTON_CLASS}
                     onClick={() => setReasonDialog({
                       title: t('reject'),
-                      description: `${note.bill_to_name} · ${formatRupees(note.grand_total)}`,
+                      description: `${note.party_name} · ${formatRupees(note.grand_total)}`,
                       placeholder: t('rejectNoteReason'),
                       required: true,
                       confirmText: t('reject'),

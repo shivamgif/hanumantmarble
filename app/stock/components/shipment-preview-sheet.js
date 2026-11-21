@@ -429,6 +429,16 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
               <FileMinus className="h-4 w-4" /> {tc.raiseCreditNote ?? 'Raise credit note'}
             </Link>
           ) : null}
+          {/* Goods going back to the supplier, or a claim on their bill. */}
+          {previewState.kind === 'arrival' && previewState.record?.approval_status === 'approved'
+            && ['admin', 'manager', 'stock_maintainer'].includes(userRole) ? (
+            <Link
+              href={`/stock/invoices?purchaseNote=${previewState.record.id}`}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-sm font-medium text-slate-700 hover:bg-muted dark:text-slate-200"
+            >
+              <FileMinus className="h-4 w-4" /> {tc.raiseDebitNote ?? 'Raise debit note'}
+            </Link>
+          ) : null}
           <ActionFooter
             record={previewState.record}
             kind={previewState.kind}

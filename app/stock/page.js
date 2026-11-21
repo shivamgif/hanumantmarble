@@ -192,6 +192,7 @@ export default function StockDashboard() {
     loadedBroken: t('loadedBroken'),
     returnWhole: t('returnWhole'),
     raiseCreditNote: t('raiseCreditNote'),
+    raiseDebitNote: t('raiseDebitNote'),
     returnBroken: t('returnBroken'),
     totalSqmQty: t('totalSqmQty'),
     logisticsOrigin: t('logisticsOrigin'),

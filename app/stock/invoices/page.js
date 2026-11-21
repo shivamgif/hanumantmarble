@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Ban, Check, Download, ExternalLink, FileMinus, FileText, Plus, Upload, X } from 'lucide-react';
+import { Ban, Check, Download, ExternalLink, FileMinus, FilePlus, FileText, Plus, Upload, X } from 'lucide-react';
 import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -16,7 +16,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { ReasonDialog } from '@/components/ui/reason-dialog';
 import { InvoiceFormContent, formatRupees, invoiceStatus, useInvoiceText } from '../components/invoice-form';
 import { StockToast } from '../components/stock-toast';
-import { CreditNoteSheet, CreditNotesList, STATUS_TONE } from '../components/credit-notes';
+import { NoteSheet, NotesList, STATUS_TONE } from '../components/credit-notes';
 import {
   CLASSES,
   createDispatchItemRow,
@@ -147,14 +147,18 @@ export default function InvoicesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const wantsNewEstimate = searchParams.get('new') === 'estimate';
-  // ?creditNote=<invoiceId>[&shipment=<id>], from a dispatch's "Raise credit note".
+  // ?creditNote=<invoiceId>[&shipment=<id>], from a dispatch's "Raise credit note";
+  // ?purchaseNote=<purchaseId>, from a purchase's "Raise debit note".
   const creditNoteParam = searchParams.get('creditNote');
   const shipmentParam = searchParams.get('shipment');
+  const purchaseNoteParam = searchParams.get('purchaseNote');
   useEffect(() => {
-    if (!creditNoteParam) return;
-    setCreditNoteRequest({ invoiceId: Number(creditNoteParam), shipmentId: Number(shipmentParam) || null });
+    if (!creditNoteParam && !purchaseNoteParam) return;
+    setCreditNoteRequest(purchaseNoteParam
+      ? { purchaseId: Number(purchaseNoteParam) }
+      : { invoiceId: Number(creditNoteParam), shipmentId: Number(shipmentParam) || null });
     router.replace('/stock/invoices');
-  }, [creditNoteParam, shipmentParam, router]);
+  }, [creditNoteParam, shipmentParam, purchaseNoteParam, router]);
   const handledNewRef = useRef(false);
   useEffect(() => {
     if (!wantsNewEstimate) { handledNewRef.current = false; return; }
@@ -317,7 +321,7 @@ export default function InvoicesPage() {
         ) : error ? (
           <div className="p-4"><p role="alert" className={ERROR_BOX_CLASS}>{error}</p></div>
         ) : filter === 'creditNotes' ? (
-          <CreditNotesList
+          <NotesList
             notes={notes}
             accessUser={accessUser}
             isApprover={isApprover}
@@ -382,9 +386,14 @@ export default function InvoicesPage() {
                       </>
                     ) : null}
                     {canRaise && invoice.status === 'approved' ? (
-                      <button type="button" onClick={() => setCreditNoteRequest({ invoiceId: invoice.id })} className={PILL_BUTTON_CLASS}>
-                        <FileMinus className="h-3.5 w-3.5" /> {t('creditNote')}
-                      </button>
+                      <>
+                        <button type="button" onClick={() => setCreditNoteRequest({ invoiceId: invoice.id })} className={PILL_BUTTON_CLASS}>
+                          <FileMinus className="h-3.5 w-3.5" /> {t('creditNote')}
+                        </button>
+                        <button type="button" onClick={() => setCreditNoteRequest({ invoiceId: invoice.id, kind: 'debit' })} className={PILL_BUTTON_CLASS}>
+                          <FilePlus className="h-3.5 w-3.5" /> {t('debitNote')}
+                        </button>
+                      </>
                     ) : null}
                     {canCancel(invoice) ? (
                       <button
@@ -441,7 +450,7 @@ export default function InvoicesPage() {
         </SheetContent>
       </Sheet>
 
-      <CreditNoteSheet
+      <NoteSheet
         request={creditNoteRequest}
         onClose={() => setCreditNoteRequest(null)}
         onSaved={(message) => {
