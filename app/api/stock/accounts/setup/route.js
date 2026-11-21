@@ -22,7 +22,8 @@ export const GET = stockRoute(async function GET(request) {
     );
     const [counts] = await sql(
       `SELECT COUNT(*) FILTER (WHERE status = 'posted')::int AS posted,
-              COUNT(*) FILTER (WHERE status = 'draft')::int AS drafts
+              COUNT(*) FILTER (WHERE status = 'draft')::int AS drafts,
+              MAX(exported_at) AS last_exported_at
        FROM acc_vouchers WHERE business_id = $1`,
       [business.id]
     );

@@ -3,7 +3,7 @@ import { SelectField } from '@/components/ui/select';
 
 import Link from 'next/link';
 import { Fragment, useCallback, useEffect, useState } from 'react';
-import { Ban, Check, ChevronDown, ChevronRight, MessageCircle, RefreshCw, Trash2, Upload } from 'lucide-react';
+import { Ban, Check, ChevronDown, ChevronRight, Download, MessageCircle, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { istToday } from '@/lib/attendance.mjs';
 import { AGE_BUCKETS, GROUPS, PARTY_GROUPS, VOUCHER_TYPES } from '@/lib/accounts.mjs';
@@ -366,7 +366,53 @@ export function LedgersPanel({ business, isApprover, refreshKey, onChanged, noti
   );
 }
 
-/** Books start date, Tally opening import, purchase re-sync. */
+/** Download the books as Tally import XML (accounting vouchers only). */
+function TallyExportCard({ business, lastExportedAt, onChanged, notify, t }) {
+  const [range, setRange] = useState(() => ({ from: business.books_start_date || '', to: istToday() }));
+  const [onlyNew, setOnlyNew] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  async function download(event) {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      const query = new URLSearchParams({ businessId: business.id, ...range, ...(onlyNew ? { onlyNew: '1' } : {}) });
+      const response = await fetch(`/api/stock/accounts/tally-export?${query}`, { cache: 'no-store' });
+      if (!response.ok) await readJson(response);
+      const url = URL.createObjectURL(await response.blob());
+      Object.assign(document.createElement('a'), { href: url, download: `tally-${range.from}-to-${range.to}.xml` }).click();
+      URL.revokeObjectURL(url);
+      notify({ type: 'success', message: t('tallyExported', { count: response.headers.get('X-Voucher-Count') || 0 }) });
+      onChanged();
+    } catch (err) {
+      notify({ type: 'error', message: err.message });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={download} className="glass-panel space-y-3 rounded-xl p-4 lg:col-span-2">
+      <h3 className="font-semibold">{t('tallyExport')}</h3>
+      <p className="text-xs text-slate-500">{t('tallyExportHint')}</p>
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="text-xs"><span className={FORM_LABEL_CLASS}>{t('from')}</span>
+          <input type="date" required value={range.from} max={range.to} onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} className={`${FORM_INPUT_CLASS} w-44`} /></label>
+        <label className="text-xs"><span className={FORM_LABEL_CLASS}>{t('to')}</span>
+          <input type="date" required value={range.to} min={range.from} onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} className={`${FORM_INPUT_CLASS} w-44`} /></label>
+        <label className="flex items-center gap-2 pb-2.5 text-sm">
+          <input type="checkbox" checked={onlyNew} onChange={(e) => setOnlyNew(e.target.checked)} /> {t('tallyOnlyNew')}
+        </label>
+        <button type="submit" disabled={busy} className={PILL_PRIMARY_BUTTON_CLASS}><Download className="h-3.5 w-3.5" /> {t('tallyDownload')}</button>
+      </div>
+      <p className="text-xs text-slate-500">
+        {t('tallyLastExport')}: {lastExportedAt ? new Date(lastExportedAt).toLocaleString('en-IN') : t('tallyNever')}
+      </p>
+    </form>
+  );
+}
+
+/** Books start date, Tally opening import, purchase re-sync, Tally export. */
 export function SetupPanel({ business, isApprover, refreshKey, onChanged, notify, t }) {
   const state = useJson(`/api/stock/accounts/setup?businessId=${business.id}`, refreshKey);
   const [startDate, setStartDate] = useState('');
@@ -445,6 +491,10 @@ export function SetupPanel({ business, isApprover, refreshKey, onChanged, notify
           <ul className="list-disc space-y-0.5 pl-5 text-xs text-rose-600">{problems.map((p) => <li key={p}>{p}</li>)}</ul>
         ) : null}
       </div>
+
+      {setup.business.books_start_date ? (
+        <TallyExportCard business={setup.business} lastExportedAt={setup.counts.last_exported_at} onChanged={onChanged} notify={notify} t={t} />
+      ) : null}
     </section>
   );
 }
