@@ -322,9 +322,14 @@ export const GET = stockRoute(async function GET(request) {
     const limit = Math.min(Number(searchParams.get('limit')) || 50, 200);
     const offset = Math.max(Number(searchParams.get('offset')) || 0, 0);
 
-    const showroomLocationId = await getShowroomLocationId();
-    if (!showroomLocationId) {
-      return NextResponse.json({ movements: [], total: 0 });
+    // Every showroom by default (the panel shows all branches); one when the
+    // caller names it. source_type 'showroom%' is what marks a display move.
+    const locationParam = searchParams.get('locationId');
+    let locationId = null;
+    if (locationParam) {
+      const resolved = await resolveShowroomLocation(locationParam);
+      if (resolved.error) return NextResponse.json({ error: resolved.error }, { status: 400 });
+      locationId = Number(resolved.location.id);
     }
 
     const [movements, countRows] = await Promise.all([
@@ -332,21 +337,24 @@ export const GET = stockRoute(async function GET(request) {
         `SELECT m.id, m.movement_number, m.movement_type, m.direction,
                 m.quantity, m.quantity_sqft, m.source_type, m.notes,
                 m.created_by, m.created_at,
-                i.sku, i.name, i.unit_of_measure
+                i.sku, i.name, i.unit_of_measure,
+                m.location_id, l.name AS location_name
            FROM stock_movements m
            JOIN stock_items i ON i.id = m.item_id
-          WHERE m.location_id = $1
-            AND m.source_type LIKE 'showroom%'
+           LEFT JOIN stock_locations l ON l.id = m.location_id
+          WHERE m.source_type LIKE 'showroom%'
+            AND ($1::bigint IS NULL OR m.location_id = $1)
             AND ($2::bigint IS NULL OR m.item_id = $2)
           ORDER BY m.created_at DESC
           LIMIT $3 OFFSET $4`,
-        [showroomLocationId, itemId, limit, offset]
+        [locationId, itemId, limit, offset]
       ),
       sql(
         `SELECT COUNT(*)::int AS total FROM stock_movements
-          WHERE location_id = $1 AND source_type LIKE 'showroom%'
+          WHERE source_type LIKE 'showroom%'
+            AND ($1::bigint IS NULL OR location_id = $1)
             AND ($2::bigint IS NULL OR item_id = $2)`,
-        [showroomLocationId, itemId]
+        [locationId, itemId]
       ),
     ]);
 
