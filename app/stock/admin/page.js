@@ -13,6 +13,7 @@ import { createArrivalItemRow, createBagArrivalItemRow, createDispatchItemRow, c
 import { ArrivalFormContent, BagArrivalFormContent } from '@/app/stock/components/arrival-form';
 import { DispatchFormContent } from '@/app/stock/components/dispatch-form';
 import { BranchesPanel } from '@/app/stock/components/branches-panel';
+import { ItemTypesPanel } from '@/app/stock/components/item-types-panel';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import EntryPreviewSheet, { PreviewKeyValueGrid } from '@/components/ui/entry-preview-sheet';
 import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
@@ -1886,6 +1887,7 @@ export default function AdminDashboard() {
 
         <section id="branches" className={`space-y-6 ${mobileSection === 'branches' ? '' : 'hidden'}`}>
           {canManageUsers && <BranchesPanel onChanged={loadBranches} />}
+          <ItemTypesPanel />
         </section>
 
         <section id="users-contacts" className={`space-y-6 ${mobileSection === 'users' ? '' : 'hidden'}`}>

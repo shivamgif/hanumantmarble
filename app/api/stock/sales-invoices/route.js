@@ -62,10 +62,12 @@ async function resolveItems(rawItems, seller) {
 
   const stockRows = await sql(
     `SELECT i.id, i.sku, i.name, i.unit_of_measure, i.division_id, i.pieces_per_box,
+       t.unit_label, t.uqc,
        (SELECT isi.hsn_code FROM stock_inbound_shipment_items isi
           WHERE isi.item_id = i.id AND isi.hsn_code IS NOT NULL
           ORDER BY isi.id DESC LIMIT 1) AS hsn_code
      FROM stock_items i
+     LEFT JOIN stock_types t ON t.id = i.type_id
      WHERE i.id = ANY($1::bigint[])`,
     [rows.map((row) => Number(row.itemId))]
   );
@@ -109,6 +111,10 @@ async function resolveItems(rawItems, seller) {
       gstRate,
       hsnCode,
       divisionId: Number(stock.division_id),
+      // Saved into the invoice snapshot, so a later change to the type never
+      // rewrites an issued invoice. Absent = "bag" / BAG, as before.
+      ...(itemCategory === 'bag' && stock.unit_label ? { unitLabel: stock.unit_label } : {}),
+      ...(itemCategory === 'bag' && stock.uqc ? { uqc: stock.uqc } : {}),
     };
   });
 }
