@@ -3,7 +3,8 @@
 import { BarChart2, BookOpen, Clock, FileText, Home, Settings, Users } from 'lucide-react';
 import { getLogoutHref, useAuthUser } from '@/lib/auth-client';
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutPref } from '@/hooks/useLayoutPref';
 import { ACCENTS, accentOf } from '@/lib/accent.mjs';
 import { useTheme } from 'next-themes';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -22,6 +23,8 @@ import StockNotificationsSheet from '@/components/stock/layout/StockNotification
 import ClockInReminder from '@/components/stock/layout/ClockInReminder';
 import { CompanyMark } from '@/components/ui/brand-mark';
 import { PRODUCT_NAME } from '@/lib/product';
+
+const ALWAYS_SHOWN = new Set(['/stock', '/stock/settings']);
 
 function FullScreenSpinner({ label }) {
   return (
@@ -48,7 +51,7 @@ export default function StockShell({ children }) {
   const dashboardSearchRef = useRef(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  const { accessLoading, hasResolvedAccessOnce, accessApproved, accessMessage, accessRole, accessTenant, accessTenants } = useStockAccess(user);
+  const { accessLoading, hasResolvedAccessOnce, accessApproved, accessMessage, accessRole, accessUser, accessTenant, accessTenants } = useStockAccess(user);
 
   // The company's accent. On <body>, not the shell, so Radix sheets and menus
   // (portalled into <body>) pick it up too. globals.css reads these.
@@ -129,6 +132,22 @@ export default function StockShell({ children }) {
     navigationItems.push({ href: '/stock/analytics', label: t('analytics'), icon: BarChart2 });
   }
 
+  // The person's own sidebar order (Customize sidebar). The role decides which
+  // links exist; the saved prefs only sort and hide those, so they can never
+  // add a page. Dashboard stays first and Settings cannot be hidden, so nobody
+  // locks themselves out of putting it back.
+  const navKey = navigationItems.map((item) => item.href).join('|');
+  const navDefaults = useMemo(() => navKey.split('|').map((id) => ({ id })), [navKey]);
+  const navLayout = useLayoutPref('nav', navDefaults, accessUser?.ui_prefs?.nav);
+  const [navEditing, setNavEditing] = useState(false);
+  const byHref = Object.fromEntries(navigationItems.map((item) => [item.href, item]));
+  const arrangedNav = [
+    ...navLayout.items.filter((item) => item.id === '/stock'),
+    ...navLayout.items.filter((item) => item.id !== '/stock'),
+  ].map((item) => ({ ...byHref[item.id], hidden: item.hidden && !ALWAYS_SHOWN.has(item.id) }));
+  const visibleNav = arrangedNav.filter((item) => !item.hidden);
+  const saveNav = (list) => navLayout.save(list.map((item) => ({ id: item.href, span: 12, hidden: item.hidden })));
+
   const isActiveRoute = (href) => {
     const cleanHref = href.split('#')[0];
     if (cleanHref === '/stock') {
@@ -196,7 +215,12 @@ export default function StockShell({ children }) {
         toggleLanguage={toggleLanguage}
         setNotificationOpen={notificationsState.setNotificationOpen}
         unreadCount={notificationsState.unreadCount}
-        navigationItems={navigationItems}
+        navigationItems={navEditing && !sidebarCollapsed ? arrangedNav : visibleNav}
+        navEditing={navEditing}
+        setNavEditing={setNavEditing}
+        onNavChange={saveNav}
+        onNavReset={navLayout.reset}
+        lockedNav={ALWAYS_SHOWN}
         isActiveRoute={isActiveRoute}
         user={user}
         setTheme={setTheme}
@@ -221,7 +245,7 @@ export default function StockShell({ children }) {
           dashboardSearchRef={dashboardSearchRef}
           accessRole={accessRole}
           primaryModifierLabel={primaryModifierLabel}
-          navigationItems={navigationItems}
+          navigationItems={visibleNav}
           isActiveRoute={isActiveRoute}
           tenant={accessTenant}
         />

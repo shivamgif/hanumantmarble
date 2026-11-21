@@ -173,7 +173,14 @@
       "expandSidebar": "साइडबार बड़ा करें",
       "collapseSidebar": "साइडबार छोटा करें",
       "invoices": "इनवॉइस",
-      "accounts": "खाते"
+      "accounts": "खाते",
+      "customizeSidebar": "साइडबार कस्टमाइज़ करें",
+      "doneCustomize": "हो गया",
+      "resetLayout": "रीसेट",
+      "moveUp": "ऊपर ले जाएँ",
+      "moveDown": "नीचे ले जाएँ",
+      "hideLink": "छिपाएँ",
+      "showLink": "दिखाएँ"
     },
     "dashboard": {
       "loading": "डैशबोर्ड लोड हो रहा है...",
@@ -806,6 +813,33 @@
         "streakBroke": "{date} को स्ट्रीक टूटी (कोई डिस्पैच नहीं)। आज डिस्पैच करके फिर शुरू करें।",
         "safeToday": "आज गिना गया ✓ स्ट्रीक सुरक्षित है।",
         "keepAlive": "आज डिस्पैच करें और इसे {n} दिन बनाएँ।"
+      },
+      "customize": "कस्टमाइज़ करें",
+      "doneCustomize": "हो गया",
+      "resetLayout": "लेआउट रीसेट करें",
+      "widgetSize": "विजेट की चौड़ाई",
+      "moveUp": "ऊपर ले जाएँ",
+      "moveDown": "नीचे ले जाएँ",
+      "hideWidget": "विजेट छिपाएँ",
+      "showWidget": "विजेट दिखाएँ",
+      "w": {
+        "health": "स्टॉक की स्थिति",
+        "revenue": "बिक्री राजस्व",
+        "pending": "मंज़ूरी बाकी",
+        "reorder": "अभी दोबारा मँगाएँ",
+        "profit": "मासिक मुनाफ़ा",
+        "divisions": "शीर्ष डिवीज़न",
+        "costVolume": "लागत और मात्रा",
+        "concentration": "ग्राहक केंद्रण",
+        "dispersion": "कीमतों का फैलाव",
+        "topSellers": "सबसे ज़्यादा बिकने वाले",
+        "risk": "इन्वेंटरी जोखिम",
+        "deadStock": "डेड स्टॉक",
+        "spotlight": "सेल्सपर्सन स्पॉटलाइट",
+        "salesTrend": "व्यक्ति के अनुसार बिक्री",
+        "pace": "लीडरबोर्ड",
+        "activity": "हाल की गतिविधि",
+        "attendance": "हाज़िरी"
       }
     },
     "preview": {

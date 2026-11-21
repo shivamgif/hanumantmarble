@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { Bell, Check, ChevronsUpDown, Languages, MoonStar, SunMedium, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowDown, ArrowUp, Bell, Check, ChevronsUpDown, Eye, EyeOff, GripVertical, Languages, MoonStar, RotateCcw, SlidersHorizontal, SunMedium, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { moveItem } from '@/lib/layout-prefs.mjs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { CompanyMark } from '@/components/ui/brand-mark';
@@ -47,6 +49,11 @@ export default function StockSidebar({
   onToggleCollapse,
   tenant,
   tenants = [],
+  navEditing = false,
+  setNavEditing,
+  onNavChange,
+  onNavReset,
+  lockedNav,
 }) {
   const iconButtonClass = 'h-9 w-9 flex items-center justify-center rounded-md text-slate-500 dark:text-slate-400 transition-colors hover:bg-muted hover:text-slate-900 dark:hover:text-slate-100 focus-ring';
   const collapseLabel = collapsed ? t('expandSidebar') : t('collapseSidebar');
@@ -109,6 +116,9 @@ export default function StockSidebar({
 
       {/* Nav */}
       <div className={`flex-1 overflow-y-auto py-2 custom-scrollbar ${collapsed ? 'px-3' : 'px-3'}`}>
+        {navEditing && !collapsed ? (
+          <NavEditor items={navigationItems} locked={lockedNav} onChange={onNavChange} onReset={onNavReset} onDone={() => setNavEditing(false)} t={t} />
+        ) : (
         <nav className="space-y-0.5">
           {navigationItems.map((item) => (
             <SidebarNavItem
@@ -121,6 +131,7 @@ export default function StockSidebar({
             />
           ))}
         </nav>
+        )}
       </div>
 
       {/* Bottom controls */}
@@ -156,6 +167,22 @@ export default function StockSidebar({
               </TooltipTrigger>
               <TooltipContent>{t('notifications')}</TooltipContent>
             </Tooltip>
+            {!collapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setNavEditing?.((v) => !v)}
+                    aria-label={t('customizeSidebar')}
+                    aria-pressed={navEditing}
+                    className={`${iconButtonClass} ${navEditing ? '!text-brand-primary' : ''}`}
+                  >
+                    <SlidersHorizontal className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t('customizeSidebar')}</TooltipContent>
+              </Tooltip>
+            ) : null}
             <button
               type="button"
               onClick={() => setTheme(isDarkTheme ? 'light' : 'dark')}
@@ -195,5 +222,70 @@ export default function StockSidebar({
         </div>
       </div>
     </aside>
+  );
+}
+
+// Customize sidebar: reorder (drag or arrows) and hide links. Locked links
+// (Dashboard, Settings) cannot be hidden, and Dashboard does not move.
+function NavEditor({ items, locked, onChange, onReset, onDone, t }) {
+  const [dragHref, setDragHref] = useState(null);
+  const move = (from, to) => {
+    if (to < 1 || from < 1) return; // Dashboard keeps slot 0
+    onChange(moveItem(items, from, to));
+  };
+  const rowButton = 'flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-card hover:text-foreground disabled:opacity-30 [&>svg]:h-3.5 [&>svg]:w-3.5';
+
+  return (
+    <div className="space-y-1">
+      <ul className="space-y-0.5">
+        {items.map((item, index) => {
+          const pinned = index === 0;
+          return (
+            <li
+              key={item.href}
+              draggable={!pinned}
+              onDragStart={() => setDragHref(item.href)}
+              onDragEnd={() => setDragHref(null)}
+              onDragOver={(event) => { if (dragHref && !pinned) event.preventDefault(); }}
+              onDrop={(event) => {
+                event.preventDefault();
+                const from = items.findIndex((row) => row.href === dragHref);
+                if (from !== -1) move(from, index);
+                setDragHref(null);
+              }}
+              className={`flex h-9 items-center gap-1.5 rounded-md border border-dashed border-border px-1.5 text-sm ${dragHref === item.href ? 'opacity-50' : ''} ${item.hidden ? 'text-muted-foreground' : 'text-foreground'}`}
+            >
+              <GripVertical className={`h-3.5 w-3.5 shrink-0 ${pinned ? 'opacity-0' : 'cursor-grab text-muted-foreground'}`} aria-hidden="true" />
+              <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+              <span className={`min-w-0 flex-1 truncate ${item.hidden ? 'line-through' : ''}`}>{item.label}</span>
+              {!pinned ? (
+                <>
+                  <button type="button" className={rowButton} aria-label={`${t('moveUp')}: ${item.label}`} disabled={index === 1} onClick={() => move(index, index - 1)}><ArrowUp /></button>
+                  <button type="button" className={rowButton} aria-label={`${t('moveDown')}: ${item.label}`} disabled={index === items.length - 1} onClick={() => move(index, index + 1)}><ArrowDown /></button>
+                </>
+              ) : null}
+              {!locked?.has(item.href) ? (
+                <button
+                  type="button"
+                  className={rowButton}
+                  aria-label={`${item.hidden ? t('showLink') : t('hideLink')}: ${item.label}`}
+                  onClick={() => onChange(items.map((row) => (row.href === item.href ? { ...row, hidden: !row.hidden } : row)))}
+                >
+                  {item.hidden ? <EyeOff /> : <Eye />}
+                </button>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+      <div className="flex gap-1.5 pt-1">
+        <button type="button" onClick={onReset} className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md border border-border bg-card text-xs font-medium text-muted-foreground hover:text-foreground">
+          <RotateCcw className="h-3.5 w-3.5" /> {t('resetLayout')}
+        </button>
+        <button type="button" onClick={onDone} className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90">
+          <Check className="h-3.5 w-3.5" /> {t('doneCustomize')}
+        </button>
+      </div>
+    </div>
   );
 }

@@ -710,7 +710,7 @@ export function StockHealthScorecard({ data, stockRisk, approvalOps, monthlyProf
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
       {metrics.map((m) => (
         <div className="glass-panel rounded-xl p-3 sm:p-6 relative overflow-hidden transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group" key={m.label}>
           <div className="relative z-10">

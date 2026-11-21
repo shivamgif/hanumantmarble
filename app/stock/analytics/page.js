@@ -7,10 +7,12 @@ import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { canSell, getRoleFlags } from '@/lib/stock-roles.mjs';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Boxes, Download, LayoutGrid, TrendingUp, UserCheck, Users } from 'lucide-react';
+import { Boxes, Check, Download, LayoutGrid, RotateCcw, SlidersHorizontal, TrendingUp, UserCheck, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CLASSES, paceAdjustedTarget } from '../components/dashboard-ui';
-import { ERROR_BOX_CLASS, PILL_BUTTON_CLASS, tabButtonClass, tabTrackClass } from '../lib/stock-utils';
+import { ERROR_BOX_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS, tabButtonClass, tabTrackClass } from '../lib/stock-utils';
+import { WidgetGrid } from './components/widget-grid';
+import { useLayoutPref } from '@/hooks/useLayoutPref';
 import { PageHeader } from '../components/page-header';
 import {
   SalesRevenueChart,
@@ -46,6 +48,17 @@ const TABS = [
 // Only for someone who sees the company view AND sells: a pure salesperson gets
 // the standalone page instead, and an admin who does not sell never sees it.
 const MY_PERFORMANCE_TAB = { id: 'me', labelKey: 'tabMyPerformance', icon: UserCheck };
+
+// Each tab's default arrangement on the 12-column grid. Pairs in a row add up
+// to 12 so nothing leaves a gap; a user's own arrangement (Customize) is
+// merged over this, so adding a widget here reaches everyone.
+const ANALYTICS_LAYOUT = {
+  overview: [{ id: 'health', span: 12 }, { id: 'revenue', span: 8 }, { id: 'pending', span: 4 }, { id: 'reorder', span: 12 }],
+  sales: [{ id: 'profit', span: 8 }, { id: 'divisions', span: 4 }, { id: 'costVolume', span: 8 }, { id: 'concentration', span: 4 }, { id: 'dispersion', span: 12 }],
+  inventory: [{ id: 'topSellers', span: 12 }, { id: 'risk', span: 8 }, { id: 'deadStock', span: 4 }],
+  team: [{ id: 'spotlight', span: 12 }, { id: 'salesTrend', span: 12 }, { id: 'pace', span: 6 }, { id: 'activity', span: 6 }, { id: 'attendance', span: 12 }],
+};
+const NO_WIDGETS = [];
 
 function AnalyticsDashboardInner() {
   const { language } = useLanguage();
@@ -86,6 +99,8 @@ function AnalyticsDashboardInner() {
     [sellsToo, canViewAllAnalytics]
   );
   const currentTab = visibleTabs.some((tab) => tab.id === activeTab) ? activeTab : 'overview';
+  const [editing, setEditing] = useState(false);
+  const layout = useLayoutPref(`analytics.${currentTab}`, ANALYTICS_LAYOUT[currentTab] || NO_WIDGETS, accessUser?.ui_prefs?.[`analytics.${currentTab}`]);
 
   const selectTab = useCallback(
     (id) => {
@@ -262,6 +277,72 @@ function AnalyticsDashboardInner() {
   const activityFeed = adminAnalytics?.activityFeed || [];
   const abcItems = adminAnalytics?.abcItems || [];
 
+  // Every widget the tabs can show, by id; ANALYTICS_LAYOUT says where.
+  const widgets = {
+    health: {
+      title: t('w.health'),
+      node: (
+        <StockHealthScorecard
+          data={divisionRisk}
+          stockRisk={stockRisk}
+          approvalOps={approvalOps}
+          monthlyProfit={monthlyProfit}
+          elapsedFraction={Number(adminAnalytics?.range?.elapsedFraction || 1)}
+        />
+      ),
+    },
+    revenue: { title: t('w.revenue'), node: <SalesRevenueChart data={dispatchTrend} partial={partialLastMonth} /> },
+    pending: {
+      title: t('w.pending'),
+      node: (
+        <PendingQueueWidget
+          items={pendingQueue}
+          onApprove={canApprove ? handlePendingApprove : undefined}
+          onReject={canApprove ? handlePendingReject : undefined}
+          actionLoading={pendingActionLoading}
+        />
+      ),
+    },
+    reorder: { title: t('w.reorder'), node: <ReorderNowWidget items={reorderNow} months={analyticsRangeMonths} /> },
+    profit: { title: t('w.profit'), node: <MonthlyProfitChart data={monthlyProfit} partial={partialLastMonth} /> },
+    divisions: { title: t('w.divisions'), node: <TopDivisionsChart data={divisionPerformance} /> },
+    costVolume: { title: t('w.costVolume'), node: <MonthlyCostVolumeChart dispatchTrend={dispatchTrend} inboundTrend={inboundTrend} partial={partialLastMonth} /> },
+    concentration: { title: t('w.concentration'), node: <CustomerConcentrationWidget rows={customerConcentration} /> },
+    dispersion: { title: t('w.dispersion'), node: <PriceDispersionWidget rows={priceDispersion} /> },
+    topSellers: { title: t('w.topSellers'), node: <TopSellersWidget items={abcItems} /> },
+    risk: { title: t('w.risk'), node: <RiskInventoryTable divisionRisk={divisionRisk} months={analyticsRangeMonths} /> },
+    deadStock: { title: t('w.deadStock'), node: <DeadStockWidget data={deadStock} months={analyticsRangeMonths} /> },
+    spotlight: {
+      title: t('w.spotlight'),
+      node: (
+        <SalespersonSpotlight
+          trend={salespersonTrend}
+          ranking={salespersonRanking}
+          goals={salespersonGoals}
+          selected={selectedSalesperson}
+          onSelect={setSelectedSalesperson}
+          months={analyticsRangeMonths}
+        />
+      ),
+    },
+    salesTrend: { title: t('w.salesTrend'), node: <SalespersonTrendChart trend={salespersonTrend} /> },
+    pace: {
+      title: t('w.pace'),
+      node: (
+        <Leaderboard
+          ranking={salespersonRanking}
+          goals={salespersonGoals}
+          months={analyticsRangeMonths}
+          onSelect={setSelectedSalesperson}
+          selected={selectedSalesperson}
+        />
+      ),
+    },
+    activity: { title: t('w.activity'), node: <ActivityFeedWidget events={activityFeed} /> },
+    // Absent for those who may not see attendance: WidgetGrid skips ids with no widget.
+    ...(roleFlags.canViewAllAttendance ? { attendance: { title: t('w.attendance'), node: <AttendanceSummaryWidget /> } } : {}),
+  };
+
   return (
     <div className={`${CLASSES.contentWrap} overflow-x-clip`}>
       <PageHeader
@@ -325,6 +406,23 @@ function AnalyticsDashboardInner() {
             <Download className="h-4 w-4" />
             CSV
           </a>
+          {currentTab !== 'me' ? (
+            <>
+              {editing ? (
+                <button type="button" onClick={layout.reset} className={PILL_BUTTON_CLASS}>
+                  <RotateCcw /> {t('resetLayout')}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setEditing((v) => !v)}
+                aria-pressed={editing}
+                className={editing ? PILL_PRIMARY_BUTTON_CLASS : PILL_BUTTON_CLASS}
+              >
+                {editing ? <Check /> : <SlidersHorizontal />} {editing ? t('doneCustomize') : t('customize')}
+              </button>
+            </>
+          ) : null}
         </div>
       </div>
 
@@ -345,101 +443,10 @@ function AnalyticsDashboardInner() {
       ) : null}
 
       <div aria-busy={loading} className={`space-y-4 transition-opacity duration-200 lg:space-y-5 ${loading ? 'pointer-events-none opacity-60' : ''}`}>
-      {currentTab === 'overview' && (
-        <div className="space-y-6">
-          <StockHealthScorecard
-            data={divisionRisk}
-            stockRisk={stockRisk}
-            approvalOps={approvalOps}
-            monthlyProfit={monthlyProfit}
-            elapsedFraction={Number(adminAnalytics?.range?.elapsedFraction || 1)}
-          />
-          <SalesRevenueChart data={dispatchTrend} partial={partialLastMonth} />
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
-            <div className="lg:col-span-7 min-w-0" id="widget-reorder">
-              <ReorderNowWidget items={reorderNow} months={analyticsRangeMonths} />
-            </div>
-            <div className="lg:col-span-5 min-w-0" id="widget-pending">
-              <PendingQueueWidget
-                items={pendingQueue}
-                onApprove={canApprove ? handlePendingApprove : undefined}
-                onReject={canApprove ? handlePendingReject : undefined}
-                actionLoading={pendingActionLoading}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {currentTab === 'sales' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
-          <div className="lg:col-span-8 min-w-0">
-            <MonthlyProfitChart data={monthlyProfit} partial={partialLastMonth} />
-          </div>
-          <div className="lg:col-span-4 min-w-0">
-            <TopDivisionsChart data={divisionPerformance} />
-          </div>
-          <div className="lg:col-span-8 min-w-0">
-            <MonthlyCostVolumeChart dispatchTrend={dispatchTrend} inboundTrend={inboundTrend} partial={partialLastMonth} />
-          </div>
-          <div className="lg:col-span-4 min-w-0">
-            <CustomerConcentrationWidget rows={customerConcentration} />
-          </div>
-          <div className="lg:col-span-12 min-w-0">
-            <PriceDispersionWidget rows={priceDispersion} />
-          </div>
-        </div>
-      )}
-
-      {currentTab === 'me' && <MyPerformancePanel data={salespersonAnalytics} goal={ownGoal} />}
-
-      {currentTab === 'inventory' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
-          <div className="lg:col-span-12 min-w-0">
-            <TopSellersWidget items={abcItems} />
-          </div>
-          <div className="lg:col-span-8 min-w-0">
-            <RiskInventoryTable divisionRisk={divisionRisk} months={analyticsRangeMonths} />
-          </div>
-          <div className="lg:col-span-4 min-w-0">
-            <DeadStockWidget data={deadStock} months={analyticsRangeMonths} />
-          </div>
-        </div>
-      )}
-
-      {currentTab === 'team' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
-          <div className="lg:col-span-12 min-w-0">
-            <SalespersonSpotlight
-              trend={salespersonTrend}
-              ranking={salespersonRanking}
-              goals={salespersonGoals}
-              selected={selectedSalesperson}
-              onSelect={setSelectedSalesperson}
-              months={analyticsRangeMonths}
-            />
-          </div>
-          <div className="lg:col-span-12 min-w-0">
-            <SalespersonTrendChart trend={salespersonTrend} />
-          </div>
-          <div className="lg:col-span-7 min-w-0" id="widget-pace">
-            <Leaderboard
-              ranking={salespersonRanking}
-              goals={salespersonGoals}
-              months={analyticsRangeMonths}
-              onSelect={setSelectedSalesperson}
-              selected={selectedSalesperson}
-            />
-          </div>
-          <div className="lg:col-span-5 min-w-0">
-            <ActivityFeedWidget events={activityFeed} />
-          </div>
-          {roleFlags.canViewAllAttendance ? (
-            <div className="lg:col-span-12 min-w-0">
-              <AttendanceSummaryWidget />
-            </div>
-          ) : null}
-        </div>
+      {currentTab === 'me' ? (
+        <MyPerformancePanel data={salespersonAnalytics} goal={ownGoal} />
+      ) : (
+        <WidgetGrid items={layout.items} widgets={widgets} editing={editing} onChange={layout.save} t={t} />
       )}
 
       </div>

@@ -174,7 +174,14 @@
       "expandSidebar": "Expand sidebar",
       "collapseSidebar": "Collapse sidebar",
       "invoices": "Invoices",
-      "accounts": "Accounts"
+      "accounts": "Accounts",
+      "customizeSidebar": "Customize sidebar",
+      "doneCustomize": "Done",
+      "resetLayout": "Reset",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "hideLink": "Hide",
+      "showLink": "Show"
     },
     "dashboard": {
       "loading": "Loading dashboard...",
@@ -807,6 +814,33 @@
         "streakBroke": "Streak broke on {date} (no dispatch). Dispatch today to restart.",
         "safeToday": "Today counted ✓ Streak is safe.",
         "keepAlive": "Dispatch today to make it {n} days."
+      },
+      "customize": "Customize",
+      "doneCustomize": "Done",
+      "resetLayout": "Reset layout",
+      "widgetSize": "Widget width",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "hideWidget": "Hide widget",
+      "showWidget": "Show widget",
+      "w": {
+        "health": "Stock health",
+        "revenue": "Sales revenue",
+        "pending": "Waiting for approval",
+        "reorder": "Reorder now",
+        "profit": "Monthly profit",
+        "divisions": "Top divisions",
+        "costVolume": "Cost and volume",
+        "concentration": "Customer concentration",
+        "dispersion": "Price spread",
+        "topSellers": "Top sellers",
+        "risk": "Inventory risk",
+        "deadStock": "Dead stock",
+        "spotlight": "Salesperson spotlight",
+        "salesTrend": "Sales by person",
+        "pace": "Leaderboard",
+        "activity": "Recent activity",
+        "attendance": "Attendance"
       }
     },
     "preview": {
