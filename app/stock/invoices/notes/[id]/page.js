@@ -167,6 +167,7 @@ export default function CreditNotePrintPage() {
                   <tr><td className="pr-6">{t('sgst')}</td><td className="text-right">{formatRupees(totals.sgst)}</td></tr>
                 </>
               )}
+              {totals.roundOff ? <tr><td className="pr-6">{t('roundOff')}</td><td className="text-right">{formatRupees(totals.roundOff)}</td></tr> : null}
               <tr className="border-t-2 border-slate-900 font-bold">
                 <td className="pr-6 pt-1">{t('grandTotal')}</td><td className="pt-1 text-right">{formatRupees(totals.grandTotal)}</td>
               </tr>

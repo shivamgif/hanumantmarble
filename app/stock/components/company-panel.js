@@ -17,6 +17,7 @@ export function CompanyPanel() {
   const [company, setCompany] = useState(null);
   const [canManage, setCanManage] = useState(false);
   const [name, setName] = useState('');
+  const [terms, setTerms] = useState('');
   const [state, setState] = useState({ busy: false, error: '' });
   const fileRef = useRef(null);
 
@@ -27,6 +28,7 @@ export function CompanyPanel() {
         if (!res.ok) throw new Error(json.error || 'Failed to load company');
         setCompany(json.company);
         setName(json.company?.name || '');
+        setTerms(json.company?.invoiceTerms || '');
         setCanManage(Boolean(json.canManage));
       })
       .catch((err) => setState({ busy: false, error: err.message }));
@@ -129,6 +131,34 @@ export function CompanyPanel() {
         </div>
         <p className="mt-1.5 text-xs text-muted-foreground">Buttons, links and highlights across the app use this colour for everyone in your company.</p>
       </div>
+
+      <form
+        className="mt-5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          send('/api/stock/company', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ invoiceTerms: terms }) });
+        }}
+      >
+        <label className={FORM_LABEL_CLASS} htmlFor="invoice-terms">Invoice terms &amp; declaration</label>
+        <textarea
+          id="invoice-terms"
+          rows={6}
+          maxLength={2000}
+          value={terms}
+          onChange={(e) => setTerms(e.target.value)}
+          disabled={!canManage}
+          placeholder="We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct."
+          className={FORM_INPUT_CLASS}
+        />
+        <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">Printed at the bottom of every tax invoice, one term per line. Left empty, the standard GST declaration is printed.</p>
+          {canManage ? (
+            <button type="submit" disabled={state.busy || terms.trim() === (company.invoiceTerms || '')} className={PILL_PRIMARY_BUTTON_CLASS}>
+              <Save className="h-3.5 w-3.5" /> Save terms
+            </button>
+          ) : null}
+        </div>
+      </form>
 
       {/* Fixed by the app today; shown so nobody hunts for a setting that does not exist yet. */}
       <dl className="mt-5 grid gap-2 text-sm sm:grid-cols-3">

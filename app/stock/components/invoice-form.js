@@ -184,6 +184,7 @@ export function InvoiceFormContent({
                     <dt className="text-slate-500">{t('sgst')}</dt><dd className="text-right">{formatRupees(totals.sgst)}</dd>
                   </>
                 )}
+                {totals.roundOff ? <><dt className="text-slate-500">{t('roundOff')}</dt><dd className="text-right">{formatRupees(totals.roundOff)}</dd></> : null}
                 <dt className="border-t border-border pt-1 font-semibold">{t('grandTotal')}</dt>
                 <dd className="border-t border-border pt-1 text-right font-semibold">{formatRupees(totals.grandTotal)}</dd>
               </dl>

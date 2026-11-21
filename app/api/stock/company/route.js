@@ -18,7 +18,8 @@ export const PATCH = stockRoute(async function PATCH(request) {
   const body = await request.json().catch(() => ({}));
   const hasName = body?.name !== undefined;
   const hasAccent = body?.accent !== undefined;
-  if (!hasName && !hasAccent) {
+  const hasTerms = body?.invoiceTerms !== undefined;
+  if (!hasName && !hasAccent && !hasTerms) {
     return NextResponse.json({ error: 'Nothing to change.' }, { status: 400 });
   }
   const name = normalizeText(body?.name);
@@ -27,6 +28,14 @@ export const PATCH = stockRoute(async function PATCH(request) {
   }
   if (hasAccent && !Object.hasOwn(ACCENTS, body.accent)) {
     return NextResponse.json({ error: 'Pick one of the listed accent colours.' }, { status: 400 });
+  }
+  // Line breaks kept (one term per line), only trailing space trimmed.
+  const terms = String(body?.invoiceTerms ?? '').replace(/\r\n/g, '\n').trim();
+  if (hasTerms && terms.length > 2000) {
+    return NextResponse.json({ error: 'Invoice terms must be at most 2000 characters.' }, { status: 400 });
+  }
+  if (hasTerms) {
+    await sql("UPDATE tenants SET settings = settings || jsonb_build_object('invoiceTerms', $1::text) WHERE id = app_tenant()", [terms]);
   }
   if (hasName) await sql('UPDATE tenants SET name = $1 WHERE id = app_tenant()', [name]);
   if (hasAccent) {
