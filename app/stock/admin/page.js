@@ -5,15 +5,14 @@ import { getTranslation } from '@/lib/translations';
 import { useCallback, useEffect, useState } from 'react';
 import { useAuthUser } from '@/lib/auth-client';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { arrivalFormSchema, bagArrivalFormSchema, dispatchFormSchema } from '@/lib/forms/stock-forms';
 import { useStockFormStore } from '@/lib/stores/stock-form-store';
-import { createArrivalItemRow, createBagArrivalItemRow, createDispatchItemRow, createInitialArrivalDraft, createInitialBagArrivalDraft, createInitialDispatchDraft, formatLineVolume, formatShipmentVolume, toNumber, trimText, parseSizeLabelDimensions, tabButtonClass, tabTrackClass } from '@/app/stock/lib/stock-utils';
+import { createArrivalItemRow, createBagArrivalItemRow, createDispatchItemRow, createInitialArrivalDraft, createInitialBagArrivalDraft, createInitialDispatchDraft, formatLineVolume, formatShipmentVolume, toNumber, trimText, parseSizeLabelDimensions, tabButtonClass, tabTrackClass, CLASSES } from '@/app/stock/lib/stock-utils';
 import { ArrivalFormContent, BagArrivalFormContent } from '@/app/stock/components/arrival-form';
 import { DispatchFormContent } from '@/app/stock/components/dispatch-form';
-import { BranchesPanel } from '@/app/stock/components/branches-panel';
-import { ItemTypesPanel } from '@/app/stock/components/item-types-panel';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import EntryPreviewSheet, { PreviewKeyValueGrid } from '@/components/ui/entry-preview-sheet';
 import { DEFAULT_PAGE_SIZE, paginateRows } from '@/lib/pagination';
@@ -1886,8 +1885,11 @@ export default function AdminDashboard() {
         </section>
 
         <section id="branches" className={`space-y-6 ${mobileSection === 'branches' ? '' : 'hidden'}`}>
-          {canManageUsers && <BranchesPanel onChanged={loadBranches} />}
-          <ItemTypesPanel />
+          {/* Branches, GST businesses and item units moved to Settings with the company profile. */}
+          <Link href="/stock/settings" className={`${CLASSES.card} group block transition-colors hover:border-brand-primary/40`}>
+            <h2 className={CLASSES.title}>Branches, GST and units are in Settings →</h2>
+            <p className="mt-1 text-sm text-slate-500">Company name and logo, GST registrations, branches and item units now live together in Settings.</p>
+          </Link>
         </section>
 
         <section id="users-contacts" className={`space-y-6 ${mobileSection === 'users' ? '' : 'hidden'}`}>

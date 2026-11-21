@@ -39,6 +39,16 @@ export default function InvoicePrintPage() {
   // dispatch: opens the prefilled dispatch form; einvoice: the portal's signed
   // QR (mandatory on B2B once there is an IRN); upi: lets the customer pay.
   const [qr, setQr] = useState({});
+  // Printed only once the company uploaded one (Settings → Company), so an
+  // existing company's invoices look exactly as before until it chooses to.
+  const [companyLogo, setCompanyLogo] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/stock/company', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => setCompanyLogo(json?.company?.hasUploadedLogo ? json.company.logo : null))
+      .catch(() => setCompanyLogo(null));
+  }, []);
 
   useEffect(() => {
     fetch(`/api/stock/sales-invoices/${id}`, { cache: 'no-store' })
@@ -113,7 +123,9 @@ export default function InvoicePrintPage() {
         ) : null}
 
         <header className="flex flex-wrap items-start justify-between gap-4 border-b-2 border-slate-900 pb-3">
-          <div className="min-w-0">
+          {/* eslint-disable-next-line @next/next/no-img-element -- signed-in API image, see CompanyMark */}
+          {companyLogo ? <img src={companyLogo} alt="" className="h-16 w-16 shrink-0 object-contain" /> : null}
+          <div className={`min-w-0 ${companyLogo ? 'flex-1' : ''}`}>
             <h1 className="text-xl font-bold">{business.legalName}</h1>
             {business.tradeName && business.tradeName !== business.legalName ? <p className="text-sm">{business.tradeName}</p> : null}
             <p className="mt-1 whitespace-pre-line text-[12px] leading-snug">{business.address}</p>

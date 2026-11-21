@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ensureDatabaseAvailable, getStockContext, isApprovedStaff, normalizeStockRole, requestTenant, stockRoute } from '@/lib/stock-workflow';
-import { sql } from '@/lib/db';
+import { companyProfile } from '@/lib/company';
 
 /**
  * Who the signed-in person is in the stock app, and in which company.
@@ -23,7 +23,7 @@ export const GET = stockRoute(async function GET(request) {
 
   const { tenant, tenants } = requestTenant(request);
   // Own row only (RLS policy tenant_self), for the name and logo in the app chrome.
-  const [profile] = appUser ? await sql('SELECT name, settings FROM tenants WHERE id = app_tenant()') : [];
+  const profile = appUser ? await companyProfile() : null;
   const approved = isApprovedStaff(appUser);
 
   let message = 'Access granted.';
@@ -41,8 +41,8 @@ export const GET = stockRoute(async function GET(request) {
     role: normalizeStockRole(appUser?.role),
     user: appUser,
     // The company this request opened, and every company this person can switch to.
-    tenant: appUser && tenant
-      ? { id: tenant.id, name: profile?.name ?? tenant.name, logo: profile?.settings?.logo ?? null, logoDark: profile?.settings?.logoDark ?? null }
+    tenant: appUser && tenant && profile
+      ? { id: profile.id, name: profile.name, logo: profile.logo, logoDark: profile.logoDark }
       : null,
     tenants,
     message,

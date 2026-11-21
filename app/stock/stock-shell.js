@@ -1,6 +1,6 @@
 'use client';
 
-import { BarChart2, BookOpen, Clock, FileText, Home, Users } from 'lucide-react';
+import { BarChart2, BookOpen, Clock, FileText, Home, Settings, Users } from 'lucide-react';
 import { getLogoutHref, useAuthUser } from '@/lib/auth-client';
 import { usePathname } from 'next/navigation';
 import { useRef, useState } from 'react';
@@ -108,6 +108,7 @@ export default function StockShell({ children }) {
   }
   if (accessRole === 'admin' || accessRole === 'manager') {
     navigationItems.push({ href: '/stock/admin', label: t('adminDashboard'), icon: Users });
+    navigationItems.push({ href: '/stock/settings', label: language === 'hi' ? 'सेटिंग्स' : 'Settings', icon: Settings });
   }
   if (getRoleFlags(accessRole).canViewAllAnalytics || accessRole === 'salesperson') {
     navigationItems.push({ href: '/stock/analytics', label: t('analytics'), icon: BarChart2 });
