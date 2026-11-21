@@ -84,7 +84,7 @@ To add a schema change: create the next numbered file in `db/migrations/` (e.g.
 production from the main checkout:
 
 ```bash
-npm run db:migrate:prod scripts/migrate.mjs -- --status   # what will run
+npm run db:migrate:prod scripts/migrate.mjs -- --status   # what will run (needs .env.prod-owner.local)
 npm run db:migrate:prod scripts/migrate.mjs               # run it
 ```
 
@@ -107,8 +107,10 @@ Every business table has `tenant_id` and a policy that only shows rows of the
 tenant in the transaction setting `app.tenant_id` (`db/migrations/0001_tenancy.sql`).
 
 - **Two roles.** `DATABASE_URL` is the app login `app_rw` (RLS applies);
-  `DATABASE_OWNER_URL` is the owner (migrations only, exempt from RLS). On Netlify
-  the owner URL must be scoped to *Builds*, never *Functions*.
+  `DATABASE_OWNER_URL` is the owner (migrations only, exempt from RLS). It is
+  never set on Netlify: production migrations read it from the git-ignored
+  `.env.prod-owner.local` on the machine that runs them
+  (`npm run db:migrate:prod scripts/migrate.mjs`, `npm run check:rls:prod`).
   `app_rw` is created NOLOGIN by the migration; enable it once per database:
   `ALTER ROLE app_rw LOGIN PASSWORD '<random>';`
 - **Every request** runs in one transaction scoped to the caller's tenant
