@@ -20,18 +20,24 @@ const isApprover = (flags, role) => role === 'admin' || role === 'manager';
 const canWrite = (flags) => !flags.isReadOnly;
 const canInvoice = (flags, role) => role !== 'read_only_admin';
 
-const COMMANDS = [
+// The keys of 'F8' / 'Alt+F8', as shown on <kbd>s.
+export function keyLabels(spec, isApple) {
+  return spec.split('+').map((k) => (k === 'Alt' && isApple ? '⌥' : k));
+}
+
+// `shortcut`: Tally's voucher keys, handled in hooks/useStockShortcuts.js.
+export const COMMANDS = [
   { id: 'dashboard', label: 'Dashboard', description: 'Go to stock dashboard', icon: Home,
     keywords: ['home', 'dashboard', 'main', 'overview'], href: '/stock' },
   { id: 'new-purchase', label: 'New Purchase', description: 'Log a new inbound shipment', icon: PlusCircle,
     keywords: ['new purchase', 'new arrival', 'np', 'purchase', 'buy', 'inbound', 'arrival'],
-    href: '/stock?view=purchases&new=purchase', show: canWrite },
+    href: '/stock?view=purchases&new=purchase', show: canWrite, shortcut: 'F9' },
   { id: 'new-dispatch', label: 'New Dispatch', description: 'Create a new outbound dispatch', icon: Truck,
     keywords: ['new dispatch', 'nd', 'dispatch', 'outbound', 'sell', 'send'],
-    href: '/stock?view=dispatches&new=dispatch', show: canWrite },
+    href: '/stock?view=dispatches&new=dispatch', show: canWrite, shortcut: 'Alt+F8' },
   { id: 'new-estimate', label: 'New Estimate', description: 'Raise a sales estimate', icon: Receipt,
     keywords: ['new estimate', 'ne', 'estimate', 'quote', 'quotation', 'bill'],
-    href: '/stock/invoices?new=estimate', show: canInvoice },
+    href: '/stock/invoices?new=estimate', show: canInvoice, shortcut: 'F8' },
   { id: 'dispatches', label: 'Dispatches', description: 'View all outbound dispatches', icon: Truck,
     keywords: ['dispatches', 'outbound', 'dispatch list'], href: '/stock?view=dispatches' },
   { id: 'purchases', label: 'Purchases', description: 'View all inbound shipments', icon: PackageCheck,
@@ -251,6 +257,7 @@ function SearchBox({ dashboardSearchRef, placeholder, accessRole, primaryModifie
           onSelect={handleSelect}
           activeIndex={activeIndex}
           setActiveIndex={setActiveIndex}
+          isApple={primaryModifierLabel.startsWith('CMD')}
         />
       )}
     </div>
@@ -266,7 +273,7 @@ function Kbd({ children }) {
 }
 
 // ─── SearchDropdown ───────────────────────────────────────────────────────────
-function SearchDropdown({ query, results, searching, onSelect, activeIndex, setActiveIndex }) {
+function SearchDropdown({ query, results, searching, onSelect, activeIndex, setActiveIndex, isApple }) {
   return (
     <div
       id="topbar-search-listbox"
@@ -305,6 +312,11 @@ function SearchDropdown({ query, results, searching, onSelect, activeIndex, setA
                     </span>
                   )}
                 </span>
+                {item.shortcut ? (
+                  <span className="flex gap-0.5" aria-hidden="true">
+                    {keyLabels(item.shortcut, isApple).map((k) => <Kbd key={k}>{k}</Kbd>)}
+                  </span>
+                ) : null}
                 <ArrowRight className={`h-3 w-3 shrink-0 transition-opacity ${isActive ? 'text-brand-primary opacity-100' : 'opacity-0'}`} />
               </button>
             </li>
@@ -360,6 +372,56 @@ function TabLink({ item, active }) {
 }
 
 // ─── StockTopbar ──────────────────────────────────────────────────────────────
+// The `?` sheet: every key in one place, so Tally users find theirs and
+// everyone else can learn them. Keep in step with hooks/useStockShortcuts.js.
+export function ShortcutsSheet({ open, onOpenChange, isApple, language }) {
+  const hi = language === 'hi';
+  const mod = isApple ? '⌘' : 'Ctrl';
+  const groups = [
+    [hi ? 'फ़ॉर्म में' : 'In a form', [
+      [['Enter'], hi ? 'अगला फ़ील्ड (आख़िरी पर सेव)' : 'Next field (saves on the last one)'],
+      [[mod, 'Enter'], hi ? 'कहीं से भी सेव करें' : 'Save from any field'],
+      [['Tab'], hi ? 'अगला फ़ील्ड, बिना सेव' : 'Next field, never saves'],
+      [['Esc'], hi ? 'सूची या डायलॉग बंद करें' : 'Close a list or dialog'],
+    ]],
+    [hi ? 'कहीं भी' : 'Anywhere', [
+      [[mod, 'K'], hi ? 'खोजें या कोई भी पेज खोलें' : 'Search, or jump to any page'],
+      [['F8'], hi ? 'नया एस्टिमेट (सेल्स)' : 'New estimate (sales)'],
+      [keyLabels('Alt+F8', isApple), hi ? 'नया डिस्पैच (डिलीवरी नोट)' : 'New dispatch (delivery note)'],
+      [['F9'], hi ? 'नई खरीद' : 'New purchase'],
+      [['↑', '↓'], hi ? 'सूची में ऊपर-नीचे, Enter से खोलें' : 'Move through a list, Enter opens'],
+      [['Esc'], hi ? 'एक स्क्रीन पीछे' : 'Back one screen'],
+      [['?'], hi ? 'यह सूची' : 'This list'],
+    ]],
+  ];
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-md">
+        <SheetHeader>
+          <SheetTitle>{hi ? 'कीबोर्ड शॉर्टकट' : 'Keyboard shortcuts'}</SheetTitle>
+          <SheetDescription>
+            {hi ? 'Tally की तरह: माउस के बिना पूरा काम।' : 'Like Tally: do the whole job without the mouse.'}
+            {isApple ? (hi ? ' Mac पर F-कीज़ के लिए fn दबाएं।' : ' On a Mac, hold fn for the F-keys.') : ''}
+          </SheetDescription>
+        </SheetHeader>
+        {groups.map(([title, rows]) => (
+          <section key={title} className="mt-6">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
+            <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+              {rows.map(([keys, label]) => (
+                <li key={label} className="flex items-center justify-between gap-4 px-3 py-2 text-sm">
+                  <span>{label}</span>
+                  <span className="flex shrink-0 gap-0.5">{keys.map((k) => <Kbd key={k}>{k}</Kbd>)}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 export default function StockTopbar({
   t,
   language,
@@ -385,8 +447,8 @@ export default function StockTopbar({
   const overflow = navigationItems.slice(MOBILE_TABS);
   const overflowActive = overflow.some((item) => isActiveRoute(item.href));
   const quickActions = getRoleFlags(accessRole).isReadOnly ? [] : [
-    { label: 'Purchase', href: '/stock?view=purchases&new=purchase', keys: [mod, '⇧', 'P'] },
-    { label: 'Dispatch', href: '/stock?view=dispatches&new=dispatch', keys: [mod, '⇧', 'D'] },
+    { label: 'Purchase', href: '/stock?view=purchases&new=purchase', keys: ['F9'] },
+    { label: 'Dispatch', href: '/stock?view=dispatches&new=dispatch', keys: keyLabels('Alt+F8', mod !== 'Ctrl') },
   ];
 
   return (

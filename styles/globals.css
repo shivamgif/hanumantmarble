@@ -389,11 +389,11 @@
   /* The company's accent (lib/accent.mjs), set on <body> by stock-shell.js. */
   --primary: var(--accent-light, 224 122 0);
   --ring: var(--accent-light, 224 122 0);
-  --background: 241 245 249; /* slate-100: cool canvas that white cards and chrome sit on */
+  --background: 232 237 243; /* between slate-100 and -200: white cards clearly lift off it; also the bg-slate-50 inset tone */
   --card: 255 255 255;
   --popover: 255 255 255;
   --muted: 233 238 244;      /* tab tracks, table heads, hovers: between canvas and slate-200 */
-  --border: 226 232 240;     /* slate-200 */
+  --border: 213 220 230;     /* a step past the canvas, so card edges still show */
   --input: 214 222 232;
   --foreground: 15 23 42;    /* slate-900 */
   --muted-foreground: 100 116 139; /* slate-500, 4.8:1 on white */
@@ -450,6 +450,19 @@ html[lang="hi"] .stock-scope .font-sans {
 .stock-scope .bg-slate-50\/20 { background-color: rgb(var(--background) / 0.2); }
 .stock-scope .bg-slate-100 { background-color: rgb(var(--muted)); }
 .stock-scope .bg-slate-200 { background-color: rgb(var(--border)); }
+
+/* Printed documents (.paper) are black on white in both themes, like the PDF.
+   Re-declaring the light tokens on the element makes every remap inside it
+   (bg-white, bg-slate-100, borders) resolve to light, even under .dark. */
+.stock-scope .paper {
+  --card: 255 255 255;
+  --background: 248 250 252;
+  --muted: 241 245 249;
+  --border: 226 232 240;
+  --foreground: 15 23 42;
+  --muted-foreground: 100 116 139;
+  color-scheme: light;
+}
 
 /* --- Literal remap: dark-mode surfaces ----------------------------------- */
 .dark .stock-scope :is(.dark\:bg-slate-950, .dark\:bg-\[\#0b0f1a\]) { background-color: rgb(var(--background)); }

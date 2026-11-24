@@ -200,6 +200,7 @@ export function InvoiceFormContent({
           <span className="inline-flex items-center justify-center gap-2">
             <Send className="h-4 w-4" />
             {submitting ? t('submitting') : t('submitEstimate')}
+            <kbd aria-hidden="true" className="ml-1 hidden rounded bg-white/20 px-1.5 font-sans text-[11px] font-medium sm:inline">Ctrl ↵</kbd>
           </span>
         </button>
       </form>

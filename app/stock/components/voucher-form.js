@@ -283,7 +283,7 @@ export function VoucherSheet({ open, onOpenChange, business, ledgers, role, onSa
           {field(t('narration'), <textarea id="v-narr" rows={2} value={form.narration} onChange={(e) => set({ narration: e.target.value })} className={FORM_INPUT_CLASS} />, 'v-narr')}
           {error ? <p className="text-sm text-rose-600">{error}</p> : null}
           <button type="submit" disabled={saving} className="w-full rounded-xl bg-brand-primary px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
-            <span className="inline-flex items-center gap-2"><Send className="h-4 w-4" /> {t('save')}</span>
+            <span className="inline-flex items-center gap-2"><Send className="h-4 w-4" /> {t('save')} <kbd aria-hidden="true" className="ml-1 hidden rounded bg-white/20 px-1.5 font-sans text-[11px] font-medium sm:inline">Ctrl ↵</kbd></span>
           </button>
         </form>
       </SheetContent>

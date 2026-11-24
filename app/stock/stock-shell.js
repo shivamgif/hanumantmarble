@@ -18,7 +18,7 @@ import { useStockShortcuts } from '@/hooks/useStockShortcuts';
 
 import { TooltipProvider } from '@/components/ui/tooltip';
 import StockSidebar from '@/components/stock/layout/StockSidebar';
-import StockTopbar from '@/components/stock/layout/StockTopbar';
+import StockTopbar, { ShortcutsSheet } from '@/components/stock/layout/StockTopbar';
 import StockNotificationsSheet from '@/components/stock/layout/StockNotificationsSheet';
 import ClockInReminder from '@/components/stock/layout/ClockInReminder';
 import { CompanyMark } from '@/components/ui/brand-mark';
@@ -68,7 +68,7 @@ export default function StockShell({ children }) {
   }, [accentKey]);
 
   const notificationsState = useStockNotifications({ user, accessApproved });
-  const { isApplePlatform } = useStockShortcuts({ dashboardSearchRef, accessRole });
+  const { isApplePlatform, shortcutsOpen, setShortcutsOpen } = useStockShortcuts({ dashboardSearchRef, accessRole });
 
   const t = (key) => getTranslation(`stock.layout.${key}`, language);
   const tc = {
@@ -267,9 +267,14 @@ export default function StockShell({ children }) {
             <span className="font-semibold text-foreground">{tc.brandFull}</span>
             <span aria-hidden="true">·</span>
             <span>{t('footerTitle')}</span>
+            <button type="button" onClick={() => setShortcutsOpen(true)} className="ml-auto hidden rounded hover:text-foreground lg:inline">
+              {language === 'hi' ? 'कीबोर्ड शॉर्टकट' : 'Keyboard shortcuts'} <kbd className="ml-1 rounded border border-border bg-card px-1 font-sans">?</kbd>
+            </button>
           </p>
         </footer>
       </div>
+
+      <ShortcutsSheet open={shortcutsOpen} onOpenChange={setShortcutsOpen} isApple={isApplePlatform} language={language} />
 
       <StockNotificationsSheet
         t={t}

@@ -783,6 +783,7 @@ export function FlatRateArrivalFormContent({
           <span className="inline-flex items-center gap-3">
             <Package className="h-5 w-5" />
             {submitting ? (tc?.submitting ?? 'Submitting...') : v.submitArrivalLabel}
+            <kbd aria-hidden="true" className="hidden rounded bg-white/20 px-1.5 font-sans text-[11px] font-medium sm:inline">Ctrl ↵</kbd>
           </span>
         </button>
       </form>
@@ -923,6 +924,7 @@ export function ArrivalFormContent({
           <span className="inline-flex items-center gap-3">
             <ReceiptText className="h-5 w-5" />
             {submitting ? tc.submitting : tc.submitPurchase}
+            <kbd aria-hidden="true" className="hidden rounded bg-white/20 px-1.5 font-sans text-[11px] font-medium sm:inline">Ctrl ↵</kbd>
           </span>
         </button>
       </form>

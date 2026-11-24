@@ -45,7 +45,7 @@ export default function LedgerStatementPage() {
         </div>
       </div>
 
-      <article className="mx-auto w-full max-w-[210mm] overflow-x-auto bg-white p-6 text-slate-900 shadow-sm print:p-0 print:shadow-none">
+      <article className="paper mx-auto w-full max-w-[210mm] overflow-x-auto bg-white p-6 text-slate-900 shadow-sm print:p-0 print:shadow-none">
         <header className="border-b-2 border-slate-900 pb-2">
           <p className="text-sm">{data.ledger.business_name} · GSTIN {data.ledger.business_gstin}</p>
           <h1 className="text-lg font-bold">{data.ledger.name}</h1>

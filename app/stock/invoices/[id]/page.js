@@ -154,7 +154,7 @@ export default function InvoicePrintPage() {
       ) : null}
 
       {/* Paper: always black on white, also in dark mode, so screen and PDF match. */}
-      <article className="relative mx-auto w-full max-w-[210mm] overflow-x-auto bg-white p-6 text-[11px] leading-snug text-black shadow-sm print:p-0 print:shadow-none">
+      <article className="paper relative mx-auto w-full max-w-[210mm] overflow-x-auto bg-white p-6 text-[11px] leading-snug text-black shadow-sm print:p-0 print:shadow-none">
         {invoice.status === 'cancelled' || irnPending ? (
           <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-center text-6xl font-black uppercase text-rose-500/20 -rotate-12">
             {invoice.status === 'cancelled' ? t('cancelled') : t('irnPending')}

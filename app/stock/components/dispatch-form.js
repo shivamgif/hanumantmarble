@@ -351,6 +351,7 @@ export function BagDispatchFormContent({
           <span className="inline-flex items-center justify-center gap-3">
             <Package className="h-5 w-5" />
             {submitting ? (tc?.submitting ?? 'Submitting...') : (tc?.submitBagDispatch ?? 'Submit Bag Dispatch')}
+            <kbd aria-hidden="true" className="hidden rounded bg-white/20 px-1.5 font-sans text-[11px] font-medium sm:inline">Ctrl ↵</kbd>
           </span>
         </button>
       </form>
@@ -525,6 +526,7 @@ export function DispatchFormContent({
           <span className="inline-flex items-center justify-center gap-3">
             <Send className="h-5 w-5" />
             {submitting ? tc.submitting : t('submitDispatch')}
+            <kbd aria-hidden="true" className="hidden rounded bg-white/20 px-1.5 font-sans text-[11px] font-medium sm:inline">Ctrl ↵</kbd>
           </span>
         </button>
       </form>
