@@ -5,8 +5,8 @@ import { Fragment, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import QRCode from 'qrcode';
 import { ArrowLeft, Printer } from 'lucide-react';
-import { amountInWords, computeInvoiceTotals, GST_STATES } from '@/lib/gst-invoice.mjs';
-import { invoiceStatus, useInvoiceText } from '../../components/invoice-form';
+import { amountInWords, computeInvoiceTotals, GST_STATES, PLACEHOLDER_GSTIN } from '@/lib/gst-invoice.mjs';
+import { useInvoiceText } from '../../components/invoice-form';
 import { CLASSES, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../../lib/stock-utils';
 
 const fmt = (n) => Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -68,22 +68,24 @@ export default function InvoicePrintPage() {
 
   const invoice = data?.invoice;
   const issued = invoice?.status === 'approved';
+  // A live proforma: the customer may pay an advance against it, so it gets the UPI QR too.
+  const proformaOut = invoice?.status === 'pending' && Boolean(invoice?.proforma_number);
 
   const upiId = data?.seller?.business?.upiId;
   useEffect(() => {
-    if (!issued) return;
+    if (!issued && !proformaOut) return;
     const svg = (text, errorCorrectionLevel = 'M') =>
       QRCode.toString(text, { type: 'svg', margin: 1, errorCorrectionLevel }).catch(() => '');
     const upiLink = upiId
-      ? `upi://pay?${new URLSearchParams({ pa: upiId, pn: data.seller.business.legalName, am: Number(invoice.grand_total).toFixed(2), cu: 'INR', tn: invoice.invoice_number })}`
+      ? `upi://pay?${new URLSearchParams({ pa: upiId, pn: data.seller.business.legalName, am: Number(invoice.grand_total).toFixed(2), cu: 'INR', tn: invoice.invoice_number || invoice.proforma_number })}`
       : null;
     Promise.all([
-      svg(`${window.location.origin}/stock?new=dispatch&invoice=${invoice.id}`),
+      issued ? svg(`${window.location.origin}/stock?new=dispatch&invoice=${invoice.id}`) : '',
       // The signed QR is a long JWT; low error correction keeps it scannable.
       invoice.signed_qr ? svg(invoice.signed_qr, 'L') : '',
       upiLink ? svg(upiLink) : '',
     ]).then(([dispatch, einvoice, upi]) => setQr({ dispatch, einvoice, upi }));
-  }, [issued, invoice, upiId, data]);
+  }, [issued, proformaOut, invoice, upiId, data]);
 
   if (error) return <div className={CLASSES.contentWrap}><p className="text-sm text-rose-500">{error}</p></div>;
   if (!invoice) return <div className={CLASSES.contentWrap} aria-busy="true"><div className="h-9 w-48 skeleton rounded-lg" /><div className="mx-auto h-[70vh] max-w-[210mm] skeleton rounded-xl" /></div>;
@@ -91,14 +93,32 @@ export default function InvoicePrintPage() {
   const business = data.seller?.business || {};
   const branch = data.seller?.location || {};
   const totals = computeInvoiceTotals(invoice.items, business.stateCode, invoice.bill_to_state_code);
-  const status = invoiceStatus(invoice);
-  const title = issued || status === 'dispatched' ? t('taxInvoice') : t('estimate');
+  // A number is only ever given on approval: no number = an estimate, never a
+  // sale. A proforma is an estimate an approver has issued as a numbered offer.
+  const isEstimate = !invoice.invoice_number;
+  const isProforma = isEstimate && Boolean(invoice.proforma_number);
+  const proformaRef = invoice.proforma_number
+    ? `${invoice.proforma_number}${invoice.proforma_rev ? ` (${t('rev')} ${invoice.proforma_rev})` : ''}`
+    : '';
+  const title = isProforma ? t('proformaInvoice') : isEstimate ? t('estimate') : t('taxInvoice');
   const irnPending = issued && invoice.einvoice_status === 'pending';
+  const watermark = invoice.status === 'cancelled' ? t('cancelled')
+    : irnPending ? t('irnPending')
+      : isEstimate && !isProforma ? t('estimate') : null;
+  // The seeded business has a placeholder GSTIN in another state, so every
+  // local sale comes out as IGST until the real one is entered.
+  const missingSetup = [
+    business.gstin === PLACEHOLDER_GSTIN && t('gstinUin'),
+    !business.bankAccount && t('bankDetails'),
+    company && !company.invoiceTerms && t('declaration'),
+  ].filter(Boolean);
 
   const taxTotal = round2(totals.cgst + totals.sgst + totals.igst);
   // An invoice issued before whole-rupee rounding keeps the total it was
   // registered (and posted) with, so a reprint never disagrees with the books.
-  const grandTotal = invoice.grand_total != null ? Number(invoice.grand_total) : totals.grandTotal;
+  // An estimate is always worked out afresh: its seller's state may have been
+  // corrected since it was saved, and approval recomputes it the same way.
+  const grandTotal = !isEstimate && invoice.grand_total != null ? Number(invoice.grand_total) : totals.grandTotal;
   const roundOff = round2(grandTotal - totals.taxableTotal - taxTotal);
 
   // Tax rows under the goods ("CGST @9%"), one per GST rate on the bill.
@@ -152,12 +172,17 @@ export default function InvoicePrintPage() {
           {t('rejectedBecause')} {invoice.rejection_reason}
         </p>
       ) : null}
+      {missingSetup.length ? (
+        <p className="rounded-lg bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-700 print:hidden">
+          {t('sellerSetupMissing', { missing: missingSetup.join(', ') })}
+        </p>
+      ) : null}
 
       {/* Paper: always black on white, also in dark mode, so screen and PDF match. */}
       <article className="paper relative mx-auto w-full max-w-[210mm] overflow-x-auto bg-white p-6 text-[11px] leading-snug text-black shadow-sm print:p-0 print:shadow-none">
-        {invoice.status === 'cancelled' || irnPending ? (
+        {watermark ? (
           <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-center text-6xl font-black uppercase text-rose-500/20 -rotate-12">
-            {invoice.status === 'cancelled' ? t('cancelled') : t('irnPending')}
+            {watermark}
           </p>
         ) : null}
 
@@ -176,10 +201,14 @@ export default function InvoicePrintPage() {
           </div>
           <h1 className="text-[15px] font-bold">{title}</h1>
           <div className="flex items-end justify-end gap-2 text-right text-[10px]">
-            <div>
-              <p className="italic">{t('originalForRecipient')}</p>
-              <p>{t('reverseCharge')}</p>
-            </div>
+            {isProforma ? (
+              <p className="font-semibold">{t('validUntil')} : {printDate(invoice.proforma_valid_until_text)}</p>
+            ) : isEstimate ? null : (
+              <div>
+                <p className="italic">{t('originalForRecipient')}</p>
+                <p>{t('reverseCharge')}</p>
+              </div>
+            )}
             {qr.einvoice ? (
               <div className="text-center">
                 <p className="font-semibold">e-Invoice</p>
@@ -227,17 +256,24 @@ export default function InvoicePrintPage() {
             </div>
             <div className="flex flex-col">
               <div className="grid grid-cols-2">
-                <Cell label={t('invoiceNo')}>{invoice.invoice_number || '—'}</Cell>
-                <Cell label={t('dated')}>{printDate(invoice.invoice_date_text || invoice.created_at?.slice(0, 10))}</Cell>
+                <Cell label={isProforma ? t('proformaNo') : t('invoiceNo')}>{isProforma ? proformaRef : invoice.invoice_number || '—'}</Cell>
+                <Cell label={t('dated')}>
+                  {printDate(isProforma ? invoice.proforma_date_text : invoice.invoice_date_text || invoice.created_at?.slice(0, 10))}
+                </Cell>
                 <Cell label={t('deliveryNote')}>{invoice.dispatch_number}</Cell>
                 <Cell label={t('paymentTerms')} />
-                <Cell label={t('referenceNo')} />
+                {/* The tax invoice names the proforma it fulfils. */}
+                <Cell label={t('referenceNo')}>
+                  {!isEstimate && invoice.proforma_number ? `${proformaRef} dt ${printDate(invoice.proforma_date_text)}` : null}
+                </Cell>
                 <Cell label={t('otherReferences')} />
                 <Cell label={t('buyersOrder')} />
-                <Cell label={t('dated')} />
+                <Cell label={t('vehicleNo')}>{invoice.dispatch_vehicle_number}</Cell>
                 <Cell label={t('dispatchedThrough')} />
                 <Cell label={t('destination')}>{invoice.bill_to_city}</Cell>
-                <Cell label={t('salesperson')} className="col-span-2">{invoice.salesperson_name}</Cell>
+                <Cell label={t('salesperson')} className="col-span-2">
+                  {invoice.salesperson_name}{invoice.salesperson_phone ? ` (${invoice.salesperson_phone})` : ''}
+                </Cell>
               </div>
               <div className="flex-1 border-l border-black px-1.5 py-0.5">
                 <p className="text-[10px]">{t('termsOfDelivery')}</p>
@@ -432,10 +468,19 @@ export default function InvoicePrintPage() {
                   </div>
                 ) : null}
               </div>
-              <div className="mt-auto flex min-h-[5rem] flex-col justify-between border-l border-t border-black px-1.5 py-1 text-right">
-                <p className="font-bold">{t('forCompany', { name: business.legalName })}</p>
-                <p>{t('signatory')}</p>
-              </div>
+              {/* An estimate carries no signature, only the fine print that it is
+                  not a sale. A proforma is signed, with fine print that it is an offer. */}
+              {isEstimate ? (
+                <p className={`px-1.5 py-1 text-[9px] italic leading-tight ${isProforma ? '' : 'mt-auto border-l border-t border-black'}`}>
+                  {t(isProforma ? 'proformaFinePrint' : 'estimateFinePrint', { name: business.legalName })}
+                </p>
+              ) : null}
+              {isEstimate && !isProforma ? null : (
+                <div className="mt-auto flex min-h-[5rem] flex-col justify-between border-l border-t border-black px-1.5 py-1 text-right">
+                  <p className="font-bold">{t('forCompany', { name: business.legalName })}</p>
+                  <p>{t('signatory')}</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

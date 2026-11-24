@@ -6,12 +6,23 @@ import { cancelSourceVoucher, ensurePartyLedger, postSalesInvoice, withBooks } f
 import { istToday } from '@/lib/attendance.mjs';
 import {
   computeInvoiceTotals,
+  estimateChanges,
   fiscalYearOf,
   formatInvoiceNumber,
+  formatProformaNumber,
   PLACEHOLDER_GSTIN,
+  PROFORMA_VALIDITY_DAYS,
   serializeBusiness,
 } from '@/lib/gst-invoice.mjs';
-import { canViewInvoice, loadSalesInvoice, salesInvoiceGuard, sellerFor } from '@/lib/sales-invoices';
+import {
+  badRequest,
+  canViewInvoice,
+  estimateSql,
+  loadSalesInvoice,
+  readEstimate,
+  salesInvoiceGuard,
+  sellerFor,
+} from '@/lib/sales-invoices';
 
 function conflict(message) {
   const error = new Error(message);
@@ -147,8 +158,85 @@ export const PATCH = stockRoute(async function PATCH(request, context) {
 
     let invoice;
     let summary;
+    let changes;
 
-    if (body.action === 'approve') {
+    if (body.action === 'update') {
+      // The seller fixes their own estimate until a proforma goes out; an
+      // approver corrects anyone's before approving. Same validation as raising one.
+      if (current.status !== 'pending') throw conflict('Only a pending estimate can be edited.');
+      const mine = Number(current.created_by_user_id) === me;
+      if (!isApprover && !(mine && !current.proforma_number)) {
+        return NextResponse.json({ error: 'You cannot edit this estimate' }, { status: 403 });
+      }
+      const { row, names } = await readEstimate(body, appUser);
+      if (current.proforma_number && Number(row.business_id) !== Number(current.business_id)) {
+        throw conflict(`Proforma ${current.proforma_number} was issued under another business. Pick a branch of the same business, or cancel and raise a new estimate.`);
+      }
+      changes = estimateChanges(current, { ...row, ...names });
+      if (!changes.length) return NextResponse.json({ invoice: current, message: 'Nothing changed.' });
+      const { keys, values } = estimateSql(row);
+      const idParam = `$${keys.length + 1}`;
+      invoice = (await withBooks(appUser, (tx) => tx(
+        `UPDATE stock_sales_invoices
+            SET ${keys.map((key, i) => `${key} = $${i + 1}`).join(', ')},
+                proforma_rev = proforma_rev + (proforma_number IS NOT NULL)::int, updated_at = NOW()
+          WHERE id = ${idParam} AND status = 'pending'
+            AND NOT EXISTS (SELECT 1 FROM stock_outbound_shipments
+                            WHERE sales_invoice_id = ${idParam} AND approval_status <> 'rejected')
+          RETURNING *`,
+        [...values, invoiceId]
+      )))[0];
+      summary = `${current.proforma_number || 'Estimate'} for ${row.bill_to_name} corrected: ${changes.join('; ')}`;
+    } else if (body.action === 'proforma') {
+      // An offer for bulk / advance orders: numbered, printable with bank details,
+      // but no tax invoice and nothing in the books. Issuing again only moves its validity.
+      if (!isApprover) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      const today = istToday();
+      const validUntil = body.validUntil ? String(body.validUntil) : null;
+      if (validUntil && !(/^\d{4}-\d{2}-\d{2}$/.test(validUntil) && validUntil >= today)) {
+        throw badRequest('Valid until must be today or a later date.');
+      }
+      invoice = await withBooks(appUser, async (tx) => {
+        const [row] = await tx('SELECT * FROM stock_sales_invoices WHERE id = $1 FOR UPDATE', [invoiceId]);
+        if (row.status !== 'pending') throw conflict('A proforma can only be issued for a pending estimate.');
+        const returning = 'RETURNING *, proforma_valid_until::text AS valid_until_text';
+        if (row.proforma_number) {
+          return (await tx(
+            `UPDATE stock_sales_invoices SET proforma_valid_until = COALESCE($1::date, $2::date + $3::int), updated_at = NOW()
+              WHERE id = $4 ${returning}`,
+            [validUntil, today, PROFORMA_VALIDITY_DAYS, invoiceId]
+          ))[0];
+        }
+        const [business] = await tx('SELECT id, gstin, state_code, invoice_prefix FROM stock_businesses WHERE id = $1', [row.business_id]);
+        if (business.gstin === PLACEHOLDER_GSTIN) {
+          throw conflict('Enter the business’s real GSTIN in Branches before issuing a proforma.');
+        }
+        const fiscalYear = fiscalYearOf(today);
+        await tx('SELECT pg_advisory_xact_lock(hashtext($1)::bigint)', [`proforma_seq:${business.id}:${fiscalYear}`]);
+        const [{ next_seq: seq }] = await tx(
+          `SELECT COALESCE(MAX(proforma_seq), 0) + 1 AS next_seq
+           FROM stock_sales_invoices WHERE business_id = $1 AND proforma_fiscal_year = $2`,
+          [business.id, fiscalYear]
+        );
+        // Totals as the customer will see them: the business's state may have been corrected since the estimate was saved.
+        const totals = computeInvoiceTotals(row.items, business.state_code, row.bill_to_state_code);
+        return (await tx(
+          `UPDATE stock_sales_invoices
+              SET proforma_number = $1, proforma_fiscal_year = $2, proforma_seq = $3, proforma_date = $4,
+                  proforma_valid_until = COALESCE($5::date, $4::date + $6::int),
+                  taxable_total = $8, cgst = $9, sgst = $10, igst = $11, grand_total = $12, updated_at = NOW()
+            WHERE id = $7 ${returning}`,
+          [
+            formatProformaNumber(business.invoice_prefix, fiscalYear, seq), fiscalYear, seq, today, validUntil,
+            PROFORMA_VALIDITY_DAYS, invoiceId,
+            totals.taxableTotal, totals.cgst, totals.sgst, totals.igst, totals.grandTotal,
+          ]
+        ))[0];
+      });
+      summary = current.proforma_number
+        ? `Proforma ${invoice.proforma_number} for ${current.bill_to_name} now valid until ${invoice.valid_until_text}`
+        : `Proforma ${invoice.proforma_number} issued to ${current.bill_to_name}, valid until ${invoice.valid_until_text}`;
+    } else if (body.action === 'approve') {
       if (!isApprover) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       if (isOwn) return ownError();
       const result = await approve(invoiceId, appUser, { acknowledgeCreditLimit: body.acknowledgeCreditLimit === true });
@@ -210,7 +298,7 @@ export const PATCH = stockRoute(async function PATCH(request, context) {
           entityType: 'sales_invoice',
           entityId: invoiceId,
           summary,
-          details: { action: body.action, status: invoice.status },
+          details: { action: body.action, status: invoice.status, ...(changes ? { changes } : {}) },
           userId: appUser.id,
         });
         await queueNotification({

@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { useWatch } from 'react-hook-form';
-import { FileText, Plus, Send } from 'lucide-react';
+import { Check, FileText, Plus, Send } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { SelectField } from '@/components/ui/select';
@@ -72,12 +72,15 @@ function TextareaFormField({ control, name, label }) {
  * The seller's estimate. Item rows are the dispatch form's rows in invoice mode
  * (HSN + GST % instead of returns), so an approved invoice prefills a dispatch
  * as-is. Totals here are a preview; the server recomputes them on save and again
- * on approval.
+ * on approval. Editing (an approver's review) passes `submitLabel`, and
+ * `onSubmitAndApprove` when they may approve it in the same step.
  */
 export function InvoiceFormContent({
   form,
   itemsFieldArray,
   onSubmit,
+  onSubmitAndApprove,
+  submitLabel,
   submitting,
   notice,
   allItems,
@@ -134,6 +137,14 @@ export function InvoiceFormContent({
                   }}
                 />
               ) : null}
+              <SuggestComboboxField
+                control={form.control}
+                name="referredByName"
+                label={t('referredBy')}
+                placeholder={t('referredByPlaceholder')}
+                options={suggestions?.referredByName || []}
+              />
+              <StockFormField control={form.control} name="referredByPhone" label={t('referredByPhone')} placeholder="Optional" type="tel" />
               <TextareaFormField control={form.control} name="billToAddress" label={t('billToAddress')} />
               <StockFormField control={form.control} name="billToCity" label={t('city')} placeholder="Ahmedabad" />
               <StockFormField control={form.control} name="billToPincode" label={t('pincode')} inputMode="numeric" digitsOnly maxLength={6} placeholder="380001" />
@@ -192,17 +203,31 @@ export function InvoiceFormContent({
           </div>
           <InlineNotice notice={notice} />
         </fieldset>
-        <button
-          type="submit"
-          disabled={submitting}
-          className="mt-6 w-full rounded-xl bg-brand-primary px-4 py-3.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <span className="inline-flex items-center justify-center gap-2">
-            <Send className="h-4 w-4" />
-            {submitting ? t('submitting') : t('submitEstimate')}
-            <kbd aria-hidden="true" className="ml-1 hidden rounded bg-white/20 px-1.5 font-sans text-[11px] font-medium sm:inline">Ctrl ↵</kbd>
-          </span>
-        </button>
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full rounded-xl bg-brand-primary px-4 py-3.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <span className="inline-flex items-center justify-center gap-2">
+              <Send className="h-4 w-4" />
+              {submitting ? t('submitting') : submitLabel || t('submitEstimate')}
+              <kbd aria-hidden="true" className="ml-1 hidden rounded bg-white/20 px-1.5 font-sans text-[11px] font-medium sm:inline">Ctrl ↵</kbd>
+            </span>
+          </button>
+          {onSubmitAndApprove ? (
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={form.handleSubmit(onSubmitAndApprove)}
+              className="w-full rounded-xl border border-brand-primary px-4 py-3.5 text-sm font-semibold text-brand-primary transition hover:bg-brand-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <span className="inline-flex items-center justify-center gap-2">
+                <Check className="h-4 w-4" /> {t('saveAndApprove')}
+              </span>
+            </button>
+          ) : null}
+        </div>
       </form>
     </Form>
   );

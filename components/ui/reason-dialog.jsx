@@ -11,12 +11,13 @@ import * as Dialog from '@radix-ui/react-dialog';
  * Controlled by a single `request` object so a caller can keep one piece of
  * state per page: pass null to close.
  *   { title, description, placeholder, required, confirmText, tone, onSubmit }
+ * `inputType: 'date'` asks for a date instead (with `initialValue` and `min`).
  */
 export function ReasonDialog({ request, onClose }) {
   const [value, setValue] = useState('');
 
   useEffect(() => {
-    setValue('');
+    setValue(request?.initialValue || '');
   }, [request]);
 
   if (!request) return null;
@@ -39,7 +40,7 @@ export function ReasonDialog({ request, onClose }) {
           className="fixed left-1/2 top-1/2 z-[9999] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 text-card-foreground shadow-2xl animate-scale-in"
           onOpenAutoFocus={(e) => {
             e.preventDefault();
-            e.currentTarget.querySelector('textarea')?.focus();
+            e.currentTarget.querySelector('textarea, input')?.focus();
           }}
         >
           <Dialog.Title className="text-base font-bold tracking-tight">{request.title}</Dialog.Title>
@@ -50,14 +51,25 @@ export function ReasonDialog({ request, onClose }) {
           ) : null}
 
           <form onSubmit={submit}>
-            <textarea
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              rows={3}
-              placeholder={request.placeholder}
-              aria-label={request.placeholder || request.title}
-              className="mt-4 w-full resize-none rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm outline-none transition placeholder:text-muted-foreground focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10"
-            />
+            {request.inputType === 'date' ? (
+              <input
+                type="date"
+                value={value}
+                min={request.min}
+                onChange={(e) => setValue(e.target.value)}
+                aria-label={request.placeholder || request.title}
+                className="mt-4 w-full rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10"
+              />
+            ) : (
+              <textarea
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                rows={3}
+                placeholder={request.placeholder}
+                aria-label={request.placeholder || request.title}
+                className="mt-4 w-full resize-none rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm outline-none transition placeholder:text-muted-foreground focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10"
+              />
+            )}
             <div className="mt-5 flex justify-end gap-2">
               <Dialog.Close asChild>
                 <button

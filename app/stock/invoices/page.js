@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Ban, Check, Download, ExternalLink, FileMinus, FilePlus, FileText, Plus, Upload, X } from 'lucide-react';
+import { Ban, Check, Download, ExternalLink, FileBadge, FileMinus, FilePlus, FileText, Pencil, Plus, Upload, X } from 'lucide-react';
+import { PROFORMA_VALIDITY_DAYS } from '@/lib/gst-invoice.mjs';
 import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -34,22 +35,64 @@ const FILTERS = ['pending', 'needs_irn', 'approved', 'dispatched', 'all', 'credi
 
 const invoiceItemRow = () => ({ ...createDispatchItemRow(), hsnCode: '', gstRate: '18' });
 
-const blankInvoice = (branch) => ({
+/** A new estimate: place of supply defaults to the business's own state and city; the seller to whoever raises it. */
+const blankInvoice = ({ branch = null, stateCode = '', city = '', seller = null } = {}) => ({
   locationId: branch ? String(branch.id) : '',
   customerName: '',
   customerPhoneNumber: '',
   billToAddress: '',
   billToGstin: '',
-  billToStateCode: branch?.stateCode || '',
-  billToCity: '',
+  billToStateCode: stateCode || '',
+  billToCity: city || '',
   billToPincode: '',
   shipToAddress: '',
   shipToPincode: '',
-  salespersonName: '',
-  salespersonUserId: '',
+  salespersonName: seller?.name || '',
+  salespersonUserId: seller ? String(seller.id) : '',
+  referredByName: '',
+  referredByPhone: '',
   notes: '',
   items: [invoiceItemRow()],
 });
+
+/** A saved estimate back into the form, for review. Lines are stored in the dispatch row shape. */
+const estimateToForm = (invoice) => ({
+  locationId: String(invoice.location_id),
+  customerName: invoice.bill_to_name,
+  customerPhoneNumber: invoice.bill_to_phone || '',
+  billToAddress: invoice.bill_to_address || '',
+  billToGstin: invoice.bill_to_gstin || '',
+  billToStateCode: invoice.bill_to_state_code,
+  billToCity: invoice.bill_to_city || '',
+  billToPincode: invoice.bill_to_pincode || '',
+  shipToAddress: invoice.ship_to_address || '',
+  shipToPincode: invoice.ship_to_pincode || '',
+  salespersonName: invoice.salesperson_name || '',
+  salespersonUserId: invoice.salesperson_user_id != null ? String(invoice.salesperson_user_id) : '',
+  referredByName: invoice.referred_by_name || '',
+  referredByPhone: invoice.referred_by_phone || '',
+  notes: invoice.notes || '',
+  items: invoice.items.map((item) => ({
+    ...invoiceItemRow(),
+    itemId: String(item.itemId),
+    itemLabel: item.itemLabel,
+    itemCategory: item.itemCategory,
+    sellUnit: item.sellUnit,
+    loadedWholeQty: item.itemCategory === 'tile' ? String(item.loadedWholeQty) : '',
+    qtyBags: item.itemCategory === 'bag' ? String(item.qtyBags) : '',
+    qtySqft: item.itemCategory === 'stone' ? String(item.qtySqft) : '',
+    ratePerUnit: String(item.ratePerUnit),
+    hsnCode: item.hsnCode || '',
+    gstRate: String(item.gstRate ?? 18),
+  })),
+});
+
+/** The browser's local date, `days` from now, as YYYY-MM-DD. */
+const localDate = (days = 0) => {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toLocaleDateString('en-CA');
+};
 
 async function readJson(response) {
   const json = await response.json().catch(() => ({}));
@@ -69,7 +112,7 @@ async function loadInvoiceBranches() {
   const byId = new Map(businesses.filter((b) => b.isActive).map((b) => [b.id, b]));
   return locations
     .filter((location) => location.isActive && byId.has(location.businessId))
-    .map((location) => ({ ...location, stateCode: byId.get(location.businessId).stateCode }));
+    .map((location) => ({ ...location, stateCode: byId.get(location.businessId).stateCode, city: byId.get(location.businessId).city }));
 }
 
 export default function InvoicesPage() {
@@ -89,6 +132,13 @@ export default function InvoicesPage() {
     if (invoice.status === 'pending' && Number(invoice.created_by_user_id) === me) return true;
     return isApprover && !own && ['pending', 'approved'].includes(invoice.status);
   };
+  // Mirrors the server: the seller edits their own estimate until a proforma
+  // goes out; an approver corrects any pending estimate.
+  const canEdit = (invoice) => invoice.status === 'pending' && !invoice.dispatch_id
+    && (isApprover || (Number(invoice.created_by_user_id) === Number(accessUser?.id) && !invoice.proforma_number));
+  // No self-approval: whoever raised or is credited with it needs another approver.
+  const canApproveInvoice = (invoice) => isApprover && invoice.status === 'pending'
+    && ![invoice.created_by_user_id, invoice.salesperson_user_id].map(Number).includes(Number(accessUser?.id));
 
   const [filter, setFilter] = useState('pending');
   const [invoices, setInvoices] = useState([]);
@@ -104,6 +154,8 @@ export default function InvoicesPage() {
   const importRef = useRef(null);
 
   const [sheetOpen, setSheetOpen] = useState(false);
+  // The estimate under review, or null for a new one.
+  const [editing, setEditing] = useState(null);
   const [formSetup, setFormSetup] = useState(null);
   const [notice, setNotice] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -128,19 +180,35 @@ export default function InvoicesPage() {
     return () => { cancelled = true; };
   }, [filter, refreshKey]);
 
-  const openNewEstimate = useCallback(async () => {
+  /** Opens the estimate form: blank for a new one, prefilled to review `invoice`. */
+  const openEstimateForm = useCallback(async (invoice = null) => {
     setNotice(null);
+    setEditing(invoice);
     setSheetOpen(true);
     try {
       const setup = formSetup || await Promise.all([fetchDashboardData(), loadInvoiceBranches()])
         .then(([dashboard, branches]) => ({ items: dashboard.activeItems || [], suggestions: dashboard.suggestions || {}, branches }));
       setFormSetup(setup);
-      form.reset(blankInvoice(setup.branches.length === 1 ? setup.branches[0] : null));
+      if (invoice) {
+        form.reset(estimateToForm(invoice));
+      } else {
+        const { branches, suggestions } = setup;
+        // One business behind every branch (the usual case): its state and city are the default place of supply.
+        const business = new Set(branches.map((branch) => branch.businessId)).size === 1 ? branches[0] : null;
+        const seller = (suggestions.salespersons || []).find((person) => Number(person.id) === Number(accessUser?.id));
+        form.reset(blankInvoice({
+          branch: branches.length === 1 ? branches[0] : null,
+          stateCode: business?.stateCode,
+          city: business?.city,
+          seller,
+        }));
+      }
       if (!setup.branches.length) setNotice({ type: 'warning', message: t('branchHint') });
     } catch (err) {
       setNotice({ type: 'error', message: err.message });
     }
-  }, [form, formSetup, t]);
+  }, [form, formSetup, t, accessUser?.id]);
+  const openNewEstimate = useCallback(() => openEstimateForm(), [openEstimateForm]);
 
   // ?new=estimate, from the topbar's "New estimate" command. Waits for the
   // access user so a viewer who cannot raise one just lands on the list.
@@ -167,26 +235,6 @@ export default function InvoicesPage() {
     router.replace('/stock/invoices');
     if (canRaise) openNewEstimate();
   }, [wantsNewEstimate, accessUser, canRaise, openNewEstimate, router]);
-
-  const submitEstimate = useCallback(async (values) => {
-    setSubmitting(true);
-    setNotice(null);
-    try {
-      await readJson(await fetch('/api/stock/sales-invoices', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
-      }));
-      setSheetOpen(false);
-      setToast({ type: 'success', message: t('saved') });
-      setFilter('pending');
-      setRefreshKey((k) => k + 1);
-    } catch (err) {
-      setNotice({ type: 'error', message: err.message });
-    } finally {
-      setSubmitting(false);
-    }
-  }, [t]);
 
   const act = useCallback(async (invoice, action, extra = {}) => {
     setBusyId(invoice.id);
@@ -215,6 +263,46 @@ export default function InvoicesPage() {
       setBusyId(null);
     }
   }, [t]);
+
+  // New estimate → POST; review → PATCH update, then approve when asked to.
+  const submitEstimate = useCallback(async (values, { approve = false } = {}) => {
+    setSubmitting(true);
+    setNotice(null);
+    try {
+      const json = await readJson(await fetch(editing ? `/api/stock/sales-invoices/${editing.id}` : '/api/stock/sales-invoices', {
+        method: editing ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editing ? { ...values, action: 'update' } : values),
+      }));
+      setSheetOpen(false);
+      if (approve) {
+        await act(editing, 'approve');
+      } else {
+        setToast({ type: 'success', message: editing ? json.message : t('saved') });
+        if (!editing) setFilter('pending');
+        setRefreshKey((k) => k + 1);
+      }
+    } catch (err) {
+      setNotice({ type: 'error', message: err.message });
+    } finally {
+      setSubmitting(false);
+    }
+  }, [t, editing, act]);
+
+  const issueProforma = useCallback((invoice) => {
+    const current = invoice.proforma_valid_until_text;
+    setReasonDialog({
+      title: invoice.proforma_number ? `${t('extendProforma')} · ${invoice.proforma_number}` : t('issueProforma'),
+      description: t('issueProformaDesc', { days: PROFORMA_VALIDITY_DAYS }),
+      placeholder: t('validUntil'),
+      inputType: 'date',
+      min: localDate(),
+      initialValue: current && current >= localDate() ? current : localDate(PROFORMA_VALIDITY_DAYS),
+      required: true,
+      confirmText: invoice.proforma_number ? t('extendProforma') : t('issueProforma'),
+      onSubmit: (validUntil) => act(invoice, 'proforma', { validUntil }),
+    });
+  }, [t, act]);
 
   const actNote = useCallback(async (note, action, extra = {}) => {
     setBusyId(`note-${note.id}`);
@@ -342,9 +430,15 @@ export default function InvoicesPage() {
                   <div className="min-w-[12rem] flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-slate-900 dark:text-slate-100">
-                        {invoice.invoice_number || `${t('estimate')} #${invoice.id}`}
+                        {invoice.invoice_number || invoice.proforma_number || `${t('estimate')} #${invoice.id}`}
                       </span>
                       <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${STATUS_TONE[status]}`}>{t(status)}</span>
+                      {invoice.proforma_number && !invoice.invoice_number ? (
+                        <span className="rounded-md bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-400">
+                          {t('proforma')}{invoice.proforma_rev ? ` · ${t('rev')} ${invoice.proforma_rev}` : ''} · {t('validUntil')} {invoice.proforma_valid_until_text?.split('-').reverse().join('-')}
+                        </span>
+                      ) : null}
+                      {invoice.proforma_number && invoice.invoice_number ? <span className="text-xs text-slate-500">{invoice.proforma_number}</span> : null}
                       {invoice.status === 'approved' && invoice.einvoice_status === 'pending' ? (
                         <span className="rounded-md bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-700 dark:text-rose-400">{t('irnPending')}</span>
                       ) : null}
@@ -352,7 +446,8 @@ export default function InvoicesPage() {
                     </div>
                     <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-300">{invoice.bill_to_name}</p>
                     <p className="text-xs text-slate-500">
-                      {invoice.location_name} · {invoice.salesperson_name || '—'} · {formatDateTime(invoice.created_at)}
+                      {invoice.location_name} · {invoice.salesperson_name || '—'}
+                      {invoice.referred_by_name ? ` · ${t('ref')}: ${invoice.referred_by_name}` : ''} · {formatDateTime(invoice.created_at)}
                     </p>
                   </div>
                   <span className="text-sm font-semibold tabular-nums">{formatRupees(invoice.grand_total)}</span>
@@ -360,9 +455,18 @@ export default function InvoicesPage() {
                     <Link href={`/stock/invoices/${invoice.id}`} className={PILL_BUTTON_CLASS}>
                       <ExternalLink className="h-3.5 w-3.5" /> {t('open')}
                     </Link>
+                    {canEdit(invoice) ? (
+                      <button type="button" disabled={busy} onClick={() => openEstimateForm(invoice)} className={PILL_BUTTON_CLASS}>
+                        <Pencil className="h-3.5 w-3.5" /> {isApprover ? t('review') : t('edit')}
+                      </button>
+                    ) : null}
+                    {isApprover && invoice.status === 'pending' && !invoice.dispatch_id ? (
+                      <button type="button" disabled={busy} onClick={() => issueProforma(invoice)} className={PILL_BUTTON_CLASS}>
+                        <FileBadge className="h-3.5 w-3.5" /> {invoice.proforma_number ? t('extendProforma') : t('proforma')}
+                      </button>
+                    ) : null}
                     {/* Own estimates wait for another approver (server enforces it too). */}
-                    {isApprover && invoice.status === 'pending'
-                      && ![invoice.created_by_user_id, invoice.salesperson_user_id].map(Number).includes(Number(accessUser?.id)) ? (
+                    {canApproveInvoice(invoice) ? (
                       <>
                         <button type="button" disabled={busy} onClick={() => act(invoice, 'approve')} className={PILL_PRIMARY_BUTTON_CLASS}>
                           <Check className="h-3.5 w-3.5" /> {t('approve')}
@@ -423,14 +527,18 @@ export default function InvoicesPage() {
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent side="right" className="w-full max-w-none overflow-y-auto bg-white dark:bg-slate-950 md:w-[80vw] lg:w-[70vw] xl:w-[62vw] md:max-w-[1100px]">
           <SheetHeader className="border-b border-border pb-4">
-            <SheetTitle className="text-base">{t('newEstimate')}</SheetTitle>
-            <SheetDescription className="text-xs">{t('newEstimateDesc')}</SheetDescription>
+            <SheetTitle className="text-base">
+              {editing ? `${t('reviewEstimate')} · ${editing.proforma_number || `#${editing.id}`}` : t('newEstimate')}
+            </SheetTitle>
+            <SheetDescription className="text-xs">{editing ? t('reviewEstimateDesc') : t('newEstimateDesc')}</SheetDescription>
           </SheetHeader>
           {formSetup ? (
             <InvoiceFormContent
               form={form}
               itemsFieldArray={itemsFieldArray}
-              onSubmit={submitEstimate}
+              onSubmit={(values) => submitEstimate(values)}
+              onSubmitAndApprove={editing && canApproveInvoice(editing) ? (values) => submitEstimate(values, { approve: true }) : undefined}
+              submitLabel={editing ? t('saveChanges') : undefined}
               submitting={submitting}
               notice={notice}
               allItems={formSetup.items}
