@@ -7,6 +7,8 @@ import { Ban, Check, ChevronDown, ChevronRight, Download, MessageCircle, Refresh
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { istToday } from '@/lib/attendance.mjs';
 import { AGE_BUCKETS, GROUPS, PARTY_GROUPS, VOUCHER_TYPES } from '@/lib/accounts.mjs';
+import { toCsv } from '@/lib/gst-returns.mjs';
+import { GST_STATES } from '@/lib/gst-invoice.mjs';
 import { CLASSES, ERROR_BOX_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../lib/stock-utils';
 import { formatRupees } from './invoice-form';
 import { BillAllocator, drCr } from './voucher-form';
@@ -561,6 +563,174 @@ export function SetupPanel({ business, isApprover, refreshKey, onChanged, notify
       {setup.business.books_start_date ? (
         <TallyExportCard business={setup.business} lastExportedAt={setup.counts.last_exported_at} onChanged={onChanged} notify={notify} t={t} />
       ) : null}
+    </section>
+  );
+}
+
+// ─── GST returns (check figures) ──────────────────────────────────────────────
+
+const money2 = (n) => Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const posName = (code) => (code ? `${code} ${GST_STATES[code] || ''}`.trim() : '');
+const TAX_COLS = [
+  { label: 'Taxable value', get: (r) => r.taxable }, { label: 'IGST', get: (r) => r.igst },
+  { label: 'CGST', get: (r) => r.cgst }, { label: 'SGST', get: (r) => r.sgst },
+];
+// One CSV row per document per GST rate, as the portal's tables lay them out.
+const perRate = (docs) => docs.flatMap((doc) => doc.rows.map((row) => ({ ...doc, ...row })));
+const DOC_COLS = [
+  { label: 'Invoice no', get: 'number' }, { label: 'Date', get: 'date' }, { label: 'GSTIN', get: 'gstin' },
+  { label: 'Party', get: 'name' }, { label: 'Place of supply', get: (r) => posName(r.pos) }, { label: 'Invoice value', get: 'value' },
+  { label: 'Rate %', get: 'rate' }, ...TAX_COLS, { label: 'IRN', get: (r) => (r.einvoiced ? 'Yes' : '') },
+];
+const NOTE_COLS = [
+  { label: 'Type', get: (r) => (r.type === 'C' ? 'Credit' : 'Debit') }, { label: 'Note no', get: 'number' }, { label: 'Date', get: 'date' },
+  { label: 'GSTIN', get: 'gstin' }, { label: 'Party', get: 'name' }, { label: 'Place of supply', get: (r) => posName(r.pos) },
+  { label: 'Note value', get: 'value' }, { label: 'Against invoice', get: 'originalNumber' }, { label: 'Invoice date', get: 'originalDate' },
+  { label: 'Rate %', get: 'rate' }, ...TAX_COLS, { label: 'IRN', get: (r) => (r.einvoiced ? 'Yes' : '') },
+];
+const GSTR1_SECTIONS = [
+  { key: 'b2b', label: 'B2B (4A)', rows: (g) => perRate(g.b2b), cols: DOC_COLS },
+  { key: 'b2cl', label: 'B2C Large (5)', rows: (g) => perRate(g.b2cl), cols: DOC_COLS },
+  { key: 'b2cs', label: 'B2C Small (7)', rows: (g) => g.b2cs, cols: [{ label: 'Place of supply', get: (r) => posName(r.pos) }, { label: 'Supply', get: 'supply' }, { label: 'Rate %', get: 'rate' }, ...TAX_COLS] },
+  { key: 'cdnr', label: 'Credit/debit notes, registered (9B)', rows: (g) => perRate(g.cdnr), cols: NOTE_COLS },
+  { key: 'cdnur', label: 'Credit/debit notes, unregistered (9B)', rows: (g) => perRate(g.cdnur), cols: NOTE_COLS },
+];
+
+function downloadCsv(name, columns, rows) {
+  const url = URL.createObjectURL(new Blob([toCsv(columns, rows)], { type: 'text/csv;charset=utf-8' }));
+  Object.assign(document.createElement('a'), { href: url, download: name }).click();
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * GSTR-1 and GSTR-3B figures for one month, to tick against Tally and the
+ * portal before the CA files. Nothing here is uploaded anywhere.
+ */
+export function GstReturnsPanel({ business, refreshKey, t }) {
+  const [month, setMonth] = useState(() => istToday().slice(0, 7));
+  const state = useJson(`/api/stock/accounts/gst-returns?businessId=${business.id}&month=${month}`, refreshKey);
+  const data = state.data;
+  const file = (part) => `${part}-${data?.business.gstin || business.id}-${month}.csv`;
+  const th = 'px-2 py-1.5 text-right font-medium first:text-left';
+  const td = 'px-2 py-1.5 text-right tabular-nums first:text-left';
+
+  return (
+    <section className="space-y-4">
+      <div className="glass-panel flex flex-wrap items-end gap-3 rounded-xl p-4">
+        <label className="text-xs"><span className={FORM_LABEL_CLASS}>{t('gstMonth')}</span>
+          <input type="month" value={month} max={istToday().slice(0, 7)} onChange={(e) => e.target.value && setMonth(e.target.value)} className={`${FORM_INPUT_CLASS} w-44`} />
+        </label>
+        <p className="min-w-[14rem] flex-1 text-xs text-slate-500">{t('gstHint')}</p>
+      </div>
+
+      {!data ? <Empty state={state} t={t} /> : (
+        <>
+          <div className="glass-panel overflow-x-auto rounded-xl p-4">
+            <h3 className="mb-2 font-semibold">GSTR-1 · {data.business.gstin}</h3>
+            <table className="w-full min-w-[40rem] text-sm">
+              <thead className="text-xs text-slate-500">
+                <tr><th className={th}>{t('gstSection')}</th><th className={th}>{t('gstCount')}</th><th className={th}>{t('gstTaxable')}</th><th className={th}>IGST</th><th className={th}>CGST</th><th className={th}>SGST</th><th className={th} /></tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {GSTR1_SECTIONS.map((section) => {
+                  const sum = data.gstr1.summary[section.key];
+                  const rows = section.rows(data.gstr1);
+                  return (
+                    <tr key={section.key}>
+                      <td className={td}>{section.label}</td>
+                      <td className={td}>{sum.count}</td>
+                      <td className={td}>{money2(sum.taxable)}</td><td className={td}>{money2(sum.igst)}</td><td className={td}>{money2(sum.cgst)}</td><td className={td}>{money2(sum.sgst)}</td>
+                      <td className={td}>
+                        {rows.length ? (
+                          <button type="button" className={PILL_BUTTON_CLASS} onClick={() => downloadCsv(file(section.key), section.cols, rows)}>
+                            <Download className="h-3.5 w-3.5" /> CSV
+                          </button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
+                <tr className="font-semibold">
+                  <td className={td}>{t('gstTotal')}</td><td className={td} />
+                  <td className={td}>{money2(data.gstr1.total.taxable)}</td><td className={td}>{money2(data.gstr1.total.igst)}</td><td className={td}>{money2(data.gstr1.total.cgst)}</td><td className={td}>{money2(data.gstr1.total.sgst)}</td><td className={td} />
+                </tr>
+              </tbody>
+            </table>
+            <p className="mt-2 text-xs text-slate-500">{t('gstIrnNote')}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {data.gstr1.hsn.length ? (
+                <button type="button" className={PILL_BUTTON_CLASS} onClick={() => downloadCsv(file('hsn'), [
+                  { label: 'B2B/B2C', get: (r) => r.side.toUpperCase() }, { label: 'HSN', get: 'hsn' }, { label: 'UQC', get: 'uqc' },
+                  { label: 'Quantity', get: 'qty' }, { label: 'Rate %', get: 'rate' }, ...TAX_COLS,
+                ], data.gstr1.hsn)}>
+                  <Download className="h-3.5 w-3.5" /> {t('gstHsn')} (12)
+                </button>
+              ) : null}
+              {data.gstr1.documents.length ? (
+                <button type="button" className={PILL_BUTTON_CLASS} onClick={() => downloadCsv(file('documents'), [
+                  { label: 'Nature of document', get: 'nature' }, { label: 'From', get: 'from' }, { label: 'To', get: 'to' },
+                  { label: 'Total', get: 'total' }, { label: 'Cancelled', get: 'cancelled' }, { label: 'Net issued', get: 'net' },
+                ], data.gstr1.documents)}>
+                  <Download className="h-3.5 w-3.5" /> {t('gstDocuments')} (13)
+                </button>
+              ) : null}
+            </div>
+            {data.gstr1.documents.length ? (
+              <ul className="mt-2 space-y-0.5 text-xs text-slate-500">
+                {data.gstr1.documents.map((d) => (
+                  <li key={`${d.nature}-${d.from}`}>{d.nature}: {d.from} – {d.to} · {d.total} ({t('gstCancelled', { count: d.cancelled })})</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+
+          <div className="glass-panel overflow-x-auto rounded-xl p-4">
+            <h3 className="mb-2 font-semibold">GSTR-3B</h3>
+            {data.gstr3b.purchasesWithoutGstin.count ? (
+              <p className="mb-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                {t('gstNoGstinPurchases', { count: data.gstr3b.purchasesWithoutGstin.count, value: money2(data.gstr3b.purchasesWithoutGstin.value) })}
+              </p>
+            ) : null}
+            <table className="w-full min-w-[36rem] text-sm">
+              <thead className="text-xs text-slate-500">
+                <tr><th className={th}>{t('gstSection')}</th><th className={th}>{t('gstTaxable')}</th><th className={th}>IGST</th><th className={th}>CGST</th><th className={th}>SGST</th></tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {[
+                  ['3.1(a) ' + t('gstOutward'), data.gstr3b.outward],
+                  ['3.1(c) ' + t('gstNil'), { taxable: data.gstr3b.nilRated.taxable }],
+                  ['4(A)(5) ' + t('gstItcPurchases'), data.gstr3b.itc.purchases],
+                  ['4(A)(5) ' + t('gstItcExpenses'), data.gstr3b.itc.expenses],
+                  ['4(B) ' + t('gstItcReversed'), data.gstr3b.itc.reversals],
+                  ['4(C) ' + t('gstItcNet'), data.gstr3b.itc.net],
+                  [t('gstPayable'), data.gstr3b.payable],
+                ].map(([label, row]) => (
+                  <tr key={label} className={label === t('gstPayable') ? 'font-semibold' : ''}>
+                    <td className={td}>{label}</td>
+                    <td className={td}>{row.taxable == null ? '' : money2(row.taxable)}</td>
+                    <td className={td}>{row.igst == null ? '' : money2(row.igst)}</td>
+                    <td className={td}>{row.cgst == null ? '' : money2(row.cgst)}</td>
+                    <td className={td}>{row.sgst == null ? '' : money2(row.sgst)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="mt-2 text-xs text-slate-500">{t('gstPayableNote')}</p>
+            {data.gstr3b.interStateUnregistered.length ? (
+              <>
+                <h4 className="mt-4 text-sm font-semibold">3.2 {t('gstInterUnreg')}</h4>
+                <table className="mt-1 w-full max-w-md text-sm">
+                  <tbody className="divide-y divide-border">
+                    {data.gstr3b.interStateUnregistered.map((row) => (
+                      <tr key={row.pos}><td className={td}>{posName(row.pos)}</td><td className={td}>{money2(row.taxable)}</td><td className={td}>{money2(row.igst)}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            ) : null}
+          </div>
+        </>
+      )}
     </section>
   );
 }
