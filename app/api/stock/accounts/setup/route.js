@@ -5,6 +5,7 @@ import {
 } from '@/lib/accounts-db';
 import { addDays, openingLines, parseOpeningBills, parseTrialBalance, PARTY_GROUPS } from '@/lib/accounts.mjs';
 import { stockRoute } from '@/lib/stock-workflow';
+import { isValidGstin } from '@/lib/gst-invoice.mjs';
 
 const bad = (message, extra = {}) => Object.assign(new Error(message), { statusCode: 400, ...extra });
 
@@ -27,7 +28,15 @@ export const GET = stockRoute(async function GET(request) {
        FROM acc_vouchers WHERE business_id = $1`,
       [business.id]
     );
-    return NextResponse.json({ business, opening: opening || null, counts });
+    // Suppliers and their GSTINs: a purchase only claims input tax once its supplier has one.
+    const suppliers = await sql(
+      `SELECT sup.id, sup.name, sup.gst_number,
+              COUNT(s.id) FILTER (WHERE s.approval_status = 'approved')::int AS purchases
+       FROM stock_suppliers sup
+       LEFT JOIN stock_inbound_shipments s ON s.supplier_id = sup.id
+       GROUP BY sup.id ORDER BY purchases DESC, sup.name`
+    );
+    return NextResponse.json({ business, opening: opening || null, counts, suppliers });
   } catch (error) {
     return accountsError(error, 'Failed to load books setup');
   }
@@ -108,6 +117,7 @@ async function importOpening(tx, business, body, appUser) {
  * start            — set the books start date (only while nothing else is posted).
  * opening          — import Tally's trial balance (+ outstanding bills) as one opening voucher.
  * resync_purchases — post or repair purchase entries from the start date on.
+ * supplier_gstin   — set (or clear) a supplier's GSTIN; run resync_purchases after to claim ITC.
  */
 export const POST = stockRoute(async function POST(request) {
   const gate = await accountsGuard(request, { write: true });
@@ -135,6 +145,25 @@ export const POST = stockRoute(async function POST(request) {
       if (!business.books_start_date) throw bad('Set the books start date first.');
       const result = await withBooks(gate.appUser, (tx) => importOpening(tx, business, body, gate.appUser));
       return NextResponse.json(result, { status: 201 });
+    }
+
+    if (body.action === 'supplier_gstin') {
+      const gstin = String(body.gstin || '').trim().toUpperCase() || null;
+      if (gstin && !isValidGstin(gstin)) throw bad('That is not a valid GSTIN (15 characters, starting with the state code).');
+      const saved = await withBooks(gate.appUser, async (tx) => {
+        const [supplier] = await tx(
+          'UPDATE stock_suppliers SET gst_number = $1, updated_at = NOW() WHERE id = $2 RETURNING id, name, gst_number',
+          [gstin, Number(body.supplierId) || 0]
+        );
+        if (!supplier) throw Object.assign(new Error('Supplier not found'), { statusCode: 404 });
+        // The supplier's ledger in every business carries it too (Tally masters, outstanding).
+        await tx(
+          'UPDATE acc_ledgers SET gstin = $1, state_code = $2, updated_at = NOW() WHERE supplier_id = $3',
+          [gstin, gstin ? gstin.slice(0, 2) : null, supplier.id]
+        );
+        return supplier;
+      });
+      return NextResponse.json({ supplier: saved });
     }
 
     if (body.action === 'resync_purchases') {

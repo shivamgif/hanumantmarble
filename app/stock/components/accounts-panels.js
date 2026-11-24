@@ -412,7 +412,71 @@ function TallyExportCard({ business, lastExportedAt, onChanged, notify, t }) {
   );
 }
 
-/** Books start date, Tally opening import, purchase re-sync, Tally export. */
+/**
+ * Suppliers' GSTINs. Without one a purchase books its GST as cost; with one,
+ * Re-sync purchases moves it to input tax (ITC).
+ */
+function SuppliersCard({ suppliers, isApprover, onChanged, notify, t }) {
+  const [drafts, setDrafts] = useState({});
+  const [busyId, setBusyId] = useState(null);
+
+  async function save(supplier) {
+    setBusyId(supplier.id);
+    try {
+      await readJson(await fetch('/api/stock/accounts/setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'supplier_gstin', supplierId: supplier.id, gstin: drafts[supplier.id] }),
+      }));
+      notify({ type: 'success', message: t('supplierGstinSaved', { name: supplier.name }) });
+      setDrafts(({ [supplier.id]: _, ...rest }) => rest);
+      onChanged();
+    } catch (err) {
+      notify({ type: 'error', message: err.message });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <div className="glass-panel space-y-3 rounded-xl p-4 lg:col-span-2">
+      <h3 className="font-semibold">{t('suppliersGstin')}</h3>
+      <p className="text-xs text-slate-500">{t('suppliersGstinHint')}</p>
+      {suppliers.length ? (
+        <ul className="divide-y divide-border">
+          {suppliers.map((supplier) => {
+            const value = drafts[supplier.id] ?? supplier.gst_number ?? '';
+            const changed = value.trim().toUpperCase() !== (supplier.gst_number || '');
+            return (
+              <li key={supplier.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2">
+                <div className="min-w-[10rem] flex-1">
+                  <p className="text-sm font-medium">{supplier.name}</p>
+                  <p className="text-xs text-slate-500">{t('purchasesCount', { count: supplier.purchases })}{supplier.gst_number ? '' : ` · ${t('noItc')}`}</p>
+                </div>
+                <input
+                  value={value}
+                  disabled={!isApprover}
+                  maxLength={15}
+                  placeholder="GSTIN"
+                  aria-label={`GSTIN ${supplier.name}`}
+                  onChange={(e) => setDrafts((d) => ({ ...d, [supplier.id]: e.target.value.toUpperCase() }))}
+                  className={`${FORM_INPUT_CLASS} w-48 font-mono uppercase`}
+                />
+                {isApprover ? (
+                  <button type="button" disabled={!changed || busyId === supplier.id} onClick={() => save(supplier)} className={PILL_BUTTON_CLASS}>
+                    {t('save')}
+                  </button>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      ) : <p className="text-sm text-slate-400">—</p>}
+    </div>
+  );
+}
+
+/** Books start date, Tally opening import, purchase re-sync, suppliers' GSTINs, Tally export. */
 export function SetupPanel({ business, isApprover, refreshKey, onChanged, notify, t }) {
   const state = useJson(`/api/stock/accounts/setup?businessId=${business.id}`, refreshKey);
   const [startDate, setStartDate] = useState('');
@@ -491,6 +555,8 @@ export function SetupPanel({ business, isApprover, refreshKey, onChanged, notify
           <ul className="list-disc space-y-0.5 pl-5 text-xs text-rose-600">{problems.map((p) => <li key={p}>{p}</li>)}</ul>
         ) : null}
       </div>
+
+      <SuppliersCard suppliers={setup.suppliers || []} isApprover={isApprover} onChanged={onChanged} notify={notify} t={t} />
 
       {setup.business.books_start_date ? (
         <TallyExportCard business={setup.business} lastExportedAt={setup.counts.last_exported_at} onChanged={onChanged} notify={notify} t={t} />
