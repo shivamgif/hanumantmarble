@@ -2,14 +2,15 @@
 
 import { CompanyMark } from '@/components/ui/brand-mark';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   Bell, Languages, MoonStar, SunMedium, LogOut, Search,
   PackageCheck, Truck, Boxes, FileText, Users, BarChart2,
   Home, PlusCircle, ArrowRight, X, Receipt, Clock, CalendarOff,
-  CheckCheck, Loader2, Plus,
+  CheckCheck, Loader2, Plus, MoreHorizontal,
 } from 'lucide-react';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { getRoleFlags } from '@/lib/stock-roles.mjs';
 
 // ─── Command catalogue ────────────────────────────────────────────────────────
@@ -335,6 +336,29 @@ function SearchDropdown({ query, results, searching, onSelect, activeIndex, setA
   );
 }
 
+// Phone tab bar: this many links, then "More" for the rest (the person's own
+// order from Customize sidebar decides which come first).
+const MOBILE_TABS = 4;
+
+function TabLink({ item, active }) {
+  return (
+    <Link
+      href={item.href}
+      aria-current={active ? 'page' : undefined}
+      className={`relative flex min-h-[48px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-md px-1 text-[11px] leading-tight transition-colors focus-ring ${
+        active
+          ? 'font-semibold text-slate-900 dark:text-slate-50'
+          : 'font-medium text-slate-500 active:bg-muted dark:text-slate-400'
+      }`}
+    >
+      {/* Saffron rule under the current page, same cue as the desktop rail. */}
+      {active && <span aria-hidden="true" className="absolute inset-x-4 -bottom-1 h-0.5 rounded-full bg-brand-primary" />}
+      <item.icon className={`h-[18px] w-[18px] shrink-0 ${active ? 'text-brand-primary' : ''}`} strokeWidth={active ? 2 : 1.75} />
+      <span className="w-full truncate text-center">{item.label}</span>
+    </Link>
+  );
+}
+
 // ─── StockTopbar ──────────────────────────────────────────────────────────────
 export default function StockTopbar({
   t,
@@ -353,6 +377,13 @@ export default function StockTopbar({
   tenant,
 }) {
   const mod = primaryModifierLabel.replace('+', '').trim();
+  const hi = language === 'hi';
+  const [moreOpen, setMoreOpen] = useState(false);
+  const pathname = usePathname();
+  useEffect(() => { setMoreOpen(false); }, [pathname]);
+  const tabs = navigationItems.slice(0, MOBILE_TABS);
+  const overflow = navigationItems.slice(MOBILE_TABS);
+  const overflowActive = overflow.some((item) => isActiveRoute(item.href));
   const quickActions = getRoleFlags(accessRole).isReadOnly ? [] : [
     { label: 'Purchase', href: '/stock?view=purchases&new=purchase', keys: [mod, '⇧', 'P'] },
     { label: 'Dispatch', href: '/stock?view=dispatches&new=dispatch', keys: [mod, '⇧', 'D'] },
@@ -397,60 +428,89 @@ export default function StockTopbar({
               </div>
             </Link>
 
-            <div className="flex items-center gap-0.5">
-              {[
-                { onClick: toggleLanguage, icon: <Languages className="h-4 w-4" />, badge: null, ariaLabel: 'Toggle language' },
-                { onClick: () => setNotificationOpen(true), icon: <Bell className="h-4 w-4" />, badge: unreadCount > 0 ? unreadCount : null, ariaLabel: 'Notifications' },
-                { onClick: () => setTheme(isDarkTheme ? 'light' : 'dark'), icon: isDarkTheme ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />, badge: null, ariaLabel: isDarkTheme ? 'Switch to light mode' : 'Switch to dark mode' },
-                { onClick: handleStockLogout, icon: <LogOut className="h-4 w-4" />, badge: null, ariaLabel: 'Log out' },
-              ].map((btn, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={btn.onClick}
-                  aria-label={btn.ariaLabel}
-                  title={btn.ariaLabel}
-                  className="relative flex h-10 w-10 items-center justify-center rounded-md text-slate-500 transition-colors active:bg-muted hover:bg-muted dark:text-slate-400 focus-ring"
-                >
-                  {btn.icon}
-                  {btn.badge != null && (
-                    <span className="absolute right-1 top-1 inline-flex min-w-[16px] h-4 items-center justify-center rounded-full bg-brand-primary px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-background">
-                      {btn.badge > 99 ? '99+' : btn.badge}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
+            {/* Only notifications up here; language, theme and log out live under More. */}
+            <button
+              type="button"
+              onClick={() => setNotificationOpen(true)}
+              aria-label="Notifications"
+              title="Notifications"
+              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors active:bg-muted hover:bg-muted dark:text-slate-400 focus-ring"
+            >
+              <Bell className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <span className="absolute right-1 top-1 inline-flex min-w-[16px] h-4 items-center justify-center rounded-full bg-brand-primary px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-background">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </button>
           </div>
 
           {/* Tab-bar pattern: equal columns, icon over a short label, so every
               entry is named, nothing shifts between pages and the row never
-              scrolls. */}
+              scrolls. At most MOBILE_TABS links plus More, so labels fit a phone. */}
           <nav className="grid auto-cols-fr grid-flow-col gap-1 border-t border-border px-2 py-1" aria-label={t('mobileNav')}>
-            {navigationItems.map((item) => {
-              const active = isActiveRoute(item.href);
-              return (
-                <Link
-                  key={`mobile-top-${item.href}`}
-                  href={item.href}
-                  aria-current={active ? 'page' : undefined}
-                  className={`relative flex min-h-[48px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-md px-1 text-[11px] leading-tight transition-colors focus-ring ${
-                    active
-                      ? 'font-semibold text-slate-900 dark:text-slate-50'
-                      : 'font-medium text-slate-500 active:bg-muted dark:text-slate-400'
-                  }`}
-                >
-                  {/* Saffron rule under the current page, same cue as the desktop rail. */}
-                  {active && <span aria-hidden="true" className="absolute inset-x-4 -bottom-1 h-0.5 rounded-full bg-brand-primary" />}
-                  <item.icon className={`h-[18px] w-[18px] shrink-0 ${active ? 'text-brand-primary' : ''}`} strokeWidth={active ? 2 : 1.75} />
-                  {/* The label the layout already resolved. Deriving it from
-                      href here instead meant any new nav entry silently fell
-                      through to "Dashboard". */}
-                  <span className="w-full truncate text-center">{item.label}</span>
-                </Link>
-              );
-            })}
+            {tabs.map((item) => <TabLink key={`mobile-top-${item.href}`} item={item} active={isActiveRoute(item.href)} />)}
+            <button
+              type="button"
+              onClick={() => setMoreOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={moreOpen}
+              className={`relative flex min-h-[48px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-md px-1 text-[11px] leading-tight transition-colors focus-ring ${
+                overflowActive ? 'font-semibold text-slate-900 dark:text-slate-50' : 'font-medium text-slate-500 active:bg-muted dark:text-slate-400'
+              }`}
+            >
+              {overflowActive && <span aria-hidden="true" className="absolute inset-x-4 -bottom-1 h-0.5 rounded-full bg-brand-primary" />}
+              <MoreHorizontal className={`h-[18px] w-[18px] shrink-0 ${overflowActive ? 'text-brand-primary' : ''}`} strokeWidth={overflowActive ? 2 : 1.75} />
+              <span className="w-full truncate text-center">{hi ? 'और' : 'More'}</span>
+            </button>
           </nav>
+
+          <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+            <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl bg-white pb-[max(1rem,env(safe-area-inset-bottom))] dark:bg-slate-950 lg:hidden">
+              <SheetHeader className="text-left">
+                <SheetTitle className="text-base">{hi ? 'और' : 'More'}</SheetTitle>
+                <SheetDescription className="sr-only">{t('mobileNav')}</SheetDescription>
+              </SheetHeader>
+              {overflow.length ? (
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {overflow.map((item) => {
+                    const active = isActiveRoute(item.href);
+                    return (
+                      <Link
+                        key={`mobile-more-${item.href}`}
+                        href={item.href}
+                        onClick={() => setMoreOpen(false)}
+                        aria-current={active ? 'page' : undefined}
+                        className={`flex min-h-[72px] flex-col items-center justify-center gap-1.5 rounded-xl border px-2 text-center text-xs transition-colors focus-ring ${
+                          active ? 'border-brand-primary/40 bg-brand-primary/5 font-semibold text-slate-900 dark:text-slate-50' : 'border-border font-medium text-slate-600 active:bg-muted dark:text-slate-300'
+                        }`}
+                      >
+                        <item.icon className={`h-5 w-5 ${active ? 'text-brand-primary' : ''}`} strokeWidth={1.75} />
+                        <span className="w-full truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              ) : null}
+              <div className="mt-4 divide-y divide-border rounded-xl border border-border">
+                {[
+                  { onClick: toggleLanguage, icon: Languages, label: hi ? 'English में देखें' : 'हिंदी में देखें' },
+                  { onClick: () => setTheme(isDarkTheme ? 'light' : 'dark'), icon: isDarkTheme ? SunMedium : MoonStar, label: isDarkTheme ? (hi ? 'लाइट थीम' : 'Light theme') : (hi ? 'डार्क थीम' : 'Dark theme') },
+                  { onClick: handleStockLogout, icon: LogOut, label: hi ? 'लॉग आउट' : 'Log out' },
+                ].map((row) => (
+                  <button
+                    key={row.label}
+                    type="button"
+                    onClick={row.onClick}
+                    className="flex min-h-[48px] w-full items-center gap-3 px-4 text-left text-sm font-medium text-slate-700 active:bg-muted dark:text-slate-200 focus-ring"
+                  >
+                    <row.icon className="h-4 w-4 text-slate-500" />
+                    {row.label}
+                  </button>
+                ))}
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </header>
