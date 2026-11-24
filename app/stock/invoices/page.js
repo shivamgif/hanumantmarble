@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Ban, Check, Download, ExternalLink, FileBadge, FileMinus, FilePlus, FileText, Pencil, Plus, Upload, X } from 'lucide-react';
-import { PROFORMA_VALIDITY_DAYS } from '@/lib/gst-invoice.mjs';
+import { isCharge, PROFORMA_VALIDITY_DAYS } from '@/lib/gst-invoice.mjs';
 import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -53,6 +53,7 @@ const blankInvoice = ({ branch = null, stateCode = '', city = '', seller = null 
   referredByPhone: '',
   notes: '',
   items: [invoiceItemRow()],
+  charges: [],
 });
 
 /** A saved estimate back into the form, for review. Lines are stored in the dispatch row shape. */
@@ -72,7 +73,14 @@ const estimateToForm = (invoice) => ({
   referredByName: invoice.referred_by_name || '',
   referredByPhone: invoice.referred_by_phone || '',
   notes: invoice.notes || '',
-  items: invoice.items.map((item) => ({
+  // Charges (cartage) are stored among the lines; the form keeps them in their own section.
+  charges: invoice.items.filter(isCharge).map((item) => ({
+    label: item.itemLabel,
+    sacCode: item.hsnCode,
+    amount: String(item.ratePerUnit),
+    gstRate: String(item.gstRate ?? 18),
+  })),
+  items: invoice.items.filter((item) => !isCharge(item)).map((item) => ({
     ...invoiceItemRow(),
     itemId: String(item.itemId),
     itemLabel: item.itemLabel,

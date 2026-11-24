@@ -1,12 +1,12 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
-import { useWatch } from 'react-hook-form';
-import { Check, FileText, Plus, Send } from 'lucide-react';
+import { useFieldArray, useWatch } from 'react-hook-form';
+import { Check, FileText, Plus, Send, X } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { SelectField } from '@/components/ui/select';
-import { computeInvoiceTotals, GST_STATES } from '@/lib/gst-invoice.mjs';
+import { CARTAGE_SAC, computeInvoiceTotals, GST_STATES } from '@/lib/gst-invoice.mjs';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import { FormSectionTitle, InlineNotice, StockFormField, SuggestComboboxField } from './stock-form-fields';
@@ -29,6 +29,12 @@ export function invoiceStatus(invoice) {
 
 export const formatRupees = (value) =>
   `₹${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+// Printed as typed, like Tally's ledger names, so kept in English.
+const CHARGE_NAMES = ['Cartage', 'Loading', 'Unloading'];
+const newCharge = () => ({ label: 'Cartage', sacCode: CARTAGE_SAC, amount: '', gstRate: '18' });
+/** A form charge row as an invoice line, for the totals preview (the server builds the stored one). */
+const chargeLine = (row) => ({ itemCategory: 'charge', ratePerUnit: row.amount, gstRate: row.gstRate });
 
 function SelectFormField({ control, name, label, placeholder, children }) {
   return (
@@ -92,11 +98,14 @@ export function InvoiceFormContent({
   td,
   userRole,
 }) {
-  const [items, locationId, billToStateCode] = useWatch({ control: form.control, name: ['items', 'locationId', 'billToStateCode'] });
+  const [items, charges, locationId, billToStateCode] = useWatch({ control: form.control, name: ['items', 'charges', 'locationId', 'billToStateCode'] });
+  const chargesFieldArray = useFieldArray({ control: form.control, name: 'charges' });
   const sellerState = branches.find((branch) => String(branch.id) === String(locationId))?.stateCode;
   const totals = useMemo(
-    () => (sellerState && billToStateCode ? computeInvoiceTotals(items || [], sellerState, billToStateCode) : null),
-    [items, sellerState, billToStateCode]
+    () => (sellerState && billToStateCode
+      ? computeInvoiceTotals([...(items || []), ...(charges || []).map(chargeLine)], sellerState, billToStateCode)
+      : null),
+    [items, charges, sellerState, billToStateCode]
   );
 
   const salespersonOptions = useMemo(() => {
@@ -183,6 +192,35 @@ export function InvoiceFormContent({
           </div>
 
           <div className={FORM_CARD_CLASS}>
+            {/* Optional: cartage or loading billed to the customer. Taxed and booked, never dispatched. */}
+            <div className="mb-5">
+              <h3 className="px-1 text-base font-semibold text-slate-900 dark:text-white">{t('otherCharges')}</h3>
+              <p className="px-1 text-xs text-slate-500">{t('otherChargesHint')}</p>
+              {chargesFieldArray.fields.map((fieldRow, index) => (
+                <div key={fieldRow.id} className="mt-3 grid grid-cols-2 items-start gap-3 sm:grid-cols-[2fr_1fr_1fr_1fr_auto]">
+                  <SuggestComboboxField control={form.control} name={`charges.${index}.label`} label={t('charge')} options={CHARGE_NAMES} />
+                  <StockFormField control={form.control} name={`charges.${index}.sacCode`} label="SAC" inputMode="numeric" digitsOnly maxLength={6} />
+                  <StockFormField control={form.control} name={`charges.${index}.amount`} label={`${t('amount')} (₹)`} inputMode="decimal" placeholder="600" />
+                  <StockFormField control={form.control} name={`charges.${index}.gstRate`} label={`${t('gst')} %`} inputMode="decimal" />
+                  <button
+                    type="button"
+                    onClick={() => chargesFieldArray.remove(index)}
+                    aria-label={t('removeCharge')}
+                    className="mt-7 inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-rose-500/10 hover:text-rose-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => chargesFieldArray.append(newCharge())}
+                className="mt-3 inline-flex items-center gap-2 rounded-full bg-brand-primary/10 px-4 py-2 text-xs font-semibold text-brand-primary transition-colors hover:bg-brand-primary/20"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                {t('addCharge')}
+              </button>
+            </div>
             <TextareaFormField control={form.control} name="notes" label={t('notes')} />
             {totals ? (
               <dl className="mt-4 ml-auto grid max-w-xs grid-cols-2 gap-y-1 text-sm tabular-nums">

@@ -5,7 +5,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import QRCode from 'qrcode';
 import { ArrowLeft, Printer } from 'lucide-react';
-import { amountInWords, computeInvoiceTotals, GST_STATES, PLACEHOLDER_GSTIN } from '@/lib/gst-invoice.mjs';
+import { amountInWords, computeInvoiceTotals, GST_STATES, isCharge, PLACEHOLDER_GSTIN } from '@/lib/gst-invoice.mjs';
 import { useInvoiceText } from '../../components/invoice-form';
 import { CLASSES, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../../lib/stock-utils';
 
@@ -140,9 +140,15 @@ export default function InvoicePrintPage() {
     return acc;
   }, {}));
 
-  // Total quantity only when every line is in the same unit (7.00 box).
-  const units = new Set(totals.lines.map((line) => line.unit));
-  const totalQty = units.size === 1 ? `${fmt(totals.lines.reduce((sum, line) => sum + line.qty, 0))} ${[...units][0]}` : '';
+  // Goods first with their subtotal; charges (cartage) under it, as Tally prints them.
+  const rows = invoice.items.map((item, index) => ({ item, line: totals.lines[index] }));
+  const goodsRows = rows.filter(({ item }) => !isCharge(item));
+  const chargeRows = rows.filter(({ item }) => isCharge(item));
+  const goodsTaxable = round2(goodsRows.reduce((sum, { line }) => sum + line.taxable, 0));
+
+  // Total quantity only when every goods line is in the same unit (7.00 box).
+  const units = new Set(goodsRows.map(({ line }) => line.unit));
+  const totalQty = units.size === 1 ? `${fmt(goodsRows.reduce((sum, { line }) => sum + line.qty, 0))} ${[...units][0]}` : '';
 
   const stateLine = (code) => (code ? `${t('stateName')} : ${GST_STATES[code] || ''}, ${t('code')} : ${code}` : '');
   const th = 'border-b border-r border-black px-1 py-0.5 font-normal last:border-r-0';
@@ -297,8 +303,7 @@ export default function InvoicePrintPage() {
               </tr>
             </thead>
             <tbody className="tabular-nums">
-              {invoice.items.map((item, index) => {
-                const line = totals.lines[index];
+              {goodsRows.map(({ item, line }, index) => {
                 return (
                   <tr key={`${item.itemId}-${index}`} className="break-inside-avoid align-top">
                     <td className={`${td} pt-1 text-right`}>{index + 1}</td>
@@ -319,8 +324,18 @@ export default function InvoicePrintPage() {
               <tr>
                 <td className={td} /><td className={td} /><td className={td} /><td className={td} /><td className={td} />
                 <td className={td} /><td className={td} /><td className={td} />
-                <td className={`${td} text-right`}><span className="inline-block border-t border-black pt-0.5">{fmt(totals.taxableTotal)}</span></td>
+                <td className={`${td} text-right`}><span className="inline-block border-t border-black pt-0.5">{fmt(goodsTaxable)}</span></td>
               </tr>
+              {chargeRows.map(({ item, line }, index) => (
+                <tr key={`charge-${index}`}>
+                  <td className={td} />
+                  <td className={`${td} text-right font-bold italic`}>{item.itemLabel}</td>
+                  <td className={td}>{item.hsnCode}</td>
+                  <td className={`${td} text-right`}>{line.gstRate} %</td>
+                  <td className={td} /><td className={td} /><td className={td} /><td className={td} />
+                  <td className={`${td} text-right font-bold`}>{fmt(line.taxable)}</td>
+                </tr>
+              ))}
               {taxRows.map(([name, rate, amount]) => (
                 <tr key={`${name}-${rate}`}>
                   <td className={td} />

@@ -53,7 +53,8 @@ export const POST = stockRoute(async function POST(request) {
 
     try {
       await withTransaction(async () => {
-        const divisionIds = [...new Set(items.map((item) => item.divisionId))];
+        // Charges (cartage) belong to no division.
+        const divisionIds = [...new Set(items.filter((item) => item.divisionId).map((item) => item.divisionId))];
         await queueNotification({
           channel: 'whatsapp',
           eventType: 'other',

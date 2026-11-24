@@ -1140,6 +1140,11 @@
       "issueProformaDesc": "For bulk or advance orders. Numbered in its own series and printed with your bank details. It is not a tax invoice: nothing is booked and no stock moves. Valid {days} days unless you pick another date.",
       "validUntil": "Valid until",
       "rev": "Rev",
+      "otherCharges": "Other charges (optional)",
+      "otherChargesHint": "Cartage, loading or unloading billed to the customer. Taxed and booked with the sale; never dispatched or counted as stock.",
+      "charge": "Charge",
+      "addCharge": "Add charge",
+      "removeCharge": "Remove charge",
       "proformaFinePrint": "Proforma invoice: an offer, not a tax invoice. No GST is charged on it and it cannot be used to claim input tax credit. {name} will issue a tax invoice when the goods are supplied. Rates hold until the valid-until date."
     },
     "accounts": {

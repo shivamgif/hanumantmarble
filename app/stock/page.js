@@ -15,6 +15,7 @@ import { useStockAccess } from '@/hooks/useStockAccess';
 import { canSell, getRoleFlags } from '@/lib/stock-roles.mjs';
 import { goalTier } from './analytics/lib/streak.mjs';
 import { arrivalFormSchema, dispatchFormSchema } from '@/lib/forms/stock-forms';
+import { isCharge } from '@/lib/gst-invoice.mjs';
 import { useStockFormStore } from '@/lib/stores/stock-form-store';
 import {
   createArrivalItemRow,
@@ -1307,8 +1308,9 @@ export default function StockDashboard() {
           dispatchDate: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`,
           notes: invoice.notes || '',
           // Invoice lines are stored in the dispatch row shape; only the
-          // quantity field that matches the category is filled.
-          items: invoice.items.map((item) => ({
+          // quantity field that matches the category is filled. Charges
+          // (cartage) are billed, not loaded.
+          items: invoice.items.filter((item) => !isCharge(item)).map((item) => ({
             ...createDispatchItemRow(),
             itemId: String(item.itemId),
             itemLabel: item.itemLabel,
