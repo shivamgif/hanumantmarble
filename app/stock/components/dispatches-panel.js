@@ -130,6 +130,7 @@ export function DispatchesPanel({
                 const dateStr = new Date().toISOString().split('T')[0];
                 const columns = [
                   { id: 'date', label: 'Date', value: (row) => formatDateTime(row.dispatch_date || row.created_at) },
+                  { id: 'invoice', label: 'Invoice No', value: (row) => row.invoice_number || '' },
                   { id: 'shipment', label: 'Dispatch No', value: (row) => row.shipment_number || '' },
                   { id: 'customer', label: 'Customer Name', value: (row) => row.customer_name || '' },
                   { id: 'phone', label: 'Customer Phone', value: (row) => row.customer_phone_number || '' },
@@ -261,16 +262,16 @@ export function DispatchesPanel({
                         type="button"
                         onClick={() => openShipmentPreview('dispatch', d)}
                         className="min-w-0 flex-1 text-left"
-                        aria-label={`Open dispatch ${d.shipment_number}`}
+                        aria-label={`Open dispatch ${d.invoice_number || d.shipment_number}`}
                       >
-                        <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{d.customer_name || d.shipment_number}</p>
+                        <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{d.customer_name || d.invoice_number || d.shipment_number}</p>
                       </button>
                       <Badge variant={getStatusVariant(d.status)}>{d.status}</Badge>
                     </div>
                     <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px] text-slate-500 dark:text-slate-400">
                       {phoneLink(d)}
                       {d.customer_phone_number ? <span aria-hidden="true">·</span> : null}
-                      <span className="font-mono text-brand-primary">{d.shipment_number}</span>
+                      <span className="font-mono text-brand-primary">{d.invoice_number || d.shipment_number}</span>
                       <span aria-hidden="true">·</span>
                       <span className="tabular-nums">{dispatchWhen(d)}</span>
                     </p>
@@ -403,7 +404,7 @@ export function DispatchesPanel({
                     <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                       {phoneLink(d)}
                       {d.customer_phone_number ? <span aria-hidden="true">·</span> : null}
-                      <span className="font-mono text-brand-primary group-hover/row:underline underline-offset-2">{d.shipment_number}</span>
+                      <span className="font-mono text-brand-primary group-hover/row:underline underline-offset-2">{d.invoice_number || d.shipment_number}</span>
                       <span aria-hidden="true">·</span><span className="tabular-nums">{dispatchWhen(d)}</span>
                     </div>
                   </td>

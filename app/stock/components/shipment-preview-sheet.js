@@ -212,7 +212,7 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
     ? joinBits(r.sku, r.size_label || r.last_slab_size_label, r.division_name || r.brand_name) || previewState.description
     : (
       <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="font-mono text-xs text-brand-primary">{r.shipment_number || previewState.title}</span>
+        <span className="font-mono text-xs text-brand-primary" title={r.shipment_number || undefined}>{r.invoice_number || r.shipment_number || previewState.title}</span>
         {shipmentDate ? <><span aria-hidden="true">·</span><span>{formatDateTime(shipmentDate)}</span></> : null}
         {r.status ? <Badge variant={getStatusVariant(r.status)}>{r.status}</Badge> : null}
         {r.approval_status && r.approval_status !== r.status ? <Badge variant={getStatusVariant(r.approval_status)}>{String(r.approval_status).replace(/_/g, ' ')}</Badge> : null}

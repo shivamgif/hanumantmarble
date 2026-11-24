@@ -59,6 +59,7 @@ export const GET = stockRoute(async function GET(request) {
       const sp = `$${pIdx++}`;
       searchFilter = `AND (
         sos.shipment_number ILIKE ${sp}
+        OR COALESCE(si.invoice_number, sos.invoice_number) ILIKE ${sp}
         OR sos.status ILIKE ${sp}
         OR sos.approval_status ILIKE ${sp}
         OR sos.payment_status ILIKE ${sp}
@@ -88,6 +89,8 @@ export const GET = stockRoute(async function GET(request) {
       `SELECT
          sos.id,
          sos.shipment_number,
+         -- The number people quote: the linked tax invoice's, else the one typed in.
+         MAX(COALESCE(si.invoice_number, sos.invoice_number)) AS invoice_number,
          sos.truck_license_plate_snapshot AS truck_license_plate,
          sos.driver_name_snapshot AS driver_name,
          sos.created_at AS dispatch_date,
@@ -121,6 +124,7 @@ export const GET = stockRoute(async function GET(request) {
        LEFT JOIN stock_app_users submitter ON submitter.id = sos.submitted_by_user_id
        LEFT JOIN stock_app_users approver ON approver.id = sos.approved_by_user_id
        LEFT JOIN stock_customers c ON c.id = sos.customer_id
+       LEFT JOIN stock_sales_invoices si ON si.id = sos.sales_invoice_id
        WHERE 1=1 ${salespersonFilter} ${searchFilter}
        GROUP BY sos.id, sos.shipment_number, sos.truck_license_plate_snapshot, sos.driver_name_snapshot,
                 sos.created_at, sos.status, sos.approval_status, sos.payment_status, c.name, c.phone

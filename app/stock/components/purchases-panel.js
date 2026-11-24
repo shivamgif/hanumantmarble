@@ -605,11 +605,11 @@ export function PurchasesPanel({
                         type="button"
                         onClick={() => openShipmentPreview('arrival', a)}
                         className="min-w-0 flex-1 text-left"
-                        aria-label={`Open purchase ${a.shipment_number}`}
+                        aria-label={`Open purchase ${a.invoice_number || a.shipment_number}`}
                       >
-                        <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{a.supplier_name || a.shipment_number}</p>
+                        <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{a.supplier_name || a.invoice_number || a.shipment_number}</p>
                         <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                          <span className="font-mono text-brand-primary">{a.shipment_number}</span>
+                          <span className="font-mono text-brand-primary">{a.invoice_number || a.shipment_number}</span>
                           <span aria-hidden="true">·</span>
                           <span className="tabular-nums">{arrivalWhen(a)}</span>
                         </p>
@@ -748,8 +748,7 @@ export function PurchasesPanel({
                   <td className="px-4 py-2.5">
                     <div className="max-w-[240px] truncate text-sm font-medium text-slate-900 dark:text-slate-100" title={a.supplier_name || ''}>{a.supplier_name || '—'}</div>
                     <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400" title={a.invoice_date ? `${tc.invoice} ${formatDateTime(a.invoice_date)}` : undefined}>
-                      <span className="font-mono text-brand-primary group-hover/row:underline underline-offset-2">{a.shipment_number}</span>
-                      {a.invoice_number ? <><span aria-hidden="true">·</span><span>{a.invoice_number}</span></> : null}
+                      <span className="font-mono text-brand-primary group-hover/row:underline underline-offset-2">{a.invoice_number || a.shipment_number}</span>
                       <span aria-hidden="true">·</span><span className="tabular-nums">{arrivalWhen(a)}</span>
                     </div>
                   </td>
