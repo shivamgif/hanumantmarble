@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { accountsError, accountsGuard, loadBusiness } from '@/lib/accounts-db';
 import { stockRoute } from '@/lib/stock-workflow';
-import { buildGstr1, buildGstr3b } from '@/lib/gst-returns.mjs';
+import { buildGstr1, buildGstr3b, matchGstr2b, parseGstr2b } from '@/lib/gst-returns.mjs';
 
 const bad = (message) => Object.assign(new Error(message), { statusCode: 400 });
 // Documents dated in the month: [$2, $2 + 1 month).
@@ -23,7 +23,7 @@ export const GET = stockRoute(async function GET(request) {
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw bad('Pick a month.');
     const params = [business.id, `${month}-01`];
 
-    const [invoices, notes, purchases, supplierNotes, [expense]] = await Promise.all([
+    const [invoices, notes, purchases, supplierNotes, [expense], candidates, stored] = await Promise.all([
       sql(
         `SELECT invoice_number AS number, invoice_seq AS seq, invoice_date::text AS date, status, bill_to_gstin AS gstin,
                 bill_to_name AS name, bill_to_state_code AS pos, grand_total AS value, irn, items
@@ -67,6 +67,22 @@ export const GET = stockRoute(async function GET(request) {
          WHERE v.business_id = $1 AND ${IN_MONTH('v.voucher_date')}`,
         params
       ),
+      // 2B lists bills by the month the supplier filed them, which can be
+      // months after the bill: match against this and last financial year.
+      sql(
+        `SELECT s.id, s.invoice_number AS number, COALESCE(s.invoice_date::date, s.arrival_date::date)::text AS date,
+                sup.id AS "supplierId", sup.name AS supplier, sup.gst_number AS gstin, s.grand_total AS "grandTotal"
+         FROM stock_inbound_shipments s
+         JOIN stock_locations l ON l.id = s.destination_location_id
+         LEFT JOIN stock_suppliers sup ON sup.id = s.supplier_id
+         WHERE l.business_id = $1 AND s.approval_status = 'approved'
+           AND COALESCE(s.invoice_date::date, s.arrival_date::date) >= ($2::date - INTERVAL '2 years')`,
+        params
+      ),
+      sql(
+        `SELECT period, rows, uploaded_at FROM acc_gstr2b WHERE business_id = $1 AND period <= $2 ORDER BY period`,
+        [business.id, month]
+      ),
     ]);
 
     const gstr1 = buildGstr1({ sellerState: business.state_code, invoices, notes });
@@ -77,13 +93,55 @@ export const GET = stockRoute(async function GET(request) {
       supplierNotes,
       expenseItc: { taxable: 0, igst: Number(expense.igst), cgst: Number(expense.cgst), sgst: Number(expense.sgst) },
     });
+    const thisMonth = stored.find((row) => row.period === month);
+    const monthKeys = new Set(purchases.map((p) => `${p.number}|${p.date}`));
+    const gstr2b = thisMonth
+      ? {
+        uploadedAt: thisMonth.uploaded_at,
+        ...matchGstr2b({
+          rows: thisMonth.rows,
+          allRows: stored.flatMap((row) => row.rows),
+          purchases: candidates,
+          monthPurchases: candidates.filter((p) => monthKeys.has(`${p.number}|${p.date}`)),
+        }),
+      }
+      : null;
     return NextResponse.json({
       business: { id: business.id, legalName: business.legal_name, gstin: business.gstin, stateCode: business.state_code },
       month,
       gstr1,
       gstr3b,
+      gstr2b,
     });
   } catch (error) {
     return accountsError(error, 'Failed to build the GST returns');
+  }
+});
+
+/** POST { businessId, month, text } → store that month's GSTR-2B (replacing an earlier upload). */
+export const POST = stockRoute(async function POST(request) {
+  const gate = await accountsGuard(request, { write: true });
+  if (gate.error) return gate.error;
+  try {
+    const body = await request.json().catch(() => ({}));
+    const business = await loadBusiness(body.businessId);
+    let json;
+    try {
+      json = JSON.parse(String(body.text || ''));
+    } catch {
+      throw bad('That file is not JSON. Download GSTR-2B from the portal as JSON.');
+    }
+    const parsed = parseGstr2b(json);
+    if (parsed.gstin && parsed.gstin !== business.gstin) throw bad(`That GSTR-2B is for GSTIN ${parsed.gstin}, not ${business.gstin}.`);
+    const period = parsed.period || String(body.month || '');
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(period)) throw bad('Could not tell which month the file is for.');
+    await sql(
+      `INSERT INTO acc_gstr2b (business_id, period, rows, uploaded_by_user_id) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (business_id, period) DO UPDATE SET rows = EXCLUDED.rows, uploaded_by_user_id = EXCLUDED.uploaded_by_user_id, uploaded_at = NOW()`,
+      [business.id, period, JSON.stringify(parsed.rows), gate.appUser.id]
+    );
+    return NextResponse.json({ period, rows: parsed.rows.length }, { status: 201 });
+  } catch (error) {
+    return accountsError(error, 'Failed to import GSTR-2B');
   }
 });

@@ -606,9 +606,23 @@ function downloadCsv(name, columns, rows) {
  * GSTR-1 and GSTR-3B figures for one month, to tick against Tally and the
  * portal before the CA files. Nothing here is uploaded anywhere.
  */
-export function GstReturnsPanel({ business, refreshKey, t }) {
+export function GstReturnsPanel({ business, isApprover, refreshKey, onChanged, notify, t }) {
   const [month, setMonth] = useState(() => istToday().slice(0, 7));
   const state = useJson(`/api/stock/accounts/gst-returns?businessId=${business.id}&month=${month}`, refreshKey);
+  const [busy, setBusy] = useState(false);
+
+  async function post(url, body, success) {
+    setBusy(true);
+    try {
+      const json = await readJson(await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }));
+      notify({ type: 'success', message: success(json) });
+      onChanged();
+    } catch (err) {
+      notify({ type: 'error', message: err.message });
+    } finally {
+      setBusy(false);
+    }
+  }
   const data = state.data;
   const file = (part) => `${part}-${data?.business.gstin || business.id}-${month}.csv`;
   const th = 'px-2 py-1.5 text-right font-medium first:text-left';
@@ -716,6 +730,11 @@ export function GstReturnsPanel({ business, refreshKey, t }) {
               </tbody>
             </table>
             <p className="mt-2 text-xs text-slate-500">{t('gstPayableNote')}</p>
+            {data.gstr2b ? (
+              <p className="mt-1 text-xs text-slate-500">
+                {t('gstItcPer2b')}: IGST {money2(data.gstr2b.itc.igst)} · CGST {money2(data.gstr2b.itc.cgst)} · SGST {money2(data.gstr2b.itc.sgst)}
+              </p>
+            ) : null}
             {data.gstr3b.interStateUnregistered.length ? (
               <>
                 <h4 className="mt-4 text-sm font-semibold">3.2 {t('gstInterUnreg')}</h4>
@@ -729,8 +748,72 @@ export function GstReturnsPanel({ business, refreshKey, t }) {
               </>
             ) : null}
           </div>
+
+          <Gstr2bCard data={data} month={month} isApprover={isApprover} busy={busy} post={post} file={file} t={t} />
         </>
       )}
     </section>
+  );
+}
+
+/** GSTR-2B: upload the portal's file, see which supplier bills it confirms. */
+function Gstr2bCard({ data, month, isApprover, busy, post, file, t }) {
+  const result = data.gstr2b;
+  const billCols = [
+    { label: 'Status', get: 'status' }, { label: 'Supplier GSTIN', get: 'gstin' }, { label: 'Supplier', get: 'supplier' },
+    { label: 'Bill no', get: 'number' }, { label: 'Date', get: 'date' }, { label: 'Value in 2B', get: 'value2b' },
+    { label: 'Value in books', get: 'valueBooks' }, { label: 'Difference', get: 'diff' },
+  ];
+  const allRows = result ? [
+    ...result.matched.map(({ row, purchase }) => ({ status: 'Matched', gstin: row.gstin, supplier: purchase.supplier, number: row.number, date: row.date, value2b: row.value, valueBooks: purchase.grandTotal, diff: 0 })),
+    ...result.mismatched.map(({ row, purchase, diff }) => ({ status: 'Value differs', gstin: row.gstin, supplier: purchase.supplier, number: row.number, date: row.date, value2b: row.value, valueBooks: purchase.grandTotal, diff })),
+    ...result.only2b.map(({ row }) => ({ status: 'In 2B, not in books', gstin: row.gstin, supplier: row.tradeName, number: row.number, date: row.date, value2b: row.value })),
+    ...result.onlyBooks.map((p) => ({ status: 'In books, not in 2B', gstin: p.gstin, supplier: p.supplier, number: p.number, date: p.date, valueBooks: p.grandTotal })),
+  ] : [];
+
+  return (
+    <div className="glass-panel space-y-3 rounded-xl p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-semibold">GSTR-2B</h3>
+        {isApprover ? (
+          <label className={`${PILL_BUTTON_CLASS} cursor-pointer`}>
+            <Upload className="h-3.5 w-3.5" /> {t('gst2bUpload')}
+            <input type="file" accept=".json,application/json" hidden disabled={busy} onChange={async (e) => {
+              const picked = e.target.files?.[0];
+              e.target.value = '';
+              if (picked) await post('/api/stock/accounts/gst-returns', { businessId: data.business.id, month, text: await picked.text() }, (json) => t('gst2bImported', { rows: json.rows, period: json.period }));
+            }} />
+          </label>
+        ) : null}
+      </div>
+      {!result ? <p className="text-sm text-slate-500">{t('gst2bNone')}</p> : (
+        <>
+          <p className="text-xs text-slate-500">{t('gst2bSummary', {
+            matched: result.matched.length, mismatched: result.mismatched.length, only2b: result.only2b.length, onlyBooks: result.onlyBooks.length,
+          })}</p>
+          {result.onlyBooks.length ? <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">{t('gst2bHold')}</p> : null}
+          {result.only2b.some((x) => x.proposal) ? (
+            <ul className="space-y-1 text-sm">
+              {result.only2b.filter((x) => x.proposal).map(({ row, proposal }) => (
+                <li key={`${row.gstin}-${row.number}`} className="flex flex-wrap items-center gap-2">
+                  <span>{t('gst2bProposal', { supplier: proposal.supplier, gstin: proposal.gstin, bill: row.number })}</span>
+                  {isApprover ? (
+                    <button type="button" disabled={busy} className={PILL_BUTTON_CLASS}
+                      onClick={() => post('/api/stock/accounts/setup', { businessId: data.business.id, action: 'supplier_gstin', supplierId: proposal.supplierId, gstin: proposal.gstin }, () => t('supplierGstinSaved', { name: proposal.supplier }))}>
+                      {t('gst2bSetGstin')}
+                    </button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {allRows.length ? (
+            <button type="button" className={PILL_BUTTON_CLASS} onClick={() => downloadCsv(file('gstr2b-match'), billCols, allRows)}>
+              <Download className="h-3.5 w-3.5" /> CSV
+            </button>
+          ) : null}
+        </>
+      )}
+    </div>
   );
 }
