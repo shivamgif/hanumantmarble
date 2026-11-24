@@ -10,7 +10,7 @@ import { PageHeader } from '../components/page-header';
 import { SelectField } from '@/components/ui/select';
 import { StockToast } from '../components/stock-toast';
 import { useAccountsText, VoucherSheet } from '../components/voucher-form';
-import { DayBookPanel, GstReturnsPanel, LedgersPanel, OutstandingPanel, SetupPanel } from '../components/accounts-panels';
+import { DayBookPanel, GstReturnsPanel, LedgersPanel, OutstandingPanel, ReportsPanel, SetupPanel } from '../components/accounts-panels';
 
 /**
  * Books per business. Approvers run everything; read_only_admin reads;
@@ -60,7 +60,7 @@ export default function AccountsPage() {
 
   const business = businesses?.find((b) => b.id === businessId);
   const view = business ? { id: business.id, legal_name: business.legalName } : null;
-  const tabs = isSalesperson ? ['daybook'] : ['daybook', 'outstanding', 'ledgers', 'gst', 'setup'];
+  const tabs = isSalesperson ? ['daybook'] : ['daybook', 'outstanding', 'ledgers', 'reports', 'gst', 'setup'];
   const panelProps = { business: view, isApprover, refreshKey, onChanged: refresh, notify: setToast, t };
 
   return (
@@ -102,6 +102,7 @@ export default function AccountsPage() {
           {tab === 'daybook' ? <DayBookPanel {...panelProps} role={accessRole} me={accessUser?.id} /> : null}
           {tab === 'outstanding' ? <OutstandingPanel {...panelProps} /> : null}
           {tab === 'ledgers' ? <LedgersPanel {...panelProps} /> : null}
+          {tab === 'reports' ? <ReportsPanel {...panelProps} /> : null}
           {tab === 'gst' ? <GstReturnsPanel {...panelProps} /> : null}
           {tab === 'setup' ? <SetupPanel {...panelProps} /> : null}
           <VoucherSheet open={sheetOpen} onOpenChange={setSheetOpen} business={view} ledgers={ledgers} role={accessRole}

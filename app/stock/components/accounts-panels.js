@@ -817,3 +817,172 @@ function Gstr2bCard({ data, month, isApprover, busy, post, file, t }) {
     </div>
   );
 }
+
+// ─── Reports: P&L, balance sheet, trial balance, stock ───────────────────────
+
+const REPORTS = ['pl', 'bs', 'trial', 'stock'];
+/** 1 April of the financial year a date falls in. */
+const fyStart = (iso) => {
+  const [y, m] = iso.split('-').map(Number);
+  return `${m >= 4 ? y : y - 1}-04-01`;
+};
+
+/** Group blocks: group heading, its ledgers, its total. Rows also feed the CSV. */
+function GroupBlocks({ groups }) {
+  return groups.map((g) => (
+    <Fragment key={g.group}>
+      <tr className="font-medium"><td className="px-2 pt-2">{g.group}</td><td className="px-2 pt-2 text-right tabular-nums">{money2(g.total)}</td></tr>
+      {g.ledgers.map((l) => (
+        <tr key={`${g.group}-${l.name}`} className="text-slate-500"><td className="px-2 pl-6">{l.name}</td><td className="px-2 text-right tabular-nums">{money2(l.amount)}</td></tr>
+      ))}
+    </Fragment>
+  ));
+}
+const groupCsv = (side, groups) => groups.flatMap((g) => [
+  { side, group: g.group, ledger: '', amount: g.total },
+  ...g.ledgers.map((l) => ({ side, group: g.group, ledger: l.name, amount: l.amount })),
+]);
+const GROUP_CSV_COLS = [{ label: 'Side', get: 'side' }, { label: 'Group', get: 'group' }, { label: 'Ledger', get: 'ledger' }, { label: 'Amount', get: 'amount' }];
+
+/** Profit & loss, balance sheet, trial balance and stock summary for a business. */
+export function ReportsPanel({ business, refreshKey, t }) {
+  const today = istToday();
+  const [kind, setKind] = useState('pl');
+  const [range, setRange] = useState(() => ({ from: fyStart(today), to: today }));
+  const query = new URLSearchParams({ businessId: business.id, kind, to: range.to, ...(kind === 'pl' ? { from: range.from } : {}) });
+  const state = useJson(`/api/stock/accounts/reports?${query}`, refreshKey);
+  const data = state.data;
+  const file = `${kind}-${business.id}-${kind === 'pl' ? `${range.from}-to-` : ''}${range.to}.csv`;
+  const card = 'glass-panel overflow-x-auto rounded-xl p-4';
+  const totalRow = (label, amount, strong = true) => (
+    <tr className={`border-t border-border ${strong ? 'font-semibold' : ''}`}><td className="px-2 py-1.5">{label}</td><td className="px-2 py-1.5 text-right tabular-nums">{money2(amount)}</td></tr>
+  );
+  const warnings = data ? [
+    data.stockUncosted ? t('reportUncosted', { count: data.stockUncosted }) : null,
+    data.stockIsCompanyWide && ['pl', 'bs', 'stock'].includes(kind) ? t('reportStockCompanyWide') : null,
+  ].filter(Boolean) : [];
+
+  return (
+    <section className="space-y-4">
+      <div className="glass-panel flex flex-wrap items-end gap-3 rounded-xl p-4">
+        <div className="flex flex-wrap gap-2" role="tablist">
+          {REPORTS.map((key) => (
+            <button key={key} type="button" role="tab" aria-selected={kind === key} onClick={() => setKind(key)} className={kind === key ? PILL_PRIMARY_BUTTON_CLASS : PILL_BUTTON_CLASS}>
+              {t(`report_${key}`)}
+            </button>
+          ))}
+        </div>
+        {kind === 'pl' ? (
+          <label className="text-xs"><span className={FORM_LABEL_CLASS}>{t('from')}</span>
+            <input type="date" value={range.from} max={range.to} onChange={(e) => e.target.value && setRange((r) => ({ ...r, from: e.target.value }))} className={`${FORM_INPUT_CLASS} w-40`} /></label>
+        ) : null}
+        <label className="text-xs"><span className={FORM_LABEL_CLASS}>{kind === 'pl' ? t('to') : t('reportAsOn')}</span>
+          <input type="date" value={range.to} min={kind === 'pl' ? range.from : undefined} onChange={(e) => e.target.value && setRange((r) => ({ ...r, to: e.target.value }))} className={`${FORM_INPUT_CLASS} w-40`} /></label>
+      </div>
+
+      {!data ? <Empty state={state} t={t} /> : (
+        <>
+          {warnings.map((w) => <p key={w} className="rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">{w}</p>)}
+
+          {kind === 'pl' && data.pl ? (
+            <div className={card}>
+              <table className="w-full max-w-2xl text-sm">
+                <tbody>
+                  <tr><td className="px-2 pb-1 font-semibold" colSpan={2}>{t('reportTrading')}</td></tr>
+                  <tr><td className="px-2">{t('reportOpeningStock')}</td><td className="px-2 text-right tabular-nums">{money2(data.pl.trading.openingStock)}</td></tr>
+                  <GroupBlocks groups={data.pl.trading.purchases} />
+                  <GroupBlocks groups={data.pl.trading.directExpenses} />
+                  <GroupBlocks groups={data.pl.trading.sales} />
+                  <GroupBlocks groups={data.pl.trading.directIncome} />
+                  <tr><td className="px-2 pt-2">{t('reportClosingStock')}</td><td className="px-2 pt-2 text-right tabular-nums">{money2(data.pl.trading.closingStock)}</td></tr>
+                  {totalRow(t('reportGrossProfit'), data.pl.grossProfit)}
+                  <GroupBlocks groups={data.pl.indirectIncome} />
+                  <GroupBlocks groups={data.pl.indirectExpenses} />
+                  {totalRow(t('reportNetProfit'), data.pl.netProfit)}
+                </tbody>
+              </table>
+              <button type="button" className={`${PILL_BUTTON_CLASS} mt-3`} onClick={() => downloadCsv(file, GROUP_CSV_COLS, [
+                { side: 'Trading', group: 'Opening stock', ledger: '', amount: data.pl.trading.openingStock },
+                ...groupCsv('Trading (Dr)', [...data.pl.trading.purchases, ...data.pl.trading.directExpenses]),
+                ...groupCsv('Trading (Cr)', [...data.pl.trading.sales, ...data.pl.trading.directIncome]),
+                { side: 'Trading', group: 'Closing stock', ledger: '', amount: data.pl.trading.closingStock },
+                { side: '', group: 'Gross profit', ledger: '', amount: data.pl.grossProfit },
+                ...groupCsv('Income', data.pl.indirectIncome), ...groupCsv('Expense', data.pl.indirectExpenses),
+                { side: '', group: 'Net profit', ledger: '', amount: data.pl.netProfit },
+              ])}><Download className="h-3.5 w-3.5" /> CSV</button>
+            </div>
+          ) : null}
+
+          {kind === 'bs' && data.bs ? (
+            <div className={card}>
+              {data.bs.difference ? <p className="mb-2 rounded-lg bg-rose-500/10 px-3 py-2 text-xs text-rose-700">{t('reportDifference', { amount: money2(data.bs.difference) })}</p> : null}
+              <div className="grid gap-6 lg:grid-cols-2">
+                <table className="w-full text-sm">
+                  <tbody>
+                    <tr><td className="px-2 pb-1 font-semibold" colSpan={2}>{t('reportLiabilities')}</td></tr>
+                    <GroupBlocks groups={data.bs.liabilities} />
+                    <tr className="font-medium"><td className="px-2 pt-2">{t('reportProfitAccount')}</td><td className="px-2 pt-2 text-right tabular-nums">{money2(data.bs.profit)}</td></tr>
+                    {totalRow(t('gstTotal'), data.bs.totalLiabilities)}
+                  </tbody>
+                </table>
+                <table className="w-full text-sm">
+                  <tbody>
+                    <tr><td className="px-2 pb-1 font-semibold" colSpan={2}>{t('reportAssets')}</td></tr>
+                    <GroupBlocks groups={data.bs.assets} />
+                    {totalRow(t('gstTotal'), data.bs.totalAssets)}
+                  </tbody>
+                </table>
+              </div>
+              <button type="button" className={`${PILL_BUTTON_CLASS} mt-3`} onClick={() => downloadCsv(file, GROUP_CSV_COLS, [
+                ...groupCsv('Liabilities', data.bs.liabilities),
+                { side: 'Liabilities', group: 'Profit & Loss A/c', ledger: '', amount: data.bs.profit },
+                ...groupCsv('Assets', data.bs.assets),
+              ])}><Download className="h-3.5 w-3.5" /> CSV</button>
+            </div>
+          ) : null}
+
+          {kind === 'trial' && data.trial ? (
+            <div className={card}>
+              {data.trial.difference ? <p className="mb-2 rounded-lg bg-rose-500/10 px-3 py-2 text-xs text-rose-700">{t('reportDifference', { amount: money2(data.trial.difference) })}</p> : null}
+              <table className="w-full max-w-3xl text-sm">
+                <thead className="text-xs text-slate-500"><tr><th className="px-2 py-1 text-left">{t('ledger')}</th><th className="px-2 py-1 text-left">{t('group')}</th><th className="px-2 py-1 text-right">Dr</th><th className="px-2 py-1 text-right">Cr</th></tr></thead>
+                <tbody className="divide-y divide-border">
+                  {data.trial.rows.map((r) => (
+                    <tr key={`${r.group}-${r.name}`}><td className="px-2 py-1">{r.name}</td><td className="px-2 py-1 text-slate-500">{r.group}</td>
+                      <td className="px-2 py-1 text-right tabular-nums">{r.balance > 0 ? money2(r.balance) : ''}</td><td className="px-2 py-1 text-right tabular-nums">{r.balance < 0 ? money2(-r.balance) : ''}</td></tr>
+                  ))}
+                  <tr className="font-semibold"><td className="px-2 py-1.5" colSpan={2}>{t('gstTotal')}</td><td className="px-2 py-1.5 text-right tabular-nums">{money2(data.trial.debit)}</td><td className="px-2 py-1.5 text-right tabular-nums">{money2(data.trial.credit)}</td></tr>
+                </tbody>
+              </table>
+              <button type="button" className={`${PILL_BUTTON_CLASS} mt-3`} onClick={() => downloadCsv(file, [
+                { label: 'Ledger', get: 'name' }, { label: 'Group', get: 'group' }, { label: 'Primary group', get: 'primary' },
+                { label: 'Debit', get: (r) => (r.balance > 0 ? r.balance : '') }, { label: 'Credit', get: (r) => (r.balance < 0 ? -r.balance : '') },
+              ], data.trial.rows)}><Download className="h-3.5 w-3.5" /> CSV</button>
+            </div>
+          ) : null}
+
+          {kind === 'stock' && data.stock ? (
+            <div className={card}>
+              <p className="mb-2 text-xs text-slate-500">{t('reportStockHint')}</p>
+              <table className="w-full min-w-[36rem] text-sm">
+                <thead className="text-xs text-slate-500"><tr><th className="px-2 py-1 text-left">{t('reportItem')}</th><th className="px-2 py-1 text-right">{t('reportQty')}</th><th className="px-2 py-1 text-right">{t('reportBroken')}</th><th className="px-2 py-1 text-right">{t('reportRate')}</th><th className="px-2 py-1 text-right">{t('reportValue')}</th></tr></thead>
+                <tbody className="divide-y divide-border">
+                  {data.stock.rows.slice(0, 200).map((r) => (
+                    <tr key={r.itemId}><td className="px-2 py-1">{r.sku} · {r.name}</td><td className="px-2 py-1 text-right tabular-nums">{r.qty} {r.unit}</td>
+                      <td className="px-2 py-1 text-right tabular-nums">{r.broken || ''}</td><td className="px-2 py-1 text-right tabular-nums">{r.unitCost == null ? '—' : money2(r.unitCost)}</td><td className="px-2 py-1 text-right tabular-nums">{money2(r.value)}</td></tr>
+                  ))}
+                  <tr className="font-semibold"><td className="px-2 py-1.5" colSpan={4}>{t('gstTotal')}</td><td className="px-2 py-1.5 text-right tabular-nums">{money2(data.stock.total)}</td></tr>
+                </tbody>
+              </table>
+              {data.stock.rows.length > 200 ? <p className="mt-1 text-xs text-slate-500">{t('reportFirst200', { count: data.stock.rows.length })}</p> : null}
+              <button type="button" className={`${PILL_BUTTON_CLASS} mt-3`} onClick={() => downloadCsv(file, [
+                { label: 'SKU', get: 'sku' }, { label: 'Item', get: 'name' }, { label: 'Unit', get: 'unit' }, { label: 'Quantity', get: 'qty' },
+                { label: 'Broken (nil value)', get: 'broken' }, { label: 'Rate (weighted average)', get: (r) => r.unitCost ?? '' }, { label: 'Value', get: 'value' },
+              ], data.stock.rows)}><Download className="h-3.5 w-3.5" /> CSV</button>
+            </div>
+          ) : null}
+        </>
+      )}
+    </section>
+  );
+}
