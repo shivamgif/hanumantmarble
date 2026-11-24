@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { istToday } from '@/lib/attendance.mjs';
-import { accountsError, accountsGuard, createVoucher, loadBusiness, systemLedgers, withBooks } from '@/lib/accounts-db';
+import { accountsError, accountsGuard, createVoucher, loadBusiness, systemLedgers, withBooks, withTds } from '@/lib/accounts-db';
 import {
   assertBalanced, CASH_BANK_GROUPS, expenseLines, PARTY_GROUPS, settlementLines, toPaise, VOUCHER_TYPES,
 } from '@/lib/accounts.mjs';
@@ -151,18 +151,35 @@ export const POST = stockRoute(async function POST(request) {
     if (date < business.books_start_date) throw bad(`Books start on ${business.books_start_date}; earlier entries belong in the opening balances.`);
     if (date > istToday()) throw bad('A voucher cannot be dated in the future.');
 
-    const { lines, partyLedgerId } = await buildLines(business, body, gate.role);
-    const voucher = await withBooks(gate.appUser, (tx) => createVoucher(tx, {
-      businessId: business.id,
-      type: body.type,
-      date,
-      reference: String(body.reference || '').trim().slice(0, 100) || null,
-      narration: String(body.narration || '').trim().slice(0, 500) || null,
-      lines,
-      partyLedgerId,
-      createdBy: gate.appUser.id,
-      status: 'draft',
-    }));
+    const built = await buildLines(business, body, gate.role);
+    const voucher = await withBooks(gate.appUser, async (tx) => {
+      // Paying a party whose bills attract TDS (contractor, rent, fees,
+      // commission): the amount is what is settled, the bank pays it less
+      // the tax, and the tax goes to the section's TDS Payable.
+      const { lines, tds } = body.type === 'payment' && built.partyLedgerId
+        ? await withTds(tx, {
+          businessId: business.id,
+          partyLedgerId: built.partyLedgerId,
+          date,
+          base: Number(body.amount),
+          adjustLedgerId: Number(body.cashBankLedgerId),
+          sections: ['194C', '194H', '194I(a)', '194I(b)', '194J(a)', '194J(b)'],
+          lines: built.lines,
+        })
+        : { lines: built.lines, tds: null };
+      return createVoucher(tx, {
+        businessId: business.id,
+        type: body.type,
+        date,
+        reference: String(body.reference || '').trim().slice(0, 100) || null,
+        narration: String(body.narration || '').trim().slice(0, 500) || null,
+        lines,
+        partyLedgerId: built.partyLedgerId,
+        createdBy: gate.appUser.id,
+        status: 'draft',
+        tds,
+      });
+    });
     return NextResponse.json({ voucher }, { status: 201 });
   } catch (error) {
     return accountsError(error, 'Failed to save voucher');

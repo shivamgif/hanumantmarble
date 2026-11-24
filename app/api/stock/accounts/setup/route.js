@@ -171,7 +171,8 @@ export const POST = stockRoute(async function POST(request) {
       const shipments = await sql(
         `SELECT s.id FROM stock_inbound_shipments s JOIN stock_locations l ON l.id = s.destination_location_id
          WHERE l.business_id = $1 AND COALESCE(s.invoice_date::date, s.arrival_date::date) >= $2
-         ORDER BY s.id`,
+         -- In date order, so year-to-date TDS thresholds build up as the bills did.
+         ORDER BY COALESCE(s.invoice_date::date, s.arrival_date::date), s.id`,
         [business.id, business.books_start_date]
       );
       const failed = [];

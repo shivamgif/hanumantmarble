@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { istToday } from '@/lib/attendance.mjs';
 import { AGE_BUCKETS, GROUPS, PARTY_GROUPS, VOUCHER_TYPES } from '@/lib/accounts.mjs';
 import { toCsv } from '@/lib/gst-returns.mjs';
+import { TDS_SECTIONS } from '@/lib/tds.mjs';
 import { GST_STATES } from '@/lib/gst-invoice.mjs';
 import { CLASSES, ERROR_BOX_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../lib/stock-utils';
 import { formatRupees } from './invoice-form';
@@ -327,7 +328,7 @@ export function LedgersPanel({ business, isApprover, refreshKey, onChanged, noti
         {!ledgers.length ? <Empty state={state} t={t} /> : (
           <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-muted/60 text-left text-xs text-slate-500">
-              <tr><th className="px-3 py-2">{t('ledger')}</th><th className="px-2">{t('group')}</th><th className="px-2">{t('creditLimit')}</th><th className="px-2">{t('creditDays')}</th><th className="px-2 text-right">{t('balance')}</th><th className="px-2" /></tr>
+              <tr><th className="px-3 py-2">{t('ledger')}</th><th className="px-2">{t('group')}</th><th className="px-2">{t('creditLimit')}</th><th className="px-2">{t('creditDays')}</th><th className="px-2">{t('panTds')}</th><th className="px-2 text-right">{t('balance')}</th><th className="px-2" /></tr>
             </thead>
             <tbody>
               {ledgers.map((l) => (
@@ -338,11 +339,21 @@ export function LedgersPanel({ business, isApprover, refreshKey, onChanged, noti
                     <>
                       <td className="px-2"><input type="number" min="0" value={editing.creditLimit} onChange={(e) => setEditing({ ...editing, creditLimit: e.target.value })} className={`${FORM_INPUT_CLASS} w-28`} /></td>
                       <td className="px-2"><input type="number" min="0" max="365" value={editing.creditDays} onChange={(e) => setEditing({ ...editing, creditDays: e.target.value })} className={`${FORM_INPUT_CLASS} w-20`} /></td>
+                      <td className="px-2">
+                        <div className="flex gap-1">
+                          <input value={editing.pan} maxLength={10} placeholder="PAN" aria-label="PAN" onChange={(e) => setEditing({ ...editing, pan: e.target.value.toUpperCase() })} className={`${FORM_INPUT_CLASS} w-28 font-mono uppercase`} />
+                          <select value={editing.tdsSection} aria-label={t('tdsSection')} onChange={(e) => setEditing({ ...editing, tdsSection: e.target.value })} className={`${FORM_INPUT_CLASS} w-40`}>
+                            <option value="">{t('noTds')}</option>
+                            {Object.entries(TDS_SECTIONS).map(([key, rule]) => <option key={key} value={key}>{key} · {rule.label}</option>)}
+                          </select>
+                        </div>
+                      </td>
                     </>
                   ) : (
                     <>
                       <td className="px-2 tabular-nums">{Number(l.credit_limit) ? formatRupees(l.credit_limit) : '—'}</td>
                       <td className="px-2 tabular-nums">{Number(l.credit_days) || '—'}</td>
+                      <td className="px-2 text-xs text-slate-500">{[l.pan, l.tds_section].filter(Boolean).join(' · ') || '—'}</td>
                     </>
                   )}
                   <td className="px-2 text-right tabular-nums">{drCr(l.balance, t)}</td>
@@ -350,10 +361,10 @@ export function LedgersPanel({ business, isApprover, refreshKey, onChanged, noti
                     <div className="flex justify-end gap-1">
                       {isApprover && PARTY_GROUPS.includes(l.group_name) ? (editing?.id === l.id ? (
                         <button type="button" className={PILL_PRIMARY_BUTTON_CLASS}
-                          onClick={() => send('PATCH', { ledgerId: l.id, creditLimit: editing.creditLimit, creditDays: editing.creditDays }, `${l.name} ✓`)}>{t('save')}</button>
+                          onClick={() => send('PATCH', { ledgerId: l.id, creditLimit: editing.creditLimit, creditDays: editing.creditDays, pan: editing.pan, tdsSection: editing.tdsSection }, `${l.name} ✓`)}>{t('save')}</button>
                       ) : (
                         <button type="button" className={PILL_BUTTON_CLASS}
-                          onClick={() => setEditing({ id: l.id, creditLimit: l.credit_limit, creditDays: l.credit_days })}>{t('creditLimit')}</button>
+                          onClick={() => setEditing({ id: l.id, creditLimit: l.credit_limit, creditDays: l.credit_days, pan: l.pan || '', tdsSection: l.tds_section || '' })}>{t('editParty')}</button>
                       )) : null}
                       <Link href={`/stock/accounts/ledger/${l.id}`} className={PILL_BUTTON_CLASS}>{t('statement')}</Link>
                     </div>
@@ -820,7 +831,7 @@ function Gstr2bCard({ data, month, isApprover, busy, post, file, t }) {
 
 // ─── Reports: P&L, balance sheet, trial balance, stock ───────────────────────
 
-const REPORTS = ['pl', 'bs', 'trial', 'stock'];
+const REPORTS = ['pl', 'bs', 'trial', 'stock', 'tds'];
 /** 1 April of the financial year a date falls in. */
 const fyStart = (iso) => {
   const [y, m] = iso.split('-').map(Number);
@@ -849,10 +860,11 @@ export function ReportsPanel({ business, refreshKey, t }) {
   const today = istToday();
   const [kind, setKind] = useState('pl');
   const [range, setRange] = useState(() => ({ from: fyStart(today), to: today }));
-  const query = new URLSearchParams({ businessId: business.id, kind, to: range.to, ...(kind === 'pl' ? { from: range.from } : {}) });
+  const ranged = kind === 'pl' || kind === 'tds';
+  const query = new URLSearchParams({ businessId: business.id, kind, to: range.to, ...(ranged ? { from: range.from } : {}) });
   const state = useJson(`/api/stock/accounts/reports?${query}`, refreshKey);
   const data = state.data;
-  const file = `${kind}-${business.id}-${kind === 'pl' ? `${range.from}-to-` : ''}${range.to}.csv`;
+  const file = `${kind}-${business.id}-${ranged ? `${range.from}-to-` : ''}${range.to}.csv`;
   const card = 'glass-panel overflow-x-auto rounded-xl p-4';
   const totalRow = (label, amount, strong = true) => (
     <tr className={`border-t border-border ${strong ? 'font-semibold' : ''}`}><td className="px-2 py-1.5">{label}</td><td className="px-2 py-1.5 text-right tabular-nums">{money2(amount)}</td></tr>
@@ -872,12 +884,12 @@ export function ReportsPanel({ business, refreshKey, t }) {
             </button>
           ))}
         </div>
-        {kind === 'pl' ? (
+        {ranged ? (
           <label className="text-xs"><span className={FORM_LABEL_CLASS}>{t('from')}</span>
             <input type="date" value={range.from} max={range.to} onChange={(e) => e.target.value && setRange((r) => ({ ...r, from: e.target.value }))} className={`${FORM_INPUT_CLASS} w-40`} /></label>
         ) : null}
-        <label className="text-xs"><span className={FORM_LABEL_CLASS}>{kind === 'pl' ? t('to') : t('reportAsOn')}</span>
-          <input type="date" value={range.to} min={kind === 'pl' ? range.from : undefined} onChange={(e) => e.target.value && setRange((r) => ({ ...r, to: e.target.value }))} className={`${FORM_INPUT_CLASS} w-40`} /></label>
+        <label className="text-xs"><span className={FORM_LABEL_CLASS}>{ranged ? t('to') : t('reportAsOn')}</span>
+          <input type="date" value={range.to} min={ranged ? range.from : undefined} onChange={(e) => e.target.value && setRange((r) => ({ ...r, to: e.target.value }))} className={`${FORM_INPUT_CLASS} w-40`} /></label>
       </div>
 
       {!data ? <Empty state={state} t={t} /> : (
@@ -958,6 +970,49 @@ export function ReportsPanel({ business, refreshKey, t }) {
                 { label: 'Ledger', get: 'name' }, { label: 'Group', get: 'group' }, { label: 'Primary group', get: 'primary' },
                 { label: 'Debit', get: (r) => (r.balance > 0 ? r.balance : '') }, { label: 'Credit', get: (r) => (r.balance < 0 ? -r.balance : '') },
               ], data.trial.rows)}><Download className="h-3.5 w-3.5" /> CSV</button>
+            </div>
+          ) : null}
+
+          {kind === 'tds' && data.tds ? (
+            <div className={card}>
+              <p className="mb-2 text-xs text-slate-500">{t('tdsHint')}</p>
+              <h4 className="text-sm font-semibold">{t('tdsChallans')}</h4>
+              {data.tds.challans.length ? (
+                <table className="mb-4 mt-1 w-full max-w-xl text-sm">
+                  <thead className="text-xs text-slate-500"><tr><th className="px-2 py-1 text-left">{t('gstMonth')}</th><th className="px-2 py-1 text-left">{t('tdsSection')}</th><th className="px-2 py-1 text-right">TDS</th><th className="px-2 py-1 text-right">{t('tdsDue')}</th></tr></thead>
+                  <tbody className="divide-y divide-border">
+                    {data.tds.challans.map((c) => (
+                      <tr key={`${c.month}-${c.section}`}><td className="px-2 py-1">{c.month}</td><td className="px-2 py-1">{c.section}</td><td className="px-2 py-1 text-right tabular-nums">{money2(c.tds)}</td><td className="px-2 py-1 text-right">{c.due}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : <p className="mb-4 text-sm text-slate-400">—</p>}
+              <h4 className="text-sm font-semibold">{t('tdsDeductees')}</h4>
+              {data.tds.rows.length ? (
+                <table className="mt-1 w-full min-w-[40rem] text-sm">
+                  <thead className="text-xs text-slate-500"><tr><th className="px-2 py-1 text-left">{t('date')}</th><th className="px-2 py-1 text-left">{t('party')}</th><th className="px-2 py-1 text-left">PAN</th><th className="px-2 py-1 text-left">{t('tdsSection')}</th><th className="px-2 py-1 text-right">{t('tdsBase')}</th><th className="px-2 py-1 text-right">%</th><th className="px-2 py-1 text-right">TDS</th></tr></thead>
+                  <tbody className="divide-y divide-border">
+                    {data.tds.rows.map((r) => (
+                      <tr key={`${r.voucher_number}-${r.date}`}><td className="px-2 py-1">{r.date}</td><td className="px-2 py-1">{r.party}</td><td className="px-2 py-1 font-mono text-xs">{r.pan || '—'}</td><td className="px-2 py-1">{r.section}</td>
+                        <td className="px-2 py-1 text-right tabular-nums">{money2(r.base)}</td><td className="px-2 py-1 text-right">{r.rate}</td><td className="px-2 py-1 text-right tabular-nums">{money2(r.tds)}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : <p className="text-sm text-slate-400">—</p>}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {data.tds.rows.length ? (
+                  <button type="button" className={PILL_BUTTON_CLASS} onClick={() => downloadCsv(`tds-26q-${range.from}-to-${range.to}.csv`, [
+                    { label: 'Quarter', get: 'quarter' }, { label: 'Date', get: 'date' }, { label: 'Voucher', get: 'voucher_number' },
+                    { label: 'Deductee', get: 'party' }, { label: 'PAN', get: 'pan' }, { label: 'Section', get: 'section' },
+                    { label: 'Amount paid/credited', get: 'base' }, { label: 'Rate %', get: 'rate' }, { label: 'TDS', get: 'tds' },
+                  ], data.tds.rows)}><Download className="h-3.5 w-3.5" /> 26Q CSV</button>
+                ) : null}
+                {data.tds.challans.length ? (
+                  <button type="button" className={PILL_BUTTON_CLASS} onClick={() => downloadCsv(`tds-challans-${range.from}-to-${range.to}.csv`, [
+                    { label: 'Month', get: 'month' }, { label: 'Section', get: 'section' }, { label: 'TDS', get: 'tds' }, { label: 'Due by', get: 'due' },
+                  ], data.tds.challans)}><Download className="h-3.5 w-3.5" /> {t('tdsChallans')} CSV</button>
+                ) : null}
+              </div>
             </div>
           ) : null}
 

@@ -3,6 +3,7 @@ import { sql } from '@/lib/db';
 import { accountsError, accountsGuard, loadBusiness, loadLedgers, withBooks } from '@/lib/accounts-db';
 import { canonicalGroup, CASH_BANK_GROUPS, PARTY_GROUPS } from '@/lib/accounts.mjs';
 import { stockRoute } from '@/lib/stock-workflow';
+import { isValidPan, TDS_SECTIONS } from '@/lib/tds.mjs';
 
 /**
  * Ledgers of one business with their posted balances. Salespeople get only
@@ -41,6 +42,14 @@ function readLedgerFields(body, { partial }) {
   if (!partial || has('creditDays')) fields.credit_days = Math.max(0, Math.min(365, Number.parseInt(body.creditDays, 10) || 0));
   if (!partial || has('phone')) fields.phone = String(body.phone || '').trim() || null;
   if (!partial || has('gstin')) fields.gstin = String(body.gstin || '').trim().toUpperCase() || null;
+  if (!partial || has('pan')) {
+    fields.pan = String(body.pan || '').trim().toUpperCase() || null;
+    if (fields.pan && !isValidPan(fields.pan)) throw Object.assign(new Error('PAN is 10 characters: 5 letters, 4 digits, 1 letter.'), { statusCode: 400 });
+  }
+  if (!partial || has('tdsSection')) {
+    fields.tds_section = String(body.tdsSection || '') || null;
+    if (fields.tds_section && !TDS_SECTIONS[fields.tds_section]) throw Object.assign(new Error('Pick a TDS section from the list.'), { statusCode: 400 });
+  }
   if (partial && has('isActive')) fields.is_active = Boolean(body.isActive);
   return fields;
 }
