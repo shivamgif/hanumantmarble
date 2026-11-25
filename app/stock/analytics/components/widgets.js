@@ -29,7 +29,6 @@ import {
   Truck,
   Wallet,
   Tags,
-  Copy,
   PhoneCall,
   Trophy,
 } from 'lucide-react';

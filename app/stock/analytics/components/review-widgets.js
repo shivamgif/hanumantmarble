@@ -3,7 +3,7 @@
 // The admin page's review tabs. Kept out of widgets.js so the admin page
 // doesn't pull recharts (about 130 KB gzipped) in for two tables.
 import { Fragment, useState } from 'react';
-import { ChevronDown, Truck } from 'lucide-react';
+import { ChevronDown, Copy, Truck } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import {
