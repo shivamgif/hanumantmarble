@@ -122,7 +122,8 @@ async function searchRecords(q, { signal, withInvoices }) {
 }
 
 // ─── SearchBox ────────────────────────────────────────────────────────────────
-function SearchBox({ dashboardSearchRef, placeholder, accessRole, primaryModifierLabel }) {
+// `idSuffix` keeps ids unique when the phone header renders a second box.
+function SearchBox({ dashboardSearchRef, placeholder, accessRole, primaryModifierLabel, idSuffix = '', autoFocus = false, onPick }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
@@ -171,7 +172,8 @@ function SearchBox({ dashboardSearchRef, placeholder, accessRole, primaryModifie
     router.push(item.href);
     close();
     dashboardSearchRef?.current?.blur();
-  }, [router, close, dashboardSearchRef]);
+    onPick?.();
+  }, [router, close, dashboardSearchRef, onPick]);
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Escape') {
@@ -217,12 +219,13 @@ function SearchBox({ dashboardSearchRef, placeholder, accessRole, primaryModifie
       <Search className="pointer-events-none absolute left-3 h-4 w-4 text-slate-400 group-focus-within:text-slate-700 dark:group-focus-within:text-slate-200 transition-colors" />
       <input
         ref={dashboardSearchRef}
-        id="topbar-search"
+        id={`topbar-search${idSuffix}`}
+        autoFocus={autoFocus}
         type="text"
         role="combobox"
         aria-expanded={open}
         aria-autocomplete="list"
-        aria-controls="topbar-search-listbox"
+        aria-controls={`topbar-search-listbox${idSuffix}`}
         autoComplete="off"
         placeholder={placeholder}
         value={query}
@@ -244,10 +247,12 @@ function SearchBox({ dashboardSearchRef, placeholder, accessRole, primaryModifie
           <X className="h-3.5 w-3.5" />
         </button>
       ) : (
-        <span className="pointer-events-none absolute right-2.5 flex gap-1" aria-hidden="true">
-          <Kbd>{primaryModifierLabel.replace('+', '').trim()}</Kbd>
-          <Kbd>K</Kbd>
-        </span>
+        idSuffix ? null : (
+          <span className="pointer-events-none absolute right-2.5 flex gap-1" aria-hidden="true">
+            <Kbd>{primaryModifierLabel.replace('+', '').trim()}</Kbd>
+            <Kbd>K</Kbd>
+          </span>
+        )
       )}
       {open && (
         <SearchDropdown
@@ -258,6 +263,7 @@ function SearchBox({ dashboardSearchRef, placeholder, accessRole, primaryModifie
           activeIndex={activeIndex}
           setActiveIndex={setActiveIndex}
           isApple={primaryModifierLabel.startsWith('CMD')}
+          listboxId={`topbar-search-listbox${idSuffix}`}
         />
       )}
     </div>
@@ -273,11 +279,11 @@ function Kbd({ children }) {
 }
 
 // ─── SearchDropdown ───────────────────────────────────────────────────────────
-function SearchDropdown({ query, results, searching, onSelect, activeIndex, setActiveIndex, isApple }) {
+function SearchDropdown({ query, results, searching, onSelect, activeIndex, setActiveIndex, isApple, listboxId }) {
   return (
     <div
-      id="topbar-search-listbox"
-      className="absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[320px] glass overflow-hidden rounded-lg border origin-top animate-in fade-in-0 zoom-in-95 duration-150"
+      id={listboxId}
+      className="absolute left-0 top-[calc(100%+8px)] z-50 w-full sm:min-w-[320px] glass overflow-hidden rounded-lg border origin-top animate-in fade-in-0 zoom-in-95 duration-150"
       role="listbox"
       aria-label="Search results"
     >
@@ -441,8 +447,10 @@ export default function StockTopbar({
   const mod = primaryModifierLabel.replace('+', '').trim();
   const hi = language === 'hi';
   const [moreOpen, setMoreOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const mobileSearchRef = useRef(null);
   const pathname = usePathname();
-  useEffect(() => { setMoreOpen(false); }, [pathname]);
+  useEffect(() => { setMoreOpen(false); setSearchOpen(false); }, [pathname]);
   const tabs = navigationItems.slice(0, MOBILE_TABS);
   const overflow = navigationItems.slice(MOBILE_TABS);
   const overflowActive = overflow.some((item) => isActiveRoute(item.href));
@@ -490,7 +498,18 @@ export default function StockTopbar({
               </div>
             </Link>
 
-            {/* Only notifications up here; language, theme and log out live under More. */}
+            {/* Search and notifications up here; language, theme and log out live under More. */}
+            <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setSearchOpen((v) => !v)}
+              aria-label={searchOpen ? 'Close search' : 'Search'}
+              aria-expanded={searchOpen}
+              aria-controls="topbar-search-mobile-row"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors active:bg-muted hover:bg-muted dark:text-slate-400 focus-ring"
+            >
+              {searchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
+            </button>
             <button
               type="button"
               onClick={() => setNotificationOpen(true)}
@@ -505,7 +524,22 @@ export default function StockTopbar({
                 </span>
               )}
             </button>
+            </div>
           </div>
+
+          {searchOpen ? (
+            <div id="topbar-search-mobile-row" className="px-4 pb-2">
+              <SearchBox
+                dashboardSearchRef={mobileSearchRef}
+                placeholder={t('searchHint')}
+                accessRole={accessRole}
+                primaryModifierLabel={primaryModifierLabel}
+                idSuffix="-mobile"
+                autoFocus
+                onPick={() => setSearchOpen(false)}
+              />
+            </div>
+          ) : null}
 
           {/* Tab-bar pattern: equal columns, icon over a short label, so every
               entry is named, nothing shifts between pages and the row never
