@@ -32,17 +32,17 @@ export function MonthPicker({ value, onChange, max, className, disabled }) {
       }}
     >
       <PopoverTrigger asChild>
-        <Button variant="outline" disabled={disabled} className={cn("justify-start rounded-xl text-left font-semibold", className)}>
+        <Button variant="outline" disabled={disabled} className={cn("justify-start rounded-lg text-left font-semibold", className)}>
           <CalendarIcon className="mr-2 h-4 w-4" />
           {selectedYear ? `${MONTHS[selectedMonth - 1]} ${selectedYear}` : "Pick a month"}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-3" align="start">
+      <PopoverContent className="w-auto p-4" align="start">
         <div className="flex items-center justify-between pb-2">
           <button
             type="button"
             onClick={() => setYear((y) => y - 1)}
-            className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted"
+            className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted"
             aria-label="Previous year"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -52,7 +52,7 @@ export function MonthPicker({ value, onChange, max, className, disabled }) {
             type="button"
             onClick={() => setYear((y) => y + 1)}
             disabled={Boolean(max) && year >= maxYear}
-            className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent"
+            className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent"
             aria-label="Next year"
           >
             <ChevronRight className="h-4 w-4" />
@@ -72,8 +72,8 @@ export function MonthPicker({ value, onChange, max, className, disabled }) {
                   setOpen(false)
                 }}
                 className={cn(
-                  "rounded-lg px-3 py-2 text-xs font-bold transition hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent",
-                  isSelected && "bg-primary text-primary-foreground hover:bg-primary"
+                  "rounded-lg px-4 py-2 text-xs font-bold transition hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent",
+                  isSelected && "bg-foreground text-background hover:bg-foreground"
                 )}
               >
                 {label}

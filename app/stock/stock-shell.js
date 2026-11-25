@@ -30,7 +30,7 @@ function FullScreenSpinner({ label }) {
   return (
     <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-[#0b0f1a]">
       <div className="flex flex-col items-center gap-4" role="status" aria-live="polite">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-brand-primary" />
+        <div className="h-8 w-8 animate-spin rounded-full border border-border border-t-foreground" />
         <p className="text-sm text-slate-400 dark:text-slate-500">{label}</p>
       </div>
     </div>
@@ -73,19 +73,19 @@ export default function StockShell({ children }) {
   const t = (key) => getTranslation(`stock.layout.${key}`, language);
   const tc = {
     brandFull: accessTenant?.name || PRODUCT_NAME,
-    stockAccess: language === 'hi' ? 'स्टॉक प्रबंधन पहुंच' : 'Stock management access',
+    stockAccess: language === 'hi' ? 'कार्यक्षेत्र पहुंच' : 'Workspace access',
     openNotifications: language === 'hi' ? 'सूचनाएं खोलें' : 'Open notifications',
     switchToLight: language === 'hi' ? 'लाइट थीम में बदलें' : 'Switch to light theme',
     switchToDark: language === 'hi' ? 'डार्क थीम में बदलें' : 'Switch to dark theme',
     light: language === 'hi' ? 'लाइट' : 'Light',
     dark: language === 'hi' ? 'डार्क' : 'Dark',
-    dashboardAria: `${accessTenant?.name || PRODUCT_NAME} ${language === 'hi' ? 'स्टॉक डैशबोर्ड' : 'stock dashboard'}`,
-    mobileNav: language === 'hi' ? 'मोबाइल स्टॉक नेविगेशन' : 'Mobile stock navigation',
+    dashboardAria: `${accessTenant?.name || PRODUCT_NAME} ${language === 'hi' ? 'डैशबोर्ड' : 'dashboard'}`,
+    mobileNav: language === 'hi' ? 'मोबाइल नेविगेशन' : 'Mobile navigation',
     adminHub: language === 'hi' ? 'एडमिन हब' : 'Admin Hub',
     dashboard: language === 'hi' ? 'डैशबोर्ड' : 'Dashboard',
     analytics: language === 'hi' ? 'विश्लेषण' : 'Analytics',
     notifications: language === 'hi' ? 'सूचनाएं' : 'Notifications',
-    notificationsSubtitle: language === 'hi' ? 'स्टॉक वर्कफ़्लो से संचालन अलर्ट और शिपमेंट अपडेट।' : 'Operational alerts and shipment updates from stock workflow.',
+    notificationsSubtitle: language === 'hi' ? 'संचालन अलर्ट और शिपमेंट अपडेट।' : 'Operational alerts and shipment updates.',
     unread: language === 'hi' ? 'अपठित' : 'unread',
     hideDebug: language === 'hi' ? 'डिबग छिपाएं' : 'Hide Debug',
     debug: language === 'hi' ? 'डिबग' : 'Debug',
@@ -184,8 +184,8 @@ export default function StockShell({ children }) {
     return (
       <div className="relative min-h-screen overflow-hidden bg-background px-4 py-10 text-foreground">
         <div className="relative z-10 flex min-h-[calc(100vh-5rem)] items-center justify-center">
-          <div className="max-w-xl rounded-xl border border-border bg-card p-8 shadow-card">
-            <div className="mb-5 flex items-center gap-3">
+          <div className="max-w-xl rounded-lg border border-border bg-card p-8 shadow-card">
+            <div className="mb-6 flex items-center gap-2">
               <CompanyMark name={PRODUCT_NAME} size={40} priority />
               <div>
                 <p className="text-sm font-semibold text-foreground">{PRODUCT_NAME}</p>
@@ -193,10 +193,10 @@ export default function StockShell({ children }) {
               </div>
             </div>
             <h1 className="page-title">{t('waitingApproval')}</h1>
-            <p className="mt-3 text-muted-foreground">{accessMessage}</p>
-            <p className="mt-3 text-sm text-muted-foreground">{t('waitingDetails')}</p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button type="button" onClick={handleStockLogout} className="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted">{t('logout')}</button>
+            <p className="mt-2 text-muted-foreground">{accessMessage}</p>
+            <p className="mt-2 text-sm text-muted-foreground">{t('waitingDetails')}</p>
+            <div className="mt-6 flex flex-wrap gap-2">
+              <button type="button" onClick={handleStockLogout} className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted">{t('logout')}</button>
             </div>
           </div>
         </div>
@@ -268,8 +268,8 @@ export default function StockShell({ children }) {
             <span className="font-semibold text-foreground">{tc.brandFull}</span>
             <span aria-hidden="true">·</span>
             <span>{t('footerTitle')}</span>
-            <button type="button" onClick={() => setShortcutsOpen(true)} className="ml-auto hidden rounded hover:text-foreground lg:inline">
-              {language === 'hi' ? 'कीबोर्ड शॉर्टकट' : 'Keyboard shortcuts'} <kbd className="ml-1 rounded border border-border bg-card px-1 font-sans">?</kbd>
+            <button type="button" onClick={() => setShortcutsOpen(true)} className="ml-auto hidden rounded-lg hover:text-foreground lg:inline">
+              {language === 'hi' ? 'कीबोर्ड शॉर्टकट' : 'Keyboard shortcuts'} <kbd className="ml-1 rounded-lg border border-border bg-card px-1 font-sans">?</kbd>
             </button>
           </p>
         </footer>

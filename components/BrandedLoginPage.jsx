@@ -14,7 +14,7 @@ import { LoginIllustration } from '@/components/login-illustration';
 // Setup details help a developer and confuse a customer: show them in dev only.
 const devHint = (hint) => (process.env.NODE_ENV === 'production' ? '' : ` (dev: ${hint})`);
 
-const FEATURES = ['Stock, dispatch and showrooms', 'GST invoices, e-invoices and e-way bills', 'Books, attendance and insights'];
+const FEATURES = ['Inventory, dispatch and showrooms', 'GST invoices, e-invoices and e-way bills', 'Books, attendance and insights'];
 
 export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
   const { user, error, isLoading } = useAuthUser();
@@ -135,8 +135,8 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4 text-foreground">
-        <div className="flex items-center gap-3 text-sm text-muted-foreground" role="status">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-primary" />
+        <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+          <div className="h-5 w-5 animate-spin rounded-full border border-border border-t-foreground" />
           Loading…
         </div>
       </div>
@@ -148,7 +148,7 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
       <div className="flex min-h-screen items-center justify-center bg-background p-4 text-foreground">
         <Card className="max-w-md border border-border bg-card shadow-card">
           <CardContent className="p-8 text-center">
-            <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full border border-red-500/20 bg-red-500/[0.06]">
+            <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-transparent">
               <Shield className="h-5 w-5 text-red-600" strokeWidth={1.75} />
             </div>
             <h2 className="mb-2 text-lg font-semibold">Authentication error</h2>
@@ -166,12 +166,12 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
     );
   }
 
-  const inputClass = 'w-full rounded-lg border border-input bg-card px-3 py-2.5 text-sm outline-none transition-[border-color,box-shadow] placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-primary/15';
+  const inputClass = 'h-9 w-full rounded-lg border border-input bg-card px-4 text-sm outline-none transition-[border-color,box-shadow] placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-primary/15';
 
   return (
     <div className="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-[1.1fr_1fr]">
-      <aside className="relative hidden flex-col justify-between overflow-hidden border-r border-border bg-primary/[0.06] p-10 lg:flex xl:p-14">
-        <div className="flex items-center gap-3">
+      <aside className="relative hidden flex-col justify-between overflow-hidden border-r border-border bg-muted p-10 lg:flex xl:p-14">
+        <div className="flex items-center gap-2">
           <CompanyMark name={PRODUCT_NAME} size={36} priority />
           <span className="text-lg font-semibold tracking-tight">{PRODUCT_NAME}</span>
         </div>
@@ -181,7 +181,7 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
           <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
             {FEATURES.map((feature) => (
               <li key={feature} className="flex items-center gap-2">
-                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-primary" />
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-foreground" />
                 {feature}
               </li>
             ))}
@@ -198,10 +198,10 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
           <p className="mt-1 text-sm text-muted-foreground">{user ? PRODUCT_TAGLINE : `to ${PRODUCT_NAME}`}</p>
         </div>
 
-        <section className="rounded-xl border border-border bg-card p-6 shadow-card sm:p-7">
+        <section className="rounded-lg border border-border bg-card p-6 shadow-card sm:p-8">
           {user ? (
-            <div className="space-y-5">
-              <div className="flex items-center gap-3">
+            <div className="space-y-6">
+              <div className="flex items-center gap-2">
                 <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
                   {user.picture ? (
                     <img src={user.picture} alt={user.name || 'Profile'} className="h-full w-full object-cover" />
@@ -233,10 +233,10 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
               </div>
             </div>
           ) : (
-            <div className="space-y-5">
+            <div className="space-y-6">
               <form className="space-y-4" onSubmit={handleEmailPasswordAuth}>
                 <div>
-                  <label htmlFor="login-email" className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">Email</label>
+                  <label htmlFor="login-email" className="mb-2 block text-xs font-medium text-slate-600 dark:text-slate-400">Email</label>
                   <input
                     id="login-email"
                     type="email"
@@ -248,7 +248,7 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
                   />
                 </div>
                 <div>
-                  <label htmlFor="login-password" className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">Password</label>
+                  <label htmlFor="login-password" className="mb-2 block text-xs font-medium text-slate-600 dark:text-slate-400">Password</label>
                   <input
                     id="login-password"
                     type="password"
@@ -258,12 +258,12 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
                     autoComplete="current-password"
                   />
                 </div>
-                <Button type="submit" disabled={isSubmitting} className="w-full">
+                <Button type="submit" size="sm" disabled={isSubmitting} className="w-full text-[13px] font-semibold">
                   {isSubmitting ? 'Please wait…' : 'Sign in'}
                 </Button>
               </form>
 
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="h-px flex-1 bg-border" />
                 or
                 <span className="h-px flex-1 bg-border" />
@@ -281,13 +281,13 @@ export default function BrandedLoginPage({ returnTo = '/', isInline = false }) {
                   {isSocialCooldownActive ? `Try again in ${socialCooldownSeconds}s` : `Continue with ${socialProvider === 'github' ? 'GitHub' : socialProvider.charAt(0).toUpperCase() + socialProvider.slice(1)}`}
                 </Button>
               ) : (
-                <div className="rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+                <div className="rounded-lg border border-border bg-muted px-4 py-2 text-xs text-amber-800   dark:text-amber-300">
                   Social sign-in is currently unavailable.
                 </div>
               )}
 
               {signInError ? (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300" role="alert">
+                <div className="rounded-lg border border-border bg-muted px-4 py-2 text-xs text-red-700   dark:text-red-300" role="alert">
                   {signInError}
                 </div>
               ) : null}

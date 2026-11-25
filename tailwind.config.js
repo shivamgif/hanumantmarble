@@ -76,8 +76,11 @@ module.exports = {
         sm: "calc(var(--radius) - 4px)",
       },
       boxShadow: {
-        card: "0 1px 2px 0 rgb(15 23 42 / 0.06), 0 1px 3px 0 rgb(15 23 42 / 0.04)",
-        "card-hover": "0 1px 2px 0 rgb(15 23 42 / 0.06), 0 8px 24px -12px rgb(15 23 42 / 0.20)",
+        // Soft and few: the 1px border draws the edge, the shadow only hints at depth.
+        card: "0 1px 2px 0 rgb(15 23 42 / 0.04)",
+        "card-hover": "0 1px 2px 0 rgb(15 23 42 / 0.04), 0 4px 12px -4px rgb(15 23 42 / 0.08)",
+        // Menus, popovers, dialogs, toasts: anything floating over the page.
+        float: "0 2px 4px -2px rgb(15 23 42 / 0.06), 0 12px 24px -8px rgb(15 23 42 / 0.12)",
       },
       // Motion system. One curve for nearly everything: a fast start that
       // settles softly (ease-out quint), so UI answers immediately and lands
@@ -92,7 +95,7 @@ module.exports = {
       // Named, not arbitrary: duration-[400ms] is ambiguous between this and
       // tailwindcss-animate's animation duration, and Tailwind drops it.
       transitionDuration: {
-        DEFAULT: "200ms",
+        DEFAULT: "150ms",
         250: "250ms",
         400: "400ms",
       },
@@ -119,7 +122,7 @@ module.exports = {
         },
         // Page and panel arrival: a short rise with the fade.
         rise: {
-          from: { transform: "translateY(12px)", opacity: "0" },
+          from: { transform: "translateY(4px)", opacity: "0" },
           to: { transform: "translateY(0)", opacity: "1" },
         },
       },
@@ -127,10 +130,10 @@ module.exports = {
         "accordion-down": "accordion-down 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
         "accordion-up": "accordion-up 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
         "slide-up": "slide-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both",
-        "scale-in": "scale-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both",
-        "fade-in": "fade-in 0.25s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "scale-in": "scale-in 0.15s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "fade-in": "fade-in 0.15s cubic-bezier(0.22, 1, 0.36, 1) both",
         // Not "enter": tailwindcss-animate owns that keyframe name.
-        rise: "rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both",
+        rise: "rise 0.2s cubic-bezier(0.22, 1, 0.36, 1) both",
       },
     },
   },

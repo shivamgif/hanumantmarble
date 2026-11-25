@@ -17,7 +17,7 @@ import {
   SuggestCombobox,
   SuggestComboboxField,
 } from './stock-form-fields';
-import { FORM_CARD_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS, parseSizeLabelSqm, round3, toNumber } from '../lib/stock-utils';
+import { FORM_CARD_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS, SUBMIT_BUTTON_BASE, SUBMIT_BUTTON_CLASS, parseSizeLabelSqm, round3, toNumber } from '../lib/stock-utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import { normalizePlate } from '@/lib/stock-inbound-trips.mjs';
@@ -60,7 +60,7 @@ function TransporterFields({ form, suggestions, t, tc }) {
         control={form.control}
         name="transporterUnknown"
         render={({ field }) => (
-          <FormItem className="flex items-start gap-2.5 sm:col-span-2 lg:col-span-3">
+          <FormItem className="flex items-start gap-2 sm:col-span-2 lg:col-span-3">
             <FormControl>
               <input
                 type="checkbox"
@@ -75,10 +75,10 @@ function TransporterFields({ form, suggestions, t, tc }) {
                     form.setValue('driverName', '', { shouldValidate: true });
                   }
                 }}
-                className="mt-0.5 h-4 w-4 shrink-0 accent-brand-primary"
+                className="mt-1 h-4 w-4 shrink-0 accent-slate-900 dark:accent-slate-100"
               />
             </FormControl>
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               <FormLabel className="text-xs font-medium text-foreground/70 cursor-pointer">
                 {tc?.noTransporterDetails ?? 'No transporter details'}
               </FormLabel>
@@ -134,14 +134,14 @@ function FreightWeightField({ form, label }) {
                   onBlur={field.onBlur}
                 />
               </FormControl>
-              <div role="group" aria-label="Weight unit" className="inline-flex shrink-0 items-center rounded-full bg-slate-100 p-1 dark:bg-slate-800">
+              <div role="group" aria-label="Weight unit" className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg bg-muted p-1">
                 {['kg', 't'].map((u) => (
                   <button
                     key={u}
                     type="button"
                     onClick={() => setUnit(u)}
                     aria-pressed={unit === u}
-                    className={`h-8 min-w-10 rounded-full px-3 text-xs font-semibold transition-colors ${unit === u ? 'bg-brand-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                    className={`h-7 min-w-10 rounded-lg px-2 text-xs transition-colors ${unit === u ? 'glass-chip font-semibold text-slate-900 dark:text-slate-50' : 'font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'}`}
                   >
                     {u}
                   </button>
@@ -297,7 +297,7 @@ function TripPicker({ form }) {
   const separateChecked = pickedSeparate && !tripId;
 
   return (
-    <div className="sm:col-span-2 lg:col-span-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+    <div className="sm:col-span-2 lg:col-span-3 rounded-lg border border-border bg-muted p-4 space-y-4">
       <p className="text-xs font-bold text-foreground">{tt('tripFoundTitle')}</p>
       <p className="text-[11px] text-muted-foreground">{tt('tripFoundHint')}</p>
       <div className="space-y-2" role="radiogroup" aria-label={tt('tripFoundTitle')}>
@@ -307,9 +307,9 @@ function TripPicker({ form }) {
           return (
             <label
               key={trip.id}
-              className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${checked ? 'border-brand-primary bg-brand-primary/5' : 'border-border hover:bg-muted/40'}`}
+              className={`flex items-start gap-2 rounded-lg border p-4 cursor-pointer transition-colors ${checked ? 'border-foreground bg-muted' : 'border-border hover:bg-border/40'}`}
             >
-              <input type="radio" name="trip-choice" className="mt-1 accent-brand-primary" checked={checked} onChange={() => join(trip)} />
+              <input type="radio" name="trip-choice" className="mt-1 accent-slate-900 dark:accent-slate-100" checked={checked} onChange={() => join(trip)} />
               <span className="min-w-0 space-y-1">
                 <span className="block text-xs font-bold text-foreground">
                   {String(trip.arrival_date).split('-').reverse().join('/')} · {trip.truck_license_plate}{trip.driver_name ? ` · ${trip.driver_name}` : ''}
@@ -324,8 +324,8 @@ function TripPicker({ form }) {
             </label>
           );
         })}
-        <label className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${separateChecked ? 'border-brand-primary bg-brand-primary/5' : 'border-border hover:bg-muted/40'}`}>
-          <input type="radio" name="trip-choice" className="accent-brand-primary" checked={separateChecked} onChange={separate} />
+        <label className={`flex items-center gap-2 rounded-lg border p-4 cursor-pointer transition-colors ${separateChecked ? 'border-foreground bg-muted' : 'border-border hover:bg-border/40'}`}>
+          <input type="radio" name="trip-choice" className="accent-slate-900 dark:accent-slate-100" checked={separateChecked} onChange={separate} />
           <span className="text-xs font-bold text-foreground">{tt('tripSeparate')}</span>
         </label>
       </div>
@@ -333,7 +333,7 @@ function TripPicker({ form }) {
         <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">{tt('tripSharedFreightNote')}</p>
       ) : null}
       {needsConfirm ? (
-        <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 space-y-2">
+        <div className="rounded-lg border border-border bg-muted p-4 space-y-2">
           <p className="text-[11px] font-bold text-rose-700 dark:text-rose-400">
             {tt('tripSameAmountWarning')}
           </p>
@@ -347,7 +347,7 @@ function TripPicker({ form }) {
           <label className="flex items-start gap-2 cursor-pointer">
             <input
               type="checkbox"
-              className="mt-0.5 accent-rose-600"
+              className="mt-1 accent-rose-600"
               checked={confirmed}
               onChange={(event) => setConfirmed(event.target.checked)}
             />
@@ -370,11 +370,11 @@ export const FLAT_RATE_VARIANTS = {
     key: 'bag',
     badge: 'Bag',
     breadcrumb: 'Bag Goods',
-    accentText: 'text-amber-700 dark:text-amber-400',
-    accentDot: 'bg-amber-400',
-    accentChip: 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400',
-    accentAddBtn: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20',
-    accentSubmitBtn: 'bg-amber-600',
+    accentText: 'text-violet-700 dark:text-violet-400',
+    accentDot: 'bg-violet-400',
+    accentChip: 'border-border bg-muted text-violet-700 dark:text-violet-400',
+    accentAddBtn: 'bg-muted text-violet-700 dark:text-violet-400 hover:bg-border',
+    accentSubmitBtn: 'bg-violet-600',
     addItemLabel: 'Add Bag Item',
     submitArrivalLabel: 'Submit Bag Purchase',
     submitDispatchLabel: 'Submit Bag Dispatch',
@@ -392,8 +392,8 @@ export const FLAT_RATE_VARIANTS = {
     breadcrumb: 'Stone Goods',
     accentText: 'text-sky-700 dark:text-sky-400',
     accentDot: 'bg-sky-400',
-    accentChip: 'border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-400',
-    accentAddBtn: 'bg-sky-500/10 text-sky-700 dark:text-sky-400 hover:bg-sky-500/20',
+    accentChip: 'border-border bg-muted text-sky-700 dark:text-sky-400',
+    accentAddBtn: 'bg-muted text-sky-700 dark:text-sky-400 hover:bg-border',
     accentSubmitBtn: 'bg-sky-600',
     addItemLabel: 'Add Stone Item',
     submitArrivalLabel: 'Submit Stone Purchase',
@@ -422,21 +422,21 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
   const brokenQtySqmDisplay = _sqmPerBox != null ? round3(_sqmPerBox * _brokenQty) : null;
 
   return (
-    <div key={fieldRow.id} className="glass-panel rounded-xl overflow-hidden group/item">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/60 px-4 py-2.5">
+    <div key={fieldRow.id} className="glass-panel rounded-lg overflow-hidden group/item">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/60 px-4 py-2">
         <div className="flex items-center gap-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-brand-primary" />
+          <span className="h-1.5 w-1.5 rounded-full bg-foreground" />
           <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">{tc.itemLabel} {index + 1}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`rounded-md border px-2 py-0.5 text-xs font-medium ${isCatalogItem ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400'}`}>
+          <span className={`rounded-lg border px-2 py-1 text-xs font-medium ${isCatalogItem ? 'border-border bg-muted text-emerald-700 dark:text-emerald-400' : 'border-border bg-muted text-amber-700 dark:text-amber-400'}`}>
             {isCatalogItem ? tc.autofilledCatalog : tc.newTileEntry}
           </span>
           {totalItems > 1 && (
             <button
               type="button"
               onClick={() => onRemoveItem(index)}
-              className="p-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors"
+              className="p-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-muted transition-colors"
               title="Remove item"
             >
               <X className="h-4 w-4" />
@@ -444,7 +444,7 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
           )}
         </div>
       </div>
-      <div className="p-4 space-y-5">
+      <div className="p-4 space-y-6">
         <div className="mb-4">
           <div>
             <div className={FORM_LABEL_CLASS}>{t('name')}</div>
@@ -474,7 +474,7 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
             <StockFormField control={control} name={`items.${index}.wholeQty`} label={tc.wholeBox} type="number" placeholder="0" min="0"  />
             <StockFormField control={control} name={`items.${index}.brokenQty`} label={tc.brokenTiles} type="number"  placeholder="0"  min="0"/>
           </div>
-        <div className="grid gap-3 sm:grid-cols-3 p-3 rounded-xl bg-muted/50 border border-border">
+        <div className="grid gap-4 sm:grid-cols-3 p-4 rounded-lg bg-muted/50 border border-border">
           {[
             { label: tc.orderedSqm, value: orderedQtySqmDisplay },
             { label: tc.wholeSqm, value: wholeQtySqmDisplay },
@@ -588,15 +588,15 @@ const FlatRateArrivalItemRow = memo(function FlatRateArrivalItemRow({ index, fie
   const v = variant ?? FLAT_RATE_VARIANTS.bag;
   const isStone = v.key === 'stone';
   return (
-    <div key={fieldRow.id} className="glass-panel rounded-xl overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/60 px-4 py-2.5">
+    <div key={fieldRow.id} className="glass-panel rounded-lg overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/60 px-4 py-2">
         <div className="flex items-center gap-2">
           <span className={`h-1.5 w-1.5 rounded-full ${v.accentDot}`} />
           <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">{tc?.itemLabel ?? 'Item'} {index + 1}</span>
-          <span className={`rounded-md border px-2 py-0.5 text-xs font-medium ${v.accentChip}`}>{v.badge}</span>
+          <span className={`rounded-lg border px-2 py-1 text-xs font-medium ${v.accentChip}`}>{v.badge}</span>
         </div>
         {totalItems > 1 && (
-          <button type="button" onClick={() => onRemoveItem(index)} className="p-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors">
+          <button type="button" onClick={() => onRemoveItem(index)} className="p-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-muted transition-colors">
             <X className="h-4 w-4" />
           </button>
         )}
@@ -751,7 +751,7 @@ export function FlatRateArrivalFormContent({
             <button
               type="button"
               onClick={onAddItem}
-              className={`inline-flex mb-4 mt-4 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${v.accentAddBtn}`}
+              className={`inline-flex mb-4 mt-4 items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${v.accentAddBtn}`}
             >
               <Plus className="h-3.5 w-3.5" />
               {v.addItemLabel}
@@ -778,12 +778,12 @@ export function FlatRateArrivalFormContent({
         <button
           type="submit"
           disabled={submitting}
-          className={`mt-6 w-full rounded-lg px-4 py-3 text-sm font-semibold text-white transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 ${v.accentSubmitBtn}`}
+          className={`mt-6 ${SUBMIT_BUTTON_BASE} text-white hover:brightness-110 ${v.accentSubmitBtn}`}
         >
-          <span className="inline-flex items-center gap-3">
+          <span className="inline-flex items-center gap-2">
             <Package className="h-5 w-5" />
             {submitting ? (tc?.submitting ?? 'Submitting...') : v.submitArrivalLabel}
-            <kbd aria-hidden="true" className="hidden rounded bg-white/20 px-1.5 font-sans text-[11px] font-medium sm:inline">Ctrl ↵</kbd>
+            <kbd aria-hidden="true" className="hidden rounded-lg bg-white/20 px-2 font-sans text-[11px] font-medium sm:inline">Ctrl ↵</kbd>
           </span>
         </button>
       </form>
@@ -819,7 +819,7 @@ export function ArrivalFormContent({
   tc,
   language,
 }) {
-  const percentFieldClass = 'w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20';
+  const percentFieldClass = 'w-full rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground shadow-card outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20';
   const itemNames = useMemo(() => (activeItems || []).map((it) => it.name).filter(Boolean), [activeItems]);
 
   return (
@@ -863,7 +863,7 @@ export function ArrivalFormContent({
               <nav className="flex items-center gap-2 text-xs font-medium text-slate-500">
                 <span>{tc.inventoryHub}</span>
                 <ChevronRight className="h-2.5 w-2.5 opacity-50" />
-                <span className="text-brand-primary">{tc.assets}</span>
+                <span className="text-foreground">{tc.assets}</span>
               </nav>
               <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">{t('items')}</h3>
             </div>
@@ -892,7 +892,7 @@ export function ArrivalFormContent({
             <button
               type="button"
               onClick={onAddItem}
-              className="inline-flex mb-4 items-center gap-2 rounded-lg bg-brand-primary/10 px-4 py-2 text-[13px] font-semibold text-brand-primary transition hover:bg-brand-primary/20 active:scale-[0.96]"
+              className="inline-flex mb-4 items-center gap-2 rounded-lg bg-muted px-4 py-2 text-[13px] font-semibold text-foreground [&>svg]:text-brand-primary transition hover:bg-border active:scale-[0.96]"
             >
               <Plus className="h-3.5 w-3.5" />
               {t('addItem')}
@@ -919,12 +919,12 @@ export function ArrivalFormContent({
         <button
           type="submit"
           disabled={submitting}
-          className="mt-6 w-full rounded-lg bg-brand-primary px-4 py-3 text-sm font-semibold text-white transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+          className={`mt-6 ${SUBMIT_BUTTON_CLASS}`}
         >
-          <span className="inline-flex items-center gap-3">
+          <span className="inline-flex items-center gap-2">
             <ReceiptText className="h-5 w-5" />
             {submitting ? tc.submitting : tc.submitPurchase}
-            <kbd aria-hidden="true" className="hidden rounded bg-white/20 px-1.5 font-sans text-[11px] font-medium sm:inline">Ctrl ↵</kbd>
+            <kbd aria-hidden="true" className="hidden rounded-lg bg-white/20 px-2 font-sans text-[11px] font-medium sm:inline">Ctrl ↵</kbd>
           </span>
         </button>
       </form>

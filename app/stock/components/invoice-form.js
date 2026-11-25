@@ -11,7 +11,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import { FormSectionTitle, InlineNotice, StockFormField, SuggestComboboxField } from './stock-form-fields';
 import { DispatchItemRow } from './dispatch-form';
-import { FORM_CARD_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS } from '../lib/stock-utils';
+import { FORM_CARD_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS, SUBMIT_BUTTON_CLASS, SUBMIT_SECONDARY_CLASS } from '../lib/stock-utils';
 
 /** stock.invoices.* in the current language, with {slots} filled from `vars`. */
 export function useInvoiceText() {
@@ -184,7 +184,7 @@ export function InvoiceFormContent({
             <button
               type="button"
               onClick={onAddItem}
-              className="mt-4 inline-flex items-center gap-2 rounded-full bg-brand-primary/10 px-4 py-2 text-xs font-semibold text-brand-primary transition-colors hover:bg-brand-primary/20"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-muted px-4 py-2 text-xs font-semibold text-foreground [&>svg]:text-brand-primary transition-colors hover:bg-border"
             >
               <Plus className="h-3.5 w-3.5" />
               {td('addItem')}
@@ -193,11 +193,11 @@ export function InvoiceFormContent({
 
           <div className={FORM_CARD_CLASS}>
             {/* Optional: cartage or loading billed to the customer. Taxed and booked, never dispatched. */}
-            <div className="mb-5">
+            <div className="mb-6">
               <h3 className="px-1 text-base font-semibold text-slate-900 dark:text-white">{t('otherCharges')}</h3>
               <p className="px-1 text-xs text-slate-500">{t('otherChargesHint')}</p>
               {chargesFieldArray.fields.map((fieldRow, index) => (
-                <div key={fieldRow.id} className="mt-3 grid grid-cols-2 items-start gap-3 sm:grid-cols-[2fr_1fr_1fr_1fr_auto]">
+                <div key={fieldRow.id} className="mt-2 grid grid-cols-2 items-start gap-4 sm:grid-cols-[2fr_1fr_1fr_1fr_auto]">
                   <SuggestComboboxField control={form.control} name={`charges.${index}.label`} label={t('charge')} options={CHARGE_NAMES} />
                   <StockFormField control={form.control} name={`charges.${index}.sacCode`} label="SAC" inputMode="numeric" digitsOnly maxLength={6} />
                   <StockFormField control={form.control} name={`charges.${index}.amount`} label={`${t('amount')} (₹)`} inputMode="decimal" placeholder="600" />
@@ -206,7 +206,7 @@ export function InvoiceFormContent({
                     type="button"
                     onClick={() => chargesFieldArray.remove(index)}
                     aria-label={t('removeCharge')}
-                    className="mt-7 inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-rose-500/10 hover:text-rose-600"
+                    className="mt-8 inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-muted hover:text-rose-600"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -215,7 +215,7 @@ export function InvoiceFormContent({
               <button
                 type="button"
                 onClick={() => chargesFieldArray.append(newCharge())}
-                className="mt-3 inline-flex items-center gap-2 rounded-full bg-brand-primary/10 px-4 py-2 text-xs font-semibold text-brand-primary transition-colors hover:bg-brand-primary/20"
+                className="mt-2 inline-flex items-center gap-2 rounded-lg bg-muted px-4 py-2 text-xs font-semibold text-foreground [&>svg]:text-brand-primary transition-colors hover:bg-border"
               >
                 <Plus className="h-3.5 w-3.5" />
                 {t('addCharge')}
@@ -245,12 +245,12 @@ export function InvoiceFormContent({
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-xl bg-brand-primary px-4 py-3.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+            className={SUBMIT_BUTTON_CLASS}
           >
             <span className="inline-flex items-center justify-center gap-2">
               <Send className="h-4 w-4" />
               {submitting ? t('submitting') : submitLabel || t('submitEstimate')}
-              <kbd aria-hidden="true" className="ml-1 hidden rounded bg-white/20 px-1.5 font-sans text-[11px] font-medium sm:inline">Ctrl ↵</kbd>
+              <kbd aria-hidden="true" className="ml-1 hidden rounded-lg bg-white/20 px-2 font-sans text-[11px] font-medium sm:inline">Ctrl ↵</kbd>
             </span>
           </button>
           {onSubmitAndApprove ? (
@@ -258,7 +258,7 @@ export function InvoiceFormContent({
               type="button"
               disabled={submitting}
               onClick={form.handleSubmit(onSubmitAndApprove)}
-              className="w-full rounded-xl border border-brand-primary px-4 py-3.5 text-sm font-semibold text-brand-primary transition hover:bg-brand-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
+              className={SUBMIT_SECONDARY_CLASS}
             >
               <span className="inline-flex items-center justify-center gap-2">
                 <Check className="h-4 w-4" /> {t('saveAndApprove')}

@@ -51,12 +51,12 @@ export default function ClockInReminder({ t, onAttendancePage }) {
   }
 
   return (
-    <div role="status" className="mx-4 mt-3 flex items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 sm:mx-6 lg:mx-8">
+    <div role="status" className="mx-4 mt-2 flex items-center gap-2 rounded-lg border border-border bg-muted px-4 py-4 sm:mx-6 lg:mx-8">
       <Clock className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
       <p className="flex-1 text-sm font-semibold text-amber-800 dark:text-amber-300">{t('clockInReminder')}</p>
       <Link
         href="/stock/attendance"
-        className="shrink-0 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700"
+        className="shrink-0 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700"
       >
         {t('clockInNow')}
       </Link>
@@ -64,7 +64,7 @@ export default function ClockInReminder({ t, onAttendancePage }) {
         type="button"
         onClick={dismiss}
         aria-label={t('clockInLater')}
-        className="shrink-0 rounded-md p-1 text-amber-700 transition hover:bg-amber-500/20 dark:text-amber-400"
+        className="shrink-0 rounded-lg p-1 text-amber-700 transition hover:bg-muted dark:text-amber-400"
       >
         <X className="h-4 w-4" />
       </button>

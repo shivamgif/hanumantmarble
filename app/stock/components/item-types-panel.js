@@ -38,7 +38,7 @@ function CountedTypeRow({ type, canManage, onSaved }) {
   }
 
   return (
-    <form onSubmit={save} className="flex flex-wrap items-end gap-3 rounded-xl border border-border/60 p-3">
+    <form onSubmit={save} className="flex flex-wrap items-end gap-2 rounded-lg border border-border/60 p-4">
       <div className="min-w-[10rem] flex-1">
         <p className="text-sm font-semibold text-foreground">{type.name}</p>
         <p className="text-[11px] font-bold text-slate-500">{type.itemCount} item{type.itemCount === 1 ? '' : 's'}</p>
@@ -110,8 +110,8 @@ export function ItemTypesPanel() {
         unit and its GST code. Leave blank to keep &ldquo;bag&rdquo;. Quantities stay whole numbers, and invoices already
         issued keep the unit they were issued with.
       </p>
-      {error ? <p className="mt-3 text-[11px] font-bold text-red-600">{error}</p> : null}
-      {types === null && !error ? <p className="mt-3 text-sm text-muted-foreground">Loading…</p> : null}
+      {error ? <p className="mt-2 text-[11px] font-bold text-red-600">{error}</p> : null}
+      {types === null && !error ? <p className="mt-2 text-sm text-muted-foreground">Loading…</p> : null}
 
       {counted.length ? (
         <div className="mt-4 space-y-2">
@@ -131,7 +131,7 @@ export function ItemTypesPanel() {
         <div className="mt-4 space-y-1">
           <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Built-in units</h3>
           {fixed.map((type) => (
-            <p key={type.id} className="flex justify-between gap-3 text-sm">
+            <p key={type.id} className="flex justify-between gap-2 text-sm">
               <span className="text-foreground">{type.name}</span>
               <span className="text-muted-foreground">{FIXED_UNIT[type.category]}</span>
             </p>

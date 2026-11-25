@@ -10,7 +10,7 @@ import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { arrivalFormSchema, bagArrivalFormSchema, dispatchFormSchema } from '@/lib/forms/stock-forms';
 import { useStockFormStore } from '@/lib/stores/stock-form-store';
-import { createArrivalItemRow, createBagArrivalItemRow, createDispatchItemRow, createInitialArrivalDraft, createInitialBagArrivalDraft, createInitialDispatchDraft, formatLineVolume, formatShipmentVolume, toNumber, trimText, parseSizeLabelDimensions, tabButtonClass, tabTrackClass, CLASSES, ERROR_BOX_CLASS, PILL_BUTTON_CLASS } from '@/app/stock/lib/stock-utils';
+import { createArrivalItemRow, createBagArrivalItemRow, createDispatchItemRow, createInitialArrivalDraft, createInitialBagArrivalDraft, createInitialDispatchDraft, formatLineVolume, formatShipmentVolume, toNumber, trimText, parseSizeLabelDimensions, tabButtonClass, tabTrackClass, CLASSES, ERROR_BOX_CLASS, PILL_BUTTON_CLASS, SUBMIT_BUTTON_CLASS, SUBMIT_SECONDARY_CLASS } from '@/app/stock/lib/stock-utils';
 import { PageHeader } from '@/app/stock/components/page-header';
 import { ArrivalFormContent, BagArrivalFormContent } from '@/app/stock/components/arrival-form';
 import { DispatchFormContent } from '@/app/stock/components/dispatch-form';
@@ -77,7 +77,7 @@ function formatDateTime(value) {
 const FORM_LABEL_CLASS = 'block text-xs font-medium tracking-[0.08em] text-foreground/75';
 const FORM_INPUT_CLASS = 'mt-1';
 const FORM_SELECT_CLASS = 'mt-1';
-const FORM_PANEL_CLASS = 'rounded-xl border border-border/80 bg-background/80 p-4';
+const FORM_PANEL_CLASS = 'rounded-lg border border-border/80 bg-background/80 p-4';
 
 function getInitials(name, email) {
   const source = (name || email || '').trim();
@@ -99,11 +99,11 @@ function getUserRoleBadgeClass(role) {
   }
 
   if (role === 'salesperson' || role === 'sales') {
-    return 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300';
+    return 'bg-muted text-amber-600  dark:text-amber-300';
   }
 
   if (role === 'stock_maintainer' || role === 'manager') {
-    return 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300';
+    return 'bg-muted text-blue-600  dark:text-blue-300';
   }
 
   return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200';
@@ -957,7 +957,7 @@ export default function AdminDashboard() {
         status: 'active',
         canViewDashboard: true,
       },
-      `${user.full_name || user.email} is now approved for stock access.`
+      `${user.full_name || user.email} is now approved and can sign in.`
     );
   }
 
@@ -1159,13 +1159,13 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <div className={CLASSES.contentWrap} aria-busy="true">
-        <div className="flex flex-col gap-3">
-          <div className="h-4 w-32 skeleton rounded" />
+        <div className="flex flex-col gap-2">
+          <div className="h-4 w-32 skeleton rounded-lg" />
           <div className="h-8 w-64 max-w-full skeleton rounded-lg" />
         </div>
         <div className="grid grid-cols-1 gap-4">
-          <div className="skeleton rounded-xl h-96" />
-          <div className="skeleton rounded-xl h-96" />
+          <div className="skeleton rounded-lg h-96" />
+          <div className="skeleton rounded-lg h-96" />
         </div>
       </div>
     );
@@ -1193,7 +1193,7 @@ export default function AdminDashboard() {
     <div className={`${CLASSES.contentWrap} overflow-x-hidden`}>
       <PageHeader
         icon={UsersRound}
-        crumbs={[{ label: 'Stock', href: '/stock' }, { label: t('adminTitle') }]}
+        crumbs={[{ label: language === 'hi' ? 'डैशबोर्ड' : 'Dashboard', href: '/stock' }, { label: t('adminTitle') }]}
         title={t('adminTitle')}
         actions={(
           <>
@@ -1217,22 +1217,21 @@ export default function AdminDashboard() {
 
       {actionNotice ? (
         <div
-          className={`rounded-xl border px-3 py-2 text-sm ${actionNotice.type === 'success'
-            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-            : 'border-red-200 bg-red-50 text-red-700'
+          className={`rounded-lg border px-4 py-2 text-sm ${actionNotice.type === 'success'
+            ? 'border-border bg-muted text-emerald-700'
+            : 'border-border bg-muted text-red-700'
             }`}
         >
           {actionNotice.message}
         </div>
       ) : null}
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-lg border border-border bg-muted px-4 py-4 text-sm text-red-700">
           {error}
         </div>
       )}
 
-      {/* Same strip as the dashboard and analytics: below sm, equal columns with
-          the icon over its label (see tabButtonClass). */}
+      {/* Same strip as every other page (see tabTrackClass). */}
       <div className={tabTrackClass(adminTabs.length)}>
         {adminTabs.map((tab) => {
           const isActive = mobileSection === tab.id;
@@ -1247,14 +1246,14 @@ export default function AdminDashboard() {
               className={tabButtonClass(isActive, adminTabs.length)}
             >
               <Icon className="h-4 w-4 shrink-0" />
-              <span className="line-clamp-2 min-w-0 text-center sm:whitespace-nowrap">
+              <span className="min-w-0 truncate">
                 {tab.label}
               </span>
               {/* Waiting work, shown as a count where there is room and a dot
                   where the tab has collapsed to an icon. */}
               {tab.badge ? (
                 <>
-                  <span className="ml-1.5 hidden rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[11px] leading-none text-amber-600 dark:text-amber-400 sm:inline-block">{tab.badge}</span>
+                  <span className="ml-2 hidden rounded-lg bg-muted px-2 py-1 text-[11px] leading-none text-amber-600 dark:text-amber-400 sm:inline-block">{tab.badge}</span>
                   <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 sm:hidden" />
                 </>
               ) : null}
@@ -1272,15 +1271,15 @@ export default function AdminDashboard() {
               insight={t('inboundQueueInsight')}
               showInsight={showInsights}
             >
-              <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
+              <div className="hidden md:block overflow-x-auto rounded-lg border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
                 <table className="w-full text-left text-sm whitespace-nowrap">
                   <thead className="sticky top-0 z-20 bg-muted">
                     <tr className="border-b border-border">
-                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('date')}</th>
-                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Shipment & Maintainer</th>
-                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Supplier & Transport</th>
-                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Quantities</th>
-                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
+                      <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('date')}</th>
+                      <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Shipment & Maintainer</th>
+                      <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Supplier & Transport</th>
+                      <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Quantities</th>
+                      <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -1290,36 +1289,36 @@ export default function AdminDashboard() {
                         className="group cursor-pointer transition-colors duration-100 hover:bg-muted/60"
                         onClick={() => openShipmentPreview('arrival', item)}
                       >
-                        <td className="px-4 py-2.5 text-slate-900 dark:text-slate-100 font-semibold text-xs">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</td>
-                        <td className="px-4 py-2.5">
+                        <td className="px-4 py-2 text-slate-900 dark:text-slate-100 font-semibold text-xs">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</td>
+                        <td className="px-4 py-2">
                           <div className="flex flex-col gap-1">
-                            <span className="w-fit bg-brand-primary/5 px-2 py-0.5 rounded border border-brand-primary/20 font-semibold text-brand-primary text-[11px]">{item.shipment_number}</span>
+                            <span className="w-fit bg-muted px-2 py-1 rounded-lg border border-border font-semibold text-foreground text-[11px]">{item.shipment_number}</span>
                             <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">{item.maintainer_name || '-'}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-2.5">
+                        <td className="px-4 py-2">
                           <div className="flex flex-col gap-1">
                             <span className="text-slate-900 dark:text-slate-100 font-semibold text-xs truncate max-w-[150px]">{item.supplier_name || '—'}</span>
                             <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">{item.truck_license_plate || '—'}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-2.5">
+                        <td className="px-4 py-2">
                           <div className="flex flex-col gap-1">
-                            {Number(item.total_bag_qty) > 0 && <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs font-sans">{item.total_bag_qty} <span className="text-xs">Bags</span></span>}
+                            {Number(item.total_bag_qty) > 0 && <span className="text-violet-600 dark:text-violet-400 font-semibold text-xs font-sans">{item.total_bag_qty} <span className="text-xs">Bags</span></span>}
                             {Number(item.total_sqft_qty) > 0 && <span className="text-sky-600 dark:text-sky-400 font-semibold text-xs font-sans">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-xs">Sqft</span></span>}
                             {Number(item.total_whole_qty) > 0 && <span className="text-slate-900 dark:text-slate-100 font-semibold text-xs font-sans">{item.total_whole_qty} <span className="text-xs text-slate-400">Whole</span></span>}
                             {Number(item.total_broken_qty) > 0 && <span className="text-rose-700 dark:text-rose-400 font-semibold text-xs font-sans">{item.total_broken_qty} <span className="font-normal">Broken</span></span>}
                           </div>
                         </td>
-                        <td className="px-4 py-2.5 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
+                        <td className="px-4 py-2 text-right">
+                          <div className="flex items-center justify-end gap-2">
                             <button
                               type="button"
                               onClick={(event) => {
                                 event.stopPropagation();
                                 handleEditArrival(item);
                               }}
-                              className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 hover:bg-blue-500 hover:text-white transition"
+                              className="p-2 rounded-lg bg-muted text-blue-600 hover:bg-blue-500 hover:text-white transition"
                               title="Edit"
                             >
                               <Pencil className="h-3.5 w-3.5" />
@@ -1331,7 +1330,7 @@ export default function AdminDashboard() {
                                 promptApproveShipment('inbound-shipments', item);
                               }}
                               disabled={actionLoading === `inbound-shipments-${item.id}-approve`}
-                              className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white transition disabled:opacity-50"
+                              className="p-2 rounded-lg bg-muted text-emerald-600 hover:bg-emerald-500 hover:text-white transition disabled:opacity-50"
                               title="Approve"
                             >
                               <ShieldCheck className="h-3.5 w-3.5" />
@@ -1343,7 +1342,7 @@ export default function AdminDashboard() {
                                 promptRejectShipment('inbound-shipments', item);
                               }}
                               disabled={actionLoading === `inbound-shipments-${item.id}-reject`}
-                              className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500 hover:text-white transition disabled:opacity-50"
+                              className="p-2 rounded-lg bg-muted text-rose-600 hover:bg-rose-500 hover:text-white transition disabled:opacity-50"
                               title="Reject"
                             >
                               <X className="h-3.5 w-3.5" />
@@ -1365,7 +1364,7 @@ export default function AdminDashboard() {
                   <div
                     key={`arrival-mob-${item.id}`}
                     onClick={() => openShipmentPreview('arrival', item)}
-                    className="p-5 rounded-xl border border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-slate-900/10 space-y-4 active:scale-[0.98] transition-transform"
+                    className="p-6 rounded-lg border border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-slate-900/10 space-y-4 active:scale-[0.98] transition-transform"
                   >
                     <div className="flex justify-between items-start">
                       <div>
@@ -1380,12 +1379,12 @@ export default function AdminDashboard() {
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-xs font-medium text-slate-400 mb-1">{t('shipmentNo')} & Maintainer</p>
-                        <p className="text-sm font-semibold text-brand-primary mb-1">{item.shipment_number}</p>
+                        <p className="text-sm font-semibold text-foreground mb-1">{item.shipment_number}</p>
                         <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{item.maintainer_name || '-'}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs font-medium text-slate-400 mb-1">Quantities</p>
-                        {Number(item.total_bag_qty) > 0 && <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">{item.total_bag_qty} Bags</p>}
+                        {Number(item.total_bag_qty) > 0 && <p className="text-xs font-semibold text-violet-600 dark:text-violet-400">{item.total_bag_qty} Bags</p>}
                         {Number(item.total_sqft_qty) > 0 && <p className="text-xs font-semibold text-sky-600 dark:text-sky-400">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} Sqft</p>}
                         {Number(item.total_whole_qty) > 0 && <p className="text-xs font-semibold text-slate-900 dark:text-white">{item.total_whole_qty} Whole</p>}
                         {Number(item.total_broken_qty) > 0 && <p className="text-xs font-semibold text-rose-500">{item.total_broken_qty} Broken</p>}
@@ -1398,7 +1397,7 @@ export default function AdminDashboard() {
                           event.stopPropagation();
                           handleEditArrival(item);
                         }}
-                        className="h-10 px-4 rounded-xl bg-blue-500/10 text-blue-600"
+                        className="h-10 px-4 rounded-lg bg-muted text-blue-600"
                         title="Edit"
                       >
                         <Pencil className="h-4 w-4" />
@@ -1421,7 +1420,7 @@ export default function AdminDashboard() {
                           promptRejectShipment('inbound-shipments', item);
                         }}
                         disabled={actionLoading === `inbound-shipments-${item.id}-reject`}
-                        className="h-10 px-4 flex items-center gap-2 rounded-lg bg-rose-500/10 text-rose-600 text-[13px] font-semibold"
+                        className="h-10 px-4 flex items-center gap-2 rounded-lg bg-muted text-rose-600 text-[13px] font-semibold"
                       >
                         <X className="h-4 w-4" /> Reject
                       </button>
@@ -1450,15 +1449,15 @@ export default function AdminDashboard() {
                 title="Cancelled Inbound Entries"
                 subtitle="Manage and delete cancelled inbound shipments"
               >
-                <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
+                <div className="hidden md:block overflow-x-auto rounded-lg border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
                   <table className="w-full text-left text-sm whitespace-nowrap">
                     <thead className="sticky top-0 z-20 bg-muted">
                       <tr className="border-b border-border">
-                        <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('date')}</th>
-                        <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Shipment & Maintainer</th>
-                        <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Supplier & Transport</th>
-                        <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Quantities</th>
-                        <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
+                        <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('date')}</th>
+                        <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Shipment & Maintainer</th>
+                        <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Supplier & Transport</th>
+                        <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Quantities</th>
+                        <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -1468,20 +1467,20 @@ export default function AdminDashboard() {
                           className="group cursor-pointer transition-colors duration-100 hover:bg-muted/60"
                           onClick={() => openShipmentPreview('arrival', item)}
                         >
-                          <td className="px-4 py-2.5 text-slate-900 dark:text-slate-100 font-semibold text-xs">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</td>
-                          <td className="px-4 py-2.5">
+                          <td className="px-4 py-2 text-slate-900 dark:text-slate-100 font-semibold text-xs">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</td>
+                          <td className="px-4 py-2">
                             <div className="flex flex-col gap-1">
-                              <span className="w-fit bg-amber-500/5 px-2 py-0.5 rounded border border-amber-500/20 font-semibold text-amber-600 dark:text-amber-400 text-[11px]">{item.shipment_number}</span>
+                              <span className="w-fit bg-muted px-2 py-1 rounded-lg border border-border font-semibold text-amber-600 dark:text-amber-400 text-[11px]">{item.shipment_number}</span>
                               <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">{item.maintainer_name || '-'}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-2.5">
+                          <td className="px-4 py-2">
                             <div className="flex flex-col gap-1">
                               <span className="text-slate-900 dark:text-slate-100 font-semibold text-xs truncate max-w-[150px]">{item.supplier_name || '—'}</span>
                               <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">{item.truck_license_plate || '—'}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-2.5">
+                          <td className="px-4 py-2">
                             <div className="flex flex-col gap-1">
                               {Number(item.total_sqft_qty || 0) > 0
                                 ? <span className="text-sky-600 dark:text-sky-400 font-semibold text-xs font-sans">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-xs">Sqft</span></span>
@@ -1489,7 +1488,7 @@ export default function AdminDashboard() {
                               {Number(item.total_broken_qty) > 0 && <span className="text-rose-700 dark:text-rose-400 font-semibold text-xs font-sans">{item.total_broken_qty} <span className="font-normal">Broken</span></span>}
                             </div>
                           </td>
-                          <td className="px-4 py-2.5 text-right">
+                          <td className="px-4 py-2 text-right">
                             <button
                               type="button"
                               onClick={(event) => {
@@ -1497,7 +1496,7 @@ export default function AdminDashboard() {
                                 promptDeleteShipment('inbound-shipments', item);
                               }}
                               disabled={actionLoading === `inbound-shipments-${item.id}-delete`}
-                              className="p-1.5 rounded-lg bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white transition disabled:opacity-50"
+                              className="p-2 rounded-lg bg-muted text-red-600 hover:bg-red-500 hover:text-white transition disabled:opacity-50"
                               title="Delete"
                             >
                               <X className="h-3.5 w-3.5" />
@@ -1515,14 +1514,14 @@ export default function AdminDashboard() {
                     <div
                       key={`cancelled-mob-${item.id}`}
                       onClick={() => openShipmentPreview('arrival', item)}
-                      className="p-5 rounded-xl border border-amber-200 dark:border-amber-900/30 bg-amber-50/30 dark:bg-amber-900/10 space-y-4 active:scale-[0.98] transition-transform"
+                      className="p-6 rounded-lg border border-border  bg-muted  space-y-4 active:scale-[0.98] transition-transform"
                     >
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <p className="text-xs font-medium text-slate-400 mb-1">{t('date')}</p>
                           <p className="text-xs font-semibold text-slate-900 dark:text-white">{formatDateTime(item.arrival_date || item.created_at).split(',')[0]}</p>
                         </div>
-                        <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">Cancelled</Badge>
+                        <Badge variant="outline" className="bg-muted text-amber-600 dark:text-amber-400 border-border">Cancelled</Badge>
                       </div>
                       <div className="flex justify-between items-start">
                         <div>
@@ -1573,15 +1572,15 @@ export default function AdminDashboard() {
               insight={t('outboundQueueInsight')}
               showInsight={showInsights}
             >
-              <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
+              <div className="hidden md:block overflow-x-auto rounded-lg border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
                 <table className="w-full text-left text-sm whitespace-nowrap">
                   <thead className="sticky top-0 z-20 bg-muted">
                     <tr className="border-b border-border">
-                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('date')}</th>
-                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Dispatch & Driver</th>
-                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Customer & Value</th>
-                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Quantities</th>
-                      <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
+                      <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('date')}</th>
+                      <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Dispatch & Driver</th>
+                      <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Customer & Value</th>
+                      <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Quantities</th>
+                      <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -1591,20 +1590,20 @@ export default function AdminDashboard() {
                         className="group cursor-pointer transition-colors duration-100 hover:bg-muted/60"
                         onClick={() => openShipmentPreview('dispatch', item)}
                       >
-                        <td className="px-4 py-2.5 text-slate-900 dark:text-slate-100 font-semibold text-xs">{formatDateTime(item.dispatch_date).split(',')[0]}</td>
-                        <td className="px-4 py-2.5">
+                        <td className="px-4 py-2 text-slate-900 dark:text-slate-100 font-semibold text-xs">{formatDateTime(item.dispatch_date).split(',')[0]}</td>
+                        <td className="px-4 py-2">
                           <div className="flex flex-col gap-1">
-                            <span className="w-fit bg-brand-secondary/5 px-2 py-0.5 rounded border border-brand-secondary/20 font-semibold text-brand-secondary dark:text-indigo-400 text-[11px]">{item.shipment_number}</span>
+                            <span className="w-fit bg-brand-secondary/5 px-2 py-1 rounded-lg border border-brand-secondary/20 font-semibold text-brand-secondary dark:text-indigo-400 text-[11px]">{item.shipment_number}</span>
                             <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">{item.driver_name || '-'}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-2.5">
+                        <td className="px-4 py-2">
                           <div className="flex flex-col gap-1">
                             <span className="text-slate-900 dark:text-slate-100 font-semibold text-xs truncate max-w-[150px]">{item.customer_name || '—'}</span>
                             {Number(item.total_selling_price_excl) > 0 && <span className="text-emerald-600 dark:text-emerald-400 text-xs font-semibold">₹{Number(item.total_selling_price_excl).toLocaleString('en-IN')}</span>}
                           </div>
                         </td>
-                        <td className="px-4 py-2.5">
+                        <td className="px-4 py-2">
                           <div className="flex flex-col gap-1">
                             {Number(item.total_sqft_qty || 0) > 0
                                 ? <span className="text-sky-600 dark:text-sky-400 font-semibold text-xs font-sans">{Number(item.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-xs">Sqft</span></span>
@@ -1612,15 +1611,15 @@ export default function AdminDashboard() {
                             {Number(item.total_broken_qty) > 0 && <span className="text-rose-700 dark:text-rose-400 font-semibold text-xs font-sans">{item.total_broken_qty} <span className="font-normal">Broken</span></span>}
                           </div>
                         </td>
-                        <td className="px-4 py-2.5 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
+                        <td className="px-4 py-2 text-right">
+                          <div className="flex items-center justify-end gap-2">
                             <button
                               type="button"
                               onClick={(event) => {
                                 event.stopPropagation();
                                 handleEditDispatch(item);
                               }}
-                              className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 hover:bg-blue-500 hover:text-white transition"
+                              className="p-2 rounded-lg bg-muted text-blue-600 hover:bg-blue-500 hover:text-white transition"
                               title="Edit"
                             >
                               <Pencil className="h-3.5 w-3.5" />
@@ -1632,7 +1631,7 @@ export default function AdminDashboard() {
                                 promptApproveShipment('outbound-shipments', item);
                               }}
                               disabled={actionLoading === `outbound-shipments-${item.id}-approve`}
-                              className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white transition disabled:opacity-50"
+                              className="p-2 rounded-lg bg-muted text-emerald-600 hover:bg-emerald-500 hover:text-white transition disabled:opacity-50"
                               title="Approve"
                             >
                               <ShieldCheck className="h-3.5 w-3.5" />
@@ -1644,7 +1643,7 @@ export default function AdminDashboard() {
                                 promptRejectShipment('outbound-shipments', item);
                               }}
                               disabled={actionLoading === `outbound-shipments-${item.id}-reject`}
-                              className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500 hover:text-white transition disabled:opacity-50"
+                              className="p-2 rounded-lg bg-muted text-rose-600 hover:bg-rose-500 hover:text-white transition disabled:opacity-50"
                               title="Reject"
                             >
                               <X className="h-3.5 w-3.5" />
@@ -1666,7 +1665,7 @@ export default function AdminDashboard() {
                   <div
                     key={`dispatch-mob-${item.id}`}
                     onClick={() => openShipmentPreview('dispatch', item)}
-                    className="p-5 rounded-xl border border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-slate-900/10 space-y-4 active:scale-[0.98] transition-transform"
+                    className="p-6 rounded-lg border border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-slate-900/10 space-y-4 active:scale-[0.98] transition-transform"
                   >
                     <div className="flex justify-between items-start">
                       <div>
@@ -1699,7 +1698,7 @@ export default function AdminDashboard() {
                           event.stopPropagation();
                           handleEditDispatch(item);
                         }}
-                        className="h-10 px-4 rounded-xl bg-blue-500/10 text-blue-600"
+                        className="h-10 px-4 rounded-lg bg-muted text-blue-600"
                         title="Edit"
                       >
                         <Pencil className="h-4 w-4" />
@@ -1722,7 +1721,7 @@ export default function AdminDashboard() {
                           promptRejectShipment('outbound-shipments', item);
                         }}
                         disabled={actionLoading === `outbound-shipments-${item.id}-reject`}
-                        className="h-10 px-4 flex items-center gap-2 rounded-lg bg-rose-500/10 text-rose-600 text-[13px] font-semibold"
+                        className="h-10 px-4 flex items-center gap-2 rounded-lg bg-muted text-rose-600 text-[13px] font-semibold"
                       >
                         <X className="h-4 w-4" /> Reject
                       </button>
@@ -1754,40 +1753,40 @@ export default function AdminDashboard() {
             insight={t('changeRequestsInsight')}
             showInsight={showInsights}
           >
-            <div id="change-requests-panel" className="hidden md:block overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
+            <div id="change-requests-panel" className="hidden md:block overflow-x-auto rounded-lg border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="sticky top-0 z-20 bg-muted">
                   <tr className="border-b border-border">
-                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('requestNo')}</th>
-                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('source')}</th>
-                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('type')}</th>
-                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('status')}</th>
-                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">{t('requestedBy')}</th>
+                    <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('requestNo')}</th>
+                    <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('source')}</th>
+                    <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('type')}</th>
+                    <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('status')}</th>
+                    <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">{t('requestedBy')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {changeRequestPagination.rows.map((requestRow) => (
                     <tr
                       key={requestRow.id}
-                      className={`group cursor-pointer transition-colors duration-100 hover:bg-muted/60 ${highlightedChangeRequestId === requestRow.id ? 'bg-brand-primary/10 ring-1 ring-brand-primary/40' : ''
+                      className={`group cursor-pointer transition-colors duration-100 hover:bg-border/60 ${highlightedChangeRequestId === requestRow.id ? 'bg-muted ring-1 ring-border' : ''
                         }`}
                       onClick={() => openChangeRequestPreview(requestRow)}
                     >
-                      <td className="px-4 py-2.5 font-semibold text-brand-primary text-xs">
-                        <span className="bg-brand-primary/5 px-2 py-1 rounded-md border border-brand-primary/20">{requestRow.request_number || `CR-${requestRow.id}`}</span>
+                      <td className="px-4 py-2 font-semibold text-foreground text-xs">
+                        <span className="bg-muted px-2 py-1 rounded-lg border border-border">{requestRow.request_number || `CR-${requestRow.id}`}</span>
                       </td>
-                      <td className="px-4 py-2.5 text-slate-900 dark:text-slate-100 font-semibold text-xs">{requestRow.source_entity_type} #{requestRow.source_entity_id}</td>
-                      <td className="px-4 py-2.5 text-slate-900 dark:text-slate-100 font-semibold text-xs">{requestRow.request_type}</td>
-                      <td className="px-4 py-2.5">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getStatusVariant(requestRow.status) === 'approved' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
-                          getStatusVariant(requestRow.status) === 'pending' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
+                      <td className="px-4 py-2 text-slate-900 dark:text-slate-100 font-semibold text-xs">{requestRow.source_entity_type} #{requestRow.source_entity_id}</td>
+                      <td className="px-4 py-2 text-slate-900 dark:text-slate-100 font-semibold text-xs">{requestRow.request_type}</td>
+                      <td className="px-4 py-2">
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold border ${getStatusVariant(requestRow.status) === 'approved' ? 'bg-muted text-emerald-600 border-border' :
+                          getStatusVariant(requestRow.status) === 'pending' ? 'bg-muted text-amber-600 border-border' :
                             'bg-slate-500/10 text-slate-600 border-slate-500/20'
                           }`}>
                           <span className="w-1 h-1 rounded-full bg-current" />
                           {requestRow.status}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 text-right text-slate-500 dark:text-slate-400 font-medium text-xs">{requestRow.requested_by_name || '—'}</td>
+                      <td className="px-4 py-2 text-right text-slate-500 dark:text-slate-400 font-medium text-xs">{requestRow.requested_by_name || '—'}</td>
                     </tr>
                   ))}
                   {changeRequestPagination.total === 0 && (
@@ -1803,18 +1802,18 @@ export default function AdminDashboard() {
                 <div
                   key={`cr-mob-${item.id}`}
                   onClick={() => openChangeRequestPreview(item)}
-                  className={`p-5 rounded-xl border transition active:scale-[0.98] ${highlightedChangeRequestId === item.id
-                      ? 'border-brand-primary bg-brand-primary/5 ring-1 ring-brand-primary/20'
+                  className={`p-6 rounded-lg border transition active:scale-[0.98] ${highlightedChangeRequestId === item.id
+                      ? 'border-foreground bg-muted ring-1 ring-border'
                       : 'border-slate-100 dark:border-white/5 bg-slate-50/30'
                     }`}
                 >
-                  <div className="flex justify-between items-start mb-3">
+                  <div className="flex justify-between items-start mb-2">
                     <div>
-                      <p className="text-xs font-medium text-slate-400 mb-0.5">{t('requestNo')}</p>
-                      <p className="text-sm font-semibold text-brand-primary">{item.request_number || `CR-${item.id}`}</p>
+                      <p className="text-xs font-medium text-slate-400 mb-1">{t('requestNo')}</p>
+                      <p className="text-sm font-semibold text-foreground">{item.request_number || `CR-${item.id}`}</p>
                     </div>
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${getStatusVariant(item.status) === 'approved' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
-                        getStatusVariant(item.status) === 'pending' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
+                    <span className={`inline-flex items-center gap-2 px-4 py-1 rounded-lg text-xs font-semibold border ${getStatusVariant(item.status) === 'approved' ? 'bg-muted text-emerald-600 border-border' :
+                        getStatusVariant(item.status) === 'pending' ? 'bg-muted text-amber-600 border-border' :
                           'bg-slate-500/10 text-slate-600 border-slate-500/20'
                       }`}>
                       {item.status}
@@ -1822,16 +1821,16 @@ export default function AdminDashboard() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <p className="text-xs font-medium text-slate-400 mb-0.5">{t('type')}</p>
+                      <p className="text-xs font-medium text-slate-400 mb-1">{t('type')}</p>
                       <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{item.request_type}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs font-medium text-slate-400 mb-0.5">{t('requestedBy')}</p>
+                      <p className="text-xs font-medium text-slate-400 mb-1">{t('requestedBy')}</p>
                       <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{item.requested_by_name || '—'}</p>
                     </div>
                   </div>
-                  <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/5">
-                    <p className="text-xs font-medium text-slate-400 mb-0.5">{t('source')}</p>
+                  <div className="mt-2 pt-4 border-t border-slate-100 dark:border-white/5">
+                    <p className="text-xs font-medium text-slate-400 mb-1">{t('source')}</p>
                     <p className="text-xs font-semibold text-slate-900 dark:text-white">{item.source_entity_type} #{item.source_entity_id}</p>
                   </div>
                 </div>
@@ -1880,7 +1879,7 @@ export default function AdminDashboard() {
 
         <section id="branches" className={`space-y-6 ${mobileSection === 'branches' ? '' : 'hidden'}`}>
           {/* Branches, GST businesses and item units moved to Settings with the company profile. */}
-          <Link href="/stock/settings" className={`${CLASSES.card} group block transition-colors hover:border-brand-primary/40`}>
+          <Link href="/stock/settings" className={`${CLASSES.card} group block transition-colors hover:border-foreground/30`}>
             <h2 className={CLASSES.title}>Branches, GST and units are in Settings →</h2>
             <p className="mt-1 text-sm text-slate-500">Company name and logo, GST registrations, branches and item units now live together in Settings.</p>
           </Link>
@@ -1905,15 +1904,15 @@ export default function AdminDashboard() {
             }
           >
             {canManageUsers && showUserForm && (
-              <div className="mb-8 p-5 sm:p-8 rounded-xl bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800/50 animate-scale-in">
+              <div className="mb-8 p-6 sm:p-8 rounded-lg bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800/50 animate-scale-in">
                 <form onSubmit={handleSaveUser} className="space-y-8">
                   <div className="flex items-center gap-4 mb-6">
-                    <div className="w-10 h-px bg-brand-primary/30" />
-                    <h4 className="text-xs font-semibold text-brand-primary">{language === 'hi' ? 'ऑनबोर्डिंग प्रोटोकॉल' : 'Onboarding Protocol'}</h4>
+                    <div className="w-10 h-px bg-muted" />
+                    <h4 className="text-xs font-semibold text-foreground">{language === 'hi' ? 'ऑनबोर्डिंग प्रोटोकॉल' : 'Onboarding Protocol'}</h4>
                   </div>
 
                   {userFormNotice && (
-                    <div className={`p-4 rounded-xl text-xs font-semibold ring-1 ${userFormNotice.type === 'error' ? 'bg-rose-50 text-rose-600 ring-rose-200' : 'bg-emerald-50 text-emerald-600 ring-emerald-200'}`}>
+                    <div className={`p-4 rounded-lg text-xs font-semibold ring-1 ${userFormNotice.type === 'error' ? 'bg-muted text-rose-600 ring-border' : 'bg-muted text-emerald-600 ring-border'}`}>
                       {userFormNotice.message}
                     </div>
                   )}
@@ -1980,7 +1979,7 @@ export default function AdminDashboard() {
                   {createUserForm.watch('role') === 'salesperson' && (
                     <div className="space-y-2">
                       <Label className="text-xs font-medium text-slate-400 px-1">{language === 'hi' ? 'डिवीज़न' : 'Divisions'}</Label>
-                      <div className="flex flex-wrap gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                      <div className="flex flex-wrap gap-2 p-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                         {['Adhesive', ...(suggestions?.divisionName || []).filter((n) => n !== 'Adhesive')].map((name) => {
                           const selected = (createUserForm.watch('divisions') || []).includes(name);
                           const isAdhesive = name === 'Adhesive';
@@ -1995,7 +1994,7 @@ export default function AdminDashboard() {
                                   const current = createUserForm.getValues('divisions') || [];
                                   createUserForm.setValue('divisions', selected ? current.filter((d) => d !== name) : [...current, name], { shouldDirty: true });
                                 }}
-                                className="accent-brand-primary"
+                                className="accent-slate-900 dark:accent-slate-100"
                               />
                               <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{name}</span>
                             </label>
@@ -2030,7 +2029,7 @@ export default function AdminDashboard() {
                     <button
                       type="submit"
                       disabled={actionLoading === 'user-save'}
-                      className="flex-1 h-14 rounded-lg bg-slate-900 transition hover:bg-black text-white text-sm font-semibold disabled:opacity-50"
+                      className={`flex-1 ${SUBMIT_BUTTON_CLASS}`}
                     >
                        {actionLoading === 'user-save' ? (language === 'hi' ? 'प्रसंस्करण...' : 'Processing...') : (language === 'hi' ? 'पहचान अधिकृत करें' : 'Authorize Identity')}
                     </button>
@@ -2044,7 +2043,7 @@ export default function AdminDashboard() {
                         setShowPrimaryPassword(false);
                         setShowConfirmPassword(false);
                       }}
-                      className="px-8 h-14 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 text-sm font-semibold transition"
+                      className={`!w-auto ${SUBMIT_SECONDARY_CLASS}`}
                     >
                        {language === 'hi' ? 'रद्द करें' : 'Cancel'}
                     </button>
@@ -2054,14 +2053,14 @@ export default function AdminDashboard() {
                 </form>
               </div>
             )}
-            <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
+            <div className="hidden md:block overflow-x-auto rounded-lg border border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10">
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="sticky top-0 z-20 bg-muted">
                   <tr className="border-b border-border">
-                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('user')}</th>
-                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('role')}</th>
-                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('status')}</th>
-                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
+                    <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('user')}</th>
+                    <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('role')}</th>
+                    <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('status')}</th>
+                    <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">{t('actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -2071,8 +2070,8 @@ export default function AdminDashboard() {
                       className="group cursor-pointer transition-colors duration-100 hover:bg-muted/60"
                       onClick={() => openUserPreview(u)}
                     >
-                      <td className="px-4 py-2.5">
-                        <div className="flex items-center gap-3">
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-2">
                           <div className="h-8 w-8 rounded-full bg-muted text-slate-700 dark:text-slate-200 flex items-center justify-center font-semibold text-xs">
                             {getInitials(u.full_name, u.email)}
                           </div>
@@ -2082,22 +2081,22 @@ export default function AdminDashboard() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-2.5">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium capitalize border ${u.role === 'admin' ? 'bg-slate-900 text-white border-slate-900 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100' :
+                      <td className="px-4 py-2">
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium capitalize border ${u.role === 'admin' ? 'bg-slate-900 text-white border-slate-900 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100' :
                           u.role === 'manager' ? 'bg-card text-slate-800 border-slate-400 dark:text-slate-200 dark:border-slate-500' :
                             'bg-card text-slate-600 border-border dark:text-slate-300'
                           }`}>
                           {u.role}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5">
-                        <div className="flex items-center gap-1.5">
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-2">
                           <span className={`w-1.5 h-1.5 rounded-full ${u.is_active ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                           <span className="text-xs font-medium text-slate-500">{u.is_active ? t('active') : t('inactive')}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-2.5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="px-4 py-2 text-right">
+                        <div className="flex items-center justify-end gap-2">
                           <button
                             type="button"
                             onClick={(event) => {
@@ -2106,9 +2105,9 @@ export default function AdminDashboard() {
                             }}
                             disabled={actionLoading === `user-${u.id}-update`}
                             title={u.is_active ? 'Suspend Access' : 'Restore Access'}
-                            className={`p-1.5 rounded-lg transition disabled:opacity-50 ${u.is_active
-                              ? 'bg-amber-500/10 text-amber-600 hover:bg-amber-500 hover:text-white'
-                              : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white'
+                            className={`p-2 rounded-lg transition disabled:opacity-50 ${u.is_active
+                              ? 'bg-muted text-amber-600 hover:bg-amber-500 hover:text-white'
+                              : 'bg-muted text-emerald-600 hover:bg-emerald-500 hover:text-white'
                               }`}
                           >
                             {u.is_active ? <ShieldAlert className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
@@ -2122,7 +2121,7 @@ export default function AdminDashboard() {
                               }}
                               disabled={actionLoading === `user-${u.id}-delete`}
                               title="Remove User"
-                              className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500 hover:text-white transition disabled:opacity-50"
+                              className="p-2 rounded-lg bg-muted text-rose-600 hover:bg-rose-500 hover:text-white transition disabled:opacity-50"
                             >
                               <X className="h-3.5 w-3.5" />
                             </button>
@@ -2144,18 +2143,18 @@ export default function AdminDashboard() {
                 <div
                   key={`user-mob-${u.id}`}
                   onClick={() => openUserPreview(u)}
-                  className="p-5 rounded-xl border border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-slate-900/10 space-y-4 active:scale-[0.98] transition-transform"
+                  className="p-6 rounded-lg border border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-slate-900/10 space-y-4 active:scale-[0.98] transition-transform"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center font-semibold text-sm border border-brand-primary/20 shadow-sm">
+                    <div className="h-12 w-12 rounded-lg bg-muted text-foreground flex items-center justify-center font-semibold text-sm border border-border shadow-card">
                       {getInitials(u.full_name, u.email)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-slate-900 dark:text-white tracking-tight leading-none mb-1.5 truncate">{u.full_name || 'N/A'}</p>
+                      <p className="font-semibold text-slate-900 dark:text-white tracking-tight leading-none mb-2 truncate">{u.full_name || 'N/A'}</p>
                       <p className="text-xs font-medium text-slate-400 truncate">{u.email}</p>
                     </div>
-                    <span className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${u.role === 'admin' ? 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20' :
-                      u.role === 'manager' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
+                    <span className={`shrink-0 inline-flex items-center gap-2 px-4 py-1 rounded-lg text-xs font-semibold border ${u.role === 'admin' ? 'bg-muted text-indigo-600 border-border' :
+                      u.role === 'manager' ? 'bg-muted text-amber-600 border-border' :
                         'bg-slate-500/10 text-slate-600 border-slate-500/20'
                       }`}>
                       {u.role.replace(/_/g, ' ')}
@@ -2174,9 +2173,9 @@ export default function AdminDashboard() {
                           promptToggleUser(u);
                         }}
                         disabled={actionLoading === `user-${u.id}-update`}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border transition text-[13px] font-semibold ${u.is_active
-                            ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
-                            : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition text-[13px] font-semibold ${u.is_active
+                            ? 'bg-muted text-amber-600 border-border'
+                            : 'bg-muted text-emerald-600 border-border'
                           }`}
                       >
                         {u.is_active ? <ShieldAlert className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
@@ -2190,7 +2189,7 @@ export default function AdminDashboard() {
                             handleDeleteUser(u.id);
                           }}
                           disabled={actionLoading === `user-${u.id}-delete`}
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-rose-500/10 text-rose-600 border border-rose-500/20 text-[13px] font-semibold"
+                          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted text-rose-600 border border-border text-[13px] font-semibold"
                         >
                           <X className="h-4 w-4" />
                           <span>Remove</span>
@@ -2220,13 +2219,13 @@ export default function AdminDashboard() {
 
       {confirmModal.open && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/25 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full p-6 sm:p-8 animate-in fade-in-0 zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-float max-w-md w-full p-6 sm:p-8 animate-in fade-in-0 zoom-in-95 duration-200">
             <h3 className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight mb-2">{confirmModal.title}</h3>
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">{confirmModal.message}</p>
-            <div className="flex items-center justify-end gap-3">
+            <div className="flex items-center justify-end gap-2">
               <button
                 onClick={() => setConfirmModal({ ...confirmModal, open: false })}
-                className="px-6 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition active:scale-[0.96]"
+                className="px-6 py-2 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition active:scale-[0.96]"
               >
                 Cancel
               </button>
@@ -2256,9 +2255,9 @@ export default function AdminDashboard() {
         summary={
           previewState.loading ? (
             <div className="space-y-2" aria-busy="true" aria-label={t('loadingPreview')}>
-              <div className="skeleton h-5 w-1/2 rounded-md" />
-              <div className="skeleton h-4 w-3/4 rounded-md" />
-              <div className="skeleton h-4 w-2/3 rounded-md" />
+              <div className="skeleton h-5 w-1/2 rounded-lg" />
+              <div className="skeleton h-4 w-3/4 rounded-lg" />
+              <div className="skeleton h-4 w-2/3 rounded-lg" />
             </div>
           ) : previewState.error ? (
             <div className="text-xs font-semibold text-rose-500">{previewState.error}</div>
@@ -2306,7 +2305,7 @@ export default function AdminDashboard() {
                       />
 
                       <div>
-                        <h4 className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Role & permissions</h4>
+                        <h4 className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Role & permissions</h4>
                         <form onSubmit={(e) => {
                           e.preventDefault();
                           const sells = previewUserForm.watch('role') === 'salesperson' || previewUserForm.watch('canSell') === true;
@@ -2371,7 +2370,7 @@ export default function AdminDashboard() {
                             </div>
                             <div className="space-y-2">
                               <Label className={FORM_LABEL_CLASS}>Divisions</Label>
-                              <div className="flex flex-wrap gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 min-h-[44px]">
+                              <div className="flex flex-wrap gap-2 p-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 min-h-[44px]">
                                 {['Adhesive', ...(suggestions?.divisionName || []).filter((n) => n !== 'Adhesive')].map((name) => {
                                   const selected = (previewUserForm.watch('divisions') || []).includes(name);
                                   const isAdhesive = name === 'Adhesive';
@@ -2386,7 +2385,7 @@ export default function AdminDashboard() {
                                           const current = previewUserForm.getValues('divisions') || [];
                                           previewUserForm.setValue('divisions', selected ? current.filter((d) => d !== name) : [...current, name], { shouldDirty: true });
                                         }}
-                                        className="accent-brand-primary"
+                                        className="accent-slate-900 dark:accent-slate-100"
                                       />
                                       <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{name}</span>
                                     </label>
@@ -2400,14 +2399,14 @@ export default function AdminDashboard() {
                               and an admin or manager can be flagged to sell too
                               without losing anything they already had. */}
                           {previewUserForm.watch('role') !== 'salesperson' && (
-                            <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 cursor-pointer select-none">
+                            <label className="flex items-start gap-2 p-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 cursor-pointer select-none">
                               <input
                                 type="checkbox"
                                 checked={previewUserForm.watch('canSell') === true}
                                 onChange={(e) => previewUserForm.setValue('canSell', e.target.checked, { shouldDirty: true })}
-                                className="accent-brand-primary mt-0.5"
+                                className="accent-slate-900 dark:accent-slate-100 mt-1"
                               />
-                              <span className="space-y-0.5">
+                              <span className="space-y-1">
                                 <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Also sells</span>
                                 <span className="block text-[11px] font-medium text-slate-400">
                                   Can be picked as the salesperson on a dispatch and sees their own performance. Keeps every existing permission.
@@ -2429,7 +2428,7 @@ export default function AdminDashboard() {
                                     placeholder="e.g. 25000"
                                     value={previewUserForm.watch('salary')}
                                     onChange={(e) => previewUserForm.setValue('salary', e.target.value, { shouldDirty: true })}
-                                    className="w-full h-11 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+                                    className="w-full h-11 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
                                   />
                                 </div>
                                 <div className="space-y-2">
@@ -2441,7 +2440,7 @@ export default function AdminDashboard() {
                                     placeholder="e.g. 200000"
                                     value={previewUserForm.watch('monthlySalesGoal')}
                                     onChange={(e) => previewUserForm.setValue('monthlySalesGoal', e.target.value, { shouldDirty: true })}
-                                    className="w-full h-11 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+                                    className="w-full h-11 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
                                   />
                                 </div>
                               </div>
@@ -2450,8 +2449,8 @@ export default function AdminDashboard() {
 
                           <div className="space-y-4">
                             <p className="text-xs font-medium text-slate-400">Permission Flags</p>
-                            <div className="space-y-3">
-                              <div className="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
+                            <div className="space-y-4">
+                              <div className="flex items-center gap-2 p-4 rounded-lg bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
                                 <Checkbox
                                   checked={previewUserForm.watch('canViewDashboard') || false}
                                   onChange={(e) => previewUserForm.setValue('canViewDashboard', e.target.checked, { shouldDirty: true })}
@@ -2462,7 +2461,7 @@ export default function AdminDashboard() {
                                   <p className="text-[11px] text-slate-500 dark:text-slate-400">Access to analytics and dashboard features</p>
                                 </label>
                               </div>
-                              <div className="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
+                              <div className="flex items-center gap-2 p-4 rounded-lg bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
                                 <Checkbox
                                   checked={previewUserForm.watch('canManageUsers') || false}
                                   onChange={(e) => previewUserForm.setValue('canManageUsers', e.target.checked, { shouldDirty: true })}
@@ -2473,7 +2472,7 @@ export default function AdminDashboard() {
                                   <p className="text-[11px] text-slate-500 dark:text-slate-400">Create, edit, and manage user accounts</p>
                                 </label>
                               </div>
-                              <div className="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
+                              <div className="flex items-center gap-2 p-4 rounded-lg bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50">
                                 <Checkbox
                                   checked={previewUserForm.watch('canApproveChanges') || false}
                                   onChange={(e) => previewUserForm.setValue('canApproveChanges', e.target.checked, { shouldDirty: true })}
@@ -2487,11 +2486,11 @@ export default function AdminDashboard() {
                             </div>
                           </div>
 
-                          <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/50">
+                          <div className="flex gap-2 pt-4 border-t border-slate-100 dark:border-slate-800/50">
                             <button
                               type="submit"
                               disabled={actionLoading === `user-${previewState.record?.id}-update`}
-                              className="flex-1 py-3 rounded-lg bg-brand-primary text-white text-[13px] font-semibold disabled:opacity-50 hover:brightness-110 transition"
+                              className={`flex-1 ${SUBMIT_BUTTON_CLASS}`}
                             >
                               {actionLoading === `user-${previewState.record?.id}-update` ? 'Saving...' : 'Save Permissions'}
                             </button>
@@ -2508,7 +2507,7 @@ export default function AdminDashboard() {
                                 salary: previewState.record?.salary != null ? String(previewState.record.salary) : '',
                                 monthlySalesGoal: previewState.record?.monthly_sales_goal != null ? String(previewState.record.monthly_sales_goal) : '',
                               })}
-                              className="px-6 py-3 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-300 text-[13px] font-semibold transition"
+                              className={`!w-auto ${SUBMIT_SECONDARY_CLASS}`}
                             >
                               Reset
                             </button>
@@ -2516,17 +2515,17 @@ export default function AdminDashboard() {
                         </form>
                       </div>
 
-                      <div className="p-6 rounded-xl border border-brand-primary/20 bg-brand-primary/5">
-                        <div className="flex items-center gap-3 mb-4">
+                      <div className="p-6 rounded-lg border border-border bg-muted">
+                        <div className="flex items-center gap-2 mb-4">
                           <ShieldCheck className="h-5 w-5 text-brand-primary" />
-                          <h4 className="text-xs font-semibold text-brand-primary">Governance Override</h4>
+                          <h4 className="text-xs font-semibold text-foreground">Governance Override</h4>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => promptToggleUser(previewState.record)}
                             disabled={actionLoading === `user-${previewState.record?.id}-update` || previewState.record?.is_active}
-                            className="flex-1 py-3 rounded-lg bg-emerald-600 text-white text-[13px] font-semibold disabled:opacity-50"
+                            className="flex-1 py-4 rounded-lg bg-emerald-600 text-white text-[13px] font-semibold disabled:opacity-50"
                           >
                             Restore Access
                           </button>
@@ -2534,16 +2533,16 @@ export default function AdminDashboard() {
                             type="button"
                             onClick={() => promptToggleUser(previewState.record)}
                             disabled={actionLoading === `user-${previewState.record?.id}-update` || !previewState.record?.is_active}
-                            className="flex-1 py-3 rounded-lg bg-amber-600 text-white text-[13px] font-semibold disabled:opacity-50"
+                            className="flex-1 py-4 rounded-lg bg-amber-600 text-white text-[13px] font-semibold disabled:opacity-50"
                           >
                             Suspend Identity
                           </button>
                         </div>
-                        <div className="mt-3">
+                        <div className="mt-2">
                           <button
                             type="button"
                             onClick={() => setResetPasswordModal({ open: true, email: previewState.record?.email || '', newPassword: '', confirm: '', loading: false, error: null, success: false })}
-                            className="w-full py-3 rounded-lg bg-slate-700 text-white text-[13px] font-semibold hover:bg-slate-600"
+                            className="w-full py-4 rounded-lg bg-slate-700 text-white text-[13px] font-semibold hover:bg-slate-600"
                           >
                             Reset Password
                           </button>
@@ -2566,9 +2565,9 @@ export default function AdminDashboard() {
                         { label: 'Approval State', value: previewState.record?.status || previewState.record?.approval_status },
                         { label: 'Net Volume', value: formatShipmentVolume(previewState.items) },
                       ].map((item) => (
-                        <div key={item.label} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/50">
+                        <div key={item.label} className="p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/50">
                           <p className="text-xs font-medium text-slate-400 mb-1">{item.label}</p>
-                          <p className={`text-xs ${item.isBold ? 'font-semibold text-brand-primary' : 'font-semibold text-slate-900 dark:text-slate-100'}`}>
+                          <p className={`text-xs ${item.isBold ? 'font-semibold text-foreground' : 'font-semibold text-slate-900 dark:text-slate-100'}`}>
                             {item.value}
                           </p>
                         </div>
@@ -2581,21 +2580,21 @@ export default function AdminDashboard() {
                     title: 'Inventory Delta',
                     children: (
                       <div className="space-y-4">
-                        <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+                        <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
                           <table className="w-full text-left text-xs">
                             <thead>
                               <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
-                                <th className="px-4 py-3 font-semibold uppercase tracking-wider text-slate-400">SKU</th>
-                                <th className="px-4 py-3 font-semibold uppercase tracking-wider text-slate-400">Label</th>
-                                <th className="px-4 py-3 text-right font-semibold uppercase tracking-wider text-slate-400">Volume</th>
+                                <th className="px-4 py-2 font-semibold uppercase tracking-wider text-slate-400">SKU</th>
+                                <th className="px-4 py-2 font-semibold uppercase tracking-wider text-slate-400">Label</th>
+                                <th className="px-4 py-2 text-right font-semibold uppercase tracking-wider text-slate-400">Volume</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                               {previewItemPagination.rows.map((item) => (
                                 <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                  <td className="px-4 py-2.5 font-semibold text-brand-primary">{item.sku}</td>
-                                  <td className="px-4 py-2.5 font-semibold text-slate-700 dark:text-slate-300">{item.item_name}</td>
-                                  <td className="px-4 py-2.5 text-right font-semibold text-slate-900 dark:text-white">
+                                  <td className="px-4 py-2 font-semibold text-foreground">{item.sku}</td>
+                                  <td className="px-4 py-2 font-semibold text-slate-700 dark:text-slate-300">{item.item_name}</td>
+                                  <td className="px-4 py-2 text-right font-semibold text-slate-900 dark:text-white">
                                     {formatLineVolume(item)}
                                   </td>
                                 </tr>
@@ -2622,9 +2621,9 @@ export default function AdminDashboard() {
 
       {resetPasswordModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/25 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 shadow-2xl">
+          <div className="w-full max-w-sm rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 shadow-float">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1">Reset Password</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">{resetPasswordModal.email}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">{resetPasswordModal.email}</p>
 
             {resetPasswordModal.success ? (
               <div className="space-y-4">
@@ -2632,20 +2631,20 @@ export default function AdminDashboard() {
                 <button
                   type="button"
                   onClick={() => setResetPasswordModal((s) => ({ ...s, open: false }))}
-                  className="w-full py-3 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[13px] font-semibold"
+                  className="w-full py-4 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[13px] font-semibold"
                 >
                   Close
                 </button>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
                   <label className="text-xs font-medium text-slate-400 block mb-1">New Password</label>
                   <input
                     type="password"
                     value={resetPasswordModal.newPassword}
                     onChange={(e) => setResetPasswordModal((s) => ({ ...s, newPassword: e.target.value, error: null }))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                    className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-primary"
                     placeholder="Min 8 characters"
                     disabled={resetPasswordModal.loading}
                   />
@@ -2656,7 +2655,7 @@ export default function AdminDashboard() {
                     type="password"
                     value={resetPasswordModal.confirm}
                     onChange={(e) => setResetPasswordModal((s) => ({ ...s, confirm: e.target.value, error: null }))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                    className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-primary"
                     placeholder="Repeat password"
                     disabled={resetPasswordModal.loading}
                   />
@@ -2669,7 +2668,7 @@ export default function AdminDashboard() {
                     type="button"
                     onClick={() => setResetPasswordModal((s) => ({ ...s, open: false }))}
                     disabled={resetPasswordModal.loading}
-                    className="flex-1 py-3 rounded-lg border border-slate-200 dark:border-slate-700 text-[13px] font-semibold text-slate-600 dark:text-slate-400 disabled:opacity-50"
+                    className="flex-1 py-4 rounded-lg border border-slate-200 dark:border-slate-700 text-[13px] font-semibold text-slate-600 dark:text-slate-400 disabled:opacity-50"
                   >
                     Cancel
                   </button>
@@ -2677,7 +2676,7 @@ export default function AdminDashboard() {
                     type="button"
                     onClick={handleResetPassword}
                     disabled={resetPasswordModal.loading || !resetPasswordModal.newPassword}
-                    className="flex-1 py-3 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[13px] font-semibold disabled:opacity-50"
+                    className="flex-1 py-4 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[13px] font-semibold disabled:opacity-50"
                   >
                     {resetPasswordModal.loading ? 'Saving…' : 'Set Password'}
                   </button>

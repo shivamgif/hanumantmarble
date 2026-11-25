@@ -79,7 +79,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
   function Feedback({ scope }) {
     if (feedback.scope !== scope || !feedback.message) return null;
     return (
-      <p className={`mt-3 text-xs font-bold ${feedback.kind === 'error' ? 'text-rose-500' : 'text-emerald-600'}`}>
+      <p className={`mt-2 text-xs font-bold ${feedback.kind === 'error' ? 'text-rose-500' : 'text-emerald-600'}`}>
         {feedback.message}
       </p>
     );
@@ -91,9 +91,9 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
     ) : (
       <div className="space-y-4" aria-busy="true">
         {[0, 1, 2].map((i) => (
-          <div key={i} className={`${CLASSES.card} space-y-3`}>
-            <Skeleton className="h-4 w-40 rounded-md" />
-            <div className="grid gap-3 sm:grid-cols-3">
+          <div key={i} className={`${CLASSES.card} space-y-4`}>
+            <Skeleton className="h-4 w-40 rounded-lg" />
+            <div className="grid gap-4 sm:grid-cols-3">
               {[0, 1, 2].map((j) => <Skeleton key={j} className="h-10 rounded-lg" />)}
             </div>
           </div>
@@ -121,7 +121,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
         <p className="mt-1 text-[11px] font-bold text-slate-500">
           These apply to everyone and drive late marks, overtime and payroll.
         </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {FIELDS.map((field) => (
             <div key={field.key}>
               <label className={FORM_LABEL_CLASS} htmlFor={`setting-${field.key}`}>{field.label}</label>
@@ -153,22 +153,22 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
         {/* Off by default. The photo is taken on the employee's phone, shrunk
             there, and kept for 90 days before the nightly job deletes it — see
             lib/attendance-selfie.mjs. */}
-        <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-border/60 p-3">
+        <label className="mt-4 flex cursor-pointer items-start gap-2 rounded-lg border border-border/60 p-4">
           <input
             type="checkbox"
             checked={Boolean(settings.require_selfie)}
             onChange={(e) => setSettings((s) => ({ ...s, require_selfie: e.target.checked }))}
-            className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600"
+            className="mt-1 h-4 w-4 shrink-0 accent-emerald-600"
           />
           <span>
             <span className="block text-xs font-bold">Require a selfie to clock in and out</span>
-            <span className="mt-0.5 block text-[11px] font-bold text-slate-500">
+            <span className="mt-1 block text-[11px] font-bold text-slate-500">
               A geofence proves a phone was at the branch, not a person. Photos are kept for 90 days,
               then deleted automatically. Breaks are never photographed.
             </span>
           </span>
         </label>
-        <div className="mt-4 flex items-center justify-end gap-3">
+        <div className="mt-4 flex items-center justify-end gap-2">
           <button type="submit" className={PILL_PRIMARY_BUTTON_CLASS}>Save rules</button>
         </div>
         <Feedback scope="rules" />
@@ -195,7 +195,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
         <p className="mt-1 text-[11px] font-bold text-slate-500">
           Only for punching at a shared tablet — never a login. Setting a PIN is how someone joins the kiosk list.
         </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <div>
             <label className={FORM_LABEL_CLASS} htmlFor="pin-employee">Employee</label>
             <SelectField
@@ -244,7 +244,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
           Holidays reduce the working-day count, which raises everyone&apos;s per-day rate for the month.
         </p>
         <form
-          className="mt-4 flex flex-wrap items-end gap-3"
+          className="mt-4 flex flex-wrap items-end gap-2"
           onSubmit={(e) => {
             e.preventDefault();
             post(
@@ -290,7 +290,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
           {holidays.map((holiday) => (
             <span
               key={holiday.id}
-              className="flex items-center gap-2 rounded-full border border-border/60 px-3 py-1.5 text-[11px] font-bold"
+              className="flex items-center gap-2 rounded-lg border border-border/60 px-4 py-2 text-[11px] font-bold"
             >
               <span className="tabular-nums text-slate-500">{holiday.holiday_date}</span>
               {holiday.name}
@@ -322,15 +322,15 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
 
         <div className="mt-4 space-y-2">
           {employees.map((emp) => (
-            <div key={emp.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 p-3">
+            <div key={emp.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 p-4">
               <div className="min-w-[10rem] flex-1">
                 <p className="text-xs font-bold">
                   {emp.name}
                   {!emp.hasLogin ? (
-                    <span className="ml-1.5 text-xs font-medium text-slate-500">no login</span>
+                    <span className="ml-2 text-xs font-medium text-slate-500">no login</span>
                   ) : null}
                   {emp.hasPin ? (
-                    <span className="ml-1.5 text-xs font-semibold text-emerald-600">pin</span>
+                    <span className="ml-2 text-xs font-semibold text-emerald-600">pin</span>
                   ) : null}
                 </p>
                 <p className="text-xs font-medium text-slate-500">{emp.role}</p>
@@ -382,7 +382,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
                       'staff'
                     )
                   }
-                  className="h-4 w-4 rounded border-border/60"
+                  className="h-4 w-4 rounded-lg border-border/60"
                 />
                 Tracked
               </label>
@@ -406,7 +406,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
         </p>
 
         <form
-          className="mt-4 flex flex-wrap items-end gap-3"
+          className="mt-4 flex flex-wrap items-end gap-2"
           onSubmit={(e) => {
             e.preventDefault();
             post(
@@ -453,12 +453,12 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
         </form>
 
         {newToken ? (
-          <div className="mt-4 rounded-xl bg-amber-500/10 p-3">
+          <div className="mt-4 rounded-lg bg-muted p-4">
             <p className="text-xs font-semibold text-amber-700">
               Open this on the tablet now — it is shown only once
             </p>
             <div className="mt-2 flex items-center gap-2">
-              <code className="flex-1 overflow-x-auto whitespace-nowrap rounded-lg bg-background px-2 py-1.5 text-[11px]">
+              <code className="flex-1 overflow-x-auto whitespace-nowrap rounded-lg bg-background px-2 py-2 text-[11px]">
                 {newToken}
               </code>
               <button
@@ -475,7 +475,7 @@ export function AttendanceSettings({ employees = [], onEmployeesChanged }) {
 
         <div className="mt-4 space-y-2">
           {devices.map((device) => (
-            <div key={device.id} className="flex items-center justify-between rounded-xl border border-border/60 p-3">
+            <div key={device.id} className="flex items-center justify-between rounded-lg border border-border/60 p-4">
               <div>
                 <p className="text-xs font-bold">{device.label}</p>
                 <p className="text-[11px] font-bold text-slate-500">

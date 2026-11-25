@@ -27,10 +27,10 @@ function ActionFooter({ record, kind, userRole, actionLoading, onApprove, onReje
   const actionType = kind === 'arrival' ? 'inbound-shipments' : 'outbound-shipments';
 
   const buttons = [];
-  const baseBtn = 'inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50';
+  const baseBtn = 'inline-flex h-9 items-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50';
   const primary = `${baseBtn} bg-primary font-semibold text-primary-foreground hover:bg-primary/90`;
   const outline = `${baseBtn} border border-border bg-card text-slate-700 hover:bg-muted dark:text-slate-200`;
-  const danger = `${baseBtn} border border-rose-600/30 bg-card text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10`;
+  const danger = `${baseBtn} border border-border bg-card text-rose-700 hover:bg-muted dark:text-rose-400 `;
 
   const isLoading = (action) => actionLoading === `${actionType}-${shipmentId}-${action}`;
   const anyLoading = Boolean(actionLoading);
@@ -86,7 +86,7 @@ function DocumentCard({ document, tc }) {
   const isImage = document.mime_type?.startsWith('image/');
   return (
     <section className="overflow-hidden rounded-lg border border-border">
-      <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2">
+      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
             {joinBits(document.document_type, document.document_number) || (tc.document ?? 'Document')}
@@ -100,7 +100,7 @@ function DocumentCard({ document, tc }) {
         ) : null}
       </div>
       {!document.file_url ? (
-        <p className="px-3 py-6 text-center text-xs text-slate-500">{tc.noPreview}</p>
+        <p className="px-4 py-6 text-center text-xs text-slate-500">{tc.noPreview}</p>
       ) : isImage ? (
         <img src={document.file_url} alt={document.file_name || 'Document preview'} className="max-h-56 w-full bg-muted object-contain" />
       ) : (
@@ -156,16 +156,16 @@ function ItemRow({ item, isInbound, canViewPricing, tc }) {
   );
 
   return (
-    <li className="flex items-start justify-between gap-4 px-3 py-2.5">
+    <li className="flex items-start justify-between gap-4 px-4 py-2">
       <div className="min-w-0">
         <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
           {item.item_name || '—'}
           {item.finish ? <span className="font-normal text-slate-500"> · {item.finish}</span> : null}
         </p>
-        {detail ? <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{detail}</p> : null}
-        {returns.length ? <p className="mt-0.5 text-xs font-medium text-rose-700 dark:text-rose-400">{tc.returned ?? 'Returned'} {returns.join(', ')}</p> : null}
+        {detail ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{detail}</p> : null}
+        {returns.length ? <p className="mt-1 text-xs font-medium text-rose-700 dark:text-rose-400">{tc.returned ?? 'Returned'} {returns.join(', ')}</p> : null}
         {isInbound && Number(item.discount_amount || 0) > 0 ? (
-          <p className="mt-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">− {money(item.discount_amount, 2)} discount</p>
+          <p className="mt-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">− {money(item.discount_amount, 2)} discount</p>
         ) : null}
       </div>
       <div className="shrink-0 text-right">
@@ -212,7 +212,7 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
     ? joinBits(r.sku, r.size_label || r.last_slab_size_label, r.division_name || r.brand_name) || previewState.description
     : (
       <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="font-mono text-xs text-brand-primary" title={r.shipment_number || undefined}>{r.invoice_number || r.shipment_number || previewState.title}</span>
+        <span className="text-xs text-foreground" title={r.shipment_number || undefined}>{r.invoice_number || r.shipment_number || previewState.title}</span>
         {shipmentDate ? <><span aria-hidden="true">·</span><span>{formatDateTime(shipmentDate)}</span></> : null}
         {r.status ? <Badge variant={getStatusVariant(r.status)}>{r.status}</Badge> : null}
         {r.approval_status && r.approval_status !== r.status ? <Badge variant={getStatusVariant(r.approval_status)}>{String(r.approval_status).replace(/_/g, ' ')}</Badge> : null}
@@ -386,7 +386,7 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
         ? {
           title: `${tc.linkedDocuments} (${previewState.documents.length})`,
           children: (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               {previewState.documents.map((document) => <DocumentCard key={document.id} document={document} tc={tc} />)}
             </div>
           ),
@@ -407,13 +407,13 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
         previewState.loading ? (
           <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />{tc.loadingPreview}</div>
         ) : previewState.error ? (
-          <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">{previewState.error}</div>
+          <div className="rounded-lg border border-border bg-muted px-4 py-2 text-sm text-rose-700   dark:text-rose-300">{previewState.error}</div>
         ) : null
       }
       sections={sections}
       footer={
         !isStock && !previewState.loading && !previewState.error ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
           {previewState.kind === 'dispatch' && previewState.record?.sales_invoice_id ? (
             <EwayBillPanel key={previewState.record.id} shipment={previewState.record} userRole={userRole} />
           ) : null}
@@ -424,7 +424,7 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
             && (previewState.items || []).some((item) => Number(item.returned_whole_qty) > 0 || Number(item.returned_qty_sqft) > 0) ? (
             <Link
               href={`/stock/invoices?creditNote=${previewState.record.sales_invoice_id}&shipment=${previewState.record.id}`}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-sm font-medium text-slate-700 hover:bg-muted dark:text-slate-200"
+              className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium text-slate-700 hover:bg-muted dark:text-slate-200"
             >
               <FileMinus className="h-4 w-4" /> {tc.raiseCreditNote ?? 'Raise credit note'}
             </Link>
@@ -434,7 +434,7 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
             && ['admin', 'manager', 'stock_maintainer'].includes(userRole) ? (
             <Link
               href={`/stock/invoices?purchaseNote=${previewState.record.id}`}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-sm font-medium text-slate-700 hover:bg-muted dark:text-slate-200"
+              className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium text-slate-700 hover:bg-muted dark:text-slate-200"
             >
               <FileMinus className="h-4 w-4" /> {tc.raiseDebitNote ?? 'Raise debit note'}
             </Link>

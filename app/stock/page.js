@@ -1108,7 +1108,6 @@ export default function StockDashboard() {
   if (accessRole === 'salesperson') tableViewTabs.unshift(...tableViewTabs.splice(2, 1));
 
   // ponytail: one tab strip, rendered inside whichever panel's header is on screen.
-  // Below sm each tab is an equal column, icon over label (see tabButtonClass).
   const tabsBar = (
     <div className={tabTrackClass(tableViewTabs.length)}>
       {tableViewTabs.map((tab) => {
@@ -1124,7 +1123,7 @@ export default function StockDashboard() {
             className={tabButtonClass(isActive, tableViewTabs.length)}
           >
             <Icon className="h-4 w-4 shrink-0" />
-            <span className="line-clamp-2 min-w-0 text-center sm:whitespace-nowrap">
+            <span className="min-w-0 truncate">
               {tab.label}
             </span>
           </button>
@@ -1369,9 +1368,9 @@ export default function StockDashboard() {
   }, [data?.activeItems, data?.pendingArrivalCount, data?.pendingDispatchCount]);
 
   const stockStats = useMemo(() => [
-    { label: t('totalStock'), value: totalStockUnits, trend: totalStockUnits ? Math.round((totalWholeStock / totalStockUnits) * 100) : 0, trendLabel: t('wholeRatio'), icon: Boxes, accent: 'from-brand-primary/20 to-brand-primary/5', isNeutral: true, breakdown: divisionBreakdown },
-    { label: t('pendingPurchases'), value: pendingArrivals, trend: pendingArrivals === 0 ? 100 : -Math.min(pendingArrivals * 10, 100), trendLabel: t('queueHealth'), icon: PackageCheck, accent: 'from-[#1A1A54]/25 to-[#1A1A54]/10', isNeutral: true },
-    { label: t('pendingDispatches'), value: pendingDispatches, trend: pendingDispatches === 0 ? 100 : -Math.min(pendingDispatches * 10, 100), trendLabel: t('dispatchReadiness'), icon: BarChart3, accent: 'from-[#F59E0B]/25 to-[#F59E0B]/10', isNeutral: true },
+    { label: t('totalStock'), value: totalStockUnits, trend: totalStockUnits ? Math.round((totalWholeStock / totalStockUnits) * 100) : 0, trendLabel: t('wholeRatio'), icon: Boxes, isNeutral: true, breakdown: divisionBreakdown },
+    { label: t('pendingPurchases'), value: pendingArrivals, trend: pendingArrivals === 0 ? 100 : -Math.min(pendingArrivals * 10, 100), trendLabel: t('queueHealth'), icon: PackageCheck, isNeutral: true },
+    { label: t('pendingDispatches'), value: pendingDispatches, trend: pendingDispatches === 0 ? 100 : -Math.min(pendingDispatches * 10, 100), trendLabel: t('dispatchReadiness'), icon: BarChart3, isNeutral: true },
   ], [totalStockUnits, totalWholeStock, pendingArrivals, pendingDispatches, divisionBreakdown, t]);
 
   const stockPaginationWithPage = useMemo(() => ({ ...stockPagination, setPage: setStockPage }), [stockPagination]);
@@ -1379,16 +1378,16 @@ export default function StockDashboard() {
   if (loading) {
     return (
       <div className={CLASSES.contentWrap} aria-busy="true">
-        <div className="flex flex-col gap-3">
-          <div className="h-4 w-32 skeleton rounded" />
+        <div className="flex flex-col gap-2">
+          <div className="h-4 w-32 skeleton rounded-lg" />
           <div className="h-8 w-64 max-w-full skeleton rounded-lg" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={`op-stat-skeleton-${index}`} className="h-36 rounded-xl skeleton" />
+            <div key={`op-stat-skeleton-${index}`} className="h-36 rounded-lg skeleton" />
           ))}
         </div>
-        <div className="h-96 rounded-xl skeleton" />
+        <div className="h-96 rounded-lg skeleton" />
       </div>
     );
   }
@@ -1416,7 +1415,7 @@ export default function StockDashboard() {
         return (
           <Link
             href="/stock/analytics"
-            className="glass-panel flex items-center gap-3 rounded-xl px-3 py-2 transition-shadow hover:shadow-card-hover"
+            className="glass-panel flex items-center gap-2 rounded-lg px-4 py-2 transition-shadow hover:shadow-card-hover"
           >
             <p className="w-16 shrink-0 text-xs font-medium leading-tight text-slate-500">{getTranslation('stock.analytics.me.monthlyGoal', language)}</p>
             {/* The figure sits inside the bar, printed twice: dark over the empty
@@ -1432,12 +1431,12 @@ export default function StockDashboard() {
               aria-valuetext={label}
               className="relative h-7 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
             >
-              <span className="absolute inset-0 flex items-center justify-center whitespace-nowrap px-3 text-[11px] font-bold tabular-nums text-slate-700 dark:text-slate-200">{label}</span>
+              <span className="absolute inset-0 flex items-center justify-center whitespace-nowrap px-4 text-[11px] font-bold tabular-nums text-slate-700 dark:text-slate-200">{label}</span>
               {fill > 0 && (
                 <div className={`absolute inset-y-0 left-0 overflow-hidden rounded-full ${barColor}`} style={{ width: `${fill}%` }}>
                   <span
                     aria-hidden="true"
-                    className={`absolute inset-y-0 left-0 flex items-center justify-center whitespace-nowrap px-3 text-[11px] font-bold tabular-nums ${achieved ? 'text-slate-900' : 'text-white'}`}
+                    className={`absolute inset-y-0 left-0 flex items-center justify-center whitespace-nowrap px-4 text-[11px] font-bold tabular-nums ${achieved ? 'text-slate-900' : 'text-white'}`}
                     style={{ width: `${10000 / fill}%` }}
                   >
                     {label}
@@ -1447,7 +1446,7 @@ export default function StockDashboard() {
             </div>
             {/* Quiet while on track; speaks up when the goal is hit or the month slips. */}
             {(achieved || (goal > 0 && standing.behind)) && (
-              <span className={`shrink-0 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-bold ${standing.color} ${standing.bg} ${standing.border}`}>
+              <span className={`shrink-0 whitespace-nowrap rounded-lg border px-2 py-1 text-[11px] font-bold ${standing.color} ${standing.bg} ${standing.border}`}>
                 {getTranslation(`stock.analytics.me.${standing.key}`, language)}
               </span>
             )}
@@ -1464,9 +1463,9 @@ export default function StockDashboard() {
         <section
           aria-labelledby="sell-first-title"
           title={t('sellFirstSubtitle')}
-          className="flex items-stretch gap-2 overflow-x-auto rounded-xl border border-amber-500/30 bg-amber-500/5 p-2 dark:bg-amber-500/10 snap-x"
+          className="flex items-stretch gap-2 overflow-x-auto rounded-lg border border-border bg-muted p-2  snap-x"
         >
-          <div className="flex shrink-0 flex-col justify-center rounded-xl px-2 sm:px-3">
+          <div className="flex shrink-0 flex-col justify-center rounded-lg px-2 sm:px-4">
             <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">{t('sellFirstEyebrow')}</p>
             <h2 id="sell-first-title" className="whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white">{t('sellFirstTitle')}</h2>
           </div>
@@ -1480,10 +1479,10 @@ export default function StockDashboard() {
               <div
                 key={item.id}
                 title={[item.name, details, soldLine].filter(Boolean).join('\n')}
-                className="min-w-[10rem] flex-1 snap-start rounded-xl bg-white/70 px-3 py-2 dark:bg-slate-900/50"
+                className="min-w-[10rem] flex-1 snap-start rounded-lg bg-white/70 px-4 py-2 dark:bg-slate-900/50"
               >
                 <p className="truncate text-xs font-bold text-slate-900 dark:text-slate-100">{item.name}</p>
-                <p className="mt-0.5 flex items-baseline justify-between gap-2 text-[11px] tabular-nums">
+                <p className="mt-1 flex items-baseline justify-between gap-2 text-[11px] tabular-nums">
                   <span className="font-bold text-slate-700 dark:text-slate-200">
                     {Number(item.availableQty).toLocaleString('en-IN', { maximumFractionDigits: 3 })} <span className="font-bold text-slate-500">{unit}</span>
                   </span>
@@ -1630,7 +1629,7 @@ export default function StockDashboard() {
       />
 
       <ReasonDialog request={reasonDialog} onClose={() => setReasonDialog(null)} />
-      <StockToast toast={toast} onDismiss={() => setToast(null)} />
+      <StockToast toast={toast} />
     </div>
   );
 }

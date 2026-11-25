@@ -43,7 +43,7 @@ import {
   CsvExportButton,
   EmptyState,
   TrendCapsule,
-  CHART_ORANGE,
+  CHART_INK,
   INDUSTRIAL_COLORS,
   paceAdjustedTarget,
   formatRelativeTime,
@@ -163,14 +163,14 @@ export function MyPerformancePanel({ data, goal }) {
               <li key={d.id}>
                 <Link
                   href={`/stock?entityType=outbound_shipment&entityId=${d.id}`}
-                  className="glass-panel flex items-center justify-between gap-3 rounded-xl p-4 transition-colors hover:bg-muted/50"
+                  className="glass-panel flex items-center justify-between gap-2 rounded-lg p-4 transition-colors hover:bg-muted/50"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold text-slate-900 dark:text-slate-100">{d.customerName || '—'}</p>
-                    <p className="mt-0.5 text-xs text-slate-500 tabular-nums">
+                    <p className="mt-1 text-xs text-slate-500 tabular-nums">
                       {d.shipmentNumber || `#${d.id}`} · {formatDay(d.dispatchDate, locale)}
                     </p>
-                    <div className="mt-1.5 flex flex-wrap gap-1">
+                    <div className="mt-2 flex flex-wrap gap-1">
                       <DispatchStatus d={d} t={t} />
                     </div>
                   </div>
@@ -179,7 +179,7 @@ export function MyPerformancePanel({ data, goal }) {
               </li>
             ))}
           </ul>
-          <div className="glass-panel hidden overflow-hidden rounded-xl sm:block">
+          <div className="glass-panel hidden overflow-hidden rounded-lg sm:block">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border/60 text-xs font-medium text-slate-500">
@@ -229,18 +229,18 @@ function SectionTitle({ children }) {
 function DispatchStatus({ d, t }) {
   const tone =
     d.status === 'delivered'
-      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+      ? 'bg-muted text-emerald-700  dark:text-emerald-400'
       : d.status === 'cancelled'
-        ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
-        : 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400';
+        ? 'bg-muted text-rose-700  dark:text-rose-400'
+        : 'bg-muted text-sky-700  dark:text-sky-400';
   return (
     <>
-      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${tone}`}>
+      <span className={`rounded-lg px-2 py-1 text-xs font-semibold ${tone}`}>
         {KNOWN_STATUSES.includes(d.status) ? t(`status_${d.status}`) : d.status}
       </span>
       {/* Counted in the month already (see shippedFilter); the pill just says an approver hasn't looked yet. */}
       {d.approvalStatus === 'pending' ? (
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+        <span className="rounded-lg bg-muted px-2 py-1 text-xs font-semibold text-amber-700  dark:text-amber-400">
           {t('awaitingApproval')}
         </span>
       ) : null}
@@ -282,9 +282,9 @@ export function MyPerformanceHero({ data, target, targetKind, pct, expectedPct, 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 items-start">
       {target > 0 ? (
-        <div className="glass-panel rounded-xl p-5 sm:p-7 relative overflow-hidden group lg:col-span-2">
+        <div className="glass-panel rounded-lg p-6 sm:p-8 relative overflow-hidden group lg:col-span-2">
           <div className="relative z-10">
-            <div className="flex items-center justify-between gap-3 mb-6">
+            <div className="flex items-center justify-between gap-2 mb-6">
               <div className={`w-11 h-11 flex items-center justify-center rounded-lg border ${standing.bg} ${standing.border}`}>
                 <Target className={`h-5 w-5 ${standing.color}`} strokeWidth={1.75} />
               </div>
@@ -292,14 +292,14 @@ export function MyPerformanceHero({ data, target, targetKind, pct, expectedPct, 
                 <span className="text-xs font-medium text-slate-500">
                   {targetKind === 'goal' ? t('monthlyGoal') : t('beatYourBest')}
                 </span>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${standing.color} ${standing.bg} border ${standing.border}`}>
+                <span className={`text-xs font-medium px-2 py-1 rounded-lg ${standing.color} ${standing.bg} border ${standing.border}`}>
                   {t(standing.key)}
                 </span>
               </div>
             </div>
 
             <div className="space-y-2">
-              <div className="flex flex-wrap items-baseline gap-3">
+              <div className="flex flex-wrap items-baseline gap-2">
                 <span className="text-3xl sm:text-4xl lg:text-[2.75rem] font-semibold font-sans tracking-tight text-slate-900 dark:text-white leading-none tabular-nums">
                   {formatCompactINR(value)}
                 </span>
@@ -324,7 +324,7 @@ export function MyPerformanceHero({ data, target, targetKind, pct, expectedPct, 
             <div className="mt-6 space-y-2">
               <div className="relative h-2.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-[width] duration-700 ease-out ${standing.bar}`}
+                  className={`h-full rounded-full transition-[width] duration-200 ease-out ${standing.bar}`}
                   style={{ width: `${goalWidth}%` }}
                 />
                 {/* Where they should be by today - the bar is only "behind" relative to this. */}
@@ -340,7 +340,7 @@ export function MyPerformanceHero({ data, target, targetKind, pct, expectedPct, 
                   return (
                     <span
                       key={m.at}
-                      className={`flex items-center gap-1.5 text-[11px] font-medium tabular-nums ${hit ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'}`}
+                      className={`flex items-center gap-2 text-[11px] font-medium tabular-nums ${hit ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'}`}
                     >
                       <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${hit ? standing.bar : 'bg-slate-300 dark:bg-slate-600'}`} />
                       {m.at}%
@@ -363,7 +363,7 @@ export function MyPerformanceHero({ data, target, targetKind, pct, expectedPct, 
         <StreakCard streak={streak} tier={tier} className="lg:col-span-2" wide />
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 sm:gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 sm:gap-6">
         {data?.rank ? <RankCard rank={data.rank} /> : null}
         {target > 0 ? <StreakCard streak={streak} tier={tier} /> : null}
         <MiniStat
@@ -397,22 +397,22 @@ function RankCard({ rank }) {
     : t('rankGap', { amount: formatCompactINR(rank.gapToNext), next: rank.position - 1 });
   return (
     <div
-      className="glass-panel rounded-xl p-4 sm:p-5 flex items-center gap-4 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover"
+      className="glass-panel rounded-lg p-4 sm:p-6 flex items-center gap-4 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover"
       title={t('rankHint')}
     >
-      <div className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border ${leading ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-brand-primary/10 border-brand-primary/20'}`}>
+      <div className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-lg border ${leading ? 'bg-muted border-border' : 'bg-muted border-border'}`}>
         <Trophy className={`h-5 w-5 ${leading ? 'text-yellow-600 dark:text-yellow-400' : 'text-brand-primary'}`} />
       </div>
       <div className="min-w-0 flex-1">
         <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('teamRank')}</div>
-        <div className="flex items-baseline gap-1.5 mt-0.5">
+        <div className="flex items-baseline gap-2 mt-1">
           <span className="text-2xl font-bold font-sans tracking-tight text-slate-900 dark:text-white leading-none tabular-nums">#{rank.position}</span>
           <span className="text-xs font-bold text-slate-500 tabular-nums">{t('ofTotal', { total: rank.total })}</span>
         </div>
         <div className="text-xs font-bold text-slate-600 dark:text-slate-300 mt-1">{line}</div>
       </div>
       {rank.mostImproved ? (
-        <span className="shrink-0 self-start rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+        <span className="shrink-0 self-start rounded-lg bg-muted px-2 py-1 text-[11px] font-bold text-emerald-700  dark:text-emerald-400">
           📈 {t('mostImproved')}
         </span>
       ) : null}
@@ -430,29 +430,29 @@ function MyTrend({ rows, goal, projected }) {
   return (
     <section className="space-y-6">
       <SectionTitle>{t('trendTitle')}</SectionTitle>
-      <div className="glass-panel rounded-xl p-4 sm:p-6 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover">
+      <div className="glass-panel rounded-lg p-4 sm:p-6 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover">
         <div className="space-y-4">
           {rows.map((row) => {
             const isBest = best > 0 && row.totalValue === best;
             const hitGoal = goal > 0 && row.totalValue >= goal;
             // Best month wins the crown colour; any other goal month stays green.
-            const barColor = isBest ? 'bg-yellow-400' : hitGoal ? 'bg-emerald-500' : 'bg-brand-primary';
+            const barColor = isBest ? 'bg-yellow-400' : hitGoal ? 'bg-emerald-500' : 'bg-foreground';
             return (
               /* ponytail: mobile wraps the bar onto its own line via order/basis, no duplicate markup. */
               <div key={row.monthKey} className="flex flex-wrap items-center gap-x-2 gap-y-2 sm:flex-nowrap sm:gap-4">
                 <span className="w-20 shrink-0 leading-tight">
                   <span className="block text-xs font-medium text-slate-500">{formatMonthKey(row.monthKey, locale)}</span>
-                  {row.isCurrent ? <span className="block text-[11px] font-bold text-brand-primary">{t('inProgress')}</span> : null}
+                  {row.isCurrent ? <span className="block text-[11px] font-bold text-foreground">{t('inProgress')}</span> : null}
                 </span>
-                <div className="relative order-last basis-full h-6 sm:order-none sm:basis-auto sm:flex-1 sm:h-8 rounded-xl bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                <div className="relative order-last basis-full h-6 sm:order-none sm:basis-auto sm:flex-1 sm:h-8 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden">
                   {row.isCurrent && projected > row.totalValue ? (
                     <div
-                      className={`absolute inset-y-0 left-0 rounded-xl opacity-25 ${barColor}`}
+                      className={`absolute inset-y-0 left-0 rounded-lg opacity-25 ${barColor}`}
                       style={{ width: `${Math.min(100, (projected / scale) * 100)}%` }}
                       title={t('atPace', { amount: formatCompactINR(projected), pct: goal > 0 ? Math.round((projected / goal) * 100) : '—' })}
                     />
                   ) : null}
-                  <div className={`relative h-full rounded-xl transition-[width] duration-700 ${barColor}`} style={{ width: `${(row.totalValue / scale) * 100}%` }} />
+                  <div className={`relative h-full rounded-lg transition-[width] duration-200 ${barColor}`} style={{ width: `${(row.totalValue / scale) * 100}%` }} />
                   {goal > 0 ? (
                     <div className="absolute inset-y-0 w-0.5 bg-slate-900/50 dark:bg-slate-100/50" style={{ left: `${(goal / scale) * 100}%` }} title={t('goalLine')} />
                   ) : null}
@@ -481,15 +481,15 @@ function CloseTheGap({ sellFirst, followUps, gap, today }) {
       <SectionTitle>{gap > 0 ? t('closeGapTitle', { amount: formatCompactINR(gap) }) : t('easyWinsTitle')}</SectionTitle>
       <div className={`grid grid-cols-1 gap-4 sm:gap-6 ${sellFirst.length && followUps.length ? 'lg:grid-cols-2' : ''}`}>
         {sellFirst.length > 0 && (
-          <div className="glass-panel rounded-xl p-4 sm:p-5">
+          <div className="glass-panel rounded-lg p-4 sm:p-6">
             <div className="flex items-center gap-2">
               <Package className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t('sellFirstTitle')}</h3>
             </div>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('sellFirstHint')}</p>
-            <ul className="mt-3 divide-y divide-border/50">
+            <ul className="mt-2 divide-y divide-border/50">
               {sellFirst.map((item) => (
-                <li key={item.id} className="flex items-center justify-between gap-3 py-2.5">
+                <li key={item.id} className="flex items-center justify-between gap-2 py-2">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold text-slate-900 dark:text-slate-100">{item.name}</p>
                     <p className="truncate text-xs text-slate-500">{[item.brandName, item.sizeLabel, item.divisionName].filter(Boolean).join(' · ')}</p>
@@ -508,17 +508,17 @@ function CloseTheGap({ sellFirst, followUps, gap, today }) {
           </div>
         )}
         {followUps.length > 0 && (
-          <div className="glass-panel rounded-xl p-4 sm:p-5">
+          <div className="glass-panel rounded-lg p-4 sm:p-6">
             <div className="flex items-center gap-2">
               <PhoneCall className="h-4 w-4 text-brand-primary" />
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t('followUpTitle')}</h3>
             </div>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('followUpHint')}</p>
-            <ul className="mt-3 divide-y divide-border/50">
+            <ul className="mt-2 divide-y divide-border/50">
               {followUps.map((c) => {
                 const quietDays = Math.round((todayMs - Date.parse(`${c.lastOrderOn}T00:00:00Z`)) / 86400000);
                 return (
-                  <li key={c.id} className="flex items-center justify-between gap-3 py-2.5">
+                  <li key={c.id} className="flex items-center justify-between gap-2 py-2">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-bold text-slate-900 dark:text-slate-100">{c.name}</p>
                       <p className="text-xs text-slate-500 tabular-nums">
@@ -544,9 +544,9 @@ function CloseTheGap({ sellFirst, followUps, gap, today }) {
 // not a grey cell: grey reads as a miss, and a day off is not one.
 const STREAK_DAY = {
   active: { icon: Check, label: 'legendActive', className: 'bg-emerald-500 text-white' },
-  missed: { icon: X, label: 'legendMissed', className: 'bg-rose-100 text-rose-600 ring-1 ring-inset ring-rose-300 dark:bg-rose-950/40 dark:text-rose-400 dark:ring-rose-800' },
+  missed: { icon: X, label: 'legendMissed', className: 'bg-muted text-rose-600 ring-1 ring-inset ring-rose-300  dark:text-rose-400 dark:ring-rose-800' },
   off: { icon: null, label: 'legendOff', className: 'border border-dashed border-slate-300 dark:border-slate-600' },
-  today: { icon: Clock, label: 'legendToday', className: 'bg-amber-50 text-amber-600 ring-1 ring-inset ring-amber-300 dark:bg-amber-950/30 dark:text-amber-400 dark:ring-amber-800' },
+  today: { icon: Clock, label: 'legendToday', className: 'bg-muted text-amber-600 ring-1 ring-inset ring-amber-300  dark:text-amber-400 dark:ring-amber-800' },
 };
 
 // "2026-09-15" -> "Tue", or "Tue, 15 Sept" with `withDate`. The key is an IST
@@ -560,7 +560,7 @@ function formatWeekday(key, locale, withDate = false) {
 function StreakCard({ streak, tier, className = '', wide = false }) {
   const { t, locale } = useMeText();
   return (
-    <div className={`glass-panel rounded-xl p-5 sm:p-6 relative overflow-hidden group ${className}`}>
+    <div className={`glass-panel rounded-lg p-6 sm:p-6 relative overflow-hidden group ${className}`}>
       <div className="relative z-10">
         <div className="flex items-center gap-4">
           <div className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-lg border ${tier.bg} ${tier.border}`}>
@@ -568,7 +568,7 @@ function StreakCard({ streak, tier, className = '', wide = false }) {
           </div>
           <div className="min-w-0">
             <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('salesStreak')}</div>
-            <div className="flex items-baseline gap-1.5">
+            <div className="flex items-baseline gap-2">
               <span className={`text-3xl ${wide ? 'sm:text-4xl' : ''} font-semibold font-sans tracking-tight leading-none tabular-nums ${tier.color}`}>
                 {streak.current}
               </span>
@@ -583,7 +583,7 @@ function StreakCard({ streak, tier, className = '', wide = false }) {
         {/* Last 7 days, oldest first, each labelled with its weekday and one
             unmistakable state. Dispatched days stay green whatever the tier,
             so an old run doesn't turn grey and read as misses once it ends. */}
-        <ol className="mt-4 grid grid-cols-7 gap-1.5">
+        <ol className="mt-4 grid grid-cols-7 gap-2">
           {streak.last7.map((d) => {
             const cell = STREAK_DAY[d.state];
             const Icon = cell.icon;
@@ -592,7 +592,7 @@ function StreakCard({ streak, tier, className = '', wide = false }) {
                 <span className={`text-[11px] font-bold ${d.state === 'today' ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>
                   {d.state === 'today' ? t('today') : formatWeekday(d.date, locale)}
                 </span>
-                <span className={`flex h-7 w-full items-center justify-center rounded-md ${cell.className}`}>
+                <span className={`flex h-7 w-full items-center justify-center rounded-lg ${cell.className}`}>
                   {Icon ? <Icon className="h-3.5 w-3.5" aria-hidden="true" /> : null}
                   <span className="sr-only">{t(cell.label)}</span>
                 </span>
@@ -600,17 +600,17 @@ function StreakCard({ streak, tier, className = '', wide = false }) {
             );
           })}
         </ol>
-        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-bold text-slate-500" aria-hidden="true">
+        <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-[11px] font-bold text-slate-500" aria-hidden="true">
           {['active', 'missed', 'off'].map((state) => (
             <span key={state} className="flex items-center gap-1">
-              <span className={`inline-block h-2.5 w-2.5 rounded-sm ${STREAK_DAY[state].className}`} />
+              <span className={`inline-block h-2.5 w-2.5 rounded-lg ${STREAK_DAY[state].className}`} />
               {t(STREAK_DAY[state].label)}
             </span>
           ))}
         </div>
 
         {/* What happened and what to do about it, in words. */}
-        <p className={`mt-3 text-xs font-bold ${streak.current > 0 && !streak.activeToday ? 'text-amber-700 dark:text-amber-400' : 'text-slate-700 dark:text-slate-200'}`}>
+        <p className={`mt-2 text-xs font-bold ${streak.current > 0 && !streak.activeToday ? 'text-amber-700 dark:text-amber-400' : 'text-slate-700 dark:text-slate-200'}`}>
           {streak.current === 0
             ? streak.brokenOn
               ? t('streakBroke', { date: formatWeekday(streak.brokenOn, locale, true) })
@@ -633,13 +633,13 @@ function StreakCard({ streak, tier, className = '', wide = false }) {
 
 function MiniStat({ icon: Icon, label, value, sub, change }) {
   return (
-    <div className="glass-panel rounded-xl p-4 sm:p-5 flex items-center gap-4 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover">
-      <div className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border bg-brand-primary/10 border-brand-primary/20">
+    <div className="glass-panel rounded-lg p-4 sm:p-6 flex items-center gap-4 transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover">
+      <div className="w-11 h-11 shrink-0 flex items-center justify-center rounded-lg border bg-muted border-border">
         <Icon className="h-5 w-5 text-brand-primary" />
       </div>
       <div className="min-w-0 flex-1">
         <div className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">{label}</div>
-        <div className="text-2xl font-bold font-sans tracking-tight text-slate-900 dark:text-white leading-none mt-0.5 tabular-nums">{value}</div>
+        <div className="text-2xl font-bold font-sans tracking-tight text-slate-900 dark:text-white leading-none mt-1 tabular-nums">{value}</div>
         <div className="text-[11px] font-bold text-slate-500 mt-1 truncate">{sub}</div>
       </div>
       {change === null || change === undefined ? null : (
@@ -675,8 +675,8 @@ export function StockHealthScorecard({ data, stockRisk, approvalOps, monthlyProf
         ? `${formatCompactINR(pace.profit)} ${t('profit')}${pace.marginPct != null ? ` · ${pace.marginPct.toFixed(1)}% ${t('margin')}` : ''}`
         : t('noData'),
       color: paceUp ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400',
-      bg: paceUp ? 'bg-emerald-500/10' : 'bg-amber-500/10',
-      border: paceUp ? 'border-emerald-500/20' : 'border-amber-500/20',
+      bg: paceUp ? 'bg-muted' : 'bg-muted',
+      border: paceUp ? 'border-border' : 'border-border',
       icon: Wallet,
       change: pace?.changePct ?? null,
     },
@@ -685,8 +685,8 @@ export function StockHealthScorecard({ data, stockRisk, approvalOps, monthlyProf
       value: formatCompactNumber(riskCount),
       subValue: `${zeroStock} ${t('zeroStock')} · ${lowStock} ${t('lowStock')}`,
       color: riskCount > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400',
-      bg: riskCount > 0 ? 'bg-rose-500/10' : 'bg-emerald-500/10',
-      border: riskCount > 0 ? 'border-rose-500/20' : 'border-emerald-500/20',
+      bg: riskCount > 0 ? 'bg-muted' : 'bg-muted',
+      border: riskCount > 0 ? 'border-border' : 'border-border',
       icon: AlertCircle,
     },
     {
@@ -694,8 +694,8 @@ export function StockHealthScorecard({ data, stockRisk, approvalOps, monthlyProf
       value: formatHours(medianLagHours),
       subValue: t('medianHoursToApprove'),
       color: medianLagHours > 24 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400',
-      bg: medianLagHours > 24 ? 'bg-amber-500/10' : 'bg-emerald-500/10',
-      border: medianLagHours > 24 ? 'border-amber-500/20' : 'border-emerald-500/20',
+      bg: medianLagHours > 24 ? 'bg-muted' : 'bg-muted',
+      border: medianLagHours > 24 ? 'border-border' : 'border-border',
       icon: Clock,
     },
     {
@@ -703,19 +703,19 @@ export function StockHealthScorecard({ data, stockRisk, approvalOps, monthlyProf
       value: `${(healthyRatio * 100).toFixed(1)}%`,
       subValue: `${formatCompactNumber(healthy)} ${t('healthyLineItems')}`,
       color: 'text-emerald-600 dark:text-emerald-400',
-      bg: 'bg-emerald-500/10',
-      border: 'border-emerald-500/20',
+      bg: 'bg-muted',
+      border: 'border-border',
       icon: Package,
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 sm:gap-4 lg:grid-cols-4">
       {metrics.map((m) => (
-        <div className="glass-panel rounded-xl p-3 sm:p-6 relative overflow-hidden transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group" key={m.label}>
+        <div className="glass-panel rounded-lg p-4 sm:p-6 relative overflow-hidden transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group" key={m.label}>
           <div className="relative z-10">
-            <div className="flex items-center justify-between mb-3 sm:mb-5">
-              <div className={`w-10 h-10 sm:w-16 sm:h-16 flex items-center justify-center rounded-lg sm:rounded-xl border ${m.bg} ${m.border}`}>
+            <div className="flex items-center justify-between mb-2 sm:mb-6">
+              <div className={`w-10 h-10 sm:w-16 sm:h-16 flex items-center justify-center rounded-lg sm:rounded-lg border ${m.bg} ${m.border}`}>
                 <m.icon className={`h-5 w-5 sm:h-8 sm:w-8 ${m.color}`} />
               </div>
               {m.change != null ? (
@@ -727,7 +727,7 @@ export function StockHealthScorecard({ data, stockRisk, approvalOps, monthlyProf
             <div className="space-y-1 sm:space-y-2">
               <div className="text-slate-500 dark:text-slate-400 text-[11px] sm:text-sm font-bold">{m.label}</div>
               <div className={`text-2xl sm:text-4xl lg:text-5xl font-bold font-sans tracking-tight text-slate-900 dark:text-white leading-none`}>{m.value}</div>
-              <div className="text-[11px] sm:text-xs font-medium text-slate-400 mt-1.5 sm:mt-3">{m.subValue}</div>
+              <div className="text-[11px] sm:text-xs font-medium text-slate-400 mt-2 sm:mt-2">{m.subValue}</div>
             </div>
           </div>
           <div className={`absolute -right-6 -bottom-6 w-24 h-24 sm:w-40 sm:h-40 opacity-[0.04] transition-opacity duration-200 pointer-events-none group-hover:opacity-[0.08]`}>
@@ -747,7 +747,7 @@ export function HeroCallouts({ stockedOut, approvalsWaiting, oldestPendingHours,
       icon: PackageX,
       value: stockedOut,
       label: t('stockedOut'),
-      tone: stockedOut > 0 ? 'text-rose-700 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20' : 'text-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
+      tone: stockedOut > 0 ? 'text-rose-700 bg-muted  dark:text-rose-400 border-border ' : 'text-emerald-700 bg-muted  dark:text-emerald-400 border-border ',
       tab: 'overview',
       target: 'widget-reorder',
     },
@@ -756,7 +756,7 @@ export function HeroCallouts({ stockedOut, approvalsWaiting, oldestPendingHours,
       value: approvalsWaiting,
       label: t('approvalsWaiting'),
       hint: approvalsWaiting > 0 ? `${formatHours(oldestPendingHours)} ${t('oldestPending')}` : null,
-      tone: approvalsWaiting > 10 ? 'text-rose-700 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20' : approvalsWaiting > 0 ? 'text-amber-700 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20' : 'text-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
+      tone: approvalsWaiting > 10 ? 'text-rose-700 bg-muted  dark:text-rose-400 border-border ' : approvalsWaiting > 0 ? 'text-amber-700 bg-muted  dark:text-amber-400 border-border ' : 'text-emerald-700 bg-muted  dark:text-emerald-400 border-border ',
       tab: 'overview',
       target: 'widget-pending',
     },
@@ -764,7 +764,7 @@ export function HeroCallouts({ stockedOut, approvalsWaiting, oldestPendingHours,
       icon: TrendingDown,
       value: salespeopleBehindPace,
       label: t('salespeopleBehindPace'),
-      tone: salespeopleBehindPace > 0 ? 'text-amber-700 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20' : 'text-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
+      tone: salespeopleBehindPace > 0 ? 'text-amber-700 bg-muted  dark:text-amber-400 border-border ' : 'text-emerald-700 bg-muted  dark:text-emerald-400 border-border ',
       tab: 'team',
       target: 'widget-pace',
     },
@@ -776,7 +776,7 @@ export function HeroCallouts({ stockedOut, approvalsWaiting, oldestPendingHours,
           key={p.label}
           type="button"
           onClick={() => onNavigate?.(p.tab, p.target)}
-          className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-shadow duration-200 hover:shadow-card focus-ring ${p.tone}`}
+          className={`flex items-center gap-2 rounded-lg border px-2 py-2 text-xs font-semibold transition-shadow duration-200 hover:shadow-card focus-ring ${p.tone}`}
         >
           <p.icon className="h-3.5 w-3.5 shrink-0" />
           <span className="tabular-nums text-sm leading-none">{p.value}</span>
@@ -835,7 +835,7 @@ export function SalespersonSpotlight({ trend, ranking, goals, selected, onSelect
           <SelectField
             value={active || ''}
             onChange={(e) => onSelect?.(e.target.value)}
-            className="max-w-[14rem] rounded-lg border border-border bg-card px-3 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus-ring"
+            className="max-w-[14rem] rounded-lg border border-border bg-card px-4 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus-ring"
           >
             {roster.map((name) => (
               <option key={name} value={name}>{name}</option>
@@ -850,9 +850,9 @@ export function SalespersonSpotlight({ trend, ranking, goals, selected, onSelect
         <span className="text-xs font-medium text-slate-400">{t('growthVsLastPeriod')}</span>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-xl border border-border/60 bg-muted/30 px-3 py-2.5">
+          <div key={s.label} className="rounded-lg border border-border/60 bg-muted/30 px-4 py-2">
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{s.label}</p>
             <p className="mt-1 text-lg font-bold font-sans tracking-tight text-slate-900 dark:text-slate-100 tabular-nums">{s.value}</p>
           </div>
@@ -889,7 +889,7 @@ export function SalespersonSpotlight({ trend, ranking, goals, selected, onSelect
       {series.length === 0 ? (
         <EmptyState label={t('noData')} />
       ) : (
-        <div className="h-[220px] rounded-xl border border-border/60 bg-muted/20 p-4">
+        <div className="h-[220px] rounded-lg border border-border/60 bg-muted/20 p-4">
           <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
             <LineChart data={series} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200/80 dark:stroke-slate-800" />
@@ -900,9 +900,9 @@ export function SalespersonSpotlight({ trend, ranking, goals, selected, onSelect
                 type="monotone"
                 dataKey="revenue"
                 name={t('revenue')}
-                stroke={CHART_ORANGE}
+                stroke={CHART_INK}
                 strokeWidth={2}
-                dot={{ r: 3, fill: CHART_ORANGE, strokeWidth: 0 }}
+                dot={{ r: 3, fill: CHART_INK, strokeWidth: 0 }}
                 activeDot={{ r: 6, stroke: 'rgb(var(--card))', strokeWidth: 2 }}
               />
             </LineChart>
@@ -946,11 +946,11 @@ function LeaderboardRow({ row, i, maxVal, onSelect, isSelected, blendedMargin, g
   return (
     <Wrapper
       {...interactiveProps}
-      className={`flex w-full items-start gap-3 py-2.5 border-b border-slate-100 dark:border-slate-800/40 last:border-b-0 ${onSelect ? 'text-left cursor-pointer focus-ring' : ''} ${isSelected ? 'bg-brand-primary/5 ring-1 ring-brand-primary/40 rounded-lg px-2 -mx-2 border-b-transparent' : ''}`}
+      className={`flex w-full items-start gap-2 py-2 border-b border-slate-100 dark:border-slate-800/40 last:border-b-0 ${onSelect ? 'text-left cursor-pointer focus-ring' : ''} ${isSelected ? 'bg-muted ring-1 ring-border rounded-lg px-2 -mx-2 border-b-transparent' : ''}`}
     >
       <span className="w-6 text-xs font-bold text-slate-400 text-right tabular-nums">{i + 1}.</span>
-      <div className="flex-1 min-w-0 space-y-1.5">
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
+      <div className="flex-1 min-w-0 space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
           <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{name}</p>
           <div className="flex items-center gap-2 shrink-0 tabular-nums">
             <p className="text-xs font-bold font-sans text-slate-900 dark:text-white">{formatCompactINR(row.revenue)}</p>
@@ -1034,10 +1034,10 @@ export function Leaderboard({ ranking, goals = [], months, onSelect, selected })
         <EmptyState label={t('noData')} />
       ) : (
         <>
-          <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold text-slate-400">
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-emerald-500" />{t('profit')}</span>
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-slate-400 dark:bg-slate-500" />{t('cost')}</span>
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-slate-200 dark:bg-slate-700" />{t('uncostedRevenue')}</span>
+          <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-bold text-slate-400">
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-lg bg-emerald-500" />{t('profit')}</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-lg bg-slate-400 dark:bg-slate-500" />{t('cost')}</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-lg bg-slate-200 dark:bg-slate-700" />{t('uncostedRevenue')}</span>
           </div>
           <div className="max-h-[28rem] overflow-y-auto pr-1">
             {rows.map((row, i) => {
@@ -1074,12 +1074,12 @@ export function ReorderNowWidget({ items, months }) {
       {items.length === 0 ? (
         <EmptyState label={t('noData')} />
       ) : (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           {items.map((item) => {
             const cover = Number(item.days_cover || 0);
             const isCritical = cover <= 0;
             return (
-              <div key={item.id} className="flex items-center gap-3 py-2 border-b border-slate-100 dark:border-slate-800/40 last:border-b-0">
+              <div key={item.id} className="flex items-center gap-2 py-2 border-b border-slate-100 dark:border-slate-800/40 last:border-b-0">
                 <PackageX className={`h-4 w-4 shrink-0 ${isCritical ? 'text-rose-500' : 'text-amber-500'}`} />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate" title={item.name}>{item.name}</p>
@@ -1089,7 +1089,7 @@ export function ReorderNowWidget({ items, months }) {
                   <p className="text-xs font-bold font-sans text-slate-900 dark:text-white tabular-nums">{item.sold_30d}</p>
                   <p className="text-xs text-slate-400 font-medium">{t('sold30d')}</p>
                 </div>
-                <div className={`shrink-0 text-right w-16 px-2 py-1 rounded-lg ${isCritical ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400' : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400'}`}>
+                <div className={`shrink-0 text-right w-16 px-2 py-1 rounded-lg ${isCritical ? 'bg-muted text-rose-700  dark:text-rose-400' : 'bg-muted text-amber-700  dark:text-amber-400'}`}>
                   <p className="text-xs font-bold tabular-nums">{cover.toFixed(1)}d</p>
                   <p className="text-xs font-semibold leading-none">{t('daysCover')}</p>
                 </div>
@@ -1116,10 +1116,10 @@ export function DeadStockWidget({ data, months }) {
       topRight={count > 0 ? <CsvExportButton type="deadstock" months={months} label={t('exportCsv')} /> : null}
     >
       <div className="flex items-start gap-4">
-        <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-slate-100 dark:bg-slate-800 shrink-0">
+        <div className="w-14 h-14 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-slate-800 shrink-0">
           <Archive className="h-7 w-7 text-slate-500" />
         </div>
-        <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <p className="text-2xl font-bold font-sans text-slate-900 dark:text-white tabular-nums leading-none">{count}</p>
             <p className="text-xs font-medium text-slate-400 mt-1">{t('items')}</p>
@@ -1153,10 +1153,10 @@ export function PendingQueueWidget({ items, onApprove, onReject, actionLoading }
       {items.length === 0 ? (
         <EmptyState label={t('noData')} />
       ) : (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           {items.map((item) => {
             const hrs = Number(item.hours_pending || 0);
-            const ageColor = hrs > 48 ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400' : hrs > 24 ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
+            const ageColor = hrs > 48 ? 'bg-muted text-rose-700  dark:text-rose-400' : hrs > 24 ? 'bg-muted text-amber-700  dark:text-amber-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
             const isLoading = actionLoading === `${item.id}`;
             return (
               <div key={item.id} className="flex items-center gap-2 py-2 border-b border-slate-100 dark:border-slate-800/40 last:border-b-0">
@@ -1172,7 +1172,7 @@ export function PendingQueueWidget({ items, onApprove, onReject, actionLoading }
                         type="button"
                         disabled={isLoading || !onApprove}
                         onClick={() => onApprove?.(item)}
-                        className="p-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition disabled:opacity-50 focus-ring"
+                        className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition disabled:opacity-50 focus-ring"
                       >
                         {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                       </button>
@@ -1185,7 +1185,7 @@ export function PendingQueueWidget({ items, onApprove, onReject, actionLoading }
                         type="button"
                         disabled={isLoading || !onReject}
                         onClick={() => onReject?.(item)}
-                        className="p-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white transition disabled:opacity-50 focus-ring"
+                        className="p-2 rounded-lg bg-rose-500 hover:bg-rose-600 text-white transition disabled:opacity-50 focus-ring"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -1235,7 +1235,7 @@ export function CustomerConcentrationWidget({ rows }) {
   }
   return (
     <AnalyticsCard title={t('topCustomers')} subtitle={t('concentrationSubtitle')}>
-      <div className="h-36 mb-3">
+      <div className="h-36 mb-2">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
           <PieChart>
             <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={36} outerRadius={62} paddingAngle={2}>
@@ -1245,7 +1245,7 @@ export function CustomerConcentrationWidget({ rows }) {
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         {rows.slice(0, 5).map((row, i) => {
           const share = Number(row.share_pct || 0);
           const isConcentrated = share >= CONCENTRATION_ALERT_PCT;
@@ -1326,15 +1326,15 @@ export function PriceDispersionWidget({ rows }) {
         </div>
       }
     >
-      <div className="hidden md:block overflow-x-auto rounded-xl border border-border/60">
+      <div className="hidden md:block overflow-x-auto rounded-lg border border-border/60">
         <table className="w-full text-left text-sm min-w-[640px]">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('itemName')}</th>
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('typicalRate')}</th>
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('rateRange')}</th>
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('belowTypical')}</th>
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('uplift')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('itemName')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('typicalRate')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('rateRange')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('belowTypical')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('uplift')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
@@ -1342,18 +1342,18 @@ export function PriceDispersionWidget({ rows }) {
               const wideGap = gapPct(row) >= RATE_GAP_ALERT_PCT;
               return (
                 <tr key={row.item_id} className="group hover:bg-muted/50 transition-colors">
-                  <td className="px-5 py-4">
+                  <td className="px-6 py-4">
                     <p className="font-bold text-slate-900 dark:text-slate-100 text-xs truncate max-w-[240px]" title={row.name}>{row.name}</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5 truncate max-w-[240px]" title={row.sku}>{row.sku}</p>
+                    <p className="text-[11px] text-slate-500 mt-1 truncate max-w-[240px]" title={row.sku}>{row.sku}</p>
                   </td>
-                  <td className="px-5 py-4 text-right font-sans font-bold text-xs text-slate-900 dark:text-white">{formatINR(row.median_rate)}</td>
-                  <td className={`px-5 py-4 text-right font-sans font-bold text-xs ${wideGap ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500'}`}>
+                  <td className="px-6 py-4 text-right font-sans font-bold text-xs text-slate-900 dark:text-white">{formatINR(row.median_rate)}</td>
+                  <td className={`px-6 py-4 text-right font-sans font-bold text-xs ${wideGap ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500'}`}>
                     {formatINR(row.min_rate)} – {formatINR(row.max_rate)}
                   </td>
-                  <td className="px-5 py-4 text-right font-sans font-bold text-xs text-slate-500 tabular-nums">
+                  <td className="px-6 py-4 text-right font-sans font-bold text-xs text-slate-500 tabular-nums">
                     {row.below_count} / {row.sale_count}
                   </td>
-                  <td className="px-5 py-4 text-right font-sans font-bold text-xs text-amber-600 dark:text-amber-400">{formatCompactINR(row.uplift)}</td>
+                  <td className="px-6 py-4 text-right font-sans font-bold text-xs text-amber-600 dark:text-amber-400">{formatCompactINR(row.uplift)}</td>
                 </tr>
               );
             })}
@@ -1365,11 +1365,11 @@ export function PriceDispersionWidget({ rows }) {
         {rows.map((row) => {
           const wideGap = gapPct(row) >= RATE_GAP_ALERT_PCT;
           return (
-            <div key={`disp-mob-${row.item_id}`} className="p-5 rounded-xl border border-border/60 bg-muted/20 space-y-4">
-              <div className="flex justify-between items-start gap-3">
+            <div key={`disp-mob-${row.item_id}`} className="p-6 rounded-lg border border-border/60 bg-muted/20 space-y-4">
+              <div className="flex justify-between items-start gap-2">
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{row.name}</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5 truncate">{row.sku}</p>
+                  <p className="text-[11px] text-slate-500 mt-1 truncate">{row.sku}</p>
                 </div>
                 <span className="font-sans text-sm font-bold text-amber-600 dark:text-amber-400 shrink-0">{formatCompactINR(row.uplift)}</span>
               </div>
@@ -1412,27 +1412,27 @@ function tripFreightStatus(trip) {
 function TripShipments({ shipments, t }) {
   if (!shipments || shipments.length === 0) return null;
   return (
-    <div className="rounded-xl border border-border/60 bg-background/60 overflow-hidden">
+    <div className="rounded-lg border border-border/60 bg-background/60 overflow-hidden">
       <table className="w-full text-left text-xs">
         <thead>
           <tr className="border-b border-border/60">
-            <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('shipmentNumber')}</th>
-            <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('invoiceNumber')}</th>
-            <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('supplierName')}</th>
-            <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('unitsReceived')}</th>
-            <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('goodsValue')}</th>
-            <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('freightLabel')}</th>
+            <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('shipmentNumber')}</th>
+            <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('invoiceNumber')}</th>
+            <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('supplierName')}</th>
+            <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('unitsReceived')}</th>
+            <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('goodsValue')}</th>
+            <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('freightLabel')}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border/40">
           {shipments.map((ship) => (
             <tr key={ship.id}>
-              <td className="px-4 py-2.5 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{ship.shipment_number}</td>
-              <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">{ship.invoice_number || '\u2014'}</td>
-              <td className="px-4 py-2.5 text-slate-500 truncate max-w-[180px]" title={ship.supplier || ''}>{ship.supplier || '\u2014'}</td>
-              <td className="px-4 py-2.5 text-right font-sans font-bold text-slate-500 tabular-nums">{formatCompactNumber(ship.units)}</td>
-              <td className="px-4 py-2.5 text-right font-sans font-bold text-slate-500">{formatCompactINR(ship.goods)}</td>
-              <td className="px-4 py-2.5 text-right font-sans font-bold text-slate-900 dark:text-white">
+              <td className="px-4 py-2 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{ship.shipment_number}</td>
+              <td className="px-4 py-2 text-slate-500 whitespace-nowrap">{ship.invoice_number || '\u2014'}</td>
+              <td className="px-4 py-2 text-slate-500 truncate max-w-[180px]" title={ship.supplier || ''}>{ship.supplier || '\u2014'}</td>
+              <td className="px-4 py-2 text-right font-sans font-bold text-slate-500 tabular-nums">{formatCompactNumber(ship.units)}</td>
+              <td className="px-4 py-2 text-right font-sans font-bold text-slate-500">{formatCompactINR(ship.goods)}</td>
+              <td className="px-4 py-2 text-right font-sans font-bold text-slate-900 dark:text-white">
                 {ship.freight != null ? formatINR(ship.freight) : <span className="text-slate-400">{'\u2014'}</span>}
               </td>
             </tr>
@@ -1486,35 +1486,35 @@ export function FreightTripsWidget({ trips, summary }) {
         </div>
       }
     >
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-5">
-        <div className="p-4 rounded-xl border border-border/60 bg-muted/20">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+        <div className="p-4 rounded-lg border border-border/60 bg-muted/20">
           <p className="text-xs font-medium text-slate-400 mb-1">{t('freightBooked')}</p>
           <p className="font-sans text-base font-bold text-slate-900 dark:text-white">{formatCompactINR(freightTotal)}</p>
         </div>
-        <div className="p-4 rounded-xl border border-border/60 bg-muted/20">
+        <div className="p-4 rounded-lg border border-border/60 bg-muted/20">
           <p className="text-xs font-medium text-slate-400 mb-1">{t('ofGoodsValue')}</p>
           <p className="font-sans text-base font-bold text-amber-600 dark:text-amber-400">
             {freightShare != null ? `${freightShare.toFixed(1)}%` : '\u2014'}
           </p>
         </div>
-        <div className="p-4 rounded-xl border border-border/60 bg-muted/20">
+        <div className="p-4 rounded-lg border border-border/60 bg-muted/20">
           <p className="text-xs font-medium text-slate-400 mb-1">{t('repeatedFreight')}</p>
           <p className="font-sans text-base font-bold text-rose-600 dark:text-rose-400">{formatCompactINR(repeatedTotal)}</p>
         </div>
       </div>
 
-      <div className="hidden md:block overflow-x-auto rounded-xl border border-border/60">
+      <div className="hidden md:block overflow-x-auto rounded-lg border border-border/60">
         <table className="w-full text-left text-sm min-w-[720px]">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('licensePlate')}</th>
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('driverName')}</th>
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('arrivedOn')}</th>
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('shipmentsLabel')}</th>
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('freightExpected')}</th>
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('freightBooked')}</th>
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('goodsValue')}</th>
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('repeatedFreight')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('licensePlate')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('driverName')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('arrivedOn')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('shipmentsLabel')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('freightExpected')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('freightBooked')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('goodsValue')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('repeatedFreight')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
@@ -1528,7 +1528,7 @@ export function FreightTripsWidget({ trips, summary }) {
                 onClick={() => setOpenTrip(isOpen ? null : key)}
                 aria-expanded={isOpen}
               >
-                <td className="px-5 py-4 font-bold text-slate-900 dark:text-slate-100 text-xs whitespace-nowrap">
+                <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 text-xs whitespace-nowrap">
                   <span className="inline-flex items-center gap-2">
                     <ChevronDown
                       className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isOpen ? '' : '-rotate-90'}`}
@@ -1537,18 +1537,18 @@ export function FreightTripsWidget({ trips, summary }) {
                     {trip.plate}
                   </span>
                 </td>
-                <td className="px-5 py-4 text-xs text-slate-500 truncate max-w-[140px]" title={trip.driver}>{trip.driver}</td>
-                <td className="px-5 py-4 text-xs text-slate-500 whitespace-nowrap">{formatTripDate(trip.arrival_date)}</td>
-                <td className="px-5 py-4 text-right font-sans font-bold text-xs text-slate-900 dark:text-white tabular-nums">
+                <td className="px-6 py-4 text-xs text-slate-500 truncate max-w-[140px]" title={trip.driver}>{trip.driver}</td>
+                <td className="px-6 py-4 text-xs text-slate-500 whitespace-nowrap">{formatTripDate(trip.arrival_date)}</td>
+                <td className="px-6 py-4 text-right font-sans font-bold text-xs text-slate-900 dark:text-white tabular-nums">
                   {trip.shipments}
                   {Number(trip.trip_count) > 1 ? (
                     <span className="block text-[11px] font-bold text-slate-400">{trip.trip_count} {t('tripsLabel')}</span>
                   ) : null}
                 </td>
-                <td className="px-5 py-4 text-right font-sans font-bold text-xs text-slate-500">{formatINR(trip.freight_expected)}</td>
-                <td className="px-5 py-4 text-right font-sans font-bold text-xs text-slate-900 dark:text-white">{formatCompactINR(trip.freight_booked)}</td>
-                <td className="px-5 py-4 text-right font-sans font-bold text-xs text-slate-500">{formatCompactINR(trip.goods_value)}</td>
-                <td className="px-5 py-4 text-right">
+                <td className="px-6 py-4 text-right font-sans font-bold text-xs text-slate-500">{formatINR(trip.freight_expected)}</td>
+                <td className="px-6 py-4 text-right font-sans font-bold text-xs text-slate-900 dark:text-white">{formatCompactINR(trip.freight_booked)}</td>
+                <td className="px-6 py-4 text-right font-sans font-bold text-xs text-slate-500">{formatCompactINR(trip.goods_value)}</td>
+                <td className="px-6 py-4 text-right">
                   {tripFreightStatus(trip) === 'repeated' ? (
                     <span className="font-sans font-bold text-xs text-rose-600 dark:text-rose-400" title={t('sameAmountFlag')}>
                       {formatCompactINR(trip.repeated_amount)}
@@ -1562,7 +1562,7 @@ export function FreightTripsWidget({ trips, summary }) {
               </tr>
               {isOpen ? (
                 <tr>
-                  <td colSpan={8} className="px-5 pb-5 pt-0 bg-muted/30">
+                  <td colSpan={8} className="px-6 pb-6 pt-0 bg-muted/30">
                     <TripShipments shipments={trip.shipments_detail} t={t} />
                   </td>
                 </tr>
@@ -1579,10 +1579,10 @@ export function FreightTripsWidget({ trips, summary }) {
           const key = tripKey(trip);
           const isOpen = openTrip === key;
           return (
-          <div key={`trip-mob-${key}`} className="p-5 rounded-xl border border-border/60 bg-muted/20 space-y-4">
+          <div key={`trip-mob-${key}`} className="p-6 rounded-lg border border-border/60 bg-muted/20 space-y-4">
             <button
               type="button"
-              className="flex w-full justify-between items-start gap-3 text-left focus-ring"
+              className="flex w-full justify-between items-start gap-2 text-left focus-ring"
               onClick={() => setOpenTrip(isOpen ? null : key)}
               aria-expanded={isOpen}
             >
@@ -1594,7 +1594,7 @@ export function FreightTripsWidget({ trips, summary }) {
                   />
                   {trip.plate}
                 </span>
-                <span className="block text-[11px] text-slate-500 mt-0.5 truncate">{trip.driver} · {formatTripDate(trip.arrival_date)}</span>
+                <span className="block text-[11px] text-slate-500 mt-1 truncate">{trip.driver} · {formatTripDate(trip.arrival_date)}</span>
               </span>
               {tripFreightStatus(trip) === 'repeated' ? (
                 <span className="font-sans text-sm font-bold text-rose-600 dark:text-rose-400 shrink-0">{formatCompactINR(trip.repeated_amount)}</span>
@@ -1650,11 +1650,11 @@ const DUPLICATE_TONES = {
 // read alike.
 function DuplicateItemSides({ pair, t }) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {pair.items.map((side) => (
-        <div key={side.id} className="rounded-xl border border-border/60 bg-background/60 p-4 space-y-2">
+        <div key={side.id} className="rounded-lg border border-border/60 bg-background/60 p-4 space-y-2">
           <p className="text-xs font-bold text-slate-900 dark:text-white break-words">{side.name}</p>
-          <p className="text-[11px] font-mono text-slate-500 break-all">{side.sku}</p>
+          <p className="text-[11px]  text-slate-500 break-all">{side.sku}</p>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500">
             <span>{t('stockLabel')}: <b className="text-slate-900 dark:text-white">{formatCompactNumber(side.qty)}</b></span>
             <span>{t('salesLabel')}: <b className="text-slate-900 dark:text-white">{formatCompactNumber(side.sells)}</b></span>
@@ -1722,30 +1722,30 @@ export function DuplicateItemsWidget({ pairs, summary }) {
         </div>
       }
     >
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-5">
-        <div className="p-4 rounded-xl border border-border/60 bg-muted/20">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+        <div className="p-4 rounded-lg border border-border/60 bg-muted/20">
           <p className="text-xs font-medium text-slate-400 mb-1">{t('confidentPairs')}</p>
           <p className="font-sans text-base font-bold text-rose-600 dark:text-rose-400">{summary?.certainCount ?? 0}</p>
         </div>
-        <div className="p-4 rounded-xl border border-border/60 bg-muted/20">
+        <div className="p-4 rounded-lg border border-border/60 bg-muted/20">
           <p className="text-xs font-medium text-slate-400 mb-1">{t('productsInvolved')}</p>
           <p className="font-sans text-base font-bold text-slate-900 dark:text-white">{summary?.productCount ?? 0}</p>
         </div>
-        <div className="p-4 rounded-xl border border-border/60 bg-muted/20">
+        <div className="p-4 rounded-lg border border-border/60 bg-muted/20">
           <p className="text-xs font-medium text-slate-400 mb-1">{t('strandedStock')}</p>
           <p className="font-sans text-base font-bold text-amber-600 dark:text-amber-400">{formatCompactINR(strandedValue)}</p>
         </div>
       </div>
 
-      <div className="hidden md:block overflow-x-auto rounded-xl border border-border/60">
+      <div className="hidden md:block overflow-x-auto rounded-lg border border-border/60">
         <table className="w-full text-left text-sm min-w-[720px]">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('productPair')}</th>
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('specLabel')}</th>
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('costRatio')}</th>
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('strandedStock')}</th>
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('confidenceLabel')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('productPair')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('specLabel')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('costRatio')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('strandedStock')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('confidenceLabel')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
@@ -1759,10 +1759,10 @@ export function DuplicateItemsWidget({ pairs, summary }) {
                     onClick={() => setOpenPair(isOpen ? null : pair.key)}
                     aria-expanded={isOpen}
                   >
-                    <td className="px-5 py-4 text-xs">
+                    <td className="px-6 py-4 text-xs">
                       <span className="flex items-start gap-2">
                         <ChevronDown
-                          className={`w-3.5 h-3.5 mt-0.5 shrink-0 text-slate-400 transition-transform ${isOpen ? '' : '-rotate-90'}`}
+                          className={`w-3.5 h-3.5 mt-1 shrink-0 text-slate-400 transition-transform ${isOpen ? '' : '-rotate-90'}`}
                           aria-label={t('expandPair')}
                         />
                         <span className="min-w-0">
@@ -1776,16 +1776,16 @@ export function DuplicateItemsWidget({ pairs, summary }) {
                         </span>
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-xs text-slate-500 whitespace-nowrap">
+                    <td className="px-6 py-4 text-xs text-slate-500 whitespace-nowrap">
                       {a.brand} · {a.size}{a.grade ? ` · ${a.grade}` : ''}
                     </td>
-                    <td className="px-5 py-4 text-right font-sans font-bold text-xs text-slate-500 tabular-nums">
+                    <td className="px-6 py-4 text-right font-sans font-bold text-xs text-slate-500 tabular-nums">
                       {pair.costRatio == null ? '—' : `×${pair.costRatio.toFixed(2)}`}
                     </td>
-                    <td className="px-5 py-4 text-right font-sans font-bold text-xs text-slate-900 dark:text-white">
+                    <td className="px-6 py-4 text-right font-sans font-bold text-xs text-slate-900 dark:text-white">
                       {formatCompactINR(pair.strandedValue)}
                     </td>
-                    <td className="px-5 py-4 text-right">
+                    <td className="px-6 py-4 text-right">
                       <span className={`text-xs font-semibold ${DUPLICATE_TONES[pair.confidence]}`}>
                         {t(`duplicate_${pair.confidence}`)}
                       </span>
@@ -1793,7 +1793,7 @@ export function DuplicateItemsWidget({ pairs, summary }) {
                   </tr>
                   {isOpen ? (
                     <tr>
-                      <td colSpan={5} className="px-5 pb-5 pt-0 bg-muted/30">
+                      <td colSpan={5} className="px-6 pb-6 pt-0 bg-muted/30">
                         <DuplicateItemSides pair={pair} t={t} />
                       </td>
                     </tr>
@@ -1810,23 +1810,23 @@ export function DuplicateItemsWidget({ pairs, summary }) {
           const isOpen = openPair === pair.key;
           const [a, b] = pair.items;
           return (
-            <div key={`dup-mob-${pair.key}`} className="p-5 rounded-xl border border-border/60 bg-muted/20 space-y-4">
+            <div key={`dup-mob-${pair.key}`} className="p-6 rounded-lg border border-border/60 bg-muted/20 space-y-4">
               <button
                 type="button"
-                className="flex w-full justify-between items-start gap-3 text-left focus-ring"
+                className="flex w-full justify-between items-start gap-2 text-left focus-ring"
                 onClick={() => setOpenPair(isOpen ? null : pair.key)}
                 aria-expanded={isOpen}
               >
                 <span className="min-w-0">
                   <span className="text-sm font-bold text-slate-900 dark:text-white flex items-start gap-2">
                     <ChevronDown
-                      className={`w-3.5 h-3.5 mt-0.5 shrink-0 text-slate-400 transition-transform ${isOpen ? '' : '-rotate-90'}`}
+                      className={`w-3.5 h-3.5 mt-1 shrink-0 text-slate-400 transition-transform ${isOpen ? '' : '-rotate-90'}`}
                       aria-label={t('expandPair')}
                     />
                     <span className="min-w-0 break-words">{a.name}</span>
                   </span>
-                  <span className="block text-[11px] text-slate-500 mt-0.5 ml-5 break-words">{b.name}</span>
-                  <span className="block text-[11px] text-slate-400 mt-0.5 ml-5">
+                  <span className="block text-[11px] text-slate-500 mt-1 ml-6 break-words">{b.name}</span>
+                  <span className="block text-[11px] text-slate-400 mt-1 ml-6">
                     {a.brand} · {a.size}{a.grade ? ` · ${a.grade}` : ''}
                   </span>
                 </span>
@@ -1882,7 +1882,7 @@ export function ActivityFeedWidget({ events }) {
     <AnalyticsCard title={t('activityFeed')} subtitle={t('activityFeedSubtitle')}>
       <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
         {events.map((e) => (
-          <div key={e.id} className="flex items-start gap-2.5 text-xs">
+          <div key={e.id} className="flex items-start gap-2 text-xs">
             <span className={`mt-1 w-2 h-2 rounded-full shrink-0 ${eventColor(e.event_type)}`} />
             <div className="flex-1 min-w-0">
               <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{eventLabel(e.event_type)}</p>
@@ -1905,15 +1905,15 @@ export function RiskInventoryTable({ divisionRisk, months }) {
       subtitle={t('divisionsNeedingAttention')}
       topRight={<CsvExportButton type="risk" months={months} label={t('exportCsv')} />}
     >
-      <div className="hidden md:block overflow-x-auto rounded-xl border border-border/60">
+      <div className="hidden md:block overflow-x-auto rounded-lg border border-border/60">
         <table className="w-full text-left text-sm min-w-[600px]">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('divisionName')}</th>
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('available')}</th>
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('outOfStock')}</th>
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('lowStock')}</th>
-              <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('status')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('divisionName')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('available')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('outOfStock')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('lowStock')}</th>
+              <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('status')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
@@ -1923,21 +1923,21 @@ export function RiskInventoryTable({ divisionRisk, months }) {
 
               return (
                 <tr key={d.division} className="group hover:bg-muted/50 transition-colors">
-                  <td className="px-5 py-4">
+                  <td className="px-6 py-4">
                     <p className="font-bold text-slate-900 dark:text-slate-100 text-xs">{d.division}</p>
                     {d.critical_items_list && (
                       <p className="text-[11px] text-slate-500 mt-1 max-w-[200px] truncate" title={d.critical_items_list}>⚠️ {d.critical_items_list}</p>
                     )}
                   </td>
-                  <td className="px-5 py-4 text-right font-sans text-emerald-600 dark:text-emerald-400 font-bold text-xs">{formatCompactNumber(d.current_stock)}</td>
-                  <td className="px-5 py-4 text-right font-sans text-rose-600 dark:text-rose-400 font-bold text-xs">{formatCompactNumber(d.out_of_stock)}</td>
-                  <td className="px-5 py-4 text-right font-sans text-amber-600 dark:text-amber-400 font-bold text-xs">{formatCompactNumber(d.low_stock)}</td>
-                  <td className="px-5 py-4 text-right">
-                    <div className="flex items-center justify-end gap-3 text-xs font-semibold">
+                  <td className="px-6 py-4 text-right font-sans text-emerald-600 dark:text-emerald-400 font-bold text-xs">{formatCompactNumber(d.current_stock)}</td>
+                  <td className="px-6 py-4 text-right font-sans text-rose-600 dark:text-rose-400 font-bold text-xs">{formatCompactNumber(d.out_of_stock)}</td>
+                  <td className="px-6 py-4 text-right font-sans text-amber-600 dark:text-amber-400 font-bold text-xs">{formatCompactNumber(d.low_stock)}</td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2 text-xs font-semibold">
                       <span className={isCritical ? 'text-rose-500' : 'text-emerald-500'}>
                         {isCritical ? t('actionRequired') : t('stable')}
                       </span>
-                      <span className={`inline-block w-2.5 h-2.5 rounded-full ring-4 ${isCritical ? 'bg-rose-500 ring-rose-500/10' : 'bg-emerald-500 ring-emerald-500/10'}`} />
+                      <span className={`inline-block w-2.5 h-2.5 rounded-full ring-1 ${isCritical ? 'bg-rose-500 ring-border' : 'bg-emerald-500 ring-border'}`} />
                     </div>
                   </td>
                 </tr>
@@ -1955,13 +1955,13 @@ export function RiskInventoryTable({ divisionRisk, months }) {
           return (
             <div
               key={`risk-mob-${d.division}`}
-              className="p-5 rounded-xl border border-border/60 bg-muted/20 space-y-4"
+              className="p-6 rounded-lg border border-border/60 bg-muted/20 space-y-4"
             >
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-sm font-bold text-slate-900 dark:text-white">{d.division}</p>
                   {d.critical_items_list && (
-                    <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">⚠️ {d.critical_items_list}</p>
+                    <p className="text-[11px] text-slate-500 mt-1 line-clamp-1">⚠️ {d.critical_items_list}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2 text-xs font-semibold">

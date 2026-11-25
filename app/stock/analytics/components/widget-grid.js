@@ -34,14 +34,14 @@ export function WidgetGrid({ items, widgets, editing, onChange, t }) {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
       {shown.map((item, index) => {
         const { title, node } = widgets[item.id];
         return (
           <div
             key={item.id}
             id={`widget-${item.id}`}
-            className={`flex min-w-0 flex-col ${SPAN_CLASS[item.span]} ${editing ? 'rounded-xl outline-dashed outline-1 outline-offset-2 outline-border' : ''} ${dragId === item.id ? 'opacity-50' : ''}`}
+            className={`flex min-w-0 flex-col ${SPAN_CLASS[item.span]} ${editing ? 'rounded-lg outline-dashed outline-1 outline-offset-2 outline-border' : ''} ${dragId === item.id ? 'opacity-50' : ''}`}
             draggable={editing}
             onDragStart={(event) => { setDragId(item.id); event.dataTransfer.effectAllowed = 'move'; }}
             onDragEnd={() => setDragId(null)}
@@ -49,17 +49,17 @@ export function WidgetGrid({ items, widgets, editing, onChange, t }) {
             onDrop={(event) => { event.preventDefault(); if (dragId && dragId !== item.id) moveTo(dragId, item.id); setDragId(null); }}
           >
             {editing ? (
-              <div className="flex flex-wrap items-center gap-1 rounded-t-xl border border-b-0 border-border bg-muted px-2 py-1.5 text-xs">
+              <div className="flex flex-wrap items-center gap-1 rounded-t-lg border border-b-0 border-border bg-muted px-2 py-2 text-xs">
                 <GripVertical className="h-4 w-4 cursor-grab text-muted-foreground" aria-hidden="true" />
                 <span className={`mr-auto truncate font-medium ${item.hidden ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{title}</span>
-                <div className="flex rounded-md bg-card p-0.5" role="group" aria-label={t('widgetSize')}>
+                <div className="flex rounded-lg bg-card p-1" role="group" aria-label={t('widgetSize')}>
                   {SPANS.map((span) => (
                     <button
                       key={span}
                       type="button"
                       onClick={() => update(item.id, { span })}
                       aria-pressed={item.span === span}
-                      className={`hidden h-6 min-w-7 rounded px-1.5 font-medium lg:block ${item.span === span ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                      className={`hidden h-6 min-w-7 rounded-lg px-2 font-medium lg:block ${item.span === span ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'}`}
                     >
                       {SPAN_LABEL[span]}
                     </button>
@@ -89,7 +89,7 @@ function IconButton({ label, children, ...props }) {
       type="button"
       aria-label={label}
       title={label}
-      className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-card hover:text-foreground disabled:opacity-30 [&>svg]:h-3.5 [&>svg]:w-3.5"
+      className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground hover:bg-card hover:text-foreground disabled:opacity-30 [&>svg]:h-3.5 [&>svg]:w-3.5"
       {...props}
     >
       {children}

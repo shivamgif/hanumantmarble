@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Ban, Check, Download, ExternalLink, FileBadge, FileMinus, FilePlus, FileText, MoreHorizontal, Pencil, Plus, Search, Upload, X } from 'lucide-react';
+import { Ban, Check, CheckCircle2, Clock, Download, ExternalLink, FileBadge, FileKey, FileMinus, FilePlus, FileText, List, MoreHorizontal, Pencil, Plus, Search, Truck, Upload, X } from 'lucide-react';
 import { isCharge, PROFORMA_VALIDITY_DAYS } from '@/lib/gst-invoice.mjs';
 import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
@@ -37,6 +37,7 @@ import {
 import { PageHeader } from '../components/page-header';
 
 const FILTERS = ['pending', 'needs_irn', 'approved', 'dispatched', 'all', 'creditNotes'];
+const FILTER_ICONS = { pending: Clock, needs_irn: FileKey, approved: CheckCircle2, dispatched: Truck, all: List, creditNotes: FileMinus };
 
 const invoiceItemRow = () => ({ ...createDispatchItemRow(), hsnCode: '', gstRate: '18' });
 
@@ -457,7 +458,7 @@ export default function InvoicesPage() {
       />
 
       <div className={tabTrackClass(visibleFilters.length)} role="tablist">
-        {visibleFilters.map((key) => (
+        {visibleFilters.map((key) => { const Icon = FILTER_ICONS[key]; return (
           <button
             key={key}
             type="button"
@@ -466,13 +467,14 @@ export default function InvoicesPage() {
             onClick={() => { setFilter(key); setPage(1); }}
             className={tabButtonClass(filter === key, visibleFilters.length)}
           >
-            {t(key)}
+            <Icon className="h-4 w-4 shrink-0" />
+            <span className="min-w-0 truncate">{t(key)}</span>
           </button>
-        ))}
+        ); })}
       </div>
 
       {filter === 'needs_irn' && isApprover ? (
-        <div className="glass-panel space-y-2 rounded-xl p-4">
+        <div className="glass-panel space-y-2 rounded-lg p-4">
           <p className="text-sm text-slate-600 dark:text-slate-300">{t('irnSteps')}</p>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={downloadEinvoiceJson} className={PILL_PRIMARY_BUTTON_CLASS}>
@@ -484,7 +486,7 @@ export default function InvoicesPage() {
             <input ref={importRef} type="file" accept=".json,application/json" hidden onChange={(e) => importIrpResponse(e.target.files?.[0])} />
           </div>
           {irnReport && [...irnReport.problems, ...irnReport.skipped].length ? (
-            <ul className="list-disc space-y-0.5 pl-5 text-xs text-amber-700 dark:text-amber-400">
+            <ul className="list-disc space-y-1 pl-6 text-xs text-amber-700 dark:text-amber-400">
               {[...irnReport.problems, ...irnReport.skipped].map((line) => <li key={line}>{line}</li>)}
             </ul>
           ) : null}
@@ -492,21 +494,21 @@ export default function InvoicesPage() {
       ) : null}
 
       {bulk?.failed?.length ? (
-        <div className="glass-panel space-y-1 rounded-xl p-4">
+        <div className="glass-panel space-y-1 rounded-lg p-4">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-medium text-amber-700 dark:text-amber-400">{t('bulkNotApproved', { count: bulk.failed.length })}</p>
             <button type="button" onClick={() => setBulk(null)} aria-label={t('close')} className="text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>
           </div>
-          <ul className="list-disc space-y-0.5 pl-5 text-xs text-amber-700 dark:text-amber-400">
+          <ul className="list-disc space-y-1 pl-6 text-xs text-amber-700 dark:text-amber-400">
             {bulk.failed.map((line) => <li key={line}>{line}</li>)}
           </ul>
           <p className="text-xs text-slate-500">{t('bulkCreditHint')}</p>
         </div>
       ) : null}
 
-      <section className="glass-panel overflow-hidden rounded-xl">
+      <section className="glass-panel overflow-hidden rounded-lg">
         {(
-          <div className="border-b border-border px-3 py-2.5">
+          <div className="border-b border-border px-4 py-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
@@ -515,7 +517,7 @@ export default function InvoicesPage() {
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder={t(filter === 'creditNotes' ? 'searchNotes' : 'searchInvoices')}
                 aria-label={t(filter === 'creditNotes' ? 'searchNotes' : 'searchInvoices')}
-                className={`${FORM_INPUT_CLASS} pl-9`}
+                className={`${FORM_INPUT_CLASS} pl-10`}
               />
             </div>
           </div>
@@ -539,7 +541,7 @@ export default function InvoicesPage() {
         ) : (
           <>
           {approvable.length ? (
-            <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2 text-sm">
+            <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2 text-sm">
               <label className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300">
                 <Checkbox
                   checked={approvable.every((invoice) => selected.has(invoice.id))}
@@ -578,7 +580,7 @@ export default function InvoicesPage() {
               const status = invoiceStatus(invoice);
               const busy = busyId === invoice.id;
               return (
-                <li key={invoice.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+                <li key={invoice.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-4">
                   {approvable.length ? (
                     <Checkbox
                       aria-label={t('select')}
@@ -593,19 +595,19 @@ export default function InvoicesPage() {
                       <span className="font-semibold text-slate-900 dark:text-slate-100">
                         {invoice.invoice_number || invoice.proforma_number || `${t('estimate')} #${invoice.id}`}
                       </span>
-                      <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${STATUS_TONE[status]}`}>{t(status)}</span>
+                      <span className={`rounded-lg px-2 py-1 text-xs font-medium ${STATUS_TONE[status]}`}>{t(status)}</span>
                       {invoice.proforma_number && !invoice.invoice_number ? (
-                        <span className="rounded-md bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-400">
+                        <span className="rounded-lg bg-muted px-2 py-1 text-xs font-medium text-sky-700 dark:text-sky-400">
                           {t('proforma')}{invoice.proforma_rev ? ` · ${t('rev')} ${invoice.proforma_rev}` : ''} · {t('validUntil')} {invoice.proforma_valid_until_text?.split('-').reverse().join('-')}
                         </span>
                       ) : null}
                       {invoice.proforma_number && invoice.invoice_number ? <span className="text-xs text-slate-500">{invoice.proforma_number}</span> : null}
                       {invoice.status === 'approved' && invoice.einvoice_status === 'pending' ? (
-                        <span className="rounded-md bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-700 dark:text-rose-400">{t('irnPending')}</span>
+                        <span className="rounded-lg bg-muted px-2 py-1 text-xs font-medium text-rose-700 dark:text-rose-400">{t('irnPending')}</span>
                       ) : null}
                       {invoice.dispatch_number ? <span className="text-xs text-slate-500">{invoice.dispatch_number}</span> : null}
                     </div>
-                    <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-300">{invoice.bill_to_name}</p>
+                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{invoice.bill_to_name}</p>
                     <p className="text-xs text-slate-500">
                       {invoice.location_name} · {invoice.salesperson_name || '—'}
                       {invoice.referred_by_name ? ` · ${t('ref')}: ${invoice.referred_by_name}` : ''} · {formatDateTime(invoice.created_at)}
@@ -682,7 +684,7 @@ export default function InvoicesPage() {
           </>
         )}
         {!loading && !error ? (
-          <div className="border-t border-border px-4 py-3">
+          <div className="border-t border-border px-4 py-4">
             <PaginationControls
               page={page}
               pageCount={getPageCount(total, pageSize)}
@@ -749,7 +751,7 @@ export default function InvoicesPage() {
       />
 
       <ReasonDialog request={reasonDialog} onClose={() => setReasonDialog(null)} />
-      <StockToast toast={toast} onDismiss={() => setToast(null)} />
+      <StockToast toast={toast} />
     </div>
   );
 }

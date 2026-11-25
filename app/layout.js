@@ -1,5 +1,5 @@
 import '@/styles/globals.css'
-import { DM_Sans, DM_Serif_Display, Geist, Geist_Mono, Inter, Noto_Sans_Devanagari } from 'next/font/google'
+import { DM_Sans, DM_Serif_Display, Inter, Noto_Sans_Devanagari } from 'next/font/google'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { LanguageProvider } from '@/contexts/LanguageContext'
 import { ClientProviders } from '@/contexts/ClientProviders'
@@ -27,10 +27,8 @@ const dmSerif = DM_Serif_Display({
   display: 'swap',
   preload: false,
 });
-// The stock app's UI face: crisper than DM Sans at the 12-14px a dense
-// dashboard lives at, with a matching mono for SKUs and invoice numbers.
-const geist = Geist({ subsets: ['latin', 'latin-ext'], variable: '--font-geist', display: 'swap', preload: false });
-const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono', display: 'swap', preload: false });
+// The stock app's only face (styles/globals.css): built for 12-14px UI text,
+// with tabular figures for SKUs, amounts and invoice numbers.
 const inter = Inter({ subsets: ['latin', 'latin-ext'], variable: '--font-inter', display: 'swap', preload: false });
 const notoDevanagari = Noto_Sans_Devanagari({
   subsets: ['devanagari', 'latin'],
@@ -153,7 +151,7 @@ export default function RootLayout({ children }) {
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${dmSans.variable} ${dmSerif.variable} ${geist.variable} ${geistMono.variable} ${inter.variable} ${notoDevanagari.variable}`}
+      className={`${dmSans.variable} ${dmSerif.variable} ${inter.variable} ${notoDevanagari.variable}`}
     >
       <body>
         <script

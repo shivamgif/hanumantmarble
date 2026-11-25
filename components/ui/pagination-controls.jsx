@@ -27,7 +27,7 @@ export default function PaginationControls({
   const end = total === 0 ? 0 : Math.min(page * pageSize, total);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
       <div className="flex items-center gap-4">
         <span className="tabular-nums">
           {copy.showing} <span className="font-medium text-slate-900 dark:text-slate-100">{start}–{end}</span> {copy.of} {total}
@@ -41,7 +41,7 @@ export default function PaginationControls({
                 onPageSizeChange(Number(e.target.value));
                 onPageChange(1);
               }}
-              className="h-8 w-[4.5rem] rounded-md px-2 text-xs font-medium"
+              className="h-8 w-[4.5rem] rounded-lg px-2 text-xs font-medium"
             >
               {pageSizeOptions.map((size) => (
                 <option key={size} value={size}>
@@ -57,7 +57,7 @@ export default function PaginationControls({
           type="button"
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page <= 1}
-          className="inline-flex h-8 items-center rounded-md border border-border bg-card px-3 text-xs font-medium text-slate-700 transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-card dark:text-slate-200"
+          className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-4 text-xs font-medium text-slate-700 transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-card dark:text-slate-200"
         >
           {copy.previous}
         </button>
@@ -68,7 +68,7 @@ export default function PaginationControls({
           type="button"
           onClick={() => onPageChange(Math.min(pageCount, page + 1))}
           disabled={page >= pageCount}
-          className="inline-flex h-8 items-center rounded-md border border-border bg-card px-3 text-xs font-medium text-slate-700 transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-card dark:text-slate-200"
+          className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-4 text-xs font-medium text-slate-700 transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-card dark:text-slate-200"
         >
           {copy.next}
         </button>

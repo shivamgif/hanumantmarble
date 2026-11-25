@@ -8,12 +8,12 @@ import { ChevronRight } from 'lucide-react';
  */
 export function PageHeader({ icon: Icon, crumbs, title, subtitle, actions }) {
   return (
-    <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div className="min-w-0 space-y-1.5">
+    <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div className="min-w-0 space-y-2">
         {crumbs?.length ? (
-          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
             {crumbs.map(({ label, href }, index) => (
-              <span key={label} className="flex items-center gap-1.5">
+              <span key={label} className="flex items-center gap-2">
                 {index ? <ChevronRight className="h-3 w-3 text-slate-300 dark:text-slate-600" aria-hidden="true" /> : null}
                 {href ? (
                   <Link href={href} className="transition-colors hover:text-foreground">{label}</Link>
@@ -24,9 +24,9 @@ export function PageHeader({ icon: Icon, crumbs, title, subtitle, actions }) {
             ))}
           </nav>
         ) : null}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {Icon ? (
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-brand-primary">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-brand-primary">
               <Icon className="h-[18px] w-[18px]" strokeWidth={1.75} />
             </span>
           ) : null}

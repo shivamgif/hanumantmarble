@@ -56,9 +56,9 @@ export function ShowroomPanel({ tabs, tc, pageSize, setPageSize, refreshKey }) {
 
   return (
     <div className="stock-tab-panel" key="stock-panel-showroom">
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-4">
         {tabs}
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5 sm:gap-3">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-2">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
@@ -97,9 +97,9 @@ export function ShowroomPanel({ tabs, tc, pageSize, setPageSize, refreshKey }) {
       </DropdownMenu>
         </div>
       </div>
-      <section id="showroom" className="flex h-full flex-col overflow-hidden scroll-mt-6 glass-panel rounded-xl">
+      <section id="showroom" className="flex h-full flex-col overflow-hidden scroll-mt-6 glass-panel rounded-lg">
 
-        <div className="sticky top-0 z-10 border-b border-border bg-card px-3 py-2.5">
+        <div className="sticky top-0 z-10 border-b border-border bg-card px-4 py-2">
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
@@ -107,7 +107,7 @@ export function ShowroomPanel({ tabs, tc, pageSize, setPageSize, refreshKey }) {
               value={search}
               onChange={(event) => { setSearch(event.target.value); setPage(1); }}
               placeholder="Search item, SKU, action or person…"
-              className={`${FORM_INPUT_CLASS} pl-9`}
+              className={`${FORM_INPUT_CLASS} pl-10`}
             />
           </div>
         </div>
@@ -119,7 +119,7 @@ export function ShowroomPanel({ tabs, tc, pageSize, setPageSize, refreshKey }) {
                 {['Date', 'SKU', 'Item', 'Action', 'Qty', 'By', 'Notes'].map((label, index) => (
                   <th
                     key={label}
-                    className={`px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground ${index === 4 ? 'text-right' : ''}`}
+                    className={`px-4 py-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground ${index === 4 ? 'text-right' : ''}`}
                   >
                     {label}
                   </th>
@@ -131,19 +131,19 @@ export function ShowroomPanel({ tabs, tc, pageSize, setPageSize, refreshKey }) {
                 const action = showroomActionOf(movement);
                 return (
                   <tr key={movement.id} className="transition-colors duration-150 hover:bg-muted/50">
-                    <td className="px-4 py-2.5 tabular-nums text-xs font-bold text-slate-500">{formatDateTime(movement.created_at)}</td>
-                    <td className="px-4 py-2.5">
-                      <span className="font-mono text-[11px] font-bold tracking-tight text-slate-700 dark:text-white/90 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-md border border-slate-200/60 dark:border-white/5">
+                    <td className="px-4 py-2 tabular-nums text-xs font-bold text-slate-500">{formatDateTime(movement.created_at)}</td>
+                    <td className="px-4 py-2">
+                      <span className="text-[11px] font-bold tracking-tight text-slate-700 dark:text-white/90 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-lg border border-slate-200/60 dark:border-white/5">
                         {movement.sku}
                       </span>
                     </td>
-                    <td className="px-4 py-2.5 text-xs font-bold text-slate-900 dark:text-white">{movement.name}</td>
-                    <td className={`px-4 py-3 text-xs font-semibold ${action ? SHOWROOM_ACTIONS[action].tone : 'text-slate-500'}`}>
+                    <td className="px-4 py-2 text-xs font-bold text-slate-900 dark:text-white">{movement.name}</td>
+                    <td className={`px-4 py-2 text-xs font-semibold ${action ? SHOWROOM_ACTIONS[action].tone : 'text-slate-500'}`}>
                       {action ? SHOWROOM_ACTIONS[action].short : movement.movement_type}
                     </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-xs font-bold text-slate-900 dark:text-white">{formatShowroomQty(movement)}</td>
-                    <td className="px-4 py-2.5 text-xs font-bold text-slate-400">{movement.created_by}</td>
-                    <td className="px-4 py-2.5 text-xs text-slate-500 italic max-w-xs truncate">{movement.notes || '—'}</td>
+                    <td className="px-4 py-2 text-right tabular-nums text-xs font-bold text-slate-900 dark:text-white">{formatShowroomQty(movement)}</td>
+                    <td className="px-4 py-2 text-xs font-bold text-slate-400">{movement.created_by}</td>
+                    <td className="px-4 py-2 text-xs text-slate-500 italic max-w-xs truncate">{movement.notes || '—'}</td>
                   </tr>
                 );
               })}
@@ -151,7 +151,7 @@ export function ShowroomPanel({ tabs, tc, pageSize, setPageSize, refreshKey }) {
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center">
                     <Store className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-700" />
-                    <div className="mt-3 text-xs font-medium text-slate-400">
+                    <div className="mt-2 text-xs font-medium text-slate-400">
                       {loading ? 'Loading…' : search ? 'No matching movements' : 'Nothing has moved to the showroom yet'}
                     </div>
                   </td>
@@ -161,7 +161,7 @@ export function ShowroomPanel({ tabs, tc, pageSize, setPageSize, refreshKey }) {
           </table>
         </div>
 
-        <div className="px-4 py-3 border-t border-border">
+        <div className="px-4 py-4 border-t border-border">
           <PaginationControls
             page={pagination.page}
             pageCount={pagination.pageCount}

@@ -67,7 +67,7 @@ export function CompanyPanel() {
       </p>
 
       <form
-        className="mt-4 flex flex-wrap items-end gap-3"
+        className="mt-4 flex flex-wrap items-end gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           send('/api/stock/company', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
@@ -84,7 +84,7 @@ export function CompanyPanel() {
         ) : null}
       </form>
 
-      <div className="mt-5 flex flex-wrap items-center gap-4">
+      <div className="mt-6 flex flex-wrap items-center gap-4">
         <CompanyMark name={company.name} logo={company.logo} logoDark={company.logoDark} size={64} />
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
@@ -106,7 +106,7 @@ export function CompanyPanel() {
         </div>
       </div>
 
-      <div className="mt-5">
+      <div className="mt-6">
         <p id="accent-label" className={FORM_LABEL_CLASS}>Accent colour</p>
         <div role="radiogroup" aria-labelledby="accent-label" className="flex flex-wrap gap-2">
           {Object.entries(ACCENTS).map(([key, { label, light }]) => {
@@ -121,7 +121,7 @@ export function CompanyPanel() {
                 title={label}
                 disabled={!canManage || state.busy}
                 onClick={() => !selected && send('/api/stock/company', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accent: key }) })}
-                className={`flex h-9 w-9 items-center justify-center rounded-full text-white ring-offset-2 ring-offset-card transition disabled:cursor-not-allowed disabled:opacity-60 ${selected ? 'ring-2 ring-foreground/70' : 'hover:scale-105'}`}
+                className={`flex h-9 w-9 items-center justify-center rounded-full text-white ring-offset-2 ring-offset-card transition disabled:cursor-not-allowed disabled:opacity-60 ${selected ? 'ring-1 ring-foreground/70' : 'hover:scale-105'}`}
                 style={{ backgroundColor: `rgb(${light})` }}
               >
                 {selected ? <Check className="h-4 w-4" strokeWidth={3} /> : null}
@@ -129,11 +129,11 @@ export function CompanyPanel() {
             );
           })}
         </div>
-        <p className="mt-1.5 text-xs text-muted-foreground">Buttons, links and highlights across the app use this colour for everyone in your company.</p>
+        <p className="mt-2 text-xs text-muted-foreground">Buttons, links and highlights across the app use this colour for everyone in your company.</p>
       </div>
 
       <form
-        className="mt-5"
+        className="mt-6"
         onSubmit={(e) => {
           e.preventDefault();
           send('/api/stock/company', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ invoiceTerms: terms }) });
@@ -150,7 +150,7 @@ export function CompanyPanel() {
           placeholder="We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct."
           className={FORM_INPUT_CLASS}
         />
-        <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-muted-foreground">Printed at the bottom of every tax invoice, one term per line. Left empty, the standard GST declaration is printed.</p>
           {canManage ? (
             <button type="submit" disabled={state.busy || terms.trim() === (company.invoiceTerms || '')} className={PILL_PRIMARY_BUTTON_CLASS}>
@@ -161,14 +161,14 @@ export function CompanyPanel() {
       </form>
 
       {/* Fixed by the app today; shown so nobody hunts for a setting that does not exist yet. */}
-      <dl className="mt-5 grid gap-2 text-sm sm:grid-cols-3">
+      <dl className="mt-6 grid gap-2 text-sm sm:grid-cols-3">
         <div><dt className="text-xs font-medium text-muted-foreground">Financial year</dt><dd>April to March</dd></div>
         <div><dt className="text-xs font-medium text-muted-foreground">Time zone</dt><dd>India (IST)</dd></div>
         <div><dt className="text-xs font-medium text-muted-foreground">Currency</dt><dd>Indian rupee (₹)</dd></div>
       </dl>
 
-      {state.error ? <p className="mt-3 text-xs text-rose-600">{state.error}</p> : null}
-      {!canManage ? <p className="mt-3 text-xs text-muted-foreground">Only a manager can change these.</p> : null}
+      {state.error ? <p className="mt-2 text-xs text-rose-600">{state.error}</p> : null}
+      {!canManage ? <p className="mt-2 text-xs text-muted-foreground">Only a manager can change these.</p> : null}
     </div>
   );
 }

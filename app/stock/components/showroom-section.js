@@ -37,11 +37,11 @@ function StateRadio({ value, onChange, name, disabledStates = [] }) {
         return (
           <label
             key={state}
-            className={`flex items-start gap-2.5 rounded-xl border p-3 transition-colors ${
+            className={`flex items-start gap-2 rounded-lg border p-4 transition-colors ${
               disabled
                 ? 'cursor-not-allowed border-border/40 opacity-40'
                 : value === state
-                  ? 'cursor-pointer border-brand-primary/60 bg-brand-primary/5'
+                  ? 'cursor-pointer border-border bg-muted'
                   : 'cursor-pointer border-border/60 hover:bg-muted/40'
             }`}
           >
@@ -52,9 +52,9 @@ function StateRadio({ value, onChange, name, disabledStates = [] }) {
               checked={value === state}
               disabled={disabled}
               onChange={() => onChange(state)}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-brand-primary"
+              className="mt-1 h-4 w-4 shrink-0 accent-slate-900 dark:accent-slate-100"
             />
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               <div className="text-xs font-medium text-foreground/80">{title}</div>
               <p className="text-[11px] font-medium text-muted-foreground">{hint}</p>
             </div>
@@ -171,9 +171,9 @@ export function ShowroomSection({ item, userRole, onChanged }) {
   const fmt = (n) => (isStone ? n.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : n);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {canWrite && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="flex flex-wrap gap-2">
             {ACTIONS.map(({ action, label, icon: Icon }) => (
               <button
@@ -189,7 +189,7 @@ export function ShowroomSection({ item, userRole, onChanged }) {
                   // that is the only reason to open it.
                   if (action === 'reclassify') setState(split.installed > 0 && split.cassette <= 0 ? 'cassette' : 'installed');
                 }}
-                className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${openAction === action ? 'border-slate-400 bg-muted text-slate-900 dark:border-slate-500 dark:text-slate-50' : 'border-border bg-card text-slate-700 hover:bg-muted dark:text-slate-200'}`}
+                className={`inline-flex h-9 items-center gap-2 rounded-lg border px-4 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${openAction === action ? 'border-slate-400 bg-muted text-slate-900 dark:border-slate-500 dark:text-slate-50' : 'border-border bg-card text-slate-700 hover:bg-border dark:text-slate-200'}`}
               >
                 <Icon className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                 {label}
@@ -198,7 +198,7 @@ export function ShowroomSection({ item, userRole, onChanged }) {
           </div>
 
           {openAction && (
-            <div className="rounded-lg border border-border p-3 space-y-3">
+            <div className="rounded-lg border border-border p-4 space-y-4">
               {/* Only worth asking when there is more than one showroom. With a
                   single branch this stays hidden and the request omits
                   locationId, which the API resolves to that one showroom. */}
@@ -222,7 +222,7 @@ export function ShowroomSection({ item, userRole, onChanged }) {
                   </SelectField>
                 </div>
               )}
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className={FORM_LABEL_CLASS} htmlFor="showroom-qty">
                     {isStone ? 'Quantity (sqft)' : item?.unit_of_measure === 'bag' ? 'Quantity (bags)' : 'Quantity (boxes)'}
@@ -277,7 +277,7 @@ export function ShowroomSection({ item, userRole, onChanged }) {
               )}
 
               {error && (
-                <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-500">
+                <div className="rounded-lg border border-border bg-muted px-4 py-2 text-xs font-bold text-rose-500">
                   {error}
                 </div>
               )}
@@ -287,12 +287,12 @@ export function ShowroomSection({ item, userRole, onChanged }) {
                   type="button"
                   disabled={submitting || !qty}
                   onClick={onSubmitClick}
-                  className="inline-flex h-9 items-center gap-2 px-3.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex h-9 items-center gap-2 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   Confirm
                 </button>
-                <button type="button" onClick={reset} className="h-9 px-3 text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-slate-100">
+                <button type="button" onClick={reset} className="h-9 px-4 text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-slate-100">
                   Cancel
                 </button>
               </div>
@@ -314,7 +314,7 @@ export function ShowroomSection({ item, userRole, onChanged }) {
             {history.map((movement) => {
               const action = showroomActionOf(movement);
               return (
-                <li key={movement.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2 text-xs">
+                <li key={movement.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 px-4 py-2 text-xs">
                   <span className="tabular-nums text-slate-500 w-20 shrink-0">{formatDateTime(movement.created_at)}</span>
                   <span className={`font-semibold text-xs ${action ? SHOWROOM_ACTIONS[action].tone : 'text-slate-500'}`}>
                     {action ? SHOWROOM_ACTIONS[action].short : movement.movement_type}

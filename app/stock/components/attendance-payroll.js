@@ -172,7 +172,7 @@ export function AttendancePayroll() {
 
   return (
     <div className={CLASSES.card}>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className={CLASSES.title}>Payroll</h2>
           <p className="mt-1 text-xs font-bold text-slate-500">
@@ -204,12 +204,12 @@ export function AttendancePayroll() {
         </div>
       </div>
 
-      {error ? <p className="mb-3 text-xs font-bold text-rose-500">{error}</p> : null}
-      {notice ? <p className="mb-3 rounded-xl bg-slate-500/10 px-3 py-2 text-xs font-bold">{notice}</p> : null}
+      {error ? <p className="mb-2 text-xs font-bold text-rose-500">{error}</p> : null}
+      {notice ? <p className="mb-2 rounded-lg bg-slate-500/10 px-4 py-2 text-xs font-bold">{notice}</p> : null}
 
       {data?.missingSalary?.length ? (
-        <p className="mb-4 flex items-start gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-[11px] font-bold text-amber-700">
-          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <p className="mb-4 flex items-start gap-2 rounded-lg bg-muted px-4 py-2 text-[11px] font-bold text-amber-700">
+          <AlertTriangle className="mt-1 h-3.5 w-3.5 shrink-0" />
           <span>No salary set, so these are paid ₹0: {data.missingSalary.join(', ')}</span>
         </p>
       ) : null}
@@ -221,7 +221,7 @@ export function AttendancePayroll() {
               {['Employee', 'Present', 'Half', 'Leave', 'Absent', 'OT', 'Per day', 'Earned', 'OT pay', 'Gross', 'PF', 'ESI', 'TDS', 'Net payable'].map((label) => (
                 <th
                   key={label}
-                  className={`px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 ${
+                  className={`px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 ${
                     label === 'Employee' ? 'text-left' : 'text-right'
                   }`}
                 >
@@ -246,32 +246,32 @@ export function AttendancePayroll() {
             ) : (
               rows.map((row) => (
                 <tr key={row.userId} className="transition hover:bg-slate-500/5">
-                  <td className="px-3 py-3 text-xs font-bold">
+                  <td className="px-4 py-2 text-xs font-bold">
                     {row.name}
                     {!row.hasLogin ? (
-                      <span className="ml-1.5 text-xs font-medium text-slate-500">no login</span>
+                      <span className="ml-2 text-xs font-medium text-slate-500">no login</span>
                     ) : null}
                     {isApprover ? (
-                      <button type="button" onClick={() => setEditing(row)} className="ml-1.5 inline-flex items-center gap-1 rounded-md px-1 text-[11px] font-medium text-slate-500 hover:text-foreground" aria-label={`PF, ESI and TDS for ${row.name}`}>
+                      <button type="button" onClick={() => setEditing(row)} className="ml-2 inline-flex items-center gap-1 rounded-lg px-1 text-[11px] font-medium text-slate-500 hover:text-foreground" aria-label={`PF, ESI and TDS for ${row.name}`}>
                         <Settings2 className="h-3 w-3" /> {[row.pfApplicable && 'PF', row.esiApplicable && 'ESI'].filter(Boolean).join('+') || 'Statutory'}
                       </button>
                     ) : null}
                   </td>
-                  <td className="px-3 py-3 text-right text-xs tabular-nums">{row.presentDays}</td>
-                  <td className="px-3 py-3 text-right text-xs tabular-nums">{row.halfDays || '—'}</td>
-                  <td className="px-3 py-3 text-right text-xs tabular-nums">{row.paidLeaveDays || '—'}</td>
-                  <td className="px-3 py-3 text-right text-xs tabular-nums text-rose-500">{row.absentDays || '—'}</td>
-                  <td className="px-3 py-3 text-right text-xs tabular-nums">
+                  <td className="px-4 py-2 text-right text-xs tabular-nums">{row.presentDays}</td>
+                  <td className="px-4 py-2 text-right text-xs tabular-nums">{row.halfDays || '—'}</td>
+                  <td className="px-4 py-2 text-right text-xs tabular-nums">{row.paidLeaveDays || '—'}</td>
+                  <td className="px-4 py-2 text-right text-xs tabular-nums text-rose-500">{row.absentDays || '—'}</td>
+                  <td className="px-4 py-2 text-right text-xs tabular-nums">
                     {row.overtimeMinutes ? formatMinutes(row.overtimeMinutes) : '—'}
                   </td>
-                  <td className="px-3 py-3 text-right text-xs tabular-nums">{rupees(row.perDay)}</td>
-                  <td className="px-3 py-3 text-right text-xs tabular-nums">{rupees(row.earnedBase)}</td>
-                  <td className="px-3 py-3 text-right text-xs tabular-nums">{row.overtimePay ? rupees(row.overtimePay) : '—'}</td>
-                  <td className="px-3 py-3 text-right text-xs tabular-nums">{rupees(row.netPay)}</td>
-                  <td className="px-3 py-3 text-right text-xs tabular-nums">{row.statutory.pfEmployee ? rupees(row.statutory.pfEmployee) : '—'}</td>
-                  <td className="px-3 py-3 text-right text-xs tabular-nums">{row.statutory.esiEmployee ? rupees(row.statutory.esiEmployee) : '—'}</td>
-                  <td className="px-3 py-3 text-right text-xs tabular-nums">{row.statutory.tds ? rupees(row.statutory.tds) : '—'}</td>
-                  <td className="px-3 py-3 text-right text-xs font-bold tabular-nums">{rupees(row.statutory.netPayable)}</td>
+                  <td className="px-4 py-2 text-right text-xs tabular-nums">{rupees(row.perDay)}</td>
+                  <td className="px-4 py-2 text-right text-xs tabular-nums">{rupees(row.earnedBase)}</td>
+                  <td className="px-4 py-2 text-right text-xs tabular-nums">{row.overtimePay ? rupees(row.overtimePay) : '—'}</td>
+                  <td className="px-4 py-2 text-right text-xs tabular-nums">{rupees(row.netPay)}</td>
+                  <td className="px-4 py-2 text-right text-xs tabular-nums">{row.statutory.pfEmployee ? rupees(row.statutory.pfEmployee) : '—'}</td>
+                  <td className="px-4 py-2 text-right text-xs tabular-nums">{row.statutory.esiEmployee ? rupees(row.statutory.esiEmployee) : '—'}</td>
+                  <td className="px-4 py-2 text-right text-xs tabular-nums">{row.statutory.tds ? rupees(row.statutory.tds) : '—'}</td>
+                  <td className="px-4 py-2 text-right text-xs font-bold tabular-nums">{rupees(row.statutory.netPayable)}</td>
                 </tr>
               ))
             )}
@@ -281,7 +281,7 @@ export function AttendancePayroll() {
 
       <div className="space-y-2 md:hidden">
         {rows.map((row) => (
-          <article key={row.userId} className="rounded-xl border border-border/60 p-3">
+          <article key={row.userId} className="rounded-lg border border-border/60 p-4">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold">{row.name}</span>
               <span className="text-xs font-bold tabular-nums">{rupees(row.statutory?.netPayable ?? row.netPay)}</span>

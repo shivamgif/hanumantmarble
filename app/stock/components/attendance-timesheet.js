@@ -9,20 +9,20 @@ import { CLASSES, FORM_INPUT_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS
 import { SelectField } from '@/components/ui/select';
 
 export const STATUS_STYLE = {
-  present: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
-  half_day: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
-  absent: 'bg-rose-500/10 text-rose-700 dark:text-rose-400',
-  paid_leave: 'bg-sky-500/10 text-sky-700 dark:text-sky-400',
+  present: 'bg-muted text-emerald-700 dark:text-emerald-400',
+  half_day: 'bg-muted text-amber-700 dark:text-amber-400',
+  absent: 'bg-muted text-rose-700 dark:text-rose-400',
+  paid_leave: 'bg-muted text-sky-700 dark:text-sky-400',
   unpaid_leave: 'bg-slate-500/10 text-slate-600 dark:text-slate-400',
   weekly_off: 'bg-slate-500/10 text-slate-600 dark:text-slate-400',
-  holiday: 'bg-violet-500/10 text-violet-700 dark:text-violet-400',
+  holiday: 'bg-muted text-violet-700 dark:text-violet-400',
   upcoming: 'text-slate-500 ring-1 ring-inset ring-border/60',
 };
 
 export function StatusPill({ status }) {
   return (
     <span
-      className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
+      className={`inline-block rounded-lg px-2 py-1 text-xs font-semibold ${
         STATUS_STYLE[status] || STATUS_STYLE.absent
       }`}
     >
@@ -35,7 +35,7 @@ export function StatusPill({ status }) {
 export function ReviewChip({ entry }) {
   if (!needsReview(entry)) return null;
   return (
-    <span className="ml-1.5 inline-block rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+    <span className="ml-2 inline-block rounded-lg bg-muted px-2 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400">
       Review
     </span>
   );
@@ -98,7 +98,7 @@ export function AttendanceTimesheet({ scope = 'self', employees = [], canManage 
 
   return (
     <div className={CLASSES.card}>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className={CLASSES.title}>Timesheet</h2>
           <p className="mt-1 text-xs font-bold text-slate-500">
@@ -136,7 +136,7 @@ export function AttendanceTimesheet({ scope = 'self', employees = [], canManage 
         </div>
       </div>
 
-      {error ? <p className="mb-3 text-xs font-bold text-rose-500">{error}</p> : null}
+      {error ? <p className="mb-2 text-xs font-bold text-rose-500">{error}</p> : null}
 
       {/* Desktop table */}
       <div className="hidden overflow-x-auto md:block">
@@ -170,27 +170,27 @@ export function AttendanceTimesheet({ scope = 'self', employees = [], canManage 
             ) : (
               rows.map((row) => (
                 <tr key={row.id} className="transition hover:bg-slate-500/5">
-                  <td className="px-4 py-2.5 text-xs font-bold tabular-nums">{row.work_date}</td>
-                  <td className="px-4 py-2.5 text-xs font-bold">
+                  <td className="px-4 py-2 text-xs font-bold tabular-nums">{row.work_date}</td>
+                  <td className="px-4 py-2 text-xs font-bold">
                     {row.user_name}
                     {row.is_outside_geofence ? (
-                      <MapPinOff className="ml-1.5 inline h-3 w-3 text-amber-500" aria-label="Outside geofence" />
+                      <MapPinOff className="ml-2 inline h-3 w-3 text-amber-500" aria-label="Outside geofence" />
                     ) : null}
                   </td>
-                  <td className="px-4 py-2.5 text-xs tabular-nums">
+                  <td className="px-4 py-2 text-xs tabular-nums">
                     {clockTime(row.clock_in_at)}
                     {row.isLate ? <span className="ml-1 text-[11px] font-bold text-rose-500">+{row.lateMinutes}</span> : null}
                   </td>
-                  <td className="px-4 py-2.5 text-xs tabular-nums">
+                  <td className="px-4 py-2 text-xs tabular-nums">
                     {row.isOpen ? <span className="font-bold text-emerald-600">In now</span> : clockTime(row.clock_out_at)}
                     <ReviewChip entry={row} />
                   </td>
-                  <td className="px-4 py-2.5 text-xs tabular-nums">{Math.round((row.break_seconds || 0) / 60)}</td>
-                  <td className="px-4 py-2.5 text-xs font-bold tabular-nums">{formatMinutes(row.workedMinutes)}</td>
-                  <td className="px-4 py-2.5 text-xs tabular-nums">{row.lateMinutes || '—'}</td>
-                  <td className="px-4 py-2.5 text-xs font-medium text-slate-500">{row.source}</td>
+                  <td className="px-4 py-2 text-xs tabular-nums">{Math.round((row.break_seconds || 0) / 60)}</td>
+                  <td className="px-4 py-2 text-xs font-bold tabular-nums">{formatMinutes(row.workedMinutes)}</td>
+                  <td className="px-4 py-2 text-xs tabular-nums">{row.lateMinutes || '—'}</td>
+                  <td className="px-4 py-2 text-xs font-medium text-slate-500">{row.source}</td>
                   {canManage ? (
-                    <td className="px-4 py-2.5 text-right">
+                    <td className="px-4 py-2 text-right">
                       <button type="button" onClick={() => onEdit?.(row)} aria-label={`Edit entry for ${row.user_name} on ${row.work_date}`} className="text-slate-500 hover:text-brand-primary">
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
@@ -207,13 +207,13 @@ export function AttendanceTimesheet({ scope = 'self', employees = [], canManage 
       <div className="space-y-2 md:hidden">
         {loading ? (
           <div className="space-y-2" aria-busy="true">
-              {[0, 1, 2].map((i) => <Skeleton key={i} className="h-14 rounded-xl" />)}
+              {[0, 1, 2].map((i) => <Skeleton key={i} className="h-14 rounded-lg" />)}
             </div>
         ) : !rows.length ? (
           <p className="py-8 text-center text-xs font-bold text-slate-500">No attendance recorded for this month.</p>
         ) : (
           rows.map((row) => (
-            <article key={row.id} className="rounded-xl border border-border/60 p-3">
+            <article key={row.id} className="rounded-lg border border-border/60 p-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold tabular-nums">{row.work_date}</span>
                 <span className="text-xs font-bold tabular-nums">{formatMinutes(row.workedMinutes)}</span>
@@ -221,7 +221,7 @@ export function AttendanceTimesheet({ scope = 'self', employees = [], canManage 
               <p className="mt-1 text-[11px] font-bold text-slate-500">{row.user_name}</p>
               <p className="mt-1 text-[11px] tabular-nums text-slate-500">
                 {clockTime(row.clock_in_at)} → {row.isOpen ? 'in now' : clockTime(row.clock_out_at)}
-                {row.isLate ? <span className="ml-1.5 font-bold text-rose-500">late {row.lateMinutes}m</span> : null}
+                {row.isLate ? <span className="ml-2 font-bold text-rose-500">late {row.lateMinutes}m</span> : null}
                 <ReviewChip entry={row} />
               </p>
               {canManage ? (

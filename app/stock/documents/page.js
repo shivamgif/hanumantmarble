@@ -298,7 +298,7 @@ export default function StockDocumentsPage() {
   function renderDocumentPreview(document) {
     if (!document?.file_url) {
       return (
-        <div className="rounded-xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+        <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
           {t.noPreviewAvailable}
         </div>
       );
@@ -309,7 +309,7 @@ export default function StockDocumentsPage() {
         <img
           src={document.file_url}
           alt={document.file_name || t.documentPreview}
-          className="max-h-[70vh] w-full rounded-xl border border-border object-contain bg-background/60"
+          className="max-h-[70vh] w-full rounded-lg border border-border object-contain bg-background/60"
         />
       );
     }
@@ -318,7 +318,7 @@ export default function StockDocumentsPage() {
       <iframe
         src={document.file_url}
         title={document.file_name || t.documentPreview}
-        className="h-[70vh] w-full rounded-xl border border-border bg-card"
+        className="h-[70vh] w-full rounded-lg border border-border bg-card"
       />
     );
   }
@@ -339,7 +339,7 @@ export default function StockDocumentsPage() {
 
       {error && <div role="alert" className={ERROR_BOX_CLASS}>{error}</div>}
 
-      <div className="grid gap-4 lg:gap-5 lg:grid-cols-[380px_1fr]">
+      <div className="grid gap-4 lg:gap-6 lg:grid-cols-[380px_1fr]">
         <form onSubmit={handleSubmit} className={`${CLASSES.card} space-y-4`}>
           <h2 className={CLASSES.title}>{t.uploadTitle}</h2>
           <label className={FORM_LABEL_CLASS}>
@@ -376,7 +376,7 @@ export default function StockDocumentsPage() {
         </form>
 
         <div className={CLASSES.card}>
-          <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="mb-4 flex items-center justify-between gap-2">
             <h2 className={CLASSES.title}>{t.recentDocuments}</h2>
             <div className="text-xs text-muted-foreground">{documents.length}</div>
           </div>
@@ -391,18 +391,18 @@ export default function StockDocumentsPage() {
                 <table className="w-full text-left text-xs whitespace-nowrap">
                   <thead className="bg-muted/70 text-muted-foreground">
                     <tr>
-                      <th className="px-3 py-2">{t.tableType}</th>
-                      <th className="px-3 py-2">{t.tableEntity}</th>
-                      <th className="px-3 py-2">{t.tableNumber}</th>
-                      <th className="px-3 py-2">{t.tableFile}</th>
-                      <th className="px-3 py-2">{t.tableNotes}</th>
+                      <th className="px-4 py-2">{t.tableType}</th>
+                      <th className="px-4 py-2">{t.tableEntity}</th>
+                      <th className="px-4 py-2">{t.tableNumber}</th>
+                      <th className="px-4 py-2">{t.tableFile}</th>
+                      <th className="px-4 py-2">{t.tableNotes}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {documentPagination.rows.map((document) => (
                       <tr
                         key={document.id}
-                        className="cursor-pointer transition hover:bg-primary/5 focus-within:bg-primary/5"
+                        className="cursor-pointer transition hover:bg-muted focus-within:bg-muted"
                         onClick={() => openDocumentPreview(document)}
                         tabIndex={0}
                         role="button"
@@ -414,11 +414,11 @@ export default function StockDocumentsPage() {
                         }}
                         title={t.clickToPreview}
                       >
-                        <td className="px-3 py-2">{document.document_type}</td>
-                        <td className="px-3 py-2">{document.entity_type} #{document.entity_id}</td>
-                        <td className="px-3 py-2">{document.document_number || '—'}</td>
-                        <td className="px-3 py-2 text-foreground/80">{document.file_name}</td>
-                        <td className="px-3 py-2 max-w-[220px] truncate text-muted-foreground" title={document.notes || ''}>{document.notes || '—'}</td>
+                        <td className="px-4 py-2">{document.document_type}</td>
+                        <td className="px-4 py-2">{document.entity_type} #{document.entity_id}</td>
+                        <td className="px-4 py-2">{document.document_number || '—'}</td>
+                        <td className="px-4 py-2 text-foreground/80">{document.file_name}</td>
+                        <td className="px-4 py-2 max-w-[220px] truncate text-muted-foreground" title={document.notes || ''}>{document.notes || '—'}</td>
                       </tr>
                     ))}
                   </tbody>

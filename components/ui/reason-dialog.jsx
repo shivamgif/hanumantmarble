@@ -37,7 +37,7 @@ export function ReasonDialog({ request, onClose }) {
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[9998] bg-black/50 animate-fade-in" />
         <Dialog.Content
-          className="fixed left-1/2 top-1/2 z-[9999] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 text-card-foreground shadow-2xl animate-scale-in"
+          className="fixed left-1/2 top-1/2 z-[9999] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 text-card-foreground shadow-float animate-scale-in"
           onOpenAutoFocus={(e) => {
             e.preventDefault();
             e.currentTarget.querySelector('textarea, input')?.focus();
@@ -45,7 +45,7 @@ export function ReasonDialog({ request, onClose }) {
         >
           <Dialog.Title className="text-base font-bold tracking-tight">{request.title}</Dialog.Title>
           {request.description ? (
-            <Dialog.Description className="mt-1.5 text-sm text-muted-foreground">
+            <Dialog.Description className="mt-2 text-sm text-muted-foreground">
               {request.description}
             </Dialog.Description>
           ) : null}
@@ -58,7 +58,7 @@ export function ReasonDialog({ request, onClose }) {
                 min={request.min}
                 onChange={(e) => setValue(e.target.value)}
                 aria-label={request.placeholder || request.title}
-                className="mt-4 w-full rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10"
+                className="mt-4 w-full rounded-lg border border-border/60 bg-background px-4 py-2 text-sm outline-none transition focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10"
               />
             ) : (
               <textarea
@@ -67,14 +67,14 @@ export function ReasonDialog({ request, onClose }) {
                 rows={3}
                 placeholder={request.placeholder}
                 aria-label={request.placeholder || request.title}
-                className="mt-4 w-full resize-none rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm outline-none transition placeholder:text-muted-foreground focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10"
+                className="mt-4 w-full resize-none rounded-lg border border-border/60 bg-background px-4 py-2 text-sm outline-none transition placeholder:text-muted-foreground focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10"
               />
             )}
-            <div className="mt-5 flex justify-end gap-2">
+            <div className="mt-6 flex justify-end gap-2">
               <Dialog.Close asChild>
                 <button
                   type="button"
-                  className="min-h-[44px] rounded-lg border border-border px-5 text-sm font-semibold transition-colors hover:bg-muted/60 focus-ring"
+                  className="h-9 rounded-lg border border-border px-4 text-[13px] font-semibold transition-colors hover:bg-muted focus-ring"
                 >
                   Cancel
                 </button>
@@ -82,7 +82,7 @@ export function ReasonDialog({ request, onClose }) {
               <button
                 type="submit"
                 disabled={blocked}
-                className={`min-h-[44px] rounded-full px-5 text-xs font-semibold uppercase tracking-wider text-white transition-colors focus-ring disabled:cursor-not-allowed disabled:opacity-50 ${
+                className={`h-9 rounded-lg px-4 text-[13px] font-semibold text-white transition-colors focus-ring disabled:cursor-not-allowed disabled:opacity-50 ${
                   request.tone === 'rose' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-primary hover:bg-primary/90'
                 }`}
               >

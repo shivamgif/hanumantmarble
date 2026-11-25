@@ -3,8 +3,8 @@ import { TrendingUp, TrendingDown, Download, Inbox } from 'lucide-react';
 import { CLASSES as BASE_CLASSES } from '../lib/stock-utils';
 
 export const BRAND_SECONDARY = '#1A1A54';
-// Single-series chart marks follow the company accent (lib/accent.mjs).
-export const CHART_ORANGE = 'rgb(var(--primary))';
+// Single-series chart marks are neutral ink: the company accent is kept for buttons and links.
+export const CHART_INK = 'rgb(var(--muted-foreground))';
 
 export const INDUSTRIAL_COLORS = [
   '#C96E00',
@@ -24,7 +24,7 @@ export const SERIES_COLORS = ['#C96E00', '#2563EB', '#059669', '#7C3AED', '#DC26
 export const CLASSES = {
   ...BASE_CLASSES,
   value: 'mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100 font-sans tracking-tight tabular-nums',
-  sectionHead: 'text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3',
+  sectionHead: 'text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2',
 };
 
 export function formatRelativeTime(date) {
@@ -78,7 +78,7 @@ export function CsvExportButton({ type, months, label }) {
   return (
     <a
       href={href}
-      className="inline-flex h-8 items-center gap-1.5 px-2.5 rounded-md text-xs font-medium bg-card border border-border text-slate-700 dark:text-slate-300 hover:bg-muted transition-colors focus-ring"
+      className="inline-flex h-8 items-center gap-2 px-2 rounded-lg text-xs font-medium bg-card border border-border text-slate-700 dark:text-slate-300 hover:bg-muted transition-colors focus-ring"
       download
     >
       <Download className="h-3.5 w-3.5" />
@@ -104,23 +104,23 @@ export function TrendCapsule({ value, isPositive }) {
 export function AnalyticsCard({ title, subtitle, topRight, contextBar, insight, showInsight, children, className = '' }) {
   return (
     <div className={`${CLASSES.card} ${className}`}>
-      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-start justify-between gap-3 mb-4">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-start justify-between gap-2 mb-4">
         <div className="min-w-0">
           <h3 className={CLASSES.title}>{title}</h3>
-          {subtitle ? <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">{subtitle}</p> : null}
+          {subtitle ? <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{subtitle}</p> : null}
         </div>
         <div className="shrink-0 max-w-full min-w-0">{topRight}</div>
       </div>
       {showInsight && insight ? (
-        <div className="mb-4 border-l-2 border-brand-primary/60 pl-3 animate-fade-in">
+        <div className="mb-4 border-l border-border pl-4 animate-fade-in">
           <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
-            <span className="font-semibold text-slate-900 dark:text-slate-100 mr-1.5">How it works:</span>
+            <span className="font-semibold text-slate-900 dark:text-slate-100 mr-2">How it works:</span>
             {insight}
           </p>
         </div>
       ) : null}
       {contextBar ? (
-        <div className="mb-4 px-3 py-2 rounded-md bg-muted/60">
+        <div className="mb-4 px-4 py-2 rounded-lg bg-muted/60">
           <p className="text-xs text-slate-600 dark:text-slate-400">{contextBar}</p>
         </div>
       ) : null}
@@ -132,7 +132,7 @@ export function AnalyticsCard({ title, subtitle, topRight, contextBar, insight, 
 export function ChartTooltip({ active, payload, label, formatter, labelFormatter }) {
   if (!active || !payload || !payload.length) return null;
   return (
-    <div className="rounded-lg border border-border bg-popover text-popover-foreground px-3 py-2 shadow-md">
+    <div className="rounded-lg border border-border bg-popover text-popover-foreground px-4 py-2 shadow-float">
       <p className="text-xs font-medium text-muted-foreground mb-1">
         {labelFormatter ? labelFormatter(label) : label}
       </p>
@@ -151,7 +151,7 @@ export function ChartTooltip({ active, payload, label, formatter, labelFormatter
 
 export function EmptyState({ label, icon: Icon = Inbox, className = '' }) {
   return (
-    <div className={`flex flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-4 text-center ${className}`}>
+    <div className={`flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border py-4 text-center ${className}`}>
       <Icon className="h-4 w-4 text-slate-400" strokeWidth={1.75} />
       <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
     </div>

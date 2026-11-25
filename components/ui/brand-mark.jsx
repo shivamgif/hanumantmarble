@@ -34,7 +34,7 @@ export function CompanyMark({ name = '', logo = null, logoDark = null, size = 32
   return (
     <span
       aria-hidden="true"
-      className={`inline-flex shrink-0 items-center justify-center rounded-md bg-primary font-semibold text-primary-foreground ${className}`}
+      className={`inline-flex shrink-0 items-center justify-center rounded-lg bg-primary font-semibold text-primary-foreground ${className}`}
       style={{ width: size, height: size, fontSize: Math.round(size * 0.4) }}
     >
       {initials}

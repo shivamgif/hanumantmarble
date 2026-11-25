@@ -1,7 +1,7 @@
 {
   "name": "Nirnay",
   "short_name": "Nirnay",
-  "description": "Stock, GST billing, books and people for growing businesses.",
+  "description": "Inventory, GST billing, books and people for growing businesses.",
   "start_url": "/stock",
   "scope": "/stock",
   "display": "standalone",

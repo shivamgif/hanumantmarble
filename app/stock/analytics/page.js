@@ -224,18 +224,18 @@ function AnalyticsDashboardInner() {
   if (loading && !hasData)
     return (
       <div className={CLASSES.contentWrap} aria-busy="true">
-        <div className="flex flex-col gap-3">
-          <Skeleton className="h-4 w-32 rounded" />
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-4 w-32 rounded-lg" />
           <Skeleton className="h-8 w-64 max-w-full rounded-lg" />
         </div>
         <div className={CLASSES.heroGrid}>
           {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={`hero-skeleton-${index}`} className="rounded-xl h-36" />
+            <Skeleton key={`hero-skeleton-${index}`} className="rounded-lg h-36" />
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
-          <Skeleton className="rounded-xl h-80" />
-          <Skeleton className="rounded-xl h-80" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+          <Skeleton className="rounded-lg h-80" />
+          <Skeleton className="rounded-lg h-80" />
         </div>
       </div>
     );
@@ -359,8 +359,8 @@ function AnalyticsDashboardInner() {
         onNavigate={jumpTo}
       />
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-        {/* Below sm: equal columns, icon over label (see tabButtonClass). */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+        {/* Same strip as every other page (see tabTrackClass). */}
         <div className={tabTrackClass(visibleTabs.length)}>
           {visibleTabs.map((tab) => {
             const isActive = currentTab === tab.id;
@@ -375,7 +375,7 @@ function AnalyticsDashboardInner() {
                 className={tabButtonClass(isActive, visibleTabs.length)}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                <span className="line-clamp-2 min-w-0 text-center sm:whitespace-nowrap">
+                <span className="min-w-0 truncate">
                   {label}
                 </span>
               </button>
@@ -383,7 +383,7 @@ function AnalyticsDashboardInner() {
           })}
         </div>
 
-        <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-3">
+        <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-2">
           <div className={`${tabTrackClass(3)} !w-fit`} role="group" aria-label="Range">
             {[3, 6, 12].map((m) => (
               <button
@@ -391,7 +391,7 @@ function AnalyticsDashboardInner() {
                 type="button"
                 onClick={() => setAnalyticsRangeMonths(m)}
                 aria-pressed={analyticsRangeMonths === m}
-                className={`${tabButtonClass(analyticsRangeMonths === m, 5)} !h-8 px-3`}
+                className={`${tabButtonClass(analyticsRangeMonths === m, 5)} !h-8 px-4`}
               >
                 {m}M
               </button>
@@ -427,7 +427,7 @@ function AnalyticsDashboardInner() {
       </div>
 
       {actionError || (error && hasData) ? (
-        <div role="alert" className={`${ERROR_BOX_CLASS} flex items-start justify-between gap-3`}>
+        <div role="alert" className={`${ERROR_BOX_CLASS} flex items-start justify-between gap-2`}>
           <span>{actionError || error}</span>
           <button
             type="button"
@@ -442,7 +442,7 @@ function AnalyticsDashboardInner() {
         </div>
       ) : null}
 
-      <div aria-busy={loading} className={`space-y-4 transition-opacity duration-200 lg:space-y-5 ${loading ? 'pointer-events-none opacity-60' : ''}`}>
+      <div aria-busy={loading} className={`space-y-4 transition-opacity duration-200 lg:space-y-6 ${loading ? 'pointer-events-none opacity-60' : ''}`}>
       {currentTab === 'me' ? (
         <MyPerformancePanel data={salespersonAnalytics} goal={ownGoal} />
       ) : (

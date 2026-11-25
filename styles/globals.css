@@ -23,7 +23,7 @@
 @keyframes stock-tab-panel-enter {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(4px);
   }
 
   to {
@@ -37,13 +37,13 @@
    does; animating the whole card made the tabs themselves jump. */
 .stock-tab-panel > section > :not(:first-child),
 .stock-tab-panel > div > :not(:first-child) {
-  animation: stock-tab-panel-enter 360ms var(--ease-out) both;
+  animation: stock-tab-panel-enter 150ms var(--ease-out) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .stock-tab-panel > section > :not(:first-child),
   .stock-tab-panel > div > :not(:first-child) {
-    animation: fade-in 200ms ease-out both;
+    animation: fade-in 150ms ease-out both;
   }
 }
 
@@ -416,19 +416,34 @@
   --muted-foreground: 148 163 184; /* slate-400, 5.7:1 on the card */
 }
 
-/* Geist in the app, DM Sans stays on the storefront. .font-sans is listed
-   because ~100 stock elements re-declare it, which would reset to DM Sans. */
+/* One face in the app: Inter, for text and figures alike (tabular-nums above
+   lines the figures up, so no mono). DM Sans stays on the storefront. The
+   font-* classes are listed because stock elements re-declare them. Noto
+   comes second, so Hindi gets Devanagari glyphs while Latin stays Inter. */
 .stock-scope,
-.stock-scope .font-sans {
-  font-family: var(--font-geist), var(--font-dm-sans), ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+.stock-scope :is(.font-sans, .font-mono, .font-display) {
+  font-family: var(--font-inter), var(--font-noto-devanagari), ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
-.stock-scope .font-mono {
-  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+/* Outranks the html[lang="hi"] body rule below, which portals inherit from. */
+html[lang="hi"] body.stock-scope {
+  font-family: var(--font-inter), var(--font-noto-devanagari), ui-sans-serif, system-ui, sans-serif !important;
 }
-html[lang="hi"] .stock-scope,
-html[lang="hi"] .stock-scope .font-sans {
-  font-family: var(--font-noto-devanagari), var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+
+/* Floating surfaces in the app are solid: no glass sheen, a 1px edge and a
+   soft shadow (shadow-float). Unlayered, so it outranks .glass / .dark .glass. */
+.stock-scope .glass {
+  background-color: rgb(var(--popover));
+  background-image: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-color: rgb(var(--border));
+  box-shadow: 0 2px 4px -2px rgb(15 23 42 / 0.06), 0 12px 24px -8px rgb(15 23 42 / 0.12);
+}
+.stock-scope .glass-chip {
+  background-color: rgb(var(--card));
+  background-image: none;
+  box-shadow: 0 0 0 1px rgb(var(--border)), 0 1px 2px 0 rgb(15 23 42 / 0.04);
 }
 
 /* --- Literal remap: light-mode surfaces -----------------------------------

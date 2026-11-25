@@ -12,10 +12,10 @@ import { formatRupees } from './invoice-form';
 import { FORM_INPUT_CLASS, FORM_LABEL_CLASS, formatDateTime, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../lib/stock-utils';
 
 export const STATUS_TONE = {
-  pending: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
-  approved: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
-  dispatched: 'bg-sky-500/10 text-sky-700 dark:text-sky-400',
-  rejected: 'bg-rose-500/10 text-rose-700 dark:text-rose-400',
+  pending: 'bg-muted text-amber-700 dark:text-amber-400',
+  approved: 'bg-muted text-emerald-700 dark:text-emerald-400',
+  dispatched: 'bg-muted text-sky-700 dark:text-sky-400',
+  rejected: 'bg-muted text-rose-700 dark:text-rose-400',
   cancelled: 'bg-slate-500/10 text-slate-500',
 };
 
@@ -121,7 +121,7 @@ export function NoteSheet({ request, onClose, onSaved, t }) {
         ) : (
           <form onSubmit={submit} className="mt-4 space-y-4">
             {returnedFrom ? (
-              <p className="rounded-lg bg-sky-500/10 px-3 py-2 text-sm text-sky-700 dark:text-sky-300">
+              <p className="rounded-lg bg-muted px-4 py-2 text-sm text-sky-700 dark:text-sky-300">
                 {t('prefilledFromReturn', { dispatch: data.shipmentNumber })}
               </p>
             ) : null}
@@ -137,26 +137,26 @@ export function NoteSheet({ request, onClose, onSaved, t }) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-slate-500">
-                    <th className="py-2 pr-3">{t('description')}</th>
-                    <th className="py-2 pr-3 text-right">{t('billed')}</th>
-                    {adds ? null : <th className="py-2 pr-3 text-right">{t('leftToCredit')}</th>}
-                    <th className="py-2 pr-3">{t('creditQty')}</th>
-                    <th className="py-2 pr-3">{t(adds ? 'extraRate' : 'creditRate')}</th>
+                    <th className="py-2 pr-4">{t('description')}</th>
+                    <th className="py-2 pr-4 text-right">{t('billed')}</th>
+                    {adds ? null : <th className="py-2 pr-4 text-right">{t('leftToCredit')}</th>}
+                    <th className="py-2 pr-4">{t('creditQty')}</th>
+                    <th className="py-2 pr-4">{t(adds ? 'extraRate' : 'creditRate')}</th>
                     <th className="py-2 text-right">{t('taxable')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {data.lines.map((line, index) => (
                     <tr key={line.lineIndex} className="align-middle">
-                      <td className="py-2 pr-3">{line.itemLabel}</td>
-                      <td className="py-2 pr-3 text-right tabular-nums">{line.billedQty} {line.unit} @ {formatRupees(line.rate)}</td>
+                      <td className="py-2 pr-4">{line.itemLabel}</td>
+                      <td className="py-2 pr-4 text-right tabular-nums">{line.billedQty} {line.unit} @ {formatRupees(line.rate)}</td>
                       {adds ? null : (
-                        <td className="py-2 pr-3 text-right tabular-nums">
+                        <td className="py-2 pr-4 text-right tabular-nums">
                           {line.leftQty} {line.unit} · {formatRupees(line.leftValue)}
                           {supplier ? <span className="block text-xs text-slate-500">{t('leftToReturn', { qty: line.leftToReturn, unit: line.unit })}</span> : null}
                         </td>
                       )}
-                      <td className="py-2 pr-3">
+                      <td className="py-2 pr-4">
                         <input
                           type="number"
                           min="0"
@@ -168,7 +168,7 @@ export function NoteSheet({ request, onClose, onSaved, t }) {
                           aria-label={`${t('creditQty')} ${line.itemLabel}`}
                         />
                       </td>
-                      <td className="py-2 pr-3">
+                      <td className="py-2 pr-4">
                         <input
                           type="number"
                           min="0"
@@ -232,16 +232,16 @@ export function NotesList({ notes, accessUser, isApprover, busyId, onAct, setRea
         const busy = busyId === `note-${note.id}`;
         const label = note.note_number || `${t(note.kind === 'debit' ? 'debitNote' : 'creditNote')} #${note.id}`;
         return (
-          <li key={note.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+          <li key={note.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-4">
             <div className="min-w-[12rem] flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-semibold text-slate-900 dark:text-slate-100">{label}</span>
-                <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${STATUS_TONE[note.status]}`}>{t(note.status)}</span>
+                <span className={`rounded-lg px-2 py-1 text-xs font-medium ${STATUS_TONE[note.status]}`}>{t(note.status)}</span>
                 {note.status === 'approved' && note.einvoice_status === 'pending' ? (
-                  <span className="rounded-md bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-700 dark:text-rose-400">{t('irnPending')}</span>
+                  <span className="rounded-lg bg-muted px-2 py-1 text-xs font-medium text-rose-700 dark:text-rose-400">{t('irnPending')}</span>
                 ) : null}
               </div>
-              <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-300">
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
                 {note.kind === 'debit' ? `${t('debitNote')} · ` : ''}{note.party_name} · {t(note.party_kind === 'supplier' ? 'againstPurchase' : 'againstInvoice')} {note.original_number}
               </p>
               <p className="text-xs text-slate-500">

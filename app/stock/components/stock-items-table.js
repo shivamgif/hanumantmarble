@@ -44,9 +44,9 @@ export function StockItemsTable({ tabs, kpis, pagination, sort, setSort, search,
 
   return (
     <div className="stock-tab-panel" key="stock-panel-items">
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-4">
         {tabs}
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5 sm:gap-3">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-2">
         <button
           type="button"
           onClick={() => {
@@ -79,10 +79,10 @@ export function StockItemsTable({ tabs, kpis, pagination, sort, setSort, search,
         </button>
         </div>
       </div>
-      <div id="current-stock" className="glass-panel overflow-hidden rounded-xl">
+      <div id="current-stock" className="glass-panel overflow-hidden rounded-lg">
 
-        {kpis && <div className="border-b border-border px-3 py-3 sm:px-4">{kpis}</div>}
-        <div className="sticky top-0 z-10 border-b border-border bg-card px-3 py-2.5">
+        {kpis && <div className="border-b border-border px-4 py-4 sm:px-4">{kpis}</div>}
+        <div className="sticky top-0 z-10 border-b border-border bg-card px-4 py-2">
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
@@ -90,7 +90,7 @@ export function StockItemsTable({ tabs, kpis, pagination, sort, setSort, search,
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder={tc.searchItems}
-              className={`${FORM_INPUT_CLASS} pl-9`}
+              className={`${FORM_INPUT_CLASS} pl-10`}
             />
           </div>
         </div>
@@ -102,14 +102,14 @@ export function StockItemsTable({ tabs, kpis, pagination, sort, setSort, search,
             const sr = showroomSplit(item);
             return (
               <li key={item.id}>
-                <button type="button" onClick={() => openPreview(item)} className="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left active:bg-muted/60">
+                <button type="button" onClick={() => openPreview(item)} className="flex w-full items-start justify-between gap-2 px-4 py-2 text-left active:bg-muted/60">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                       {item.name}
-                      {item.unit_of_measure === 'bag' && <span className="ml-1.5 rounded border border-border px-1 py-px align-middle text-[10px] font-medium text-slate-600 dark:text-slate-300">Bag</span>}
+                      {item.unit_of_measure === 'bag' && <span className="ml-2 rounded-lg border border-border px-1 py-px align-middle text-[10px] font-medium text-slate-600 dark:text-slate-300">Bag</span>}
                     </p>
-                    <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{[stockSpec(item), item.division_name || item.brand_name].filter(Boolean).join(' · ')}</p>
-                    <p className="font-mono text-[11px] text-slate-400">{item.sku}</p>
+                    <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{[stockSpec(item), item.division_name || item.brand_name].filter(Boolean).join(' · ')}</p>
+                    <p className="text-[11px] text-slate-400">{item.sku}</p>
                   </div>
                   <div className="shrink-0 text-right">
                     <p className={`text-base font-semibold tabular-nums ${q.low ? 'text-amber-700 dark:text-amber-400' : 'text-slate-900 dark:text-slate-50'}`}>
@@ -142,7 +142,7 @@ export function StockItemsTable({ tabs, kpis, pagination, sort, setSort, search,
                     <button
                       type="button"
                       onClick={() => toggleSort(col.id)}
-                      className={`text-[11px] font-semibold uppercase tracking-wider hover:text-slate-900 dark:hover:text-slate-100 transition-colors duration-150 inline-flex items-center gap-1 group/th focus-ring rounded ${sort.key === col.id ? 'text-slate-900 dark:text-slate-100' : 'text-muted-foreground'}`}
+                      className={`text-[11px] font-semibold uppercase tracking-wider hover:text-slate-900 dark:hover:text-slate-100 transition-colors duration-150 inline-flex items-center gap-1 group/th focus-ring rounded-lg ${sort.key === col.id ? 'text-slate-900 dark:text-slate-100' : 'text-muted-foreground'}`}
                     >
                       {col.label}
                       {sort.key === col.id ? (
@@ -176,30 +176,30 @@ export function StockItemsTable({ tabs, kpis, pagination, sort, setSort, search,
                       }
                     }}
                   >
-                    <td className="px-4 py-2.5">
+                    <td className="px-4 py-2">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.name}</span>
                         {item.unit_of_measure === 'bag' && (
-                          <span className="inline-flex items-center gap-1 rounded border border-border px-1.5 py-px text-[10px] font-medium text-slate-600 dark:text-slate-300">
+                          <span className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-px text-[10px] font-medium text-slate-600 dark:text-slate-300">
                             <Package className="h-2.5 w-2.5" />
                             Bag
                           </span>
                         )}
                       </div>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-slate-500 dark:text-slate-400">
-                        <span className="font-mono">{item.sku}</span>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-slate-500 dark:text-slate-400">
+                        <span className="">{item.sku}</span>
                         {[stockSpec(item), item.division_name || item.brand_name].filter(Boolean).map((bit) => (
                           <span key={bit} className="contents"><span aria-hidden="true">·</span><span>{bit}</span></span>
                         ))}
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right">
+                    <td className="whitespace-nowrap px-4 py-2 text-right">
                       <div className={`tabular-nums text-sm font-semibold ${q.low ? 'text-amber-700 dark:text-amber-400' : 'text-slate-900 dark:text-slate-100'}`} title={q.low ? `At or below reorder level (${item.reorder_level})` : undefined}>
                         {q.value} <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">{q.unit}</span>
                       </div>
                       {q.extra ? <div className="text-[11px] tabular-nums text-slate-500 dark:text-slate-400">{q.extra}</div> : null}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right">
+                    <td className="whitespace-nowrap px-4 py-2 text-right">
                       {!isTile ? (
                         <div className="tabular-nums text-sm text-slate-300 dark:text-slate-600">—</div>
                       ) : (
@@ -211,7 +211,7 @@ export function StockItemsTable({ tabs, kpis, pagination, sort, setSort, search,
                         </div>
                       )}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right">
+                    <td className="whitespace-nowrap px-4 py-2 text-right">
                       {/* Stock physically at the showroom: display pieces, cassette
                           slabs. Owned and sellable, but not in the warehouse count. */}
                       {!total ? (
@@ -229,7 +229,7 @@ export function StockItemsTable({ tabs, kpis, pagination, sort, setSort, search,
                         </div>
                       )}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right">
+                    <td className="whitespace-nowrap px-4 py-2 text-right">
                       <div className="tabular-nums text-sm text-slate-500 dark:text-slate-400">{item.reorder_level}</div>
                     </td>
                   </tr>
@@ -240,7 +240,7 @@ export function StockItemsTable({ tabs, kpis, pagination, sort, setSort, search,
         </div>
 
         {pagination.total === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 px-6 py-8 text-center">
+          <div className="flex flex-col items-center justify-center gap-2 px-6 py-8 text-center">
             <div className="h-10 w-10 rounded-lg flex items-center justify-center border border-border">
               <Boxes className="h-5 w-5 text-slate-400" strokeWidth={1.75} />
             </div>
@@ -256,7 +256,7 @@ export function StockItemsTable({ tabs, kpis, pagination, sort, setSort, search,
             </div>
           </div>
         ) : null}
-        <div className="px-4 py-3 border-t border-border">
+        <div className="px-4 py-4 border-t border-border">
           <PaginationControls
             page={pagination.page}
             pageCount={pagination.pageCount}

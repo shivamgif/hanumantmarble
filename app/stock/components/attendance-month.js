@@ -75,7 +75,7 @@ export function AttendanceMonth({ reloadKey }) {
 
   return (
     <div className={CLASSES.card}>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className={CLASSES.title}>{t('myMonth')}</h2>
           {summary ? (
@@ -85,14 +85,14 @@ export function AttendanceMonth({ reloadKey }) {
         <MonthPicker value={month} onChange={setMonth} max={istMonth()} />
       </div>
 
-      {error ? <p className="mb-3 text-xs font-bold text-rose-500">{error}</p> : null}
+      {error ? <p className="mb-2 text-xs font-bold text-rose-500">{error}</p> : null}
 
       {loading ? (
-        <Skeleton className="h-64 rounded-xl" />
+        <Skeleton className="h-64 rounded-lg" />
       ) : summary ? (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,26rem)_1fr]">
           <div>
-            <div className="grid grid-cols-7 gap-1.5 text-center">
+            <div className="grid grid-cols-7 gap-2 text-center">
               {t('weekdays').split(',').map((d, i) => (
                 <span key={i} className="pb-1 text-[11px] font-bold text-slate-500">{d}</span>
               ))}
@@ -103,7 +103,7 @@ export function AttendanceMonth({ reloadKey }) {
                   title={`${day.date} · ${day.status.replaceAll('_', ' ')}${day.workedMinutes ? ` · ${formatMinutes(day.workedMinutes)}` : ''}${day.isLate ? ` · late ${day.lateMinutes}m` : ''}`}
                   className={`relative flex aspect-square items-center justify-center rounded-lg text-xs font-bold tabular-nums ${
                     STATUS_STYLE[day.status] || ''
-                  } ${day.date === today ? 'ring-2 ring-brand-primary' : ''}`}
+                  } ${day.date === today ? 'ring-1 ring-foreground' : ''}`}
                 >
                   {Number(day.date.slice(8))}
                   {day.isLate && day.workedMinutes ? (
@@ -112,23 +112,23 @@ export function AttendanceMonth({ reloadKey }) {
                 </div>
               ))}
             </div>
-            <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5">
+            <div className="mt-2 flex flex-wrap gap-x-2 gap-y-2">
               {LEGEND.map(([status, labelKey]) => (
-                <span key={status} className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
-                  <span className={`h-3 w-3 rounded ${STATUS_STYLE[status]}`} />
+                <span key={status} className="flex items-center gap-2 text-[11px] font-bold text-slate-500">
+                  <span className={`h-3 w-3 rounded-lg ${STATUS_STYLE[status]}`} />
                   {t(labelKey)}
                 </span>
               ))}
-              <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
+              <span className="flex items-center gap-2 text-[11px] font-bold text-slate-500">
                 <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
                 {t('late')}
               </span>
             </div>
           </div>
 
-          <dl className="grid grid-cols-2 content-start gap-3 sm:grid-cols-3">
+          <dl className="grid grid-cols-2 content-start gap-4 sm:grid-cols-3">
             {stats.map(([label, value]) => (
-              <div key={label} className="rounded-xl border border-border/60 p-3">
+              <div key={label} className="rounded-lg border border-border/60 p-4">
                 <dt className="text-[11px] font-bold text-slate-500">{label}</dt>
                 <dd className="mt-1 text-xl font-bold tabular-nums text-slate-900 dark:text-white">{value}</dd>
               </div>

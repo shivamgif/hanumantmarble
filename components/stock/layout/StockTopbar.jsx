@@ -27,7 +27,7 @@ export function keyLabels(spec, isApple) {
 
 // `shortcut`: Tally's voucher keys, handled in hooks/useStockShortcuts.js.
 export const COMMANDS = [
-  { id: 'dashboard', label: 'Dashboard', description: 'Go to stock dashboard', icon: Home,
+  { id: 'dashboard', label: 'Dashboard', description: 'Go to the dashboard', icon: Home,
     keywords: ['home', 'dashboard', 'main', 'overview'], href: '/stock' },
   { id: 'new-purchase', label: 'New Purchase', description: 'Log a new inbound shipment', icon: PlusCircle,
     keywords: ['new purchase', 'new arrival', 'np', 'purchase', 'buy', 'inbound', 'arrival'],
@@ -232,7 +232,7 @@ function SearchBox({ dashboardSearchRef, placeholder, accessRole, primaryModifie
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={handleKeyDown}
-        className="h-9 w-full rounded-md border border-border bg-card pl-9 pr-16 text-sm text-foreground placeholder:text-slate-400 outline-none transition-[border-color,box-shadow] duration-150 focus:border-slate-400 focus:ring-2 focus:ring-brand-primary/15 dark:focus:border-slate-500"
+        className="h-9 w-full rounded-lg border border-border bg-card pl-10 pr-16 text-sm text-foreground placeholder:text-slate-400 outline-none transition-[border-color,box-shadow] duration-150 focus:border-slate-400 focus:ring-2 focus:ring-brand-primary/15 dark:focus:border-slate-500"
       />
       {query ? (
         <button
@@ -244,7 +244,7 @@ function SearchBox({ dashboardSearchRef, placeholder, accessRole, primaryModifie
           <X className="h-3.5 w-3.5" />
         </button>
       ) : (
-        <span className="pointer-events-none absolute right-2.5 flex gap-0.5" aria-hidden="true">
+        <span className="pointer-events-none absolute right-2.5 flex gap-1" aria-hidden="true">
           <Kbd>{primaryModifierLabel.replace('+', '').trim()}</Kbd>
           <Kbd>K</Kbd>
         </span>
@@ -266,7 +266,7 @@ function SearchBox({ dashboardSearchRef, placeholder, accessRole, primaryModifie
 
 function Kbd({ children }) {
   return (
-    <kbd className="min-w-[20px] h-5 flex items-center justify-center rounded border border-border border-b-2 bg-card px-1 font-sans text-[11px] font-medium text-slate-600 dark:text-slate-300 leading-none">
+    <kbd className="min-w-[20px] h-5 flex items-center justify-center rounded-lg border border-border border-b bg-card px-1 font-sans text-[11px] font-medium text-slate-600 dark:text-slate-300 leading-none">
       {children}
     </kbd>
   );
@@ -277,11 +277,11 @@ function SearchDropdown({ query, results, searching, onSelect, activeIndex, setA
   return (
     <div
       id="topbar-search-listbox"
-      className="absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[320px] glass overflow-hidden rounded-xl border animate-in fade-in-0 zoom-in-[0.98] slide-in-from-top-1 duration-150"
+      className="absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[320px] glass overflow-hidden rounded-lg border origin-top animate-in fade-in-0 zoom-in-95 duration-150"
       role="listbox"
       aria-label="Search results"
     >
-      <ul className="max-h-[26rem] overflow-y-auto p-1.5">
+      <ul className="max-h-[26rem] overflow-y-auto p-2">
         {results.map((item, i) => {
           const Icon = item.icon;
           const isActive = i === activeIndex;
@@ -289,17 +289,17 @@ function SearchDropdown({ query, results, searching, onSelect, activeIndex, setA
           return (
             <li key={item.id} role="option" aria-selected={isActive}>
               {startsGroup && (
-                <p className="px-2.5 pb-1 pt-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">{item.group}</p>
+                <p className="px-2 pb-1 pt-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">{item.group}</p>
               )}
               <button
                 type="button"
                 onMouseEnter={() => setActiveIndex(i)}
                 onClick={() => onSelect(item)}
-                className={`flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left transition-colors duration-100 ${
-                  isActive ? 'bg-muted' : 'hover:bg-muted'
+                className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors duration-100 ${
+                  isActive ? 'bg-muted' : 'hover:bg-border'
                 }`}
               >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-card text-slate-500 dark:text-slate-400">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-slate-500 dark:text-slate-400">
                   <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
                 </span>
                 <span className="min-w-0 flex-1">
@@ -313,7 +313,7 @@ function SearchDropdown({ query, results, searching, onSelect, activeIndex, setA
                   )}
                 </span>
                 {item.shortcut ? (
-                  <span className="flex gap-0.5" aria-hidden="true">
+                  <span className="flex gap-1" aria-hidden="true">
                     {keyLabels(item.shortcut, isApple).map((k) => <Kbd key={k}>{k}</Kbd>)}
                   </span>
                 ) : null}
@@ -323,23 +323,23 @@ function SearchDropdown({ query, results, searching, onSelect, activeIndex, setA
           );
         })}
         {searching && (
-          <li className="flex items-center gap-2 px-2.5 py-2 text-xs text-slate-400 dark:text-slate-500" aria-live="polite">
+          <li className="flex items-center gap-2 px-2 py-2 text-xs text-slate-400 dark:text-slate-500" aria-live="polite">
             <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching records…
           </li>
         )}
         {!searching && results.length === 0 && (
-          <li className="px-2.5 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+          <li className="px-2 py-4 text-center text-xs text-slate-400 dark:text-slate-500">
             Nothing found for &ldquo;{query}&rdquo;
           </li>
         )}
       </ul>
-      <div className="border-t border-border px-3 py-2">
+      <div className="border-t border-border px-4 py-2">
         <p className="text-[11px] text-slate-400 dark:text-slate-500">
-          <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-[10px] font-bold dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">↑↓</kbd>
+          <kbd className="rounded-lg border border-slate-200 bg-slate-100 px-1 text-[10px] font-bold dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">↑↓</kbd>
           {' '}navigate &nbsp;
-          <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-[10px] font-bold dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">↵</kbd>
+          <kbd className="rounded-lg border border-slate-200 bg-slate-100 px-1 text-[10px] font-bold dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">↵</kbd>
           {' '}open &nbsp;
-          <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-[10px] font-bold dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">Esc</kbd>
+          <kbd className="rounded-lg border border-slate-200 bg-slate-100 px-1 text-[10px] font-bold dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">Esc</kbd>
           {' '}close
           {query.length < 2 && <span className="ml-2">· type a shipment no., party, truck or invoice no.</span>}
         </p>
@@ -357,14 +357,14 @@ function TabLink({ item, active }) {
     <Link
       href={item.href}
       aria-current={active ? 'page' : undefined}
-      className={`relative flex min-h-[48px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-md px-1 text-[11px] leading-tight transition-colors focus-ring ${
+      className={`relative flex min-h-[48px] min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 text-[11px] leading-tight transition-colors focus-ring ${
         active
           ? 'font-semibold text-slate-900 dark:text-slate-50'
           : 'font-medium text-slate-500 active:bg-muted dark:text-slate-400'
       }`}
     >
       {/* Saffron rule under the current page, same cue as the desktop rail. */}
-      {active && <span aria-hidden="true" className="absolute inset-x-4 -bottom-1 h-0.5 rounded-full bg-brand-primary" />}
+      {active && <span aria-hidden="true" className="absolute inset-x-4 -bottom-1 h-0.5 rounded-full bg-foreground" />}
       <item.icon className={`h-[18px] w-[18px] shrink-0 ${active ? 'text-brand-primary' : ''}`} strokeWidth={active ? 2 : 1.75} />
       <span className="w-full truncate text-center">{item.label}</span>
     </Link>
@@ -409,9 +409,9 @@ export function ShortcutsSheet({ open, onOpenChange, isApple, language }) {
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
             <ul className="divide-y divide-border rounded-lg border border-border bg-card">
               {rows.map(([keys, label]) => (
-                <li key={label} className="flex items-center justify-between gap-4 px-3 py-2 text-sm">
+                <li key={label} className="flex items-center justify-between gap-4 px-4 py-2 text-sm">
                   <span>{label}</span>
-                  <span className="flex shrink-0 gap-0.5">{keys.map((k) => <Kbd key={k}>{k}</Kbd>)}</span>
+                  <span className="flex shrink-0 gap-1">{keys.map((k) => <Kbd key={k}>{k}</Kbd>)}</span>
                 </li>
               ))}
             </ul>
@@ -468,11 +468,11 @@ export default function StockTopbar({
               <Link
                 key={action.href}
                 href={action.href}
-                className="flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-muted dark:text-slate-200 focus-ring"
+                className="flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-muted dark:text-slate-200 focus-ring"
               >
                 <Plus className="h-4 w-4 text-brand-primary" />
                 {action.label}
-                <span className="hidden xl:flex gap-0.5" aria-hidden="true">
+                <span className="hidden xl:flex gap-1" aria-hidden="true">
                   {action.keys.map((k) => <Kbd key={k}>{k}</Kbd>)}
                 </span>
               </Link>
@@ -482,8 +482,8 @@ export default function StockTopbar({
 
         {/* Mobile / md bar */}
         <div className="lg:hidden">
-          <div className="flex h-14 items-center justify-between gap-3 px-4">
-            <Link href="/stock" className="flex items-center gap-3 min-w-0" aria-label={t('dashboardAria')}>
+          <div className="flex h-14 items-center justify-between gap-2 px-4">
+            <Link href="/stock" className="flex items-center gap-2 min-w-0" aria-label={t('dashboardAria')}>
               <CompanyMark name={tenant?.name} logo={tenant?.logo} logoDark={tenant?.logoDark} size={26} />
               <div className="min-w-0">
                 <p className="truncate text-[15px] font-semibold tracking-tight leading-tight text-slate-900 dark:text-slate-50">{tenant?.name}</p>
@@ -496,11 +496,11 @@ export default function StockTopbar({
               onClick={() => setNotificationOpen(true)}
               aria-label="Notifications"
               title="Notifications"
-              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors active:bg-muted hover:bg-muted dark:text-slate-400 focus-ring"
+              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors active:bg-muted hover:bg-muted dark:text-slate-400 focus-ring"
             >
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
-                <span className="absolute right-1 top-1 inline-flex min-w-[16px] h-4 items-center justify-center rounded-full bg-brand-primary px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-background">
+                <span className="absolute right-1 top-1 inline-flex min-w-[16px] h-4 items-center justify-center rounded-lg bg-foreground px-1 text-[10px] font-semibold leading-none text-background ring-1 ring-background">
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
               )}
@@ -517,24 +517,24 @@ export default function StockTopbar({
               onClick={() => setMoreOpen(true)}
               aria-haspopup="dialog"
               aria-expanded={moreOpen}
-              className={`relative flex min-h-[48px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-md px-1 text-[11px] leading-tight transition-colors focus-ring ${
+              className={`relative flex min-h-[48px] min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 text-[11px] leading-tight transition-colors focus-ring ${
                 overflowActive ? 'font-semibold text-slate-900 dark:text-slate-50' : 'font-medium text-slate-500 active:bg-muted dark:text-slate-400'
               }`}
             >
-              {overflowActive && <span aria-hidden="true" className="absolute inset-x-4 -bottom-1 h-0.5 rounded-full bg-brand-primary" />}
+              {overflowActive && <span aria-hidden="true" className="absolute inset-x-4 -bottom-1 h-0.5 rounded-full bg-foreground" />}
               <MoreHorizontal className={`h-[18px] w-[18px] shrink-0 ${overflowActive ? 'text-brand-primary' : ''}`} strokeWidth={overflowActive ? 2 : 1.75} />
               <span className="w-full truncate text-center">{hi ? 'और' : 'More'}</span>
             </button>
           </nav>
 
           <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-            <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl bg-white pb-[max(1rem,env(safe-area-inset-bottom))] dark:bg-slate-950 lg:hidden">
+            <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-lg bg-white pb-[max(1rem,env(safe-area-inset-bottom))] dark:bg-slate-950 lg:hidden">
               <SheetHeader className="text-left">
                 <SheetTitle className="text-base">{hi ? 'और' : 'More'}</SheetTitle>
                 <SheetDescription className="sr-only">{t('mobileNav')}</SheetDescription>
               </SheetHeader>
               {overflow.length ? (
-                <div className="mt-3 grid grid-cols-3 gap-2">
+                <div className="mt-2 grid grid-cols-3 gap-2">
                   {overflow.map((item) => {
                     const active = isActiveRoute(item.href);
                     return (
@@ -543,8 +543,8 @@ export default function StockTopbar({
                         href={item.href}
                         onClick={() => setMoreOpen(false)}
                         aria-current={active ? 'page' : undefined}
-                        className={`flex min-h-[72px] flex-col items-center justify-center gap-1.5 rounded-xl border px-2 text-center text-xs transition-colors focus-ring ${
-                          active ? 'border-brand-primary/40 bg-brand-primary/5 font-semibold text-slate-900 dark:text-slate-50' : 'border-border font-medium text-slate-600 active:bg-muted dark:text-slate-300'
+                        className={`flex min-h-[72px] flex-col items-center justify-center gap-2 rounded-lg border px-2 text-center text-xs transition-colors focus-ring ${
+                          active ? 'border-border bg-muted font-semibold text-slate-900 dark:text-slate-50' : 'border-border font-medium text-slate-600 active:bg-muted dark:text-slate-300'
                         }`}
                       >
                         <item.icon className={`h-5 w-5 ${active ? 'text-brand-primary' : ''}`} strokeWidth={1.75} />
@@ -554,7 +554,7 @@ export default function StockTopbar({
                   })}
                 </div>
               ) : null}
-              <div className="mt-4 divide-y divide-border rounded-xl border border-border">
+              <div className="mt-4 divide-y divide-border rounded-lg border border-border">
                 {[
                   { onClick: toggleLanguage, icon: Languages, label: hi ? 'English में देखें' : 'हिंदी में देखें' },
                   { onClick: () => setTheme(isDarkTheme ? 'light' : 'dark'), icon: isDarkTheme ? SunMedium : MoonStar, label: isDarkTheme ? (hi ? 'लाइट थीम' : 'Light theme') : (hi ? 'डार्क थीम' : 'Dark theme') },
@@ -564,7 +564,7 @@ export default function StockTopbar({
                     key={row.label}
                     type="button"
                     onClick={row.onClick}
-                    className="flex min-h-[48px] w-full items-center gap-3 px-4 text-left text-sm font-medium text-slate-700 active:bg-muted dark:text-slate-200 focus-ring"
+                    className="flex min-h-[48px] w-full items-center gap-2 px-4 text-left text-sm font-medium text-slate-700 active:bg-muted dark:text-slate-200 focus-ring"
                   >
                     <row.icon className="h-4 w-4 text-slate-500" />
                     {row.label}

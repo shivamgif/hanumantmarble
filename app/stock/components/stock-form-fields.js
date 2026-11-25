@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef, useId } from 'react';
 import { UploadCloud, ChevronRight, Search, Check, X as XIcon } from 'lucide-react';
 import {
   Form,
@@ -13,6 +13,7 @@ import {
 import { DatePicker } from '@/components/ui/date-picker';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
@@ -41,8 +42,8 @@ function ComboboxRow({ active, selected, onSelect, onHover, children, rowRef }) 
         type="button"
         role="option"
         aria-selected={selected}
-        className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors ${
-          active ? 'bg-muted text-foreground' : 'hover:bg-muted/70'
+        className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm transition-colors ${
+          active ? 'bg-muted text-foreground' : 'hover:bg-border/70'
         }`}
         onMouseDown={(e) => {
           e.preventDefault();
@@ -63,7 +64,7 @@ function MobilePickerSheet({ open, onOpenChange, title, placeholder, searchValue
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="h-[85vh] flex flex-col p-0 gap-0">
-        <div className="sticky top-0 z-10 border-b border-border bg-background px-4 pt-5 pb-3 space-y-2">
+        <div className="sticky top-0 z-10 border-b border-border bg-background px-4 pt-6 pb-4 space-y-2">
           <SheetTitle className="text-sm font-medium text-slate-500">{title}</SheetTitle>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -72,14 +73,14 @@ function MobilePickerSheet({ open, onOpenChange, title, placeholder, searchValue
               value={searchValue}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder={placeholder}
-              className="pl-9 pr-9"
+              className="pl-10 pr-10"
               autoComplete="off"
             />
             {searchValue ? (
               <button
                 type="button"
                 onClick={() => onSearchChange('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-muted-foreground hover:bg-muted"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-lg text-muted-foreground hover:bg-muted"
                 aria-label="Clear"
               >
                 <XIcon className="h-3.5 w-3.5" />
@@ -89,11 +90,11 @@ function MobilePickerSheet({ open, onOpenChange, title, placeholder, searchValue
         </div>
         <div className="flex-1 overflow-y-auto px-2 py-2">
           {showCreate ? (
-            <ul className="space-y-0.5 mb-1">
+            <ul className="space-y-1 mb-1">
               <li>
                 <button
                   type="button"
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/20"
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm bg-muted text-foreground hover:bg-border"
                   onMouseDown={(e) => { e.preventDefault(); onCreate(trimmed); }}
                   onClick={(e) => { e.preventDefault(); onCreate(trimmed); }}
                 >
@@ -104,9 +105,9 @@ function MobilePickerSheet({ open, onOpenChange, title, placeholder, searchValue
             </ul>
           ) : null}
           {rows.length === 0 && !showCreate ? (
-            <div className="px-3 py-6 text-center text-sm text-muted-foreground">No matches</div>
+            <div className="px-4 py-6 text-center text-sm text-muted-foreground">No matches</div>
           ) : (
-            <ul className="space-y-0.5">
+            <ul className="space-y-1">
               {rows.map((row, i) => (
                 <ComboboxRow
                   key={row.key ?? i}
@@ -131,52 +132,49 @@ export function InlineNotice({ notice }) {
 
   const toneClasses =
     notice.type === 'error'
-      ? 'border-red-200/50 bg-red-500/10 text-red-600 dark:text-red-400'
+      ? 'border-border bg-muted text-red-600 dark:text-red-400'
       : notice.type === 'warning'
-        ? 'border-amber-200/50 bg-amber-500/10 text-amber-700 dark:text-amber-400'
-        : 'border-emerald-200/50 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400';
+        ? 'border-border bg-muted text-amber-700 dark:text-amber-400'
+        : 'border-border bg-muted text-emerald-600 dark:text-emerald-400';
 
   return (
-    <div className={`flex items-start gap-2.5 rounded-xl border px-4 py-3.5 text-[11px] font-bold leading-relaxed shadow-sm animate-scale-in ${toneClasses}`}>
-      <span className="mt-0.5 inline-block shrink-0 h-1.5 w-1.5 rounded-full bg-current opacity-80" />
+    <div className={`flex items-start gap-2 rounded-lg border px-4 py-4 text-[11px] font-bold leading-relaxed shadow-card animate-scale-in ${toneClasses}`}>
+      <span className="mt-1 inline-block shrink-0 h-1.5 w-1.5 rounded-full bg-current opacity-80" />
       {notice.message}
     </div>
   );
 }
 
  export function AttachmentField({ label, accept = 'image/*,.pdf', onChange, file, hint, tc }) {
+  const id = useId();
+  // Same label and 36px row as the text inputs beside it, so the grid lines up.
   return (
-    <label className="block cursor-pointer min-w-0">
-      <span className={FORM_LABEL_CLASS}>{label}</span>
-      <input
-        type="file"
-        accept={accept}
-        className="sr-only"
-        onChange={(event) => onChange(event.target.files?.[0] || null)}
-      />
-      <div className="glass-panel group rounded-xl bg-primary/5 p-3.5 sm:p-4 transition-colors duration-200 hover:bg-primary/10 active:scale-[0.98] min-w-0">
-        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-          <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-slate-800 text-primary shadow-card">
-            <UploadCloud className="h-5 w-5 sm:h-6 sm:w-6" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-xs sm:text-[11px] font-semibold text-foreground truncate">{file ? tc.replaceFile : tc.chooseFile}</div>
-            <div className="mt-0.5 sm:mt-1 truncate text-xs font-medium text-primary">{file ? file.name : (hint || tc.attachHint)}</div>
-          </div>
-        </div>
-      </div>
-    </label>
+    <div className="min-w-0">
+      <Label htmlFor={id} className={FORM_LABEL_CLASS}>{label}</Label>
+      <label className="flex h-9 min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-input bg-card px-4 text-sm transition-[border-color,box-shadow] focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-brand-primary/15 dark:focus-within:border-slate-500">
+        <input
+          id={id}
+          type="file"
+          accept={accept}
+          className="sr-only"
+          onChange={(event) => onChange(event.target.files?.[0] || null)}
+        />
+        <UploadCloud className="h-4 w-4 shrink-0 text-brand-primary" aria-hidden="true" />
+        <span className={`min-w-0 flex-1 truncate ${file ? 'text-foreground' : 'text-slate-400'}`}>{file ? file.name : (hint || tc.attachHint)}</span>
+        <span className="shrink-0 text-xs font-medium text-muted-foreground">{file ? tc.replaceFile : tc.chooseFile}</span>
+      </label>
+    </div>
   );
 }
 
  export function FormSectionTitle({ icon: Icon, title, description, category, tc }) {
   return (
     <div className="flex items-start gap-4 mb-4">
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         <nav className="flex items-center gap-2 text-xs font-medium text-slate-500">
           <span>{category || tc.formSection}</span>
           <ChevronRight className="h-2.5 w-2.5 opacity-50" />
-          <span className="text-brand-primary">{tc.controlLabel}</span>
+          <span className="text-foreground">{tc.controlLabel}</span>
         </nav>
         <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">{title}</h3>
         {description ? <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold leading-relaxed opacity-70">{description}</p> : null}
@@ -310,10 +308,10 @@ export function SuggestCombobox({ value, onChange, options = [], placeholder, cl
         onInteractOutside={() => setOpen(false)}
       >
         {filtered.length === 0 ? (
-          <div className="px-3 py-4 text-center text-sm text-muted-foreground">No matches</div>
+          <div className="px-4 py-4 text-center text-sm text-muted-foreground">No matches</div>
         ) : (
           <ScrollArea className="max-h-[min(60vh,28rem)]">
-            <ul className="space-y-0.5 pr-1" role="listbox">
+            <ul className="space-y-1 pr-1" role="listbox">
               {filtered.map((opt, i) => (
                 <ComboboxRow
                   key={`${opt}-${i}`}
@@ -519,10 +517,10 @@ export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [],
         onInteractOutside={() => setOpen(false)}
       >
         {filtered.length === 0 ? (
-          <div className="px-3 py-4 text-center text-sm text-muted-foreground">No matches</div>
+          <div className="px-4 py-4 text-center text-sm text-muted-foreground">No matches</div>
         ) : (
           <ScrollArea className="max-h-[min(60vh,28rem)]">
-            <ul className="space-y-0.5 pr-1" role="listbox">
+            <ul className="space-y-1 pr-1" role="listbox">
               {filtered.map((item, i) => (
                 <ComboboxRow
                   key={item.id}
@@ -620,7 +618,7 @@ export function StockMoneyField({ control, name, label, hint, placeholder = '0.0
         <FormItem>
           <FormLabel className={FORM_LABEL_CLASS}>{label}</FormLabel>
           <div className="relative group/money">
-            <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-[13px] font-bold text-dark transition-colors group-focus-within/money:text-brand-primary">₹</span>
+            <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-[13px] font-bold text-dark transition-colors group-focus-within/money:text-foreground">₹</span>
             <FormControl>
               <Input
                 {...field}

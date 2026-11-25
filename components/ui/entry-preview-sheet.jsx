@@ -41,7 +41,7 @@ export function PreviewKeyValueGrid({ items = [], hideEmpty = true }) {
               : 'flex items-baseline justify-between gap-4 border-b border-border py-2'}
           >
             <dt className="shrink-0 text-sm text-slate-500 dark:text-slate-400">{item.label}</dt>
-            <dd className={`min-w-0 whitespace-pre-wrap break-words text-sm font-medium text-slate-900 dark:text-slate-100 ${wide ? 'mt-0.5' : 'text-right'}`}>
+            <dd className={`min-w-0 whitespace-pre-wrap break-words text-sm font-medium text-slate-900 dark:text-slate-100 ${wide ? 'mt-1' : 'text-right'}`}>
               {value}
             </dd>
           </div>
@@ -58,9 +58,9 @@ export function PreviewStats({ items = [] }) {
   return (
     <dl className={`grid gap-px overflow-hidden rounded-lg border border-border bg-border ${visibleItems.length >= 4 ? 'grid-cols-2 sm:grid-cols-4' : visibleItems.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
       {visibleItems.map((item, i) => (
-        <div key={item.label ?? i} className="min-w-0 bg-card px-3 py-2.5">
+        <div key={item.label ?? i} className="min-w-0 bg-card px-4 py-2">
           <dt className="truncate text-xs text-slate-500 dark:text-slate-400" title={typeof item.label === 'string' ? item.label : undefined}>{item.label}</dt>
-          <dd className={`mt-0.5 truncate text-base font-semibold tabular-nums ${item.tone || 'text-slate-900 dark:text-slate-50'}`}>{item.value}</dd>
+          <dd className={`mt-1 truncate text-base font-semibold tabular-nums ${item.tone || 'text-slate-900 dark:text-slate-50'}`}>{item.value}</dd>
           {item.sub ? <dd className="truncate text-xs tabular-nums text-slate-500 dark:text-slate-400">{item.sub}</dd> : null}
         </div>
       ))}
@@ -83,7 +83,7 @@ export default function EntryPreviewSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       {/* Header and actions stay put; only the body scrolls. */}
       <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-2xl">
-        <SheetHeader className="space-y-1 border-b border-border px-5 py-4 pr-12 text-left">
+        <SheetHeader className="space-y-1 border-b border-border px-6 py-4 pr-12 text-left">
           <SheetTitle className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">{title}</SheetTitle>
           {description ? (
             <SheetDescription asChild>
@@ -92,13 +92,13 @@ export default function EntryPreviewSheet({
           ) : null}
         </SheetHeader>
 
-        <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
+        <div className="flex-1 space-y-6 overflow-y-auto px-6 py-4">
           {summary ? <div>{summary}</div> : null}
 
           {visibleSections.map((section, i) => (
             <section key={section.title ?? i} className="space-y-2">
               {section.title ? (
-                <div className="flex items-baseline justify-between gap-3">
+                <div className="flex items-baseline justify-between gap-2">
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{section.title}</h3>
                   {section.description ? <p className="text-xs text-slate-500">{section.description}</p> : null}
                 </div>
@@ -109,7 +109,7 @@ export default function EntryPreviewSheet({
         </div>
 
         {/* empty:hidden: a footer component that renders nothing leaves no bare bar. */}
-        {footer ? <div className="border-t border-border bg-card px-5 py-3 empty:hidden">{footer}</div> : null}
+        {footer ? <div className="border-t border-border bg-card px-6 py-4 empty:hidden">{footer}</div> : null}
       </SheetContent>
     </Sheet>
   );

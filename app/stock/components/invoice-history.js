@@ -49,7 +49,7 @@ export function InvoiceHistory({ invoiceId, t }) {
   };
 
   return (
-    <section className="glass-panel mx-auto w-full max-w-[210mm] space-y-4 rounded-xl p-4 print:hidden">
+    <section className="glass-panel mx-auto w-full max-w-[210mm] space-y-4 rounded-lg p-4 print:hidden">
       <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
         <History className="h-4 w-4" /> {t('history')}
       </h2>
@@ -79,19 +79,19 @@ export function InvoiceHistory({ invoiceId, t }) {
       ) : !events.length ? (
         <p className="text-sm text-muted-foreground">{t('noHistory')}</p>
       ) : (
-        <ol className="space-y-3">
+        <ol className="space-y-4">
           {events.map((event) => {
             const isComment = event.details?.action === 'comment';
             return (
-              <li key={event.id} className="flex gap-3">
-                <span className={`mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${isComment ? 'bg-sky-500/10 text-sky-600' : 'bg-slate-500/10 text-slate-500'}`}>
+              <li key={event.id} className="flex gap-2">
+                <span className={`mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${isComment ? 'bg-muted text-sky-600' : 'bg-slate-500/10 text-slate-500'}`}>
                   {isComment ? <MessageSquare className="h-3.5 w-3.5" /> : <History className="h-3.5 w-3.5" />}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-slate-500">
                     <span className="font-medium text-slate-700 dark:text-slate-200">{event.user_name || '—'}</span> · {event.occurred_text}
                   </p>
-                  <p className={`whitespace-pre-wrap break-words text-sm ${isComment ? 'mt-1 rounded-lg bg-muted px-3 py-2 text-slate-900 dark:text-slate-100' : 'text-slate-600 dark:text-slate-300'}`}>
+                  <p className={`whitespace-pre-wrap break-words text-sm ${isComment ? 'mt-1 rounded-lg bg-muted px-4 py-2 text-slate-900 dark:text-slate-100' : 'text-slate-600 dark:text-slate-300'}`}>
                     {event.summary}
                   </p>
                 </div>

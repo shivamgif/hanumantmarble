@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Settings } from 'lucide-react';
+import { ArrowRight, Building2, MapPin, Ruler, Settings, Users } from 'lucide-react';
 import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { getRoleFlags } from '@/lib/stock-roles.mjs';
@@ -13,10 +13,10 @@ import { BranchesPanel } from '../components/branches-panel';
 import { ItemTypesPanel } from '../components/item-types-panel';
 
 const TABS = [
-  { key: 'company', label: 'Company' },
-  { key: 'gst', label: 'GST & branches' },
-  { key: 'units', label: 'Item units' },
-  { key: 'more', label: 'Users & attendance' },
+  { key: 'company', label: 'Company', icon: Building2 },
+  { key: 'gst', label: 'GST & branches', icon: MapPin },
+  { key: 'units', label: 'Item units', icon: Ruler },
+  { key: 'more', label: 'Users & attendance', icon: Users },
 ];
 
 /**
@@ -42,9 +42,10 @@ export default function SettingsPage() {
       <PageHeader icon={Settings} title="Settings" subtitle="Your company's name, logo and colour, GST registrations, branches and units." />
 
       <div className={tabTrackClass(TABS.length)} role="tablist">
-        {TABS.map(({ key, label }) => (
+        {TABS.map(({ key, label, icon: Icon }) => (
           <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className={tabButtonClass(tab === key, TABS.length)}>
-            {label}
+            <Icon className="h-4 w-4 shrink-0" />
+            <span className="min-w-0 truncate">{label}</span>
           </button>
         ))}
       </div>
@@ -58,7 +59,7 @@ export default function SettingsPage() {
             { href: '/stock/admin', title: 'Users & roles', text: 'Add staff by email, set their role, divisions and home branch.' },
             { href: '/stock/attendance?view=settings', title: 'Attendance rules', text: 'Shift timings, weekly off, holidays, selfies and kiosks.' },
           ].map(({ href, title, text }) => (
-            <Link key={href} href={href} className={`${CLASSES.card} group block transition-colors hover:border-brand-primary/40`}>
+            <Link key={href} href={href} className={`${CLASSES.card} group block transition-colors hover:border-foreground/30`}>
               <h2 className={`${CLASSES.title} flex items-center justify-between`}>
                 {title} <ArrowRight className="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5" />
               </h2>

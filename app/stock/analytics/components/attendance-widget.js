@@ -55,7 +55,7 @@ export function AttendanceSummaryWidget() {
       </AnalyticsCard>
     );
   }
-  if (!data) return <Skeleton className="h-72 rounded-xl" />;
+  if (!data) return <Skeleton className="h-72 rounded-lg" />;
 
   const today = istToday();
   const rows = data.payroll.rows || [];
@@ -106,7 +106,7 @@ export function AttendanceSummaryWidget() {
         </Link>
       }
     >
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         {tiles.map((tile) => {
           const body = (
             <>
@@ -118,12 +118,12 @@ export function AttendanceSummaryWidget() {
               >
                 {tile.value}
               </p>
-              {tile.sub ? <p className="mt-0.5 text-[11px] font-bold tabular-nums text-slate-500">{tile.sub}</p> : null}
+              {tile.sub ? <p className="mt-1 text-[11px] font-bold tabular-nums text-slate-500">{tile.sub}</p> : null}
             </>
           );
-          const cls = 'rounded-xl border border-border/60 p-3';
+          const cls = 'rounded-lg border border-border/60 p-4';
           return tile.href && tile.alert ? (
-            <Link key={tile.label} href={tile.href} className={`${cls} transition hover:border-brand-primary/50`}>
+            <Link key={tile.label} href={tile.href} className={`${cls} transition hover:border-foreground/30`}>
               {body}
             </Link>
           ) : (
@@ -137,7 +137,7 @@ export function AttendanceSummaryWidget() {
       {mostLate.length ? (
         <div className="mt-4">
           <p className="mb-2 text-[11px] font-bold text-slate-500">{t('mostLate')}</p>
-          <ul className="space-y-1.5">
+          <ul className="space-y-2">
             {mostLate.map((row) => (
               <li key={row.userId} className="flex items-center justify-between text-xs font-bold">
                 <span className="truncate text-slate-900 dark:text-slate-100">{row.name}</span>

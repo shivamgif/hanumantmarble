@@ -90,20 +90,20 @@ function BranchRow({ branch, businesses, onSave, onRetire, onRestore }) {
     businessId !== (branch.businessId == null ? '' : String(branch.businessId));
 
   return (
-    <div className={`rounded-xl border p-3 ${branch.isActive ? 'border-border/60' : 'border-border/40 opacity-60'}`}>
-      <div className="flex flex-wrap items-end gap-3">
+    <div className={`rounded-lg border p-4 ${branch.isActive ? 'border-border/60' : 'border-border/40 opacity-60'}`}>
+      <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-[12rem] flex-1">
           <label className={FORM_LABEL_CLASS} htmlFor={`name-${branch.id}`}>
             Name
             <span
-              className={`ml-2 rounded-full px-2 py-0.5 text-xs font-semibold ${
-                configured ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'
+              className={`ml-2 rounded-lg px-2 py-1 text-xs font-semibold ${
+                configured ? 'bg-muted text-emerald-600' : 'bg-muted text-amber-600'
               }`}
             >
               {configured ? 'Fenced' : 'No fence'}
             </span>
             {!branch.isActive ? (
-              <span className="ml-2 rounded-full bg-slate-500/10 px-2 py-0.5 text-xs font-medium text-slate-500">
+              <span className="ml-2 rounded-lg bg-slate-500/10 px-2 py-1 text-xs font-medium text-slate-500">
                 Retired
               </span>
             ) : null}
@@ -242,7 +242,7 @@ function BusinessForm({ business, canManage, onSubmit, onToggleActive }) {
 
   return (
     <form
-      className={`rounded-xl border p-3 ${business && !business.isActive ? 'border-border/40 opacity-60' : 'border-border/60'}`}
+      className={`rounded-lg border p-4 ${business && !business.isActive ? 'border-border/40 opacity-60' : 'border-border/60'}`}
       onSubmit={async (e) => {
         e.preventDefault();
         const ok = await onSubmit(form);
@@ -254,7 +254,7 @@ function BusinessForm({ business, canManage, onSubmit, onToggleActive }) {
           Placeholder GSTIN — enter the real one before approving any invoice.
         </p>
       ) : null}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="sm:col-span-2">{label('legalName', 'Legal name')}<input required {...field('legalName')} /></div>
         <div>
           {label('gstin', 'GSTIN')}
@@ -304,7 +304,7 @@ function BusinessForm({ business, canManage, onSubmit, onToggleActive }) {
         </label>
       </div>
       {canManage ? (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-2 flex flex-wrap gap-2">
           <button type="submit" disabled={business && !dirty} className={PILL_PRIMARY_BUTTON_CLASS}>
             {business ? <Building2 className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
             {business ? 'Save business' : 'Add business'}
@@ -385,7 +385,7 @@ export function BranchesPanel({ onChanged }) {
 
       {canManage ? (
         <form
-          className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-border/60 p-3"
+          className="mt-4 flex flex-wrap items-end gap-2 rounded-lg border border-border/60 p-4"
           onSubmit={(e) => {
             e.preventDefault();
             send(
@@ -536,7 +536,7 @@ export function BranchesPanel({ onChanged }) {
       </div>
 
       {feedback.message ? (
-        <p className={`mt-3 text-xs font-bold ${feedback.kind === 'error' ? 'text-rose-500' : 'text-emerald-600'}`}>
+        <p className={`mt-2 text-xs font-bold ${feedback.kind === 'error' ? 'text-rose-500' : 'text-emerald-600'}`}>
           {feedback.message}
         </p>
       ) : null}

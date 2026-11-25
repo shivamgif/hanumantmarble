@@ -36,8 +36,8 @@ function useJson(url, refreshKey) {
 }
 
 const STATUS_TONE = {
-  draft: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
-  posted: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  draft: 'bg-muted text-amber-700 dark:text-amber-400',
+  posted: 'bg-muted text-emerald-700 dark:text-emerald-400',
   cancelled: 'bg-slate-500/10 text-slate-500 line-through',
 };
 
@@ -95,8 +95,8 @@ export function DayBookPanel({ business, role, me, isApprover, refreshKey, onCha
 
   const vouchers = state.data?.vouchers || [];
   return (
-    <section className="glass-panel overflow-hidden rounded-xl">
-      <div className="flex flex-wrap items-end gap-2 border-b border-border p-3">
+    <section className="glass-panel overflow-hidden rounded-lg">
+      <div className="flex flex-wrap items-end gap-2 border-b border-border p-4">
         {['from', 'to'].map((key) => (
           <label key={key} className="text-xs">
             <span className={FORM_LABEL_CLASS}>{t(key)}</span>
@@ -146,7 +146,7 @@ export function DayBookPanel({ business, role, me, isApprover, refreshKey, onCha
                         {v.narration ? <span className="block max-w-xs truncate text-xs text-slate-500">{v.narration}</span> : null}
                       </td>
                       <td className="px-2 text-right tabular-nums">{formatRupees(v.amount)}</td>
-                      <td className="px-2"><span className={`rounded-md px-2 py-0.5 text-xs ${STATUS_TONE[v.status]}`}>{t(v.status)}</span></td>
+                      <td className="px-2"><span className={`rounded-lg px-2 py-1 text-xs ${STATUS_TONE[v.status]}`}>{t(v.status)}</span></td>
                       <td className="px-2 py-1">
                         <div className="flex justify-end gap-1">
                           {v.status === 'draft' && isApprover && !mine ? (
@@ -166,7 +166,7 @@ export function DayBookPanel({ business, role, me, isApprover, refreshKey, onCha
                       </td>
                     </tr>
                     {expanded === v.id ? (
-                      <tr><td /><td colSpan={7} className="px-2 pb-3"><VoucherLines id={v.id} t={t} /></td></tr>
+                      <tr><td /><td colSpan={7} className="px-2 pb-2"><VoucherLines id={v.id} t={t} /></td></tr>
                     ) : null}
                   </Fragment>
                 );
@@ -220,7 +220,7 @@ export function OutstandingPanel({ business, refreshKey, t }) {
   };
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-4">
       <div className="flex flex-wrap gap-2">
         {['receivable', 'payable'].map((k) => (
           <button key={k} type="button" onClick={() => setKind(k)} className={kind === k ? PILL_PRIMARY_BUTTON_CLASS : PILL_BUTTON_CLASS}>{t(k)}</button>
@@ -236,15 +236,15 @@ export function OutstandingPanel({ business, refreshKey, t }) {
           ))}
         </div>
       ) : null}
-      <div className="glass-panel overflow-hidden rounded-xl">
+      <div className="glass-panel overflow-hidden rounded-lg">
         {!data?.parties.length ? <Empty state={state} t={t} /> : (
           <ul className="divide-y divide-border">
             {data.parties.map((party) => (
-              <li key={party.ledgerId} className="px-4 py-3">
-                <div className="flex flex-wrap items-center gap-3">
+              <li key={party.ledgerId} className="px-4 py-4">
+                <div className="flex flex-wrap items-center gap-2">
                   <button type="button" className="flex min-w-[12rem] flex-1 items-center gap-1 text-left font-semibold" onClick={() => setOpen(open === party.ledgerId ? null : party.ledgerId)}>
                     {open === party.ledgerId ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />} {party.name}
-                    {party.creditLimit > 0 && party.total > party.creditLimit ? <span className="ml-2 rounded bg-rose-500/10 px-1.5 text-xs text-rose-700">{t('creditLimit')}</span> : null}
+                    {party.creditLimit > 0 && party.total > party.creditLimit ? <span className="ml-2 rounded-lg bg-muted px-2 text-xs text-rose-700">{t('creditLimit')}</span> : null}
                   </button>
                   <span className="text-xs text-slate-500">
                     {AGE_BUCKETS.filter((b) => b !== 'current' && party.buckets[b]).map((b) => `${b}: ${formatRupees(party.buckets[b])}`).join(' · ')}
@@ -307,9 +307,9 @@ export function LedgersPanel({ business, isApprover, refreshKey, onChanged, noti
 
   const ledgers = state.data?.ledgers || [];
   return (
-    <section className="space-y-3">
+    <section className="space-y-4">
       {isApprover ? (
-        <form className="glass-panel grid gap-3 rounded-xl p-4 sm:grid-cols-3 lg:grid-cols-6"
+        <form className="glass-panel grid gap-4 rounded-lg p-4 sm:grid-cols-3 lg:grid-cols-6"
           onSubmit={async (e) => { e.preventDefault(); if (await send('POST', { businessId: business.id, ...form }, `${form.name} ✓`)) setForm(EMPTY_LEDGER); }}>
           <div className="sm:col-span-2"><label className={FORM_LABEL_CLASS} htmlFor="nl-name">{t('newLedger')}</label>
             <input id="nl-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={FORM_INPUT_CLASS} placeholder="HDFC Bank / Rent / …" /></div>
@@ -324,16 +324,16 @@ export function LedgersPanel({ business, isApprover, refreshKey, onChanged, noti
           <div className="flex items-end"><button type="submit" className={PILL_PRIMARY_BUTTON_CLASS}>{t('save')}</button></div>
         </form>
       ) : null}
-      <div className="glass-panel overflow-x-auto rounded-xl">
+      <div className="glass-panel overflow-x-auto rounded-lg">
         {!ledgers.length ? <Empty state={state} t={t} /> : (
           <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-muted/60 text-left text-xs text-slate-500">
-              <tr><th className="px-3 py-2">{t('ledger')}</th><th className="px-2">{t('group')}</th><th className="px-2">{t('creditLimit')}</th><th className="px-2">{t('creditDays')}</th><th className="px-2">{t('panTds')}</th><th className="px-2 text-right">{t('balance')}</th><th className="px-2" /></tr>
+              <tr><th className="px-4 py-2">{t('ledger')}</th><th className="px-2">{t('group')}</th><th className="px-2">{t('creditLimit')}</th><th className="px-2">{t('creditDays')}</th><th className="px-2">{t('panTds')}</th><th className="px-2 text-right">{t('balance')}</th><th className="px-2" /></tr>
             </thead>
             <tbody>
               {ledgers.map((l) => (
                 <tr key={l.id} className="border-t border-border">
-                  <td className="px-3 py-2">{l.name} {l.system_key ? <span className="ml-1 text-xs text-slate-400">{t('systemLedger')}</span> : null}</td>
+                  <td className="px-4 py-2">{l.name} {l.system_key ? <span className="ml-1 text-xs text-slate-400">{t('systemLedger')}</span> : null}</td>
                   <td className="px-2 text-xs text-slate-500">{l.group_name}</td>
                   {editing?.id === l.id ? (
                     <>
@@ -341,7 +341,7 @@ export function LedgersPanel({ business, isApprover, refreshKey, onChanged, noti
                       <td className="px-2"><input type="number" min="0" max="365" value={editing.creditDays} onChange={(e) => setEditing({ ...editing, creditDays: e.target.value })} className={`${FORM_INPUT_CLASS} w-20`} /></td>
                       <td className="px-2">
                         <div className="flex gap-1">
-                          <input value={editing.pan} maxLength={10} placeholder="PAN" aria-label="PAN" onChange={(e) => setEditing({ ...editing, pan: e.target.value.toUpperCase() })} className={`${FORM_INPUT_CLASS} w-28 font-mono uppercase`} />
+                          <input value={editing.pan} maxLength={10} placeholder="PAN" aria-label="PAN" onChange={(e) => setEditing({ ...editing, pan: e.target.value.toUpperCase() })} className={`${FORM_INPUT_CLASS} w-28  uppercase`} />
                           <select value={editing.tdsSection} aria-label={t('tdsSection')} onChange={(e) => setEditing({ ...editing, tdsSection: e.target.value })} className={`${FORM_INPUT_CLASS} w-40`}>
                             <option value="">{t('noTds')}</option>
                             {Object.entries(TDS_SECTIONS).map(([key, rule]) => <option key={key} value={key}>{key} · {rule.label}</option>)}
@@ -405,7 +405,7 @@ function TallyExportCard({ business, lastExportedAt, onChanged, notify, t }) {
   }
 
   return (
-    <form onSubmit={download} className="glass-panel space-y-3 rounded-xl p-4 lg:col-span-2">
+    <form onSubmit={download} className="glass-panel space-y-4 rounded-lg p-4 lg:col-span-2">
       <h3 className="font-semibold">{t('tallyExport')}</h3>
       <p className="text-xs text-slate-500">{t('tallyExportHint')}</p>
       <div className="flex flex-wrap items-end gap-2">
@@ -413,7 +413,7 @@ function TallyExportCard({ business, lastExportedAt, onChanged, notify, t }) {
           <input type="date" required value={range.from} max={range.to} onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} className={`${FORM_INPUT_CLASS} w-44`} /></label>
         <label className="text-xs"><span className={FORM_LABEL_CLASS}>{t('to')}</span>
           <input type="date" required value={range.to} min={range.from} onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} className={`${FORM_INPUT_CLASS} w-44`} /></label>
-        <label className="flex items-center gap-2 pb-2.5 text-sm">
+        <label className="flex items-center gap-2 pb-2 text-sm">
           <input type="checkbox" checked={onlyNew} onChange={(e) => setOnlyNew(e.target.checked)} /> {t('tallyOnlyNew')}
         </label>
         <button type="submit" disabled={busy} className={PILL_PRIMARY_BUTTON_CLASS}><Download className="h-3.5 w-3.5" /> {t('tallyDownload')}</button>
@@ -452,7 +452,7 @@ function SuppliersCard({ suppliers, isApprover, onChanged, notify, t }) {
   }
 
   return (
-    <div className="glass-panel space-y-3 rounded-xl p-4 lg:col-span-2">
+    <div className="glass-panel space-y-4 rounded-lg p-4 lg:col-span-2">
       <h3 className="font-semibold">{t('suppliersGstin')}</h3>
       <p className="text-xs text-slate-500">{t('suppliersGstinHint')}</p>
       {suppliers.length ? (
@@ -461,7 +461,7 @@ function SuppliersCard({ suppliers, isApprover, onChanged, notify, t }) {
             const value = drafts[supplier.id] ?? supplier.gst_number ?? '';
             const changed = value.trim().toUpperCase() !== (supplier.gst_number || '');
             return (
-              <li key={supplier.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2">
+              <li key={supplier.id} className="flex flex-wrap items-center gap-x-2 gap-y-2 py-2">
                 <div className="min-w-[10rem] flex-1">
                   <p className="text-sm font-medium">{supplier.name}</p>
                   <p className="text-xs text-slate-500">{t('purchasesCount', { count: supplier.purchases })}{supplier.gst_number ? '' : ` · ${t('noItc')}`}</p>
@@ -473,7 +473,7 @@ function SuppliersCard({ suppliers, isApprover, onChanged, notify, t }) {
                   placeholder="GSTIN"
                   aria-label={`GSTIN ${supplier.name}`}
                   onChange={(e) => setDrafts((d) => ({ ...d, [supplier.id]: e.target.value.toUpperCase() }))}
-                  className={`${FORM_INPUT_CLASS} w-48 font-mono uppercase`}
+                  className={`${FORM_INPUT_CLASS} w-48  uppercase`}
                 />
                 {isApprover ? (
                   <button type="button" disabled={!changed || busyId === supplier.id} onClick={() => save(supplier)} className={PILL_BUTTON_CLASS}>
@@ -519,7 +519,7 @@ export function SetupPanel({ business, isApprover, refreshKey, onChanged, notify
   if (!setup) return <Empty state={state} t={t} />;
   return (
     <section className="grid gap-4 lg:grid-cols-2">
-      <div className="glass-panel space-y-3 rounded-xl p-4">
+      <div className="glass-panel space-y-4 rounded-lg p-4">
         <h3 className="font-semibold">{t('booksStart')}</h3>
         <p className="text-xs text-slate-500">{t('booksStartHint')}</p>
         <div className="flex flex-wrap items-end gap-2">
@@ -542,7 +542,7 @@ export function SetupPanel({ business, isApprover, refreshKey, onChanged, notify
         ) : null}
       </div>
 
-      <div className="glass-panel space-y-3 rounded-xl p-4">
+      <div className="glass-panel space-y-4 rounded-lg p-4">
         <h3 className="font-semibold">{t('openingImport')}</h3>
         <p className="text-xs text-slate-500">{t('openingHint')}</p>
         {setup.opening ? (
@@ -565,7 +565,7 @@ export function SetupPanel({ business, isApprover, refreshKey, onChanged, notify
           </form>
         ) : !setup.business.books_start_date ? <p className="text-sm text-amber-700">{t('booksNotStarted')}</p> : null}
         {problems.length ? (
-          <ul className="list-disc space-y-0.5 pl-5 text-xs text-rose-600">{problems.map((p) => <li key={p}>{p}</li>)}</ul>
+          <ul className="list-disc space-y-1 pl-6 text-xs text-rose-600">{problems.map((p) => <li key={p}>{p}</li>)}</ul>
         ) : null}
       </div>
 
@@ -636,12 +636,12 @@ export function GstReturnsPanel({ business, isApprover, refreshKey, onChanged, n
   }
   const data = state.data;
   const file = (part) => `${part}-${data?.business.gstin || business.id}-${month}.csv`;
-  const th = 'px-2 py-1.5 text-right font-medium first:text-left';
-  const td = 'px-2 py-1.5 text-right tabular-nums first:text-left';
+  const th = 'px-2 py-2 text-right font-medium first:text-left';
+  const td = 'px-2 py-2 text-right tabular-nums first:text-left';
 
   return (
     <section className="space-y-4">
-      <div className="glass-panel flex flex-wrap items-end gap-3 rounded-xl p-4">
+      <div className="glass-panel flex flex-wrap items-end gap-2 rounded-lg p-4">
         <label className="text-xs"><span className={FORM_LABEL_CLASS}>{t('gstMonth')}</span>
           <input type="month" value={month} max={istToday().slice(0, 7)} onChange={(e) => e.target.value && setMonth(e.target.value)} className={`${FORM_INPUT_CLASS} w-44`} />
         </label>
@@ -650,7 +650,7 @@ export function GstReturnsPanel({ business, isApprover, refreshKey, onChanged, n
 
       {!data ? <Empty state={state} t={t} /> : (
         <>
-          <div className="glass-panel overflow-x-auto rounded-xl p-4">
+          <div className="glass-panel overflow-x-auto rounded-lg p-4">
             <h3 className="mb-2 font-semibold">GSTR-1 · {data.business.gstin}</h3>
             <table className="w-full min-w-[40rem] text-sm">
               <thead className="text-xs text-slate-500">
@@ -682,7 +682,7 @@ export function GstReturnsPanel({ business, isApprover, refreshKey, onChanged, n
               </tbody>
             </table>
             <p className="mt-2 text-xs text-slate-500">{t('gstIrnNote')}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-2 flex flex-wrap gap-2">
               {data.gstr1.hsn.length ? (
                 <button type="button" className={PILL_BUTTON_CLASS} onClick={() => downloadCsv(file('hsn'), [
                   { label: 'B2B/B2C', get: (r) => r.side.toUpperCase() }, { label: 'HSN', get: 'hsn' }, { label: 'UQC', get: 'uqc' },
@@ -701,7 +701,7 @@ export function GstReturnsPanel({ business, isApprover, refreshKey, onChanged, n
               ) : null}
             </div>
             {data.gstr1.documents.length ? (
-              <ul className="mt-2 space-y-0.5 text-xs text-slate-500">
+              <ul className="mt-2 space-y-1 text-xs text-slate-500">
                 {data.gstr1.documents.map((d) => (
                   <li key={`${d.nature}-${d.from}`}>{d.nature}: {d.from} – {d.to} · {d.total} ({t('gstCancelled', { count: d.cancelled })})</li>
                 ))}
@@ -709,10 +709,10 @@ export function GstReturnsPanel({ business, isApprover, refreshKey, onChanged, n
             ) : null}
           </div>
 
-          <div className="glass-panel overflow-x-auto rounded-xl p-4">
+          <div className="glass-panel overflow-x-auto rounded-lg p-4">
             <h3 className="mb-2 font-semibold">GSTR-3B</h3>
             {data.gstr3b.purchasesWithoutGstin.count ? (
-              <p className="mb-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+              <p className="mb-2 rounded-lg bg-muted px-4 py-2 text-xs text-amber-700 dark:text-amber-400">
                 {t('gstNoGstinPurchases', { count: data.gstr3b.purchasesWithoutGstin.count, value: money2(data.gstr3b.purchasesWithoutGstin.value) })}
               </p>
             ) : null}
@@ -783,7 +783,7 @@ function Gstr2bCard({ data, month, isApprover, busy, post, file, t }) {
   ] : [];
 
   return (
-    <div className="glass-panel space-y-3 rounded-xl p-4">
+    <div className="glass-panel space-y-4 rounded-lg p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-semibold">GSTR-2B</h3>
         {isApprover ? (
@@ -802,7 +802,7 @@ function Gstr2bCard({ data, month, isApprover, busy, post, file, t }) {
           <p className="text-xs text-slate-500">{t('gst2bSummary', {
             matched: result.matched.length, mismatched: result.mismatched.length, only2b: result.only2b.length, onlyBooks: result.onlyBooks.length,
           })}</p>
-          {result.onlyBooks.length ? <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">{t('gst2bHold')}</p> : null}
+          {result.onlyBooks.length ? <p className="rounded-lg bg-muted px-4 py-2 text-xs text-amber-700 dark:text-amber-400">{t('gst2bHold')}</p> : null}
           {result.only2b.some((x) => x.proposal) ? (
             <ul className="space-y-1 text-sm">
               {result.only2b.filter((x) => x.proposal).map(({ row, proposal }) => (
@@ -865,9 +865,9 @@ export function ReportsPanel({ business, refreshKey, t }) {
   const state = useJson(`/api/stock/accounts/reports?${query}`, refreshKey);
   const data = state.data;
   const file = `${kind}-${business.id}-${ranged ? `${range.from}-to-` : ''}${range.to}.csv`;
-  const card = 'glass-panel overflow-x-auto rounded-xl p-4';
+  const card = 'glass-panel overflow-x-auto rounded-lg p-4';
   const totalRow = (label, amount, strong = true) => (
-    <tr className={`border-t border-border ${strong ? 'font-semibold' : ''}`}><td className="px-2 py-1.5">{label}</td><td className="px-2 py-1.5 text-right tabular-nums">{money2(amount)}</td></tr>
+    <tr className={`border-t border-border ${strong ? 'font-semibold' : ''}`}><td className="px-2 py-2">{label}</td><td className="px-2 py-2 text-right tabular-nums">{money2(amount)}</td></tr>
   );
   const warnings = data ? [
     data.stockUncosted ? t('reportUncosted', { count: data.stockUncosted }) : null,
@@ -876,7 +876,7 @@ export function ReportsPanel({ business, refreshKey, t }) {
 
   return (
     <section className="space-y-4">
-      <div className="glass-panel flex flex-wrap items-end gap-3 rounded-xl p-4">
+      <div className="glass-panel flex flex-wrap items-end gap-2 rounded-lg p-4">
         <div className="flex flex-wrap gap-2" role="tablist">
           {REPORTS.map((key) => (
             <button key={key} type="button" role="tab" aria-selected={kind === key} onClick={() => setKind(key)} className={kind === key ? PILL_PRIMARY_BUTTON_CLASS : PILL_BUTTON_CLASS}>
@@ -894,7 +894,7 @@ export function ReportsPanel({ business, refreshKey, t }) {
 
       {!data ? <Empty state={state} t={t} /> : (
         <>
-          {warnings.map((w) => <p key={w} className="rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">{w}</p>)}
+          {warnings.map((w) => <p key={w} className="rounded-lg bg-muted px-4 py-2 text-xs text-amber-700 dark:text-amber-400">{w}</p>)}
 
           {kind === 'pl' && data.pl ? (
             <div className={card}>
@@ -913,7 +913,7 @@ export function ReportsPanel({ business, refreshKey, t }) {
                   {totalRow(t('reportNetProfit'), data.pl.netProfit)}
                 </tbody>
               </table>
-              <button type="button" className={`${PILL_BUTTON_CLASS} mt-3`} onClick={() => downloadCsv(file, GROUP_CSV_COLS, [
+              <button type="button" className={`${PILL_BUTTON_CLASS} mt-2`} onClick={() => downloadCsv(file, GROUP_CSV_COLS, [
                 { side: 'Trading', group: 'Opening stock', ledger: '', amount: data.pl.trading.openingStock },
                 ...groupCsv('Trading (Dr)', [...data.pl.trading.purchases, ...data.pl.trading.directExpenses]),
                 ...groupCsv('Trading (Cr)', [...data.pl.trading.sales, ...data.pl.trading.directIncome]),
@@ -927,7 +927,7 @@ export function ReportsPanel({ business, refreshKey, t }) {
 
           {kind === 'bs' && data.bs ? (
             <div className={card}>
-              {data.bs.difference ? <p className="mb-2 rounded-lg bg-rose-500/10 px-3 py-2 text-xs text-rose-700">{t('reportDifference', { amount: money2(data.bs.difference) })}</p> : null}
+              {data.bs.difference ? <p className="mb-2 rounded-lg bg-muted px-4 py-2 text-xs text-rose-700">{t('reportDifference', { amount: money2(data.bs.difference) })}</p> : null}
               <div className="grid gap-6 lg:grid-cols-2">
                 <table className="w-full text-sm">
                   <tbody>
@@ -945,7 +945,7 @@ export function ReportsPanel({ business, refreshKey, t }) {
                   </tbody>
                 </table>
               </div>
-              <button type="button" className={`${PILL_BUTTON_CLASS} mt-3`} onClick={() => downloadCsv(file, GROUP_CSV_COLS, [
+              <button type="button" className={`${PILL_BUTTON_CLASS} mt-2`} onClick={() => downloadCsv(file, GROUP_CSV_COLS, [
                 ...groupCsv('Liabilities', data.bs.liabilities),
                 { side: 'Liabilities', group: 'Profit & Loss A/c', ledger: '', amount: data.bs.profit },
                 ...groupCsv('Assets', data.bs.assets),
@@ -955,7 +955,7 @@ export function ReportsPanel({ business, refreshKey, t }) {
 
           {kind === 'trial' && data.trial ? (
             <div className={card}>
-              {data.trial.difference ? <p className="mb-2 rounded-lg bg-rose-500/10 px-3 py-2 text-xs text-rose-700">{t('reportDifference', { amount: money2(data.trial.difference) })}</p> : null}
+              {data.trial.difference ? <p className="mb-2 rounded-lg bg-muted px-4 py-2 text-xs text-rose-700">{t('reportDifference', { amount: money2(data.trial.difference) })}</p> : null}
               <table className="w-full max-w-3xl text-sm">
                 <thead className="text-xs text-slate-500"><tr><th className="px-2 py-1 text-left">{t('ledger')}</th><th className="px-2 py-1 text-left">{t('group')}</th><th className="px-2 py-1 text-right">Dr</th><th className="px-2 py-1 text-right">Cr</th></tr></thead>
                 <tbody className="divide-y divide-border">
@@ -963,10 +963,10 @@ export function ReportsPanel({ business, refreshKey, t }) {
                     <tr key={`${r.group}-${r.name}`}><td className="px-2 py-1">{r.name}</td><td className="px-2 py-1 text-slate-500">{r.group}</td>
                       <td className="px-2 py-1 text-right tabular-nums">{r.balance > 0 ? money2(r.balance) : ''}</td><td className="px-2 py-1 text-right tabular-nums">{r.balance < 0 ? money2(-r.balance) : ''}</td></tr>
                   ))}
-                  <tr className="font-semibold"><td className="px-2 py-1.5" colSpan={2}>{t('gstTotal')}</td><td className="px-2 py-1.5 text-right tabular-nums">{money2(data.trial.debit)}</td><td className="px-2 py-1.5 text-right tabular-nums">{money2(data.trial.credit)}</td></tr>
+                  <tr className="font-semibold"><td className="px-2 py-2" colSpan={2}>{t('gstTotal')}</td><td className="px-2 py-2 text-right tabular-nums">{money2(data.trial.debit)}</td><td className="px-2 py-2 text-right tabular-nums">{money2(data.trial.credit)}</td></tr>
                 </tbody>
               </table>
-              <button type="button" className={`${PILL_BUTTON_CLASS} mt-3`} onClick={() => downloadCsv(file, [
+              <button type="button" className={`${PILL_BUTTON_CLASS} mt-2`} onClick={() => downloadCsv(file, [
                 { label: 'Ledger', get: 'name' }, { label: 'Group', get: 'group' }, { label: 'Primary group', get: 'primary' },
                 { label: 'Debit', get: (r) => (r.balance > 0 ? r.balance : '') }, { label: 'Credit', get: (r) => (r.balance < 0 ? -r.balance : '') },
               ], data.trial.rows)}><Download className="h-3.5 w-3.5" /> CSV</button>
@@ -993,13 +993,13 @@ export function ReportsPanel({ business, refreshKey, t }) {
                   <thead className="text-xs text-slate-500"><tr><th className="px-2 py-1 text-left">{t('date')}</th><th className="px-2 py-1 text-left">{t('party')}</th><th className="px-2 py-1 text-left">PAN</th><th className="px-2 py-1 text-left">{t('tdsSection')}</th><th className="px-2 py-1 text-right">{t('tdsBase')}</th><th className="px-2 py-1 text-right">%</th><th className="px-2 py-1 text-right">TDS</th></tr></thead>
                   <tbody className="divide-y divide-border">
                     {data.tds.rows.map((r) => (
-                      <tr key={`${r.voucher_number}-${r.date}`}><td className="px-2 py-1">{r.date}</td><td className="px-2 py-1">{r.party}</td><td className="px-2 py-1 font-mono text-xs">{r.pan || '—'}</td><td className="px-2 py-1">{r.section}</td>
+                      <tr key={`${r.voucher_number}-${r.date}`}><td className="px-2 py-1">{r.date}</td><td className="px-2 py-1">{r.party}</td><td className="px-2 py-1  text-xs">{r.pan || '—'}</td><td className="px-2 py-1">{r.section}</td>
                         <td className="px-2 py-1 text-right tabular-nums">{money2(r.base)}</td><td className="px-2 py-1 text-right">{r.rate}</td><td className="px-2 py-1 text-right tabular-nums">{money2(r.tds)}</td></tr>
                     ))}
                   </tbody>
                 </table>
               ) : <p className="text-sm text-slate-400">—</p>}
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-2 flex flex-wrap gap-2">
                 {data.tds.rows.length ? (
                   <button type="button" className={PILL_BUTTON_CLASS} onClick={() => downloadCsv(`tds-26q-${range.from}-to-${range.to}.csv`, [
                     { label: 'Quarter', get: 'quarter' }, { label: 'Date', get: 'date' }, { label: 'Voucher', get: 'voucher_number' },
@@ -1026,11 +1026,11 @@ export function ReportsPanel({ business, refreshKey, t }) {
                     <tr key={r.itemId}><td className="px-2 py-1">{r.sku} · {r.name}</td><td className="px-2 py-1 text-right tabular-nums">{r.qty} {r.unit}</td>
                       <td className="px-2 py-1 text-right tabular-nums">{r.broken || ''}</td><td className="px-2 py-1 text-right tabular-nums">{r.unitCost == null ? '—' : money2(r.unitCost)}</td><td className="px-2 py-1 text-right tabular-nums">{money2(r.value)}</td></tr>
                   ))}
-                  <tr className="font-semibold"><td className="px-2 py-1.5" colSpan={4}>{t('gstTotal')}</td><td className="px-2 py-1.5 text-right tabular-nums">{money2(data.stock.total)}</td></tr>
+                  <tr className="font-semibold"><td className="px-2 py-2" colSpan={4}>{t('gstTotal')}</td><td className="px-2 py-2 text-right tabular-nums">{money2(data.stock.total)}</td></tr>
                 </tbody>
               </table>
               {data.stock.rows.length > 200 ? <p className="mt-1 text-xs text-slate-500">{t('reportFirst200', { count: data.stock.rows.length })}</p> : null}
-              <button type="button" className={`${PILL_BUTTON_CLASS} mt-3`} onClick={() => downloadCsv(file, [
+              <button type="button" className={`${PILL_BUTTON_CLASS} mt-2`} onClick={() => downloadCsv(file, [
                 { label: 'SKU', get: 'sku' }, { label: 'Item', get: 'name' }, { label: 'Unit', get: 'unit' }, { label: 'Quantity', get: 'qty' },
                 { label: 'Broken (nil value)', get: 'broken' }, { label: 'Rate (weighted average)', get: (r) => r.unitCost ?? '' }, { label: 'Value', get: 'value' },
               ], data.stock.rows)}><Download className="h-3.5 w-3.5" /> CSV</button>

@@ -8,7 +8,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import { istToday } from '@/lib/attendance.mjs';
 import { allocateFifo, CASH_BANK_GROUPS, PARTY_GROUPS } from '@/lib/accounts.mjs';
-import { FORM_INPUT_CLASS, FORM_LABEL_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../lib/stock-utils';
+import { FORM_INPUT_CLASS, FORM_LABEL_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS, SUBMIT_BUTTON_CLASS } from '../lib/stock-utils';
 import { formatRupees } from './invoice-form';
 
 /** stock.accounts.* in the current language, with {slots} filled from `vars`. */
@@ -94,7 +94,7 @@ export function BillAllocator({ businessId, ledgerId, kind, amount, value, onCha
     onChange(Number(raw) > 0 ? [...rest, { billRef, amount: Number(raw) }] : rest);
   };
   return (
-    <div className="space-y-2 rounded-lg border border-border p-3">
+    <div className="space-y-2 rounded-lg border border-border p-4">
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-semibold">{t('allocate')}</span>
         <button
@@ -198,7 +198,7 @@ export function VoucherSheet({ open, onOpenChange, business, ledgers, onSaved, t
           <SheetTitle className="text-base">{t('newVoucher')}</SheetTitle>
           <SheetDescription className="text-xs">{t('draftSaved')}</SheetDescription>
         </SheetHeader>
-        <form onSubmit={save} className="mt-5 space-y-4">
+        <form onSubmit={save} className="mt-6 space-y-4">
           <div className="flex flex-wrap gap-2" role="tablist">
             {types.map((type) => (
               <button key={type} type="button" role="tab" aria-selected={form.type === type}
@@ -209,13 +209,13 @@ export function VoucherSheet({ open, onOpenChange, business, ledgers, onSaved, t
             ))}
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             {field(t('date'), <input id="v-date" type="date" required value={form.date} max={istToday()} onChange={(e) => set({ date: e.target.value })} className={FORM_INPUT_CLASS} />, 'v-date')}
             {field(t('reference'), <input id="v-ref" value={form.reference} onChange={(e) => set({ reference: e.target.value })} className={FORM_INPUT_CLASS} />, 'v-ref')}
           </div>
 
           {form.type === 'receipt' || form.type === 'payment' ? (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               {field(form.type === 'receipt' ? t('receivedFrom') : t('paidTo'),
                 <LedgerPicker id="v-party" ledgers={others}
                   value={form.ledgerId} onChange={(id) => set({ ledgerId: id, allocations: [] })} />, 'v-party')}
@@ -243,7 +243,7 @@ export function VoucherSheet({ open, onOpenChange, business, ledgers, onSaved, t
           ) : null}
 
           {form.type === 'contra' ? (
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-3">
               {['fromLedgerId', 'toLedgerId'].map((key) => field(t(key === 'fromLedgerId' ? 'fromAccount' : 'toAccount'),
                 <SelectField id={`v-${key}`} required value={form[key] || ''} onChange={(e) => set({ [key]: Number(e.target.value) || null })} className={FORM_INPUT_CLASS}>
                   <option value="">—</option>
@@ -281,8 +281,8 @@ export function VoucherSheet({ open, onOpenChange, business, ledgers, onSaved, t
 
           {field(t('narration'), <textarea id="v-narr" rows={2} value={form.narration} onChange={(e) => set({ narration: e.target.value })} className={FORM_INPUT_CLASS} />, 'v-narr')}
           {error ? <p className="text-sm text-rose-600">{error}</p> : null}
-          <button type="submit" disabled={saving} className="w-full rounded-xl bg-brand-primary px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
-            <span className="inline-flex items-center gap-2"><Send className="h-4 w-4" /> {t('save')} <kbd aria-hidden="true" className="ml-1 hidden rounded bg-white/20 px-1.5 font-sans text-[11px] font-medium sm:inline">Ctrl ↵</kbd></span>
+          <button type="submit" disabled={saving} className={SUBMIT_BUTTON_CLASS}>
+            <span className="inline-flex items-center gap-2"><Send className="h-4 w-4" /> {t('save')} <kbd aria-hidden="true" className="ml-1 hidden rounded-lg bg-white/20 px-2 font-sans text-[11px] font-medium sm:inline">Ctrl ↵</kbd></span>
           </button>
         </form>
       </SheetContent>

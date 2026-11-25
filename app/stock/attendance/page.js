@@ -72,8 +72,7 @@ function AttendancePageInner() {
       <PageHeader icon={Clock} crumbs={[{ label: t('dashboard'), href: '/stock' }, { label: t('title') }]} title={t('title')} subtitle={t('subtitle')} />
 
       {tabs.length > 1 ? (
-        // Same strip as the dashboard, analytics and admin tabs: below sm, equal
-        // columns with the icon over a label of up to two lines (see tabButtonClass).
+        // Same strip as every other page (see tabTrackClass).
         <div className={tabTrackClass(tabs.length)}>
           {tabs.map((tab) => {
             const isActive = view === tab.id;
@@ -89,7 +88,7 @@ function AttendancePageInner() {
                 className={tabButtonClass(isActive, tabs.length)}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                <span className="line-clamp-2 min-w-0 text-center sm:whitespace-nowrap">
+                <span className="min-w-0 truncate">
                   {label}
                 </span>
               </button>
@@ -151,17 +150,17 @@ function AttendancePageSkeleton() {
   return (
     <div className={CLASSES.contentWrap} aria-busy="true" aria-label="Loading attendance">
       <div className="space-y-2">
-        <Skeleton className="h-3.5 w-40 rounded-md" />
+        <Skeleton className="h-3.5 w-40 rounded-lg" />
         <Skeleton className="h-8 w-56 rounded-lg" />
-        <Skeleton className="h-4 w-full max-w-xl rounded-md" />
+        <Skeleton className="h-4 w-full max-w-xl rounded-lg" />
       </div>
       <Skeleton className="h-11 w-full rounded-lg sm:w-[32rem]" />
       <div className={CLASSES.topCard}>
-        <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-between">
+        <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
           <div className="flex flex-col items-center gap-2 sm:items-start">
-            <Skeleton className="h-3.5 w-28 rounded-md" />
+            <Skeleton className="h-3.5 w-28 rounded-lg" />
             <Skeleton className="h-10 w-36 rounded-lg" />
-            <Skeleton className="h-3.5 w-32 rounded-md" />
+            <Skeleton className="h-3.5 w-32 rounded-lg" />
           </div>
           <Skeleton className="h-12 w-full rounded-full sm:w-44" />
         </div>

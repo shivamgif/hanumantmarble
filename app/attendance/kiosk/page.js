@@ -159,7 +159,7 @@ function KioskInner() {
   }
 
   return (
-    <div className="mx-auto min-h-screen w-full max-w-3xl p-5 sm:p-8">
+    <div className="mx-auto min-h-screen w-full max-w-3xl p-6 sm:p-8">
       <header className="relative mb-6 text-center">
         <h1 className="text-lg font-bold tracking-tight">{device.label}</h1>
         <p className="text-xs font-medium text-slate-500">
@@ -170,7 +170,7 @@ function KioskInner() {
           type="button"
           onClick={toggleLanguage}
           aria-label={language === 'hi' ? 'Switch to English' : 'हिंदी में बदलें'}
-          className="absolute right-0 top-0 rounded-full border border-border/60 px-3 py-1.5 text-xs font-bold transition active:scale-[0.96]"
+          className="absolute right-0 top-0 rounded-lg border border-border/60 px-4 py-2 text-xs font-bold transition active:scale-[0.96]"
         >
           {language === 'hi' ? 'EN' : 'हिं'}
         </button>
@@ -178,7 +178,7 @@ function KioskInner() {
 
       {!selected ? (
         <>
-          <p className="mb-3 text-center text-xs font-medium text-slate-500">
+          <p className="mb-2 text-center text-xs font-medium text-slate-500">
             {t('tapName')}
           </p>
 
@@ -191,11 +191,11 @@ function KioskInner() {
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t('searchName')}
               aria-label={t('searchName')}
-              className="mb-4 w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm outline-none focus:border-brand-primary/50"
+              className="mb-4 w-full rounded-lg border border-border/60 bg-background px-4 py-4 text-sm outline-none focus:border-brand-primary/50"
             />
           ) : null}
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             {shown.map((emp) => (
               <button
                 key={emp.id}
@@ -205,10 +205,10 @@ function KioskInner() {
                   setPin('');
                   setStatus({ kind: '', message: '' });
                 }}
-                className={`rounded-xl border-2 p-5 text-sm font-bold transition active:scale-[0.96] ${
+                className={`rounded-lg border p-6 text-sm font-bold transition active:scale-[0.96] ${
                   emp.isClockedIn
-                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700'
-                    : 'border-border/60 hover:border-brand-primary/50'
+                    ? 'border-border bg-muted text-emerald-700'
+                    : 'border-border/60 hover:border-foreground/30'
                 }`}
               >
                 {emp.name}
@@ -233,22 +233,22 @@ function KioskInner() {
             {selected.isClockedIn ? t('enterPinOut') : t('enterPinIn')}
           </p>
 
-          <div className="mb-5 flex justify-center gap-2" aria-live="polite">
+          <div className="mb-6 flex justify-center gap-2" aria-live="polite">
             {Array.from({ length: Math.max(4, pin.length) }).map((_, i) => (
               <span
                 key={i}
-                className={`h-3.5 w-3.5 rounded-full ${i < pin.length ? 'bg-brand-primary' : 'bg-slate-300 dark:bg-slate-700'}`}
+                className={`h-3.5 w-3.5 rounded-full ${i < pin.length ? 'bg-foreground' : 'bg-slate-300 dark:bg-slate-700'}`}
               />
             ))}
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-4">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => (
               <button
                 key={digit}
                 type="button"
                 onClick={() => press(digit)}
-                className="rounded-xl border border-border/60 py-5 text-xl font-bold transition active:scale-[0.96] hover:bg-slate-500/5"
+                className="rounded-lg border border-border/60 py-6 text-xl font-bold transition active:scale-[0.96] hover:bg-slate-500/5"
               >
                 {digit}
               </button>
@@ -260,14 +260,14 @@ function KioskInner() {
                 setPin('');
                 setStatus({ kind: '', message: '' });
               }}
-              className="rounded-lg border border-border/60 py-5 text-sm font-semibold transition active:scale-[0.96]"
+              className="rounded-lg border border-border/60 py-6 text-sm font-semibold transition active:scale-[0.96]"
             >
               {t('back')}
             </button>
             <button
               type="button"
               onClick={() => press(0)}
-              className="rounded-xl border border-border/60 py-5 text-xl font-bold transition active:scale-[0.96] hover:bg-slate-500/5"
+              className="rounded-lg border border-border/60 py-6 text-xl font-bold transition active:scale-[0.96] hover:bg-slate-500/5"
             >
               0
             </button>
@@ -275,7 +275,7 @@ function KioskInner() {
               type="button"
               onClick={() => setPin((p) => p.slice(0, -1))}
               aria-label={t('deleteDigit')}
-              className="flex items-center justify-center rounded-xl border border-border/60 py-5 transition active:scale-[0.96]"
+              className="flex items-center justify-center rounded-lg border border-border/60 py-6 transition active:scale-[0.96]"
             >
               <Delete className="h-5 w-5" />
             </button>
@@ -288,7 +288,7 @@ function KioskInner() {
               type="button"
               onClick={() => submit(pin)}
               disabled={busy}
-              className="mt-3 w-full rounded-lg bg-primary py-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+              className="mt-2 w-full rounded-lg bg-primary py-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"
             >
               {busy ? t('checking') : t('confirm')}
             </button>
@@ -297,7 +297,7 @@ function KioskInner() {
       )}
 
       {status.kind === 'error' ? (
-        <p role="alert" className="mt-5 text-center text-sm font-bold text-rose-500">{status.message}</p>
+        <p role="alert" className="mt-6 text-center text-sm font-bold text-rose-500">{status.message}</p>
       ) : null}
     </div>
   );

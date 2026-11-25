@@ -37,7 +37,7 @@ function PunchSelfies({ row }) {
             src={`/api/stock/attendance/selfie/${row.id}?which=${shot.which}`}
             alt={`${shot.label} for ${row.user_name}`}
             loading="lazy"
-            className="h-9 w-9 rounded-full border-2 border-background object-cover ring-1 ring-border/60"
+            className="h-9 w-9 rounded-full border border-background object-cover ring-1 ring-border/60"
           />
         </a>
       ))}
@@ -86,7 +86,7 @@ export function AttendanceTeam({ employees = [], reloadKey, onEdit }) {
       {/* Shifts nobody clocked out of. The system closed them at shift end so
           they cannot run into a 30-hour day; the real time is a manager's call. */}
       {review.length ? (
-        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 sm:p-6">
+        <div className="rounded-lg border border-border bg-muted p-4 sm:p-6">
           <h2 className="flex items-center gap-2 text-xs font-bold text-amber-800 dark:text-amber-300">
             <AlertTriangle className="h-4 w-4 shrink-0" />
             {review.length} forgotten clock-out{review.length === 1 ? '' : 's'} to review
@@ -94,9 +94,9 @@ export function AttendanceTeam({ employees = [], reloadKey, onEdit }) {
           <p className="mt-1 text-[11px] font-bold text-amber-800/80 dark:text-amber-300/80">
             Closed automatically at shift end. Set the real clock-out time, or open and save to confirm.
           </p>
-          <div className="mt-3 space-y-2">
+          <div className="mt-2 space-y-2">
             {review.map((row) => (
-              <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-background/70 p-3">
+              <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-background/70 p-4">
                 <p className="text-xs font-bold">
                   <span className="font-bold">{row.user_name}</span>
                   <span className="ml-2 tabular-nums text-slate-500">
@@ -119,7 +119,7 @@ export function AttendanceTeam({ employees = [], reloadKey, onEdit }) {
       ) : null}
 
       <div className={CLASSES.card}>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className={CLASSES.title}>On duty now</h2>
             <p className="mt-1 text-xs font-bold text-slate-500">
@@ -132,7 +132,7 @@ export function AttendanceTeam({ employees = [], reloadKey, onEdit }) {
             max={istToday()}
             onChange={(e) => setDate(e.target.value)}
             aria-label="Attendance date"
-            className="rounded-xl border border-border/60 bg-background px-3 py-2 text-xs font-bold outline-none focus:border-brand-primary/50"
+            className="rounded-lg border border-border/60 bg-background px-4 py-2 text-xs font-bold outline-none focus:border-brand-primary/50"
           />
         </div>
 
@@ -146,7 +146,7 @@ export function AttendanceTeam({ employees = [], reloadKey, onEdit }) {
                 type="button"
                 onClick={() => onEdit?.(row)}
                 disabled={!onEdit}
-                className="flex items-center gap-2 rounded-full bg-amber-500/15 px-3 py-1.5 text-[11px] font-bold text-amber-800 transition enabled:hover:bg-amber-500/25 dark:text-amber-300"
+                className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2 text-[11px] font-bold text-amber-800 transition enabled:hover:bg-border dark:text-amber-300"
               >
                 <AlertTriangle className="h-3 w-3" />
                 {row.user_name}
@@ -157,7 +157,7 @@ export function AttendanceTeam({ employees = [], reloadKey, onEdit }) {
             ) : (
               <span
                 key={row.id}
-                className="flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400"
+                className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2 text-[11px] font-bold text-emerald-700 dark:text-emerald-400"
               >
                 {row.user_name}
                 <span className="tabular-nums opacity-70">since {clockTime(row.clock_in_at)}</span>
@@ -171,32 +171,32 @@ export function AttendanceTeam({ employees = [], reloadKey, onEdit }) {
 
       <div className={CLASSES.card}>
         <h2 className={CLASSES.title}>{date}</h2>
-        {error ? <p className="mt-3 text-xs font-bold text-rose-500">{error}</p> : null}
+        {error ? <p className="mt-2 text-xs font-bold text-rose-500">{error}</p> : null}
 
         <div className="mt-4 space-y-2">
           {loading ? (
             <div className="space-y-2" aria-busy="true">
-              {[0, 1, 2].map((i) => <Skeleton key={i} className="h-14 rounded-xl" />)}
+              {[0, 1, 2].map((i) => <Skeleton key={i} className="h-14 rounded-lg" />)}
             </div>
           ) : (
             <>
               {data.entries.map((row) => (
                 <div
                   key={row.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 p-3"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 p-4"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <PunchSelfies row={row} />
                     <div>
                     <p className="text-xs font-bold">
                       {row.user_name}
                       {row.is_outside_geofence ? (
-                        <MapPinOff className="ml-1.5 inline h-3 w-3 text-amber-500" aria-label="Outside geofence" />
+                        <MapPinOff className="ml-2 inline h-3 w-3 text-amber-500" aria-label="Outside geofence" />
                       ) : null}
                     </p>
-                    <p className="mt-0.5 text-[11px] font-bold tabular-nums text-slate-500">
+                    <p className="mt-1 text-[11px] font-bold tabular-nums text-slate-500">
                       {clockTime(row.clock_in_at)} → {row.isOpen ? 'in now' : clockTime(row.clock_out_at)}
-                      {row.isLate ? <span className="ml-1.5 text-rose-500">late {row.lateMinutes}m</span> : null}
+                      {row.isLate ? <span className="ml-2 text-rose-500">late {row.lateMinutes}m</span> : null}
                     </p>
                     </div>
                   </div>
@@ -211,7 +211,7 @@ export function AttendanceTeam({ employees = [], reloadKey, onEdit }) {
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {missing.map((emp) => (
-                      <span key={emp.id} className="rounded-full bg-slate-500/10 px-3 py-1.5 text-[11px] font-bold text-slate-500">
+                      <span key={emp.id} className="rounded-lg bg-slate-500/10 px-4 py-2 text-[11px] font-bold text-slate-500">
                         {emp.name}
                       </span>
                     ))}

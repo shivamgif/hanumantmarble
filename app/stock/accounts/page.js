@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { BookOpen, Plus } from 'lucide-react';
+import { BarChart3, BookOpen, HandCoins, Notebook, Plus, Receipt, Settings2 } from 'lucide-react';
 import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { getRoleFlags } from '@/lib/stock-roles.mjs';
@@ -58,6 +58,7 @@ export default function AccountsPage() {
   const business = businesses?.find((b) => b.id === businessId);
   const view = business ? { id: business.id, legal_name: business.legalName } : null;
   const tabs = ['daybook', 'outstanding', 'ledgers', 'reports', 'gst', 'setup'];
+  const tabIcons = { daybook: BookOpen, outstanding: HandCoins, ledgers: Notebook, reports: BarChart3, gst: Receipt, setup: Settings2 };
   const panelProps = { business: view, isApprover, refreshKey, onChanged: refresh, notify: setToast, t };
 
   return (
@@ -86,11 +87,12 @@ export default function AccountsPage() {
 
       {tabs.length > 1 ? (
         <div className={tabTrackClass(tabs.length)} role="tablist">
-          {tabs.map((key) => (
+          {tabs.map((key) => { const Icon = tabIcons[key]; return (
             <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className={tabButtonClass(tab === key, tabs.length)}>
-              {t(key)}
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="min-w-0 truncate">{t(key)}</span>
             </button>
-          ))}
+          ); })}
         </div>
       ) : null}
 
@@ -107,7 +109,7 @@ export default function AccountsPage() {
         </>
       ) : !error ? <p className="text-sm text-slate-400">{t('loading')}</p> : null}
 
-      <StockToast toast={toast} onDismiss={() => setToast(null)} />
+      <StockToast toast={toast} />
     </div>
   );
 }

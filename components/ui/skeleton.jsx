@@ -5,7 +5,7 @@ export function Skeleton({ className, ...props }) {
     <div
       aria-hidden="true"
       className={cn(
-        "skeleton rounded-xl",
+        "skeleton rounded-lg",
         className
       )}
       {...props}
@@ -15,17 +15,17 @@ export function Skeleton({ className, ...props }) {
 
 export function ProductCardSkeleton() {
   return (
-    <div className="rounded-xl border-0 bg-card/50 shadow-lg overflow-hidden">
+    <div className="rounded-lg border-0 bg-card/50 shadow-float overflow-hidden">
       {/* Image area */}
       <Skeleton className="h-48 sm:h-64 w-full rounded-none" />
       {/* Content */}
-      <div className="p-4 sm:p-5 space-y-3">
+      <div className="p-4 sm:p-6 space-y-4">
         <Skeleton className="h-5 w-3/4" />
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-4/5" />
       </div>
       {/* Footer */}
-      <div className="px-4 sm:px-5 pb-4 sm:pb-5 flex justify-between items-center">
+      <div className="px-4 sm:px-6 pb-4 sm:pb-6 flex justify-between items-center">
         <div className="space-y-1">
           <Skeleton className="h-3 w-10" />
           <Skeleton className="h-6 w-20" />

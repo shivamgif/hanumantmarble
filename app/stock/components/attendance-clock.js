@@ -336,11 +336,11 @@ export function AttendanceClock({ onPunched }) {
 
   return (
     <div className={CLASSES.topCard}>
-      <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-center sm:text-left">
           {loading ? (
             <div className="flex flex-col items-center gap-2 sm:items-start" aria-busy="true">
-              <Skeleton className="h-3.5 w-28 rounded-md" />
+              <Skeleton className="h-3.5 w-28 rounded-lg" />
               <Skeleton className="h-10 w-36 rounded-lg" />
             </div>
           ) : (
@@ -358,7 +358,7 @@ export function AttendanceClock({ onPunched }) {
               one. Otherwise show their home branch. Show nothing at all rather
               than inventing a default. */}
           {branch ? (
-            <p className="mt-1 flex items-center justify-center gap-1.5 text-[11px] font-bold text-slate-500 sm:justify-start">
+            <p className="mt-1 flex items-center justify-center gap-2 text-[11px] font-bold text-slate-500 sm:justify-start">
               <Building2 className="h-3.5 w-3.5" />
               {branch.name}
               <span className="text-xs font-medium text-slate-500">
@@ -367,25 +367,25 @@ export function AttendanceClock({ onPunched }) {
             </p>
           ) : null}
           {needsBranch ? (
-            <p className="mt-1 flex items-center justify-center gap-1.5 text-[11px] font-bold text-amber-600 sm:justify-start">
+            <p className="mt-1 flex items-center justify-center gap-2 text-[11px] font-bold text-amber-600 sm:justify-start">
               <Building2 className="h-3.5 w-3.5" />
               {t('noBranch')}
             </p>
           ) : null}
           {requireSelfie && !busy ? (
-            <p className="mt-1 flex items-center justify-center gap-1.5 text-[11px] font-bold text-slate-500 sm:justify-start">
+            <p className="mt-1 flex items-center justify-center gap-2 text-[11px] font-bold text-slate-500 sm:justify-start">
               <Camera className="h-3.5 w-3.5" />
               {isIn ? t('photoOut') : t('photoIn')}
             </p>
           ) : null}
           {state.staleOpen ? (
-            <p className="mt-1 flex items-start justify-center gap-1.5 text-[11px] font-bold text-amber-600 sm:justify-start">
+            <p className="mt-1 flex items-start justify-center gap-2 text-[11px] font-bold text-amber-600 sm:justify-start">
               <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" />
               {t('staleOpen', { date: state.entry.work_date })}
             </p>
           ) : null}
           {!state.staleOpen && state.entry?.is_outside_geofence ? (
-            <p className="mt-1 flex items-center justify-center gap-1.5 text-[11px] font-bold text-amber-600 sm:justify-start">
+            <p className="mt-1 flex items-center justify-center gap-2 text-[11px] font-bold text-amber-600 sm:justify-start">
               <MapPinOff className="h-3.5 w-3.5" />
               {branch ? t('awayFrom', { branch: branch.name }) : t('awayFromYours')}
             </p>
@@ -394,7 +394,7 @@ export function AttendanceClock({ onPunched }) {
 
         {/* Full-width on a phone: this is the one tap staff make every day, often
             one-handed at the showroom door. */}
-        <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto sm:gap-3">
+        <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto sm:gap-2">
           {isIn ? (
             <>
               <button
@@ -410,7 +410,7 @@ export function AttendanceClock({ onPunched }) {
                 type="button"
                 onClick={() => startPunch('out')}
                 disabled={Boolean(busy) || needsBranch}
-                className="flex flex-1 shrink-0 items-center justify-center gap-2 rounded-lg bg-rose-600 px-6 py-4 text-sm font-semibold sm:flex-none sm:py-3 sm:text-sm text-white transition hover:bg-rose-700 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex flex-1 shrink-0 items-center justify-center gap-2 rounded-lg bg-rose-600 px-6 py-4 text-sm font-semibold sm:flex-none sm:py-4 sm:text-sm text-white transition hover:bg-rose-700 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <LogOut className="h-4 w-4" />
                 {busy === 'out' ? t('saving') : t('clockOut')}
@@ -421,7 +421,7 @@ export function AttendanceClock({ onPunched }) {
               type="button"
               onClick={() => startPunch('in')}
               disabled={Boolean(busy) || loading || needsBranch}
-              className="flex w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-8 py-4 text-sm font-semibold sm:w-auto sm:py-3.5 sm:text-sm text-white transition hover:bg-emerald-700 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-8 py-4 text-sm font-semibold sm:w-auto sm:py-4 sm:text-sm text-white transition hover:bg-emerald-700 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <LogIn className="h-4 w-4" />
               {busy === 'in' ? t('saving') : t('clockIn')}
@@ -434,8 +434,8 @@ export function AttendanceClock({ onPunched }) {
           site blocked outright. Either way this is the only place the employee
           finds out what to actually do about it. */}
       {advice ? (
-        <div className="mt-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
-          <p className="flex items-center gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-400">
+        <div className="mt-4 rounded-lg border border-border bg-muted p-4">
+          <p className="flex items-center gap-2 text-xs font-bold text-amber-700 dark:text-amber-400">
             <MapPinOff className="h-3.5 w-3.5 shrink-0" />
             {t(advice.title)}
           </p>
@@ -443,14 +443,14 @@ export function AttendanceClock({ onPunched }) {
             {t(advice.detail)}
           </p>
           {geoMessage ? (
-            <p className="mt-1 font-mono text-[11px] text-amber-700/60 dark:text-amber-400/60">{geoMessage}</p>
+            <p className="mt-1  text-[11px] text-amber-700/60 dark:text-amber-400/60">{geoMessage}</p>
           ) : null}
           {advice.canRetry ? (
             <button
               type="button"
               onClick={() => startPunch(isIn ? 'out' : 'in')}
               disabled={Boolean(busy) || needsBranch}
-              className="mt-2.5 rounded-lg bg-amber-600 px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-amber-700 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-2 rounded-lg bg-amber-600 px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-amber-700 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? t('checking') : t('tryAgain')}
             </button>

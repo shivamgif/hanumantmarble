@@ -22,7 +22,7 @@ const saleDate = (value) => {
 function QtyCells({ row }) {
   return (
     <>
-      <td className="px-4 py-2.5 text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white">
+      <td className="px-4 py-2 text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white">
         {row.boxQty || row.brokenQty ? (
           <>
             {int(row.boxQty)}
@@ -30,10 +30,10 @@ function QtyCells({ row }) {
           </>
         ) : <span className="text-slate-400">—</span>}
       </td>
-      <td className="px-4 py-2.5 text-right text-xs font-bold tabular-nums text-amber-500">
+      <td className="px-4 py-2 text-right text-xs font-bold tabular-nums text-amber-500">
         {row.bagQty ? int(row.bagQty) : <span className="text-slate-400">—</span>}
       </td>
-      <td className="px-4 py-2.5 text-right text-xs font-bold tabular-nums text-sky-500">
+      <td className="px-4 py-2 text-right text-xs font-bold tabular-nums text-sky-500">
         {row.sqftQty ? sqft(row.sqftQty) : <span className="text-slate-400">—</span>}
       </td>
     </>
@@ -104,7 +104,7 @@ export function ProductSalesReport({ open, onOpenChange }) {
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex flex-wrap items-center gap-3 py-4">
+        <div className="flex flex-wrap items-center gap-2 py-4">
           <MonthPicker
             value={month}
             max={currentMonth()}
@@ -118,7 +118,7 @@ export function ProductSalesReport({ open, onOpenChange }) {
             className={`${FORM_INPUT_CLASS} w-auto flex-1 min-w-[160px]`}
             aria-label="Filter products"
           />
-          <span className="rounded-full bg-brand-primary/10 border border-brand-primary/20 px-3 py-1 text-xs font-semibold tabular-nums text-brand-primary">
+          <span className="rounded-lg bg-muted border border-border px-4 py-1 text-xs font-semibold tabular-nums text-foreground">
             {visible.length} products
           </span>
           <button
@@ -133,11 +133,11 @@ export function ProductSalesReport({ open, onOpenChange }) {
         </div>
 
         {error ? (
-          <p className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-xs font-semibold text-rose-600 dark:text-rose-400">{error}</p>
+          <p className="rounded-lg border border-border bg-muted px-4 py-4 text-xs font-semibold text-rose-600 dark:text-rose-400">{error}</p>
         ) : null}
 
         {/* Mobile */}
-        <div className="space-y-3 md:hidden">
+        <div className="space-y-4 md:hidden">
           {loading ? (
             <p className="py-8 text-center text-sm text-slate-400">Loading…</p>
           ) : !visible.length && !error ? (
@@ -146,16 +146,16 @@ export function ProductSalesReport({ open, onOpenChange }) {
           {visible.map((p) => {
             const expanded = expandedId === p.itemId;
             return (
-              <article key={`product-sales-mobile-${p.itemId}`} className="glass-panel rounded-xl p-4">
+              <article key={`product-sales-mobile-${p.itemId}`} className="glass-panel rounded-lg p-4">
                 <button type="button" onClick={() => setExpandedId(expanded ? null : p.itemId)} className="w-full text-left">
                   <p className="text-xs font-bold text-slate-900 dark:text-white">{p.itemName}</p>
-                  <p className="font-mono text-[11px] text-slate-500 dark:text-slate-400">{p.sku}</p>
-                  <p className="mt-1 flex flex-wrap gap-x-3 text-xs font-bold tabular-nums">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">{p.sku}</p>
+                  <p className="mt-1 flex flex-wrap gap-x-2 text-xs font-bold tabular-nums">
                     {p.boxQty || p.brokenQty ? <span className="text-slate-900 dark:text-white">{int(p.boxQty)} <span className="text-[11px] text-slate-500">Boxes</span></span> : null}
-                    {p.bagQty ? <span className="text-amber-500">{int(p.bagQty)} <span className="text-[11px] text-slate-500">Bags</span></span> : null}
+                    {p.bagQty ? <span className="text-violet-600 dark:text-violet-400">{int(p.bagQty)} <span className="text-[11px] text-slate-500">Bags</span></span> : null}
                     {p.sqftQty ? <span className="text-sky-500">{sqft(p.sqftQty)} <span className="text-[11px] text-slate-500">Sqft</span></span> : null}
                   </p>
-                  <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                  <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                     {p.sales.length} sales
                     {canSeeRevenue ? <span className="ml-2 font-bold text-emerald-600 dark:text-emerald-400">{rupees(p.revenueExcl)}</span> : null}
                   </p>
@@ -163,7 +163,7 @@ export function ProductSalesReport({ open, onOpenChange }) {
                 {expanded ? (
                   <ul className="mt-2 space-y-1 border-t border-border/60 pt-2">
                     {p.sales.map((c) => (
-                      <li key={`${p.itemId}-${c.shipmentId}`} className="flex justify-between gap-3 text-[11px] text-slate-600 dark:text-slate-300">
+                      <li key={`${p.itemId}-${c.shipmentId}`} className="flex justify-between gap-2 text-[11px] text-slate-600 dark:text-slate-300">
                         <span className="truncate">
                           <span className="mr-2 font-bold tabular-nums text-slate-400">{saleDate(c.date)}</span>
                           {c.name}
@@ -208,19 +208,19 @@ export function ProductSalesReport({ open, onOpenChange }) {
                     onClick={() => setExpandedId(expanded ? null : p.itemId)}
                     className="cursor-pointer transition-colors odd:bg-white even:bg-slate-50/70 hover:bg-slate-100/50 dark:odd:bg-slate-900 dark:even:bg-slate-900/70 dark:hover:bg-slate-800/40"
                   >
-                    <td className="px-4 py-2.5">
+                    <td className="px-4 py-2">
                       <div className="flex items-center gap-2">
                         {expanded ? <ChevronDown className="h-3.5 w-3.5 text-brand-primary" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
                         <div>
                           <div className="text-xs font-bold text-slate-900 dark:text-white">{p.itemName}</div>
-                          <div className="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400">{p.sku}</div>
+                          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{p.sku}</div>
                         </div>
                       </div>
                     </td>
                     <QtyCells row={p} />
-                    <td className="px-4 py-2.5 text-right text-xs font-bold tabular-nums text-slate-600 dark:text-slate-300">{p.sales.length}</td>
+                    <td className="px-4 py-2 text-right text-xs font-bold tabular-nums text-slate-600 dark:text-slate-300">{p.sales.length}</td>
                     {canSeeRevenue ? (
-                      <td className="px-4 py-2.5 text-right">
+                      <td className="px-4 py-2 text-right">
                         <div className="text-xs font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{rupees(p.revenueExcl)}</div>
                         <div className="text-[11px] font-bold tabular-nums text-emerald-500/70">{rupees(p.revenueExcl * 1.18)} incl. GST</div>
                       </td>
@@ -228,7 +228,7 @@ export function ProductSalesReport({ open, onOpenChange }) {
                   </tr>,
                   ...(expanded ? p.sales.map((c) => (
                     <tr key={`product-${p.itemId}-${c.shipmentId}`} className="bg-slate-50/40 dark:bg-slate-800/30">
-                      <td className="px-4 py-2 pl-11 text-[11px] font-bold text-slate-600 dark:text-slate-300">{c.name}</td>
+                      <td className="px-4 py-2 pl-12 text-[11px] font-bold text-slate-600 dark:text-slate-300">{c.name}</td>
                       <QtyCells row={c} />
                       <td className="px-4 py-2 text-right text-[11px] font-bold tabular-nums text-slate-500">{saleDate(c.date)}</td>
                       {canSeeRevenue ? (
@@ -240,16 +240,16 @@ export function ProductSalesReport({ open, onOpenChange }) {
               })}
               {loading ? (
                 <tr>
-                  <td colSpan={colSpan} className="px-3 py-8">
+                  <td colSpan={colSpan} className="px-4 py-8">
                     <div className="flex items-center justify-center gap-2 text-slate-400">
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-brand-primary" />
+                      <span className="h-4 w-4 animate-spin rounded-full border border-slate-300 border-t-foreground" />
                       <span className="text-sm">Loading…</span>
                     </div>
                   </td>
                 </tr>
               ) : !visible.length && !error ? (
                 <tr>
-                  <td colSpan={colSpan} className="px-3 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                  <td colSpan={colSpan} className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
                     {query ? 'No products match that filter.' : 'No sales in this month.'}
                   </td>
                 </tr>

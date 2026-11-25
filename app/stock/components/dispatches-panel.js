@@ -107,9 +107,9 @@ export function DispatchesPanel({
 
   return (
     <div className="stock-tab-panel" key="stock-panel-dispatches">
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-4">
         {tabs}
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5 sm:gap-3">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-2">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
@@ -216,8 +216,8 @@ export function DispatchesPanel({
           </SheetContent>
         </Sheet>
       </div>
-      <section id="dispatches" className="flex h-full flex-col overflow-hidden scroll-mt-6 glass-panel rounded-xl">
-        <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-card px-3 py-2.5">
+      <section id="dispatches" className="flex h-full flex-col overflow-hidden scroll-mt-6 glass-panel rounded-lg">
+        <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-card px-4 py-2">
           <div className="relative group min-w-0 flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
@@ -225,7 +225,7 @@ export function DispatchesPanel({
               value={dispatchSearch}
               onChange={(event) => setDispatchSearch(event.target.value)}
               placeholder={tc.searchDispatches}
-              className={`${FORM_INPUT_CLASS} pl-9`}
+              className={`${FORM_INPUT_CLASS} pl-10`}
             />
           </div>
           <button
@@ -233,30 +233,30 @@ export function DispatchesPanel({
             onClick={toggleDateSort}
             aria-label={dispatchSort.key === 'datetime' && dispatchSort.direction === 'asc' ? tc.oldestFirst : tc.newestFirst}
             title={dispatchSort.key === 'datetime' && dispatchSort.direction === 'asc' ? tc.oldestFirst : tc.newestFirst}
-            className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-[13px] font-medium transition-colors hover:bg-muted ${dispatchGrouped ? 'text-slate-900 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400'}`}
+            className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-border bg-card px-4 text-[13px] font-medium transition-colors hover:bg-muted ${dispatchGrouped ? 'text-slate-900 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400'}`}
           >
             <CalendarDays className="h-4 w-4" />
             <span className="hidden sm:inline">{dispatchSort.key === 'datetime' && dispatchSort.direction === 'asc' ? tc.oldestFirst : tc.newestFirst}</span>
             {dispatchGrouped ? (dispatchSort.direction === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />) : null}
           </button>
         </div>
-        <div className={`px-3 pb-1 md:hidden transition-opacity duration-200 ${dispatchFetching ? 'opacity-50' : ''}`}>
+        <div className={`px-4 pb-1 md:hidden transition-opacity duration-200 ${dispatchFetching ? 'opacity-50' : ''}`}>
           {dispatchFetching && dispatchPagination.rows.length === 0 && (
             <div className="flex items-center justify-center gap-2 py-8 text-slate-400">
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-brand-primary" />
+              <span className="h-4 w-4 animate-spin rounded-full border border-slate-300 border-t-foreground" />
               <span className="text-sm">Loading…</span>
             </div>
           )}
           {dispatchGroups.map((group) => (
-            <div key={group.key} className="-mx-3 border-t border-border first:border-t-0">
+            <div key={group.key} className="-mx-2 border-t border-border first:border-t-0">
               {dispatchGrouped && (
-                <h3 className="border-b border-border bg-muted px-4 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200">{group.label}</h3>
+                <h3 className="border-b border-border bg-muted px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200">{group.label}</h3>
               )}
-              <div className="divide-y divide-border px-3">
+              <div className="divide-y divide-border px-4">
               {group.rows.map((d) => {
                 const expanded = dispatchExpandedId === d.id;
                 return (
-                  <article key={`dispatch-mobile-${d.id}`} className="px-1 py-2.5">
+                  <article key={`dispatch-mobile-${d.id}`} className="px-1 py-2">
                     <div className="flex items-start justify-between gap-2">
                       <button
                         type="button"
@@ -268,14 +268,14 @@ export function DispatchesPanel({
                       </button>
                       <Badge variant={getStatusVariant(d.status)}>{d.status}</Badge>
                     </div>
-                    <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                    <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[11px] text-slate-500 dark:text-slate-400">
                       {phoneLink(d)}
                       {d.customer_phone_number ? <span aria-hidden="true">·</span> : null}
-                      <span className="font-mono text-brand-primary">{d.invoice_number || d.shipment_number}</span>
+                      <span className="text-foreground">{d.invoice_number || d.shipment_number}</span>
                       <span aria-hidden="true">·</span>
                       <span className="tabular-nums">{dispatchWhen(d)}</span>
                     </p>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-600 dark:text-slate-300">
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
                       {Number(d.total_sqft_qty || 0) > 0 && (
                         <span className="font-semibold text-slate-900 dark:text-slate-100" title={`${Number(d.total_sqft_qty)} Sqft`}>
                           {Number(d.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-[11px] text-slate-500">Sqft</span>
@@ -304,14 +304,14 @@ export function DispatchesPanel({
                       </p>
                     ) : null}
                     {expanded ? (
-                      <div className="mt-1 space-y-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                      <div className="mt-1 space-y-1 text-[11px] text-slate-500 dark:text-slate-400">
                         <p className="truncate">{d.product_names || d.product_skus || '—'}</p>
                         <p>{t('by')}: {d.generated_by || '—'}</p>
                       </div>
                     ) : null}
                     {/* Money, payment state and every action share one wrapping row —
                         stacked they cost four extra lines on a phone. */}
-                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+                    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
                       <span className={`capitalize ${d.payment_status === 'paid' ? 'font-bold text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
                         {d.payment_status || 'Unpaid'}
                       </span>
@@ -320,7 +320,7 @@ export function DispatchesPanel({
                           type="button"
                           onClick={e => { e.stopPropagation(); setConfirmPaidId(d.id); }}
                           disabled={markingPaidId === d.id}
-                          className="rounded-lg border border-emerald-600/30 px-2 py-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400 disabled:opacity-50"
+                          className="rounded-lg border border-border px-2 py-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400 disabled:opacity-50"
                         >
                           {markingPaidId === d.id ? '…' : 'Mark as Paid'}
                         </button>
@@ -367,11 +367,11 @@ export function DispatchesPanel({
                     <button
                       type="button"
                       onClick={() => col.id !== 'return' && col.id !== 'edit' && col.id !== 'payment' && col.id !== 'generatedBy' && col.id !== 'approvedBy' ? toggleSort(col.id) : undefined}
-                      className={`text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 inline-flex items-center gap-1.5 group/th ${col.id !== 'return' && col.id !== 'edit' && col.id !== 'payment' && col.id !== 'generatedBy' && col.id !== 'approvedBy' ? 'hover:text-brand-primary' : 'cursor-default transition duration-300'}`}
+                      className={`text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 inline-flex items-center gap-2 group/th ${col.id !== 'return' && col.id !== 'edit' && col.id !== 'payment' && col.id !== 'generatedBy' && col.id !== 'approvedBy' ? 'hover:text-foreground' : 'cursor-default transition duration-200'}`}
                     >
                       {col.label}
                       {col.id !== 'return' && col.id !== 'edit' && col.id !== 'payment' && col.id !== 'generatedBy' && col.id !== 'approvedBy' && (
-                        <span className={`h-1 w-1 rounded-full bg-brand-primary opacity-0 transition-opacity ${dispatchSort.key === col.id ? 'opacity-100' : 'group-hover/th:opacity-40'}`} />
+                        <span className={`h-1 w-1 rounded-full bg-foreground opacity-0 transition-opacity ${dispatchSort.key === col.id ? 'opacity-100' : 'group-hover/th:opacity-40'}`} />
                       )}
                     </button>
                   </th>
@@ -383,11 +383,11 @@ export function DispatchesPanel({
                 <Fragment key={d.id}>
                 {dispatchGrouped && index === 0 ? (
                   <tr className="bg-muted">
-                    <td colSpan={canEdit ? 7 : 4} className="px-4 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200">{group.label}</td>
+                    <td colSpan={canEdit ? 7 : 4} className="px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200">{group.label}</td>
                   </tr>
                 ) : null}
                 <tr
-                  className={`group/row cursor-pointer transition-colors duration-100 hover:bg-muted/60 ${highlightedShipmentKey === `dispatch-${d.id}` ? 'bg-primary/10 ring-1 ring-primary/40' : ''}`}
+                  className={`group/row cursor-pointer transition-colors duration-100 hover:bg-border/60 ${highlightedShipmentKey === `dispatch-${d.id}` ? 'bg-muted ring-1 ring-border' : ''}`}
                   onClick={() => openShipmentPreview('dispatch', d)}
                   tabIndex={0}
                   role="button"
@@ -399,20 +399,20 @@ export function DispatchesPanel({
                   }}
                   title="Click to preview"
                 >
-                  <td className="px-4 py-2.5">
+                  <td className="px-4 py-2">
                     <div className="max-w-[240px] truncate text-sm font-medium text-slate-900 dark:text-slate-100" title={d.customer_name || ''}>{d.customer_name || '—'}</div>
-                    <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                    <div className="mt-1 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                       {phoneLink(d)}
                       {d.customer_phone_number ? <span aria-hidden="true">·</span> : null}
-                      <span className="font-mono text-brand-primary group-hover/row:underline underline-offset-2">{d.invoice_number || d.shipment_number}</span>
+                      <span className="text-brand-primary group-hover/row:underline underline-offset-2">{d.invoice_number || d.shipment_number}</span>
                       <span aria-hidden="true">·</span><span className="tabular-nums">{dispatchWhen(d)}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-2.5">
+                  <td className="px-4 py-2">
                     <div className="max-w-[260px] truncate text-sm font-medium text-slate-900 dark:text-slate-100" title={d.product_names || d.product_skus || ''}>{d.product_names || d.product_skus || '—'}</div>
                   </td>
-                  <td className="px-4 py-2.5 text-right">
-                    <div className="flex flex-col items-end gap-0.5">
+                  <td className="px-4 py-2 text-right">
+                    <div className="flex flex-col items-end gap-1">
                       {Number(d.total_sqft_qty || 0) > 0 && (
                         <div className="text-sm font-medium text-slate-900 dark:text-slate-100 tabular-nums" title={`${Number(d.total_sqft_qty)} Sqft`}>
                           {Number(d.total_sqft_qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })} <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">Sqft</span>
@@ -426,18 +426,18 @@ export function DispatchesPanel({
                       {((Number(d.total_whole_qty || 0) > 0 || Number(d.total_broken_qty || 0) > 0) || (Number(d.total_bag_qty || 0) === 0 && Number(d.total_sqft_qty || 0) === 0)) && (
                         <div className="text-sm font-medium text-slate-900 dark:text-slate-100 tabular-nums" title={`${Number(d.total_whole_qty || 0)} Whole and ${Number(d.total_broken_qty || 0)} Broken Tiles`}>
                           {Number(d.total_whole_qty || 0)} <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400 mr-1">Whole</span>
-                          <span className="mx-0.5 text-slate-300 dark:text-slate-600">/</span> {Number(d.total_broken_qty || 0)} <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">Broken</span>
+                          <span className="mx-1 text-slate-300 dark:text-slate-600">/</span> {Number(d.total_broken_qty || 0)} <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">Broken</span>
                         </div>
                       )}
                       {(Number(d.total_return_whole_qty || 0) > 0 || Number(d.total_return_broken_qty || 0) > 0) && (
-                        <div className="text-[11px] font-medium text-rose-700 dark:text-rose-400 tabular-nums mt-0.5" title={`${Number(d.total_return_whole_qty || 0)} Whole and ${Number(d.total_return_broken_qty || 0)} Broken Tiles Returned`}>
+                        <div className="text-[11px] font-medium text-rose-700 dark:text-rose-400 tabular-nums mt-1" title={`${Number(d.total_return_whole_qty || 0)} Whole and ${Number(d.total_return_broken_qty || 0)} Broken Tiles Returned`}>
                           {tc.return}: {Number(d.total_return_whole_qty || 0)} W / {Number(d.total_return_broken_qty || 0)} B
                         </div>
                       )}
                     </div>
                   </td>
                   {canEdit && (
-                    <td className="px-4 py-2.5 text-right">
+                    <td className="px-4 py-2 text-right">
                       {Number(d.total_selling_price_excl || 0) > 0 ? (
                         <div>
                           <div className="text-sm font-medium text-slate-900 dark:text-slate-100 tabular-nums">
@@ -451,7 +451,7 @@ export function DispatchesPanel({
                     </td>
                   )}
                   {canEdit && (
-                    <td className="px-4 py-2.5 text-[11px] text-muted-foreground">
+                    <td className="px-4 py-2 text-[11px] text-muted-foreground">
                       <div className={`capitalize text-xs font-medium ${d.payment_status === 'paid' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`}>
                         {d.payment_status || 'Unpaid'}
                       </div>
@@ -461,7 +461,7 @@ export function DispatchesPanel({
                           onClick={e => { e.stopPropagation(); setConfirmPaidId(d.id); }}
                           disabled={markingPaidId === d.id}
                           title="Mark this dispatch as fully paid"
-                          className="mt-1.5 px-2 py-0.5 rounded-md border border-emerald-600/30 text-emerald-700 dark:text-emerald-400 text-[11px] font-medium hover:bg-emerald-600 hover:text-white transition-colors disabled:opacity-50 whitespace-nowrap"
+                          className="mt-2 px-2 py-1 rounded-lg border border-border text-emerald-700 dark:text-emerald-400 text-[11px] font-medium hover:bg-emerald-600 hover:text-white transition-colors disabled:opacity-50 whitespace-nowrap"
                         >
                           {markingPaidId === d.id ? '…' : 'Mark as Paid'}
                         </button>
@@ -469,10 +469,10 @@ export function DispatchesPanel({
                     </td>
                   )}
                   {canEdit && (
-                    <td className="px-4 py-2.5 text-right">
+                    <td className="px-4 py-2 text-right">
                       <button
                         type="button"
-                        className="rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-muted transition-colors"
+                        className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-muted transition-colors"
                         onClick={e => {
                           e.stopPropagation();
                           onEdit(d);
@@ -482,29 +482,29 @@ export function DispatchesPanel({
                       </button>
                     </td>
                   )}
-                  <td className="px-4 py-2.5"><Badge variant={getStatusVariant(d.status)}>{d.status}</Badge></td>
+                  <td className="px-4 py-2"><Badge variant={getStatusVariant(d.status)}>{d.status}</Badge></td>
                 </tr>
                 </Fragment>
               )))}
               {dispatchFetching ? (
                 <tr>
-                  <td colSpan={canEdit ? 7 : 4} className="px-3 py-8">
+                  <td colSpan={canEdit ? 7 : 4} className="px-4 py-8">
                     <div className="flex items-center justify-center gap-2 text-slate-400">
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-brand-primary" />
+                      <span className="h-4 w-4 animate-spin rounded-full border border-slate-300 border-t-foreground" />
                       <span className="text-sm">Loading…</span>
                     </div>
                   </td>
                 </tr>
               ) : dispatchPagination.total === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 7 : 4} className="px-3 py-8">
-                    <div className="flex flex-col items-center justify-center gap-3 text-center">
+                  <td colSpan={canEdit ? 7 : 4} className="px-4 py-8">
+                    <div className="flex flex-col items-center justify-center gap-2 text-center">
                       <PackageCheck className="h-6 w-6 text-slate-400" />
                       <p className="text-sm text-slate-500 dark:text-slate-400">{tc.noDispatches}</p>
                       <button
                         type="button"
                         onClick={() => setDispatchSearch('')}
-                        className="rounded-lg bg-primary px-3 py-1.5 text-[13px] font-semibold text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        className="rounded-lg bg-primary px-4 py-2 text-[13px] font-semibold text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/20"
                       >
                         {tc.clearFilters}
                       </button>
@@ -515,7 +515,7 @@ export function DispatchesPanel({
             </tbody>
           </table>
         </div>
-        <div className="px-4 py-3 border-t border-border">
+        <div className="px-4 py-4 border-t border-border">
           <PaginationControls
             page={dispatchPagination.page}
             pageCount={dispatchPagination.pageCount}

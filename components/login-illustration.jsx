@@ -3,7 +3,7 @@
 // the accent and dark mode without an image file.
 export function LoginIllustration({ className = '' }) {
   return (
-    <svg viewBox="0 0 420 330" role="img" aria-label="Stock, invoices and insights in one place" className={className}>
+    <svg viewBox="0 0 420 330" role="img" aria-label="Inventory, invoices and insights in one place" className={className}>
       {/* backdrop */}
       <circle cx="220" cy="160" r="138" className="fill-primary/10" />
       <circle cx="330" cy="70" r="26" className="fill-primary/15" />

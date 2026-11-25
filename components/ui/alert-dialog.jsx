@@ -26,7 +26,7 @@ const AlertDialogContent = React.forwardRef(({ className, ...props }, ref) => (
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 glass rounded-xl border p-6 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+        "fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 glass rounded-lg border p-6 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         className
       )}
       {...props}
@@ -41,7 +41,7 @@ const AlertDialogHeader = ({ className, ...props }) => (
 AlertDialogHeader.displayName = "AlertDialogHeader"
 
 const AlertDialogFooter = ({ className, ...props }) => (
-  <div className={cn("flex justify-end gap-3", className)} {...props} />
+  <div className={cn("flex justify-end gap-2", className)} {...props} />
 )
 AlertDialogFooter.displayName = "AlertDialogFooter"
 
@@ -67,7 +67,7 @@ const AlertDialogAction = React.forwardRef(({ className, ...props }, ref) => (
   <button
     ref={ref}
     className={cn(
-      "rounded-lg bg-brand-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-primary/90",
+      "h-9 rounded-lg bg-brand-primary px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-primary/90",
       className
     )}
     {...props}
@@ -79,7 +79,7 @@ const AlertDialogCancel = React.forwardRef(({ className, ...props }, ref) => (
   <button
     ref={ref}
     className={cn(
-      "rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-muted dark:text-slate-300",
+      "h-9 rounded-lg border border-border bg-card px-4 text-[13px] font-semibold text-slate-700 transition-colors hover:bg-muted dark:text-slate-300",
       className
     )}
     {...props}

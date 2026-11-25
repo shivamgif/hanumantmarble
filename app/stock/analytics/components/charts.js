@@ -23,7 +23,7 @@ import {
   ChartTooltip,
   TrendCapsule,
   EmptyState,
-  CHART_ORANGE,
+  CHART_INK,
   INDUSTRIAL_COLORS,
   SERIES_COLORS,
   formatMonthLabel,
@@ -71,20 +71,20 @@ export function SalesRevenueChart({ data, partial = false }) {
       contextBar={contextBar}
       topRight={<TrendCapsule value={trend} isPositive={isPositive} />}
     >
-      <div className="h-72 lg:h-80 rounded-xl border border-border/60 bg-muted/20 p-4">
+      <div className="h-72 lg:h-80 rounded-lg border border-border/60 bg-muted/20 p-4">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
           <AreaChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="salesArea" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor={CHART_ORANGE} stopOpacity={0.25} />
-                <stop offset="100%" stopColor={CHART_ORANGE} stopOpacity={0} />
+                <stop offset="0%" stopColor={CHART_INK} stopOpacity={0.25} />
+                <stop offset="100%" stopColor={CHART_INK} stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200/80 dark:stroke-slate-800" />
             <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactNumber} width={40} />
             <RechartsTooltip content={<ChartTooltip formatter={(v) => `${formatCompactNumber(v)} ${t('dispatchesUnit')}`} />} />
-            <Area type="monotone" dataKey="total" name={t('dispatchesUnit')} stroke={CHART_ORANGE} strokeWidth={2} fill="url(#salesArea)" dot={false} activeDot={{ r: 6, stroke: 'rgb(var(--card))', strokeWidth: 2 }} />
+            <Area type="monotone" dataKey="total" name={t('dispatchesUnit')} stroke={CHART_INK} strokeWidth={2} fill="url(#salesArea)" dot={false} activeDot={{ r: 6, stroke: 'rgb(var(--card))', strokeWidth: 2 }} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -135,12 +135,12 @@ export function TopDivisionsChart({ data }) {
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-4">
         {topDivisions.map((d, i) => {
           const pct = (Number(d.total_revenue || 0) / totalRev) * 100;
           const color = INDUSTRIAL_COLORS[i % INDUSTRIAL_COLORS.length];
           return (
-            <div key={d.division || i} className="flex items-center gap-3 text-xs">
+            <div key={d.division || i} className="flex items-center gap-2 text-xs">
               <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
               <span className="font-medium text-xs text-slate-600 dark:text-slate-300 flex-1 truncate">{d.division || t('unknown')}</span>
               <span className="font-sans font-bold text-slate-900 dark:text-white tracking-wider">{formatCompactINR(d.total_revenue)}</span>
@@ -193,16 +193,16 @@ export function MonthlyCostVolumeChart({ dispatchTrend, inboundTrend, partial = 
       contextBar={partial ? t('partialMonthNote') : null}
       topRight={
         <div className="flex flex-wrap gap-2">
-          <div className="flex items-center gap-2 text-xs font-medium text-slate-400 bg-card px-3 py-1.5 rounded-full border border-border">
+          <div className="flex items-center gap-2 text-xs font-medium text-slate-400 bg-card px-4 py-2 rounded-lg border border-border">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> {t('inbound')}
           </div>
-          <div className="flex items-center gap-2 text-xs font-medium text-slate-400 bg-card px-3 py-1.5 rounded-full border border-border">
+          <div className="flex items-center gap-2 text-xs font-medium text-slate-400 bg-card px-4 py-2 rounded-lg border border-border">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> {t('outbound')}
           </div>
         </div>
       }
     >
-      <div className="h-[280px] rounded-xl border border-border/60 bg-muted/20 p-4">
+      <div className="h-[280px] rounded-lg border border-border/60 bg-muted/20 p-4">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
           <BarChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }} barGap={4}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200/80 dark:stroke-slate-800" />
@@ -256,16 +256,16 @@ export function MonthlyProfitChart({ data, partial = false }) {
       contextBar={contextBar}
       topRight={
         <div className="flex flex-wrap gap-2">
-          <div className="flex items-center gap-2 text-xs font-medium text-slate-400 bg-card px-3 py-1.5 rounded-full border border-border">
+          <div className="flex items-center gap-2 text-xs font-medium text-slate-400 bg-card px-4 py-2 rounded-lg border border-border">
             <span className="w-2.5 h-2.5 rounded-full bg-blue-600" /> {t('revenue')}
           </div>
-          <div className="flex items-center gap-2 text-xs font-medium text-slate-400 bg-card px-3 py-1.5 rounded-full border border-border">
+          <div className="flex items-center gap-2 text-xs font-medium text-slate-400 bg-card px-4 py-2 rounded-lg border border-border">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" /> {t('profit')}
           </div>
         </div>
       }
     >
-      <div className="h-[280px] rounded-xl border border-border/60 bg-muted/20 p-4">
+      <div className="h-[280px] rounded-lg border border-border/60 bg-muted/20 p-4">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
           <BarChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }} barGap={4}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200/80 dark:stroke-slate-800" />
@@ -319,7 +319,7 @@ export function SalespersonTrendChart({ trend }) {
 
   return (
     <AnalyticsCard title={t('salespersonMonthly')} subtitle={t('salespersonMonthlySubtitle')}>
-      <div className="h-[280px] rounded-xl border border-border/60 bg-muted/20 p-4">
+      <div className="h-[280px] rounded-lg border border-border/60 bg-muted/20 p-4">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
           <LineChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200/80 dark:stroke-slate-800" />
@@ -341,9 +341,9 @@ export function SalespersonTrendChart({ trend }) {
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3 px-1">
+      <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2 px-1">
         {people.map((p, i) => (
-          <span key={p} className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 min-w-0">
+          <span key={p} className="flex items-center gap-2 text-[11px] font-bold text-slate-600 dark:text-slate-300 min-w-0">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: SERIES_COLORS[i % SERIES_COLORS.length] }} />
             <span className="truncate max-w-[10rem]">{p}</span>
           </span>
@@ -396,12 +396,12 @@ export function TopSellersWidget({ items }) {
           const daysTone = daysLeft == null
             ? 'text-slate-400'
             : daysLeft <= DAYS_LEFT_URGENT
-              ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'
+              ? 'bg-muted text-rose-700  dark:text-rose-400'
               : daysLeft <= DAYS_LEFT_SOON
-                ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400'
+                ? 'bg-muted text-amber-700  dark:text-amber-400'
                 : 'text-slate-500 dark:text-slate-400';
           return (
-            <div key={it.id} className={`${cols} grid grid-cols-2 gap-x-3 gap-y-1.5 py-2.5 px-1 border-b border-slate-100 dark:border-slate-800/40 last:border-b-0`}>
+            <div key={it.id} className={`${cols} grid grid-cols-2 gap-x-4 gap-y-2 py-2 px-1 border-b border-slate-100 dark:border-slate-800/40 last:border-b-0`}>
               <span className="hidden md:block text-xs font-bold text-slate-400 text-right tabular-nums">{it.rank}.</span>
               <div className="col-span-2 md:col-span-1 min-w-0">
                 <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate" title={it.name}>
@@ -431,7 +431,7 @@ export function TopSellersWidget({ items }) {
               </div>
               <div className="col-span-2 md:col-span-1 flex items-center justify-between md:justify-end gap-2 tabular-nums">
                 <span className="text-[11px] font-bold text-slate-400">{formatCompactNumber(it.in_stock)} {t('onHandShort')}</span>
-                <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-md ${daysTone}`}>
+                <span className={`text-[11px] font-bold px-2 py-1 rounded-lg ${daysTone}`}>
                   {daysLeft != null ? `${daysLeft}${t('daysShort')}` : '—'}
                 </span>
               </div>
