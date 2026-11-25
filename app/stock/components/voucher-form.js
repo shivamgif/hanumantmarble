@@ -138,11 +138,10 @@ const blank = () => ({
  * Enter a receipt, payment, contra or journal. Everything is saved as a draft;
  * a different approver posts it. Salespeople get receipts only, unsettled.
  */
-export function VoucherSheet({ open, onOpenChange, business, ledgers, role, onSaved, t }) {
+export function VoucherSheet({ open, onOpenChange, business, ledgers, onSaved, t }) {
   const [form, setForm] = useState(blank);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const isSalesperson = role === 'salesperson';
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
 
   useEffect(() => {
@@ -164,7 +163,7 @@ export function VoucherSheet({ open, onOpenChange, business, ledgers, role, onSa
       if (form.type === 'receipt' || form.type === 'payment') {
         Object.assign(payload, {
           ledgerId: form.ledgerId, cashBankLedgerId: form.cashBankLedgerId, amount: form.amount, instrumentNo: form.reference,
-          allocations: counterIsParty && !isSalesperson ? form.allocations : [],
+          allocations: counterIsParty ? form.allocations : [],
           gstRate: form.gstRate, interState: form.interState,
         });
       } else if (form.type === 'contra') {
@@ -184,7 +183,7 @@ export function VoucherSheet({ open, onOpenChange, business, ledgers, role, onSa
     }
   }
 
-  const types = isSalesperson ? ['receipt'] : ['receipt', 'payment', 'contra', 'journal'];
+  const types = ['receipt', 'payment', 'contra', 'journal'];
   const field = (label, child, htmlFor) => (
     <div>
       <label className={FORM_LABEL_CLASS} htmlFor={htmlFor}>{label}</label>
@@ -197,7 +196,7 @@ export function VoucherSheet({ open, onOpenChange, business, ledgers, role, onSa
       <SheetContent side="right" className="w-full max-w-none overflow-y-auto bg-white dark:bg-slate-950 md:w-[640px]">
         <SheetHeader className="border-b border-border pb-4">
           <SheetTitle className="text-base">{t('newVoucher')}</SheetTitle>
-          <SheetDescription className="text-xs">{isSalesperson ? t('salespersonHint') : t('draftSaved')}</SheetDescription>
+          <SheetDescription className="text-xs">{t('draftSaved')}</SheetDescription>
         </SheetHeader>
         <form onSubmit={save} className="mt-5 space-y-4">
           <div className="flex flex-wrap gap-2" role="tablist">
@@ -218,7 +217,7 @@ export function VoucherSheet({ open, onOpenChange, business, ledgers, role, onSa
           {form.type === 'receipt' || form.type === 'payment' ? (
             <div className="grid gap-3 sm:grid-cols-2">
               {field(form.type === 'receipt' ? t('receivedFrom') : t('paidTo'),
-                <LedgerPicker id="v-party" ledgers={isSalesperson ? others.filter((l) => l.group_name === 'Sundry Debtors') : others}
+                <LedgerPicker id="v-party" ledgers={others}
                   value={form.ledgerId} onChange={(id) => set({ ledgerId: id, allocations: [] })} />, 'v-party')}
               {field(t('cashBank'),
                 <SelectField id="v-cash" required value={form.cashBankLedgerId || ''} onChange={(e) => set({ cashBankLedgerId: Number(e.target.value) || null })} className={FORM_INPUT_CLASS}>
@@ -234,7 +233,7 @@ export function VoucherSheet({ open, onOpenChange, business, ledgers, role, onSa
                   </label>
                 </>
               ) : null}
-              {counterIsParty && !isSalesperson && Number(form.amount) > 0 ? (
+              {counterIsParty && Number(form.amount) > 0 ? (
                 <div className="sm:col-span-2">
                   <BillAllocator businessId={business.id} ledgerId={form.ledgerId} kind={form.type} amount={Number(form.amount)}
                     value={form.allocations} onChange={(allocations) => set({ allocations })} t={t} />

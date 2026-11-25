@@ -13,6 +13,10 @@ export const GET = stockRoute(async function GET(request) {
   const gate = await salesInvoiceGuard(request);
   if (gate.error) return gate.error;
   const { appUser } = gate;
+  // Stock maintainers open single issued invoices (scan to dispatch), never the list.
+  if (normalizeStockRole(appUser.role) === 'stock_maintainer') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   try {
     const { searchParams } = new URL(request.url);

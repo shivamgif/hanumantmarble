@@ -10,9 +10,9 @@ import { stockRoute } from '@/lib/stock-workflow';
 const MANUAL_TYPES = ['receipt', 'payment', 'contra', 'journal'];
 const bad = (message) => Object.assign(new Error(message), { statusCode: 400 });
 
-/** Day book: vouchers of one business, newest first. Salespeople see only their own drafts. */
+/** Day book: vouchers of one business, newest first. */
 export const GET = stockRoute(async function GET(request) {
-  const gate = await accountsGuard(request, { allowSalesperson: true });
+  const gate = await accountsGuard(request);
   if (gate.error) return gate.error;
   try {
     const { searchParams } = new URL(request.url);
@@ -25,10 +25,6 @@ export const GET = stockRoute(async function GET(request) {
         params.push(value);
         filters.push(`v.${key === 'type' ? 'voucher_type' : 'status'} = $${params.length}`);
       }
-    }
-    if (gate.role === 'salesperson') {
-      params.push(gate.appUser.id);
-      filters.push(`v.created_by_user_id = $${params.length}`);
     }
     const vouchers = await sql(
       `SELECT v.id, v.voucher_type, v.status, v.voucher_date::text AS voucher_date, v.voucher_number, v.reference,
@@ -69,7 +65,7 @@ const isParty = (ledger) => ledger && PARTY_GROUPS.includes(ledger.group_name);
  * Request → balanced lines. The server builds every line itself from the
  * typed fields; a client never submits raw entries except for a journal.
  */
-async function buildLines(business, body, role) {
+async function buildLines(business, body) {
   const type = body.type;
   if (type === 'receipt' || type === 'payment') {
     const counterId = Number(body.partyLedgerId || body.ledgerId);
@@ -79,11 +75,9 @@ async function buildLines(business, body, role) {
     if (!counter) throw bad(type === 'receipt' ? 'Pick who paid.' : 'Pick who or what was paid.');
     if (!isCashBank(ledgers.get(cashBankId))) throw bad('Pick the cash or bank account.');
     if (isCashBank(counter)) throw bad('Moving money between cash and bank is a contra entry.');
-    if (role === 'salesperson' && counter.group_name !== 'Sundry Debtors') throw bad('Salespeople record receipts from customers only.');
 
     if (isParty(counter)) {
-      // Salespeople record the money; an approver settles it against bills when posting.
-      const allocations = role === 'salesperson' ? [] : (body.allocations || []);
+      const allocations = body.allocations || [];
       return {
         partyLedgerId: counterId,
         lines: settlementLines({ kind: type, partyLedgerId: counterId, cashBankLedgerId: cashBankId, amount: body.amount, allocations, instrumentNo: body.instrumentNo || null }),
@@ -137,13 +131,10 @@ async function buildLines(business, body, role) {
  * a draft; a different approver posts it (no self-approval).
  */
 export const POST = stockRoute(async function POST(request) {
-  const gate = await accountsGuard(request, { allowSalesperson: true });
+  const gate = await accountsGuard(request);
   if (gate.error) return gate.error;
   try {
     const body = await request.json().catch(() => ({}));
-    if (gate.role === 'salesperson' && body.type !== 'receipt') {
-      return NextResponse.json({ error: 'Salespeople can record receipts only.' }, { status: 403 });
-    }
     const business = await loadBusiness(body.businessId);
     if (!business.books_start_date) throw bad('Set the books start date in Accounts → Setup first.');
     const date = String(body.date || istToday()).slice(0, 10);
@@ -151,7 +142,7 @@ export const POST = stockRoute(async function POST(request) {
     if (date < business.books_start_date) throw bad(`Books start on ${business.books_start_date}; earlier entries belong in the opening balances.`);
     if (date > istToday()) throw bad('A voucher cannot be dated in the future.');
 
-    const built = await buildLines(business, body, gate.role);
+    const built = await buildLines(business, body);
     const voucher = await withBooks(gate.appUser, async (tx) => {
       // Paying a party whose bills attract TDS (contractor, rent, fees,
       // commission): the amount is what is settled, the bank pays it less

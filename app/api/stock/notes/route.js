@@ -1,20 +1,20 @@
 import { NextResponse } from 'next/server';
 import { sql, withTransaction } from '@/lib/db';
-import { canSell, getRoleFlags, normalizeStockRole, recordTimelineEvent, stockRoute } from '@/lib/stock-workflow';
+import { getRoleFlags, normalizeStockRole, recordTimelineEvent, stockRoute } from '@/lib/stock-workflow';
 import { accountsError, withBooks } from '@/lib/accounts-db';
 import { lineQty, lineUnit } from '@/lib/gst-invoice.mjs';
 import { creditedSoFar } from '@/lib/notes.mjs';
 import { listNotes, liveNotes, loadOriginal, prepareNote } from '@/lib/notes-db';
-import { canViewInvoice, salesInvoiceGuard } from '@/lib/sales-invoices';
+import { canViewInvoice, notesGuard } from '@/lib/sales-invoices';
 
 const fail = (message, statusCode) => Object.assign(new Error(message), { statusCode });
 const round = (n, places) => Math.round(n * 10 ** places) / 10 ** places;
 
-/** Customer notes: sellers and approvers. Supplier debit notes: approvers and stock maintainers (they run purchases). */
+/** Customer notes: approvers. Supplier debit notes: approvers and stock maintainers (they run purchases). Salespeople: none. */
 function mayRaise(appUser, partyKind) {
   const role = normalizeStockRole(appUser.role);
   if (getRoleFlags(role).canApprove) return true;
-  return partyKind === 'supplier' ? role === 'stock_maintainer' : canSell(appUser);
+  return partyKind === 'supplier' && role === 'stock_maintainer';
 }
 
 /** The kind a request is for: a supplier only gets debit notes. */
@@ -27,7 +27,7 @@ const kindFor = (partyKind, kind) => (partyKind === 'supplier' || kind === 'debi
  *   prefilled with the quantities a dispatch return brought back.
  */
 export const GET = stockRoute(async function GET(request) {
-  const gate = await salesInvoiceGuard(request);
+  const gate = await notesGuard(request);
   if (gate.error) return gate.error;
   const { appUser } = gate;
   const { searchParams } = new URL(request.url);
@@ -38,7 +38,8 @@ export const GET = stockRoute(async function GET(request) {
     if (!invoiceId && !purchaseId) {
       const notes = await listNotes({
         status: searchParams.get('status') || null,
-        ownerUserId: normalizeStockRole(appUser.role) === 'salesperson' ? Number(appUser.id) : null,
+        // Stock maintainers run purchases: supplier debit notes only.
+        partyKind: normalizeStockRole(appUser.role) === 'stock_maintainer' ? 'supplier' : null,
       });
       return NextResponse.json({ notes });
     }
@@ -119,7 +120,7 @@ export const GET = stockRoute(async function GET(request) {
 
 /** Raise a note against an issued invoice or an approved purchase. It waits for another approver. */
 export const POST = stockRoute(async function POST(request) {
-  const gate = await salesInvoiceGuard(request);
+  const gate = await notesGuard(request);
   if (gate.error) return gate.error;
   const { appUser } = gate;
 

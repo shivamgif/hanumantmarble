@@ -420,7 +420,7 @@ export function ShipmentPreviewSheet({ previewState, closePreview, previewItemPa
           {/* A return moves stock back but not money: the credit note does that. */}
           {previewState.kind === 'dispatch' && previewState.record?.sales_invoice_id
             && previewState.record.approval_status === 'approved'
-            && ['admin', 'manager', 'salesperson'].includes(userRole)
+            && ['admin', 'manager'].includes(userRole)
             && (previewState.items || []).some((item) => Number(item.returned_whole_qty) > 0 || Number(item.returned_qty_sqft) > 0) ? (
             <Link
               href={`/stock/invoices?creditNote=${previewState.record.sales_invoice_id}&shipment=${previewState.record.id}`}

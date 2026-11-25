@@ -115,13 +115,14 @@ export default function StockShell({ children }) {
     { href: '/stock/attendance', label: t('attendance'), icon: Clock },
   ];
 
-  // Sellers raise estimates, approvers issue them, stock staff open the ones
-  // they dispatch. read_only_admin can still open /stock/invoices directly.
-  if (accessRole !== 'read_only_admin') {
+  // Sellers raise estimates, approvers issue them. Stock staff open single
+  // invoices by scanning the QR to dispatch, so no list link for them.
+  // read_only_admin can still open /stock/invoices directly.
+  if (!['read_only_admin', 'stock_maintainer'].includes(accessRole)) {
     navigationItems.push({ href: '/stock/invoices', label: t('invoices'), icon: FileText });
   }
-  // Books: approvers run them, read_only_admin reads, salespeople record receipts.
-  if (['admin', 'manager', 'read_only_admin', 'salesperson'].includes(accessRole)) {
+  // Books: approvers run them, read_only_admin reads. Salespeople never see them.
+  if (['admin', 'manager', 'read_only_admin'].includes(accessRole)) {
     navigationItems.push({ href: '/stock/accounts', label: t('accounts'), icon: BookOpen });
   }
   if (accessRole === 'admin' || accessRole === 'manager') {

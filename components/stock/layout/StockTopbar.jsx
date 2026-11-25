@@ -18,7 +18,7 @@ import { getRoleFlags } from '@/lib/stock-roles.mjs';
 // gating in app/stock/layout.js.
 const isApprover = (flags, role) => role === 'admin' || role === 'manager';
 const canWrite = (flags) => !flags.isReadOnly;
-const canInvoice = (flags, role) => role !== 'read_only_admin';
+const canInvoice = (flags, role) => !['read_only_admin', 'stock_maintainer'].includes(role);
 
 // The keys of 'F8' / 'Alt+F8', as shown on <kbd>s.
 export function keyLabels(spec, isApple) {

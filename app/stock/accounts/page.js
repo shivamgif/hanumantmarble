@@ -13,16 +13,13 @@ import { useAccountsText, VoucherSheet } from '../components/voucher-form';
 import { DayBookPanel, GstReturnsPanel, LedgersPanel, OutstandingPanel, ReportsPanel, SetupPanel } from '../components/accounts-panels';
 
 /**
- * Books per business. Approvers run everything; read_only_admin reads;
- * salespeople record receipts (as drafts) and see their own.
+ * Books per business. Approvers run everything; read_only_admin reads.
  */
 export default function AccountsPage() {
   const t = useAccountsText();
   const { user } = useAuthUser();
   const { accessRole, accessUser } = useStockAccess(user);
   const isApprover = getRoleFlags(accessRole).canApprove;
-  const isSalesperson = accessRole === 'salesperson';
-  const canEnter = isApprover || isSalesperson;
 
   const [businesses, setBusinesses] = useState(null);
   const [businessId, setBusinessId] = useState(null);
@@ -60,7 +57,7 @@ export default function AccountsPage() {
 
   const business = businesses?.find((b) => b.id === businessId);
   const view = business ? { id: business.id, legal_name: business.legalName } : null;
-  const tabs = isSalesperson ? ['daybook'] : ['daybook', 'outstanding', 'ledgers', 'reports', 'gst', 'setup'];
+  const tabs = ['daybook', 'outstanding', 'ledgers', 'reports', 'gst', 'setup'];
   const panelProps = { business: view, isApprover, refreshKey, onChanged: refresh, notify: setToast, t };
 
   return (
@@ -68,7 +65,7 @@ export default function AccountsPage() {
       <PageHeader
         icon={BookOpen}
         title={t('title')}
-        subtitle={isSalesperson ? t('salespersonHint') : t('subtitle')}
+        subtitle={t('subtitle')}
         actions={(
           <>
             {businesses?.length > 1 ? (
@@ -76,7 +73,7 @@ export default function AccountsPage() {
                 {businesses.map((b) => <option key={b.id} value={b.id}>{b.legalName}</option>)}
               </SelectField>
             ) : null}
-            {canEnter && view ? (
+            {isApprover && view ? (
               <button type="button" onClick={() => setSheetOpen(true)} className={PILL_PRIMARY_BUTTON_CLASS}>
                 <Plus /> {t('newVoucher')}
               </button>
@@ -105,7 +102,7 @@ export default function AccountsPage() {
           {tab === 'reports' ? <ReportsPanel {...panelProps} /> : null}
           {tab === 'gst' ? <GstReturnsPanel {...panelProps} /> : null}
           {tab === 'setup' ? <SetupPanel {...panelProps} /> : null}
-          <VoucherSheet open={sheetOpen} onOpenChange={setSheetOpen} business={view} ledgers={ledgers} role={accessRole}
+          <VoucherSheet open={sheetOpen} onOpenChange={setSheetOpen} business={view} ledgers={ledgers}
             onSaved={(message) => { setToast({ type: 'success', message }); refresh(); }} t={t} />
         </>
       ) : !error ? <p className="text-sm text-slate-400">{t('loading')}</p> : null}

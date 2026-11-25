@@ -26,12 +26,12 @@ async function loadVoucher(id) {
 }
 
 export const GET = stockRoute(async function GET(request, context) {
-  const gate = await accountsGuard(request, { allowSalesperson: true });
+  const gate = await accountsGuard(request);
   if (gate.error) return gate.error;
   try {
     const { id } = await context.params;
     const found = await loadVoucher(id);
-    if (!found || (gate.role === 'salesperson' && Number(found.voucher.created_by_user_id) !== Number(gate.appUser.id))) {
+    if (!found) {
       return NextResponse.json({ error: 'Voucher not found' }, { status: 404 });
     }
     return NextResponse.json(found);
@@ -81,7 +81,7 @@ async function settleDraft(tx, voucher, lines, allocations) {
  *           through their invoice or purchase instead.
  */
 export const PATCH = stockRoute(async function PATCH(request, context) {
-  const gate = await accountsGuard(request, { allowSalesperson: true });
+  const gate = await accountsGuard(request);
   if (gate.error) return gate.error;
   try {
     const { id } = await context.params;

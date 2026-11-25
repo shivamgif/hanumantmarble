@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { sql, withTransaction } from '@/lib/db';
-import { getRoleFlags, recordTimelineEvent, stockRoute } from '@/lib/stock-workflow';
+import { getRoleFlags, normalizeStockRole, recordTimelineEvent, stockRoute } from '@/lib/stock-workflow';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { accountsError, cancelSourceVoucher, withBooks } from '@/lib/accounts-db';
 import { istToday } from '@/lib/attendance.mjs';
 import { fiscalYearOf, serializeBusiness } from '@/lib/gst-invoice.mjs';
 import { formatNoteNumber } from '@/lib/notes.mjs';
 import { loadNote, loadOriginal, moveReturnedGoods, noteLines, postNote, prepareNote } from '@/lib/notes-db';
-import { canViewInvoice, salesInvoiceGuard, sellerFor } from '@/lib/sales-invoices';
+import { notesGuard, sellerFor } from '@/lib/sales-invoices';
 
 const fail = (message, statusCode) => Object.assign(new Error(message), { statusCode });
 const label = (note) => `${note.kind === 'credit' ? 'Credit' : 'Debit'} note`;
@@ -15,14 +15,13 @@ const originalOf = (note) => (note.party_kind === 'customer'
   ? { salesInvoiceId: note.sales_invoice_id }
   : { inboundShipmentId: note.inbound_shipment_id });
 
-/** Salespeople see notes on invoices they can see, or that they raised. */
+/** Salespeople never reach here (notesGuard); stock maintainers see supplier notes only. */
 const canViewNote = (appUser, note) =>
-  Number(note.created_by_user_id) === Number(appUser.id)
-  || canViewInvoice(appUser, { salesperson_user_id: note.salesperson_user_id, created_by_user_id: note.invoice_created_by_user_id });
+  normalizeStockRole(appUser.role) !== 'stock_maintainer' || note.party_kind === 'supplier';
 
 /** The note with who it is from and to, for the print page. */
 export const GET = stockRoute(async function GET(request, context) {
-  const gate = await salesInvoiceGuard(request);
+  const gate = await notesGuard(request);
   if (gate.error) return gate.error;
   try {
     const note = await loadNote(Number((await context.params).id));
@@ -92,7 +91,7 @@ async function approve(noteId, appUser) {
 }
 
 export const PATCH = stockRoute(async function PATCH(request, context) {
-  const gate = await salesInvoiceGuard(request);
+  const gate = await notesGuard(request);
   if (gate.error) return gate.error;
   const { appUser } = gate;
   const isApprover = getRoleFlags(appUser.role).canApprove;

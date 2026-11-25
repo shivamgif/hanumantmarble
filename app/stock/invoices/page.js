@@ -149,6 +149,9 @@ export default function InvoicesPage() {
     && ![invoice.created_by_user_id, invoice.salesperson_user_id].map(Number).includes(Number(accessUser?.id));
 
   const [filter, setFilter] = useState('pending');
+  // accessRole reads 'stock_maintainer' until access loads, hence the accessUser check.
+  const notesOnly = Boolean(accessUser) && accessRole === 'stock_maintainer';
+  useEffect(() => { if (notesOnly) setFilter('creditNotes'); }, [notesOnly]);
   const [invoices, setInvoices] = useState([]);
   const [notes, setNotes] = useState([]);
   const [creditNoteRequest, setCreditNoteRequest] = useState(null);
@@ -361,7 +364,10 @@ export default function InvoicesPage() {
     }
   }, [t]);
 
-  const visibleFilters = FILTERS.filter((key) => key !== 'needs_irn' || isApprover);
+  // Salespeople see estimates and invoices only: no IRN queue, no credit notes.
+  // Stock maintainers land here only for supplier debit notes.
+  const visibleFilters = notesOnly ? ['creditNotes'] : FILTERS.filter((key) => (key !== 'needs_irn' || isApprover)
+    && (key !== 'creditNotes' || accessRole !== 'salesperson'));
 
   return (
     <div className={CLASSES.contentWrap}>
@@ -497,7 +503,7 @@ export default function InvoicesPage() {
                         </button>
                       </>
                     ) : null}
-                    {canRaise && invoice.status === 'approved' ? (
+                    {isApprover && invoice.status === 'approved' ? (
                       <>
                         <button type="button" onClick={() => setCreditNoteRequest({ invoiceId: invoice.id })} className={PILL_BUTTON_CLASS}>
                           <FileMinus className="h-3.5 w-3.5" /> {t('creditNote')}

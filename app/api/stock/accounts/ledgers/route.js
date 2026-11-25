@@ -1,26 +1,20 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { accountsError, accountsGuard, loadBusiness, loadLedgers, withBooks } from '@/lib/accounts-db';
-import { canonicalGroup, CASH_BANK_GROUPS, PARTY_GROUPS } from '@/lib/accounts.mjs';
+import { canonicalGroup, PARTY_GROUPS } from '@/lib/accounts.mjs';
 import { stockRoute } from '@/lib/stock-workflow';
 import { isValidPan, TDS_SECTIONS } from '@/lib/tds.mjs';
 
 /**
- * Ledgers of one business with their posted balances. Salespeople get only
- * customers and cash/bank — enough to record a receipt draft.
+ * Ledgers of one business with their posted balances.
  */
 export const GET = stockRoute(async function GET(request) {
-  const gate = await accountsGuard(request, { allowSalesperson: true });
+  const gate = await accountsGuard(request);
   if (gate.error) return gate.error;
   try {
     const { searchParams } = new URL(request.url);
     const business = await loadBusiness(searchParams.get('businessId'));
-    let ledgers = await loadLedgers(business.id);
-    if (gate.role === 'salesperson') {
-      ledgers = ledgers
-        .filter((l) => l.group_name === 'Sundry Debtors' || CASH_BANK_GROUPS.includes(l.group_name))
-        .map(({ id, name, group_name, is_active }) => ({ id, name, group_name, is_active }));
-    }
+    const ledgers = await loadLedgers(business.id);
     return NextResponse.json({ business, ledgers });
   } catch (error) {
     return accountsError(error, 'Failed to load ledgers');
