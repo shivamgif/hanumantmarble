@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { Fragment, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import QRCode from 'qrcode';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { amountInWords, computeInvoiceTotals, GST_STATES, isCharge, PLACEHOLDER_GSTIN } from '@/lib/gst-invoice.mjs';
 import { useInvoiceText } from '../../components/invoice-form';
@@ -75,8 +74,10 @@ export default function InvoicePrintPage() {
   const upiId = data?.seller?.business?.upiId;
   useEffect(() => {
     if (!issued && !proformaOut) return;
+    // Loaded here, not at the top: only issued invoices and live proformas draw QRs.
+    const qrcode = import('qrcode');
     const svg = (text, errorCorrectionLevel = 'M') =>
-      QRCode.toString(text, { type: 'svg', margin: 1, errorCorrectionLevel }).catch(() => '');
+      qrcode.then((m) => m.default.toString(text, { type: 'svg', margin: 1, errorCorrectionLevel })).catch(() => '');
     const upiLink = upiId
       ? `upi://pay?${new URLSearchParams({ pa: upiId, pn: data.seller.business.legalName, am: Number(invoice.grand_total).toFixed(2), cu: 'INR', tn: invoice.invoice_number || invoice.proforma_number })}`
       : null;

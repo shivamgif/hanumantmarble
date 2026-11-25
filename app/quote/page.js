@@ -6,11 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import { cn } from '@/lib/utils';
-import { useInView } from '@/lib/hooks/useInView';
 
 export default function Quote() {
   const { language } = useLanguage();
-  const [headerRef, isHeaderInView] = useInView({ threshold: 0.2 });
 
   const badges = [
     { icon: Shield, label: getTranslation('quote.badges.quality', language) },
@@ -22,33 +20,29 @@ export default function Quote() {
     <div className="relative min-h-screen overflow-hidden">
       {/* Background decorations */}
       <div className="container mx-auto py-12 sm:py-20 px-4 space-y-8 sm:space-y-12 relative z-10">
-        <div ref={headerRef} className="text-center space-y-6 max-w-2xl mx-auto">
+        <div className="text-center space-y-6 max-w-2xl mx-auto">
           <div className={cn(
-            "inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium animate-on-scroll",
-            isHeaderInView ? "in-view" : ""
+            "inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium animate-slide-up"
           )}>
             <FileText className="w-4 h-4" />
             Request a Quote
           </div>
 
           <h1 className={cn(
-            "font-semibold tracking-tight text-3xl sm:text-4xl md:text-5xl lg:text-5xl animate-on-scroll",
-            isHeaderInView ? "in-view" : ""
-          )} style={{ transitionDelay: "80ms" }}>
+            "font-semibold tracking-tight text-3xl sm:text-4xl md:text-5xl lg:text-5xl animate-slide-up"
+          )} style={{ animationDelay: "80ms" }}>
             {getTranslation('quote.title', language)}
           </h1>
 
           <p className={cn(
-            "text-xl text-muted-foreground leading-relaxed animate-on-scroll",
-            isHeaderInView ? "in-view" : ""
-          )} style={{ transitionDelay: "160ms" }}>
+            "text-xl text-muted-foreground leading-relaxed animate-slide-up"
+          )} style={{ animationDelay: "160ms" }}>
             {getTranslation('quote.subtitle', language)}
           </p>
 
           <div className={cn(
-            "flex flex-wrap items-center justify-center gap-3 animate-on-scroll",
-            isHeaderInView ? "in-view" : ""
-          )} style={{ transitionDelay: "240ms" }}>
+            "flex flex-wrap items-center justify-center gap-3 animate-slide-up"
+          )} style={{ animationDelay: "240ms" }}>
             {badges.map((badge, index) => (
               <Badge 
                 key={index}
@@ -64,9 +58,8 @@ export default function Quote() {
         </div>
 
         <div className={cn(
-          "max-w-3xl mx-auto animate-on-scroll",
-          isHeaderInView ? "in-view" : ""
-        )} style={{ transitionDelay: "320ms" }}>
+          "max-w-3xl mx-auto animate-slide-up"
+        )} style={{ animationDelay: "320ms" }}>
           <div className="rounded-xl border border-border bg-card p-5 sm:p-8 md:p-10 shadow-card">
             <ProductForm />
           </div>

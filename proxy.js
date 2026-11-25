@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { authMiddleware } from './lib/auth-server';
 
 const INTERNAL_ROUTES = ['/stock', '/api/stock'];
 
@@ -39,8 +38,9 @@ export async function proxy(request) {
     return response;
   }
 
-  // For non-internal routes, defer to auth provider middleware adapter.
-  return await authMiddleware(request);
+  // Pages check auth themselves. (This used to call authMiddleware, a no-op
+  // whose import built the whole better-auth server on every cold start.)
+  return NextResponse.next();
 }
 
 export const config = {
@@ -50,7 +50,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico, sitemap.xml, robots.txt (metadata files)
+     * - public/ files by extension (images, PDFs, manifest): the proxy never
+     *   acts on a static file (isStaticFile), so they skip it entirely.
      */
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(?:png|jpe?g|gif|webp|avif|svg|ico|pdf|json|txt|woff2?)$).*)",
   ],
 };

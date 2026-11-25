@@ -10,7 +10,6 @@ import { useInView } from "@/lib/hooks/useInView";
 
 export default function About() {
   const { language } = useLanguage();
-  const [heroRef, isHeroInView] = useInView({ threshold: 0.2 });
   const [galleryRef, isGalleryInView] = useInView({ threshold: 0.1 });
   const [awardsRef, isAwardsInView] = useInView({ threshold: 0.2 });
 
@@ -31,34 +30,30 @@ export default function About() {
       {/* Background decorations */}
       <div className="container mx-auto px-4 py-12 sm:py-20 space-y-16 sm:space-y-24 relative z-10">
         {/* Hero Section */}
-        <section ref={heroRef} className="text-center space-y-12">
+        <section className="text-center space-y-12">
           <div className={cn(
-            "inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium animate-on-scroll",
-            isHeroInView ? "in-view" : ""
+            "inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium animate-slide-up"
           )}>
             <Building2 className="w-4 h-4" />
             Our Story
           </div>
 
           <h1 className={cn(
-            "font-semibold tracking-tight text-3xl sm:text-4xl md:text-5xl lg:text-5xl animate-on-scroll",
-            isHeroInView ? "in-view" : ""
-          )} style={{ transitionDelay: "80ms" }}>
+            "font-semibold tracking-tight text-3xl sm:text-4xl md:text-5xl lg:text-5xl animate-slide-up"
+          )} style={{ animationDelay: "80ms" }}>
             {getTranslation('about.title', language)}
           </h1>
 
           <p className={cn(
-            "text-base sm:text-lg md:text-xl text-muted-foreground mx-auto max-w-3xl leading-relaxed animate-on-scroll",
-            isHeroInView ? "in-view" : ""
-          )} style={{ transitionDelay: "160ms" }}>
+            "text-base sm:text-lg md:text-xl text-muted-foreground mx-auto max-w-3xl leading-relaxed animate-slide-up"
+          )} style={{ animationDelay: "160ms" }}>
             {getTranslation('about.intro', language)}
           </p>
 
           <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             <div className={cn(
-              "group rounded-xl border border-border bg-card p-5 sm:p-8 text-card-foreground shadow-card hover:shadow-card-hover transition-shadow duration-200 animate-on-scroll",
-              isHeroInView ? "in-view" : ""
-            )} style={{ transitionDelay: "240ms" }}>
+              "group rounded-xl border border-border bg-card p-5 sm:p-8 text-card-foreground shadow-card hover:shadow-card-hover transition-shadow duration-200 animate-slide-up"
+            )} style={{ animationDelay: "240ms" }}>
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                 <Star className="w-5 h-5 text-primary" strokeWidth={1.75} />
               </div>
@@ -68,9 +63,8 @@ export default function About() {
               </p>
             </div>
             <div className={cn(
-              "group rounded-xl border border-border bg-card p-5 sm:p-8 text-card-foreground shadow-card hover:shadow-card-hover transition-shadow duration-200 animate-on-scroll",
-              isHeroInView ? "in-view" : ""
-            )} style={{ transitionDelay: "320ms" }}>
+              "group rounded-xl border border-border bg-card p-5 sm:p-8 text-card-foreground shadow-card hover:shadow-card-hover transition-shadow duration-200 animate-slide-up"
+            )} style={{ animationDelay: "320ms" }}>
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                 <Building2 className="w-5 h-5 text-primary" strokeWidth={1.75} />
               </div>
@@ -117,6 +111,7 @@ export default function About() {
                   src={image}
                   alt={`Gallery image ${index + 1}`}
                   fill
+                  sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />

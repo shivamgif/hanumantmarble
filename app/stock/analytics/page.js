@@ -10,7 +10,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Boxes, Check, Download, LayoutGrid, RotateCcw, SlidersHorizontal, TrendingUp, UserCheck, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CLASSES, paceAdjustedTarget } from '../components/dashboard-ui';
-import { ERROR_BOX_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS, tabButtonClass, tabTrackClass } from '../lib/stock-utils';
+import { ERROR_BOX_CLASS, getJson, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS, tabButtonClass, tabTrackClass } from '../lib/stock-utils';
 import { WidgetGrid } from './components/widget-grid';
 import { useLayoutPref } from '@/hooks/useLayoutPref';
 import { PageHeader } from '../components/page-header';
@@ -124,10 +124,13 @@ function AnalyticsDashboardInner() {
       try {
         // Independent, not either/or: someone who sees the company view and
         // also sells needs both payloads on the same page — fetched together.
+        // A revisit paints the last payload at once, then the fresh one.
         const load = async (url, set) => {
-          const response = await fetch(url, { cache: 'no-store' });
-          const json = await response.json();
-          if (!response.ok) throw new Error(json.error || 'Failed to load analytics');
+          const json = await getJson(url, (cached) => {
+            if (!mounted) return;
+            set(cached);
+            setLoading(false);
+          });
           if (mounted) set(json);
         };
         await Promise.all([

@@ -107,6 +107,7 @@ export default function ProductPage() {
                     alt={productName}
                     fill
                     className="object-contain p-8"
+                    sizes="(min-width: 1024px) 50vw, 100vw"
                     priority
                   />
                   {/* Badges */}
@@ -153,6 +154,7 @@ export default function ProductPage() {
                       alt={variant.name}
                       fill
                       className="object-contain p-2 bg-muted/50"
+                      sizes="80px"
                     />
                     {selectedVariant?.id === variant.id && (
                       <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
@@ -380,6 +382,7 @@ export default function ProductPage() {
                           alt={language === 'hi' ? relatedProduct.nameHi : relatedProduct.name}
                           fill
                           className="object-contain p-6 group-hover:scale-105 transition-transform duration-500"
+                          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                         />
                       </div>
                       <div className="p-4">

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole, stockRoute } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole, requestTenant, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import {
@@ -332,7 +332,8 @@ export const GET = stockRoute(async function GET(request) {
     // ?section=review is the admin page's freight + duplicate-item tabs. The
     // analytics page never shows those, so each caller gets only its own queries.
     const section = searchParamsForCache.get('section') === 'review' ? 'review' : 'analytics';
-    const cacheKey = `${section}:${months}:${endDateParam}`;
+    // Tenant first: the Map is per server instance, shared by every company.
+    const cacheKey = `${requestTenant(request).tenant?.id}:${section}:${months}:${endDateParam}`;
     if (!fresh) {
       const cached = cacheGet(cacheKey);
       if (cached) {

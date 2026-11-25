@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils"
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.worker.mjs`
 
-export function CatalogueViewer({ brand }) {
+export function CatalogueViewer({ brand, defaultOpen = false }) {
   const { language } = useLanguage()
   const allCatalogues = [
     {
@@ -34,11 +34,6 @@ export function CatalogueViewer({ brand }) {
     {
       name: "Monochroma Collection",
       path: "/Varmora-Monochroma-Collection.pdf",
-      brand: "Varmora"
-    },
-    {
-      name: "Petrozza Collection",
-      path: "/Varmora-Petrozza-Collection.pdf",
       brand: "Varmora"
     }
   ]
@@ -365,7 +360,7 @@ export function CatalogueViewer({ brand }) {
   }
 
   return (
-    <Dialog.Root>
+    <Dialog.Root defaultOpen={defaultOpen}>
       <Dialog.Trigger asChild>
         <Button 
           variant="outline" 

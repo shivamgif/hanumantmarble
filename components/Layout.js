@@ -1,9 +1,12 @@
 "use client";
 
-import Header from './Header';
-import Footer from './Footer';
-import { WhatsAppButton } from './ui/whatsapp-button';
+import dynamic from 'next/dynamic';
 import { ScrollToTop } from './ui/scroll-to-top';
+
+// Split out: the app routes below never render the storefront chrome, so the
+// stock app never downloads it. Storefront pages still server-render both.
+const Header = dynamic(() => import('./Header'));
+const Footer = dynamic(() => import('./Footer'));
 import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 
@@ -41,7 +44,6 @@ const Layout = ({ children }) => {
         {children}
       </main>
       <Footer />
-      {/* <WhatsAppButton /> */}
       <ScrollToTop />
     </div>
   );

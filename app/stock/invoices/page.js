@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { lazyZodResolver } from '@/lib/forms/lazy-zod-resolver';
 import { Ban, Check, CheckCircle2, Clock, Download, ExternalLink, FileBadge, FileKey, FileMinus, FilePlus, FileText, List, MoreHorizontal, Pencil, Plus, Search, Truck, Upload, X } from 'lucide-react';
 import { isCharge, PROFORMA_VALIDITY_DAYS } from '@/lib/gst-invoice.mjs';
 import { useAuthUser } from '@/lib/auth-client';
@@ -12,7 +12,6 @@ import { useStockAccess } from '@/hooks/useStockAccess';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import { canSell, getRoleFlags } from '@/lib/stock-roles.mjs';
-import { invoiceFormSchema } from '@/lib/forms/stock-forms';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ReasonDialog } from '@/components/ui/reason-dialog';
 import PaginationControls from '@/components/ui/pagination-controls';
@@ -26,6 +25,7 @@ import {
   CLASSES,
   createDispatchItemRow,
   fetchDashboardData,
+  getJson,
   formatDateTime,
   PILL_BUTTON_CLASS,
   PILL_PRIMARY_BUTTON_CLASS,
@@ -210,7 +210,7 @@ export default function InvoicesPage() {
   const [notice, setNotice] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const form = useForm({ resolver: zodResolver(invoiceFormSchema), defaultValues: blankInvoice() });
+  const form = useForm({ resolver: lazyZodResolver('invoiceFormSchema'), defaultValues: blankInvoice() });
   const itemsFieldArray = useFieldArray({ control: form.control, name: 'items' });
 
   useEffect(() => {
@@ -220,12 +220,19 @@ export default function InvoicesPage() {
     if (!['all', 'creditNotes'].includes(filter)) params.set('status', filter);
     if (query) params.set('search', query);
     const url = `/api/stock/${filter === 'creditNotes' ? 'notes' : 'sales-invoices'}?${params}`;
-    fetch(url, { cache: 'no-store' })
-      .then(readJson)
+    const show = (json) => {
+      if (filter === 'creditNotes') setNotes(json.notes || []); else setInvoices(json.invoices || []);
+      setTotal(json.total || 0);
+    };
+    // A revisit paints the last list at once; not after a save (refreshKey > 0).
+    getJson(url, refreshKey ? undefined : (cached) => {
+      if (cancelled) return;
+      show(cached);
+      setLoading(false);
+    })
       .then((json) => {
         if (cancelled) return;
-        if (filter === 'creditNotes') setNotes(json.notes || []); else setInvoices(json.invoices || []);
-        setTotal(json.total || 0);
+        show(json);
         setError('');
       })
       .catch((err) => { if (!cancelled) setError(err.message); })

@@ -7,8 +7,7 @@ import { useAuthUser } from '@/lib/auth-client';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { arrivalFormSchema, bagArrivalFormSchema, dispatchFormSchema } from '@/lib/forms/stock-forms';
+import { lazyZodResolver } from '@/lib/forms/lazy-zod-resolver';
 import { useStockFormStore } from '@/lib/stores/stock-form-store';
 import { createArrivalItemRow, createBagArrivalItemRow, createDispatchItemRow, createInitialArrivalDraft, createInitialBagArrivalDraft, createInitialDispatchDraft, formatLineVolume, formatShipmentVolume, toNumber, trimText, parseSizeLabelDimensions, tabButtonClass, tabTrackClass, CLASSES, ERROR_BOX_CLASS, PILL_BUTTON_CLASS, SUBMIT_BUTTON_CLASS, SUBMIT_SECONDARY_CLASS } from '@/app/stock/lib/stock-utils';
 import { PageHeader } from '@/app/stock/components/page-header';
@@ -47,7 +46,7 @@ import {
 } from 'lucide-react';
 
 import { AnalyticsCard } from '@/app/stock/components/dashboard-ui';
-import { DuplicateItemsWidget, FreightTripsWidget } from '@/app/stock/analytics/components/widgets';
+import { DuplicateItemsWidget, FreightTripsWidget } from '@/app/stock/analytics/components/review-widgets';
 
 // How far back the review tab looks. Freight is per truck-day and six months is
 // the same window the analytics page defaulted to; duplicate products are not
@@ -267,18 +266,18 @@ export default function AdminDashboard() {
   const resetDispatchAttachments = useStockFormStore((state) => state.resetDispatchAttachments);
 
   const arrivalForm = useForm({
-    resolver: zodResolver(arrivalFormSchema),
+    resolver: lazyZodResolver('arrivalFormSchema'),
     defaultValues: createInitialArrivalDraft(),
   });
   const bagArrivalForm = useForm({
-    resolver: zodResolver(bagArrivalFormSchema),
+    resolver: lazyZodResolver('bagArrivalFormSchema'),
     defaultValues: createInitialBagArrivalDraft(),
   });
   const bagArrivalItemsFieldArray = useFieldArray({ control: bagArrivalForm.control, name: 'items' });
   const [bagArrivalNotice, setBagArrivalNotice] = useState(null);
   const [bagArrivalSubmitting, setBagArrivalSubmitting] = useState(false);
   const dispatchForm = useForm({
-    resolver: zodResolver(dispatchFormSchema),
+    resolver: lazyZodResolver('dispatchFormSchema'),
     defaultValues: createInitialDispatchDraft(),
   });
   const arrivalItemsFieldArray = useFieldArray({ control: arrivalForm.control, name: 'items' });

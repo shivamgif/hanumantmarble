@@ -15,7 +15,7 @@ export async function GET(request, { params }) {
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
     const order = await ordersDB.getById(id);
 
     if (!order) {
@@ -55,7 +55,7 @@ export async function PATCH(request, { params }) {
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { status, trackingNumber, estimatedDelivery, paymentStatus } = body;
 

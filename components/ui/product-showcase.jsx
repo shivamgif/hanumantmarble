@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import dynamic from "next/dynamic";
 import { BookOpen, Clock, Users, Package, Store, Award } from "lucide-react";
 import { Button } from "./button";
@@ -13,8 +14,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 
 // react-pdf touches browser-only globals at module scope, so this one subtree
 // stays client-only. The rest of the section server-renders.
+const loadViewer = () => import("./catalogue-viewer");
 const CatalogueViewer = dynamic(
-  () => import("./catalogue-viewer").then((mod) => mod.CatalogueViewer),
+  () => loadViewer().then((mod) => mod.CatalogueViewer),
   {
     ssr: false,
     loading: () => (
@@ -25,6 +27,25 @@ const CatalogueViewer = dynamic(
     ),
   }
 );
+
+// pdf.js is ~110 KB gzipped: fetch it on hover/focus, mount it on click, so a
+// visitor who never opens a catalogue never downloads it.
+function CatalogueButton({ brand, label }) {
+  const [opened, setOpened] = useState(false);
+  if (opened) return <CatalogueViewer brand={brand} defaultOpen />;
+  return (
+    <Button
+      variant="outline"
+      className="w-full group border border-primary/20 hover:border-primary hover:bg-primary hover:text-primary-foreground transition duration-300 rounded-xl h-11"
+      onPointerEnter={loadViewer}
+      onFocus={loadViewer}
+      onClick={() => setOpened(true)}
+    >
+      <BookOpen className="mr-2 h-4 w-4" />
+      {label}
+    </Button>
+  );
+}
 
 const statsData = [
   { value: "30+", key: "yearsExperience", icon: <Clock className="w-5 h-5" /> },
@@ -99,6 +120,7 @@ export function ProductShowcase() {
                     <img
                       src={b.image}
                       alt={b.brand}
+                      loading="lazy"
                       className="h-full w-full object-contain p-8 transition-transform duration-500 group-hover:scale-105"
                     />
                   </div>
@@ -110,7 +132,7 @@ export function ProductShowcase() {
                   </CardDescription>
                 </CardContent>
                 <CardFooter className="p-5 pt-0">
-                  <CatalogueViewer brand={b.brand} />
+                  <CatalogueButton brand={b.brand} label={getTranslation('catalogue.viewButton', language)} />
                 </CardFooter>
               </Card>
             </div>

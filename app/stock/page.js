@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { lazyZodResolver } from '@/lib/forms/lazy-zod-resolver';
 import { useAuthUser } from '@/lib/auth-client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { BarChart3, Boxes, PackageCheck, ChevronRight, Send, Store } from 'lucide-react';
@@ -14,7 +14,6 @@ import { usePageSize } from '@/hooks/usePageSize';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { canSell, getRoleFlags } from '@/lib/stock-roles.mjs';
 import { goalTier } from './analytics/lib/streak.mjs';
-import { arrivalFormSchema, dispatchFormSchema } from '@/lib/forms/stock-forms';
 import { isCharge } from '@/lib/gst-invoice.mjs';
 import { useStockFormStore } from '@/lib/stores/stock-form-store';
 import {
@@ -289,11 +288,11 @@ export default function StockDashboard() {
   const resetDispatchAttachments = useStockFormStore((state) => state.resetDispatchAttachments);
 
   const arrivalForm = useForm({
-    resolver: zodResolver(arrivalFormSchema),
+    resolver: lazyZodResolver('arrivalFormSchema'),
     defaultValues: createInitialArrivalDraft(),
   });
   const dispatchForm = useForm({
-    resolver: zodResolver(dispatchFormSchema),
+    resolver: lazyZodResolver('dispatchFormSchema'),
     defaultValues: createInitialDispatchDraft(),
   });
   const arrivalItemsFieldArray = useFieldArray({ control: arrivalForm.control, name: 'items' });
@@ -331,7 +330,12 @@ export default function StockDashboard() {
     async function loadData() {
       setError(null);
       try {
-        const json = await fetchDashboardData();
+        // A revisit paints the last dashboard at once, then refreshes it.
+        const json = await fetchDashboardData((cached) => {
+          if (!mounted) return;
+          setData(cached);
+          setLoading(false);
+        });
         if (mounted) {
           setData(json);
           if (json.role) setAccessRole(json.role);
@@ -381,6 +385,11 @@ export default function StockDashboard() {
       search: debouncedArrivalSearch,
       sortKey: arrivalSort.key,
       sortDir: arrivalSort.direction,
+    }, arrivalRefreshKey ? undefined : (cached) => {
+      // Not after a save (refreshKey > 0): the cached rows predate it.
+      if (!mounted) return;
+      setArrivals(cached.arrivals || []);
+      setArrivalTotal(cached.total || 0);
     })
       .then((result) => {
         if (!mounted) return;
@@ -421,6 +430,10 @@ export default function StockDashboard() {
       search: debouncedDispatchSearch,
       sortKey: dispatchSort.key,
       sortDir: dispatchSort.direction,
+    }, dispatchRefreshKey ? undefined : (cached) => {
+      if (!mounted) return;
+      setDispatches(cached.dispatches || []);
+      setDispatchTotal(cached.total || 0);
     })
       .then((result) => {
         if (!mounted) return;

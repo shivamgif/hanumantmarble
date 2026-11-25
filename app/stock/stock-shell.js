@@ -1,7 +1,7 @@
 'use client';
 
 import { BarChart2, BookOpen, Clock, FileText, Home, Settings, Users } from 'lucide-react';
-import { getLogoutHref, useAuthUser } from '@/lib/auth-client';
+import { getLogoutHref, StockSessionContext, useAuthUser } from '@/lib/auth-client';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLayoutPref } from '@/hooks/useLayoutPref';
@@ -12,7 +12,7 @@ import { getTranslation } from '@/lib/translations';
 import BrandedLoginPage from '@/components/BrandedLoginPage';
 
 import { getRoleFlags } from '@/lib/stock-roles.mjs';
-import { useStockAccess } from '@/hooks/useStockAccess';
+import { primeStockAccess, useStockAccess } from '@/hooks/useStockAccess';
 import { useStockNotifications } from '@/hooks/useStockNotifications';
 import { useStockShortcuts } from '@/hooks/useStockShortcuts';
 
@@ -23,6 +23,8 @@ import StockNotificationsSheet from '@/components/stock/layout/StockNotification
 import ClockInReminder from '@/components/stock/layout/ClockInReminder';
 import { CompanyMark } from '@/components/ui/brand-mark';
 import { PRODUCT_NAME } from '@/lib/product';
+
+primeStockAccess();
 
 const ALWAYS_SHOWN = new Set(['/stock', '/stock/settings']);
 
@@ -52,6 +54,11 @@ export default function StockShell({ children }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const { accessLoading, hasResolvedAccessOnce, accessApproved, accessMessage, accessRole, accessUser, accessTenant, accessTenants } = useStockAccess(user);
+  // Pages read these through useAuthUser/useStockAccess instead of refetching.
+  const sharedSession = useMemo(() => ({
+    auth: { user, error, isLoading },
+    access: { accessLoading, hasResolvedAccessOnce, accessApproved, accessMessage, accessRole, accessUser, accessTenant, accessTenants },
+  }), [user, error, isLoading, accessLoading, hasResolvedAccessOnce, accessApproved, accessMessage, accessRole, accessUser, accessTenant, accessTenants]);
 
   // The company's accent. On <body>, not the shell, so Radix sheets and menus
   // (portalled into <body>) pick it up too. globals.css reads these.
@@ -205,6 +212,7 @@ export default function StockShell({ children }) {
   }
 
   return (
+    <StockSessionContext.Provider value={sharedSession}>
     <TooltipProvider delayDuration={200}>
     <div className={CLASSES.shell}>
       <StockSidebar
@@ -294,5 +302,6 @@ export default function StockShell({ children }) {
       />
     </div>
     </TooltipProvider>
+    </StockSessionContext.Provider>
   );
 }

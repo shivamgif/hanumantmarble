@@ -119,7 +119,10 @@ export const GET = stockRoute(async function GET(request) {
          LEFT JOIN stock_app_users u ON u.id = s.submitted_by_user_id
          LEFT JOIN stock_suppliers sup ON sup.id = s.supplier_id
          WHERE s.status = 'cancelled'
-         ORDER BY s.created_at DESC`,
+         ORDER BY s.created_at DESC
+         -- Cancelled is a cleanup list that only grows: the newest 200 is
+         -- plenty to delete from. The pending queues above stay complete.
+         LIMIT 200`,
         []
       ),
       // Roster carries emails, salaries and sales goals — only the role that manages

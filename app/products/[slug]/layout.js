@@ -1,7 +1,16 @@
-import { getProductBySlug } from "@/lib/products";
+import { getAllProducts, getProductBySlug } from "@/lib/products";
+
+// Built at deploy time: the catalogue is a bundled JSON file. Unknown slugs
+// still render on demand (dynamicParams defaults to true).
+export function generateStaticParams() {
+  return getAllProducts().map((product) => ({ slug: product.slug }));
+}
 
 export async function generateMetadata({ params }) {
-  const product = getProductBySlug(params.slug);
+  // A Promise since Next 15; reading .slug off it gave undefined, so every
+  // product page was titled "Product Not Found".
+  const { slug } = await params;
+  const product = getProductBySlug(slug);
 
   if (!product) {
     return {

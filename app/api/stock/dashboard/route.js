@@ -67,7 +67,28 @@ export const GET = stockRoute(async function GET(request) {
 
 
     const dashboardPromise = Promise.all([
-      sql('SELECT * FROM stock_dashboard_summary_view LIMIT 1', []),
+      // One statement, not three: queries inside withTenant share one
+      // connection and run one after another, so each is a round-trip.
+      sql(
+        `SELECT v.*,
+           (SELECT COUNT(*)
+            FROM stock_inbound_shipments s
+            WHERE s.approval_status = 'pending'
+            ${salespersonDivisionIds ? `AND s.id IN (
+              SELECT DISTINCT isi.inbound_shipment_id FROM stock_inbound_shipment_items isi
+              JOIN stock_items i ON i.id = isi.item_id WHERE i.division_id = ANY($1::bigint[])
+            )` : ''}) AS pending_arrival_count,
+           (SELECT COUNT(*)
+            FROM stock_outbound_shipments sos
+            WHERE sos.approval_status = 'pending'
+            ${salespersonDivisionIds ? `AND sos.id IN (
+              SELECT DISTINCT soi.outbound_shipment_id FROM stock_outbound_shipment_items soi
+              JOIN stock_items i ON i.id = soi.item_id WHERE i.division_id = ANY($1::bigint[])
+            )` : ''}) AS pending_dispatch_count
+         FROM (SELECT 1) AS one
+         LEFT JOIN LATERAL (SELECT * FROM stock_dashboard_summary_view LIMIT 1) v ON TRUE`,
+        salespersonDivisionIds ? [salespersonDivisionIds] : []
+      ),
       sql(
         `SELECT
            i.id,
@@ -112,26 +133,6 @@ export const GET = stockRoute(async function GET(request) {
          ORDER BY ${stockLevelOrder} ASC, i.name ASC`,
         salespersonDivisionIds ? [salespersonDivisionIds] : []
       ),
-      sql(
-        `SELECT COUNT(*) AS pending_arrival_count
-         FROM stock_inbound_shipments s
-         WHERE s.approval_status = 'pending'
-         ${salespersonDivisionIds ? `AND s.id IN (
-           SELECT DISTINCT isi.inbound_shipment_id FROM stock_inbound_shipment_items isi
-           JOIN stock_items i ON i.id = isi.item_id WHERE i.division_id = ANY($1::bigint[])
-         )` : ''}`,
-        salespersonDivisionIds ? [salespersonDivisionIds] : []
-      ),
-      sql(
-        `SELECT COUNT(*) AS pending_dispatch_count
-         FROM stock_outbound_shipments sos
-         WHERE sos.approval_status = 'pending'
-         ${salespersonDivisionIds ? `AND sos.id IN (
-           SELECT DISTINCT soi.outbound_shipment_id FROM stock_outbound_shipment_items soi
-           JOIN stock_items i ON i.id = soi.item_id WHERE i.division_id = ANY($1::bigint[])
-         )` : ''}`,
-        salespersonDivisionIds ? [salespersonDivisionIds] : []
-      ),
     ]);
 
     // Same lists as /api/stock/form-suggestions, minus the stone ones the
@@ -163,16 +164,17 @@ export const GET = stockRoute(async function GET(request) {
       : Promise.resolve([]);
 
     const [dashboardResults, allSuggestions, currentMonthValueRows, sellFirstRows] = await Promise.all([dashboardPromise, suggestionsPromise, currentMonthValuePromise, sellFirstPromise]);
-    const [summaryRows, activeItems, pendingArrivalCountRows, pendingDispatchCountRows] = dashboardResults;
+    const [[headRow = {}], activeItems] = dashboardResults;
+    const { pending_arrival_count: pendingArrivals, pending_dispatch_count: pendingDispatches, ...summary } = headRow;
     const { stoneType, stoneItemName, ...suggestions } = allSuggestions;
 
     return NextResponse.json({
       role: normalizeStockRole(appUser?.role),
       suggestions,
-      summary: summaryRows[0] || {},
+      summary,
       activeItems,
-      pendingArrivalCount: Number(pendingArrivalCountRows[0]?.pending_arrival_count ?? 0),
-      pendingDispatchCount: Number(pendingDispatchCountRows[0]?.pending_dispatch_count ?? 0),
+      pendingArrivalCount: Number(pendingArrivals ?? 0),
+      pendingDispatchCount: Number(pendingDispatches ?? 0),
       currentMonthDispatchValue: Number(currentMonthValueRows[0]?.current_month_dispatch_value ?? 0),
       // Salespeople only; empty for every other role.
       sellFirst: {

@@ -2,14 +2,13 @@
 
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { lazyZodResolver } from '@/lib/forms/lazy-zod-resolver';
 import { Download, PackageCheck, Plus, Search, CalendarDays, ArrowDown, ArrowUp, Package, Boxes, Layers } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
-import { bagArrivalFormSchema, stoneArrivalFormSchema } from '@/lib/forms/stock-forms';
 import { ArrivalFormContent, BagArrivalFormContent, StoneArrivalFormContent } from './arrival-form';
 import { groupRowsByDay, formatTime } from '../lib/group-by-day.mjs';
 import { createStoneArrivalItemRow, createInitialStoneArrivalDraft, createBagArrivalItemRow, createInitialBagArrivalDraft, formatDateTime, getGeneratedByRoleLabel, getStatusVariant, CLASSES, FORM_INPUT_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS, toNumber, trimText, fetchShipmentDetails, invalidateShipmentCache, exportToCSV, EXPORT_PERIOD_PRESETS, filterRowsByPeriod, fetchAllPages, fetchArrivals } from '../lib/stock-utils';
@@ -91,7 +90,7 @@ export function PurchasesPanel({
   const setBagAttachment = useCallback((key, file) => setBagAttachments((prev) => ({ ...prev, [key]: file })), []);
 
   const bagArrivalForm = useForm({
-    resolver: zodResolver(bagArrivalFormSchema),
+    resolver: lazyZodResolver('bagArrivalFormSchema'),
     defaultValues: createInitialBagArrivalDraft(),
   });
   const bagArrivalItemsFieldArray = useFieldArray({ control: bagArrivalForm.control, name: 'items' });
@@ -180,7 +179,7 @@ export function PurchasesPanel({
   const setStoneAttachment = useCallback((key, file) => setStoneAttachments((prev) => ({ ...prev, [key]: file })), []);
 
   const stoneArrivalForm = useForm({
-    resolver: zodResolver(stoneArrivalFormSchema),
+    resolver: lazyZodResolver('stoneArrivalFormSchema'),
     defaultValues: createInitialStoneArrivalDraft(),
   });
   const stoneArrivalItemsFieldArray = useFieldArray({ control: stoneArrivalForm.control, name: 'items' });

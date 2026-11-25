@@ -9,7 +9,7 @@ import { ArrowRight, ArrowLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export function HeroCarousel({
-  images = ["/hero1.png", "/hero2.jpeg", "/hero3.jpeg", "/hero4.jpeg", "/hero5.jpeg", "/hero6.jpeg"],
+  images = ["/hero1.jpg", "/hero2.jpeg", "/hero3.jpeg", "/hero4.jpeg", "/hero5.jpeg", "/hero6.jpeg"],
   title = "FOR YOUR SWEET HOME",
   subtitle = "One of the biggest collection of tiles and sanitaryware in Lucknow. Build your dream home with us.",
   ctaText = "Get Quote",
@@ -77,6 +77,7 @@ export function HeroCarousel({
                 fill
                 className="object-cover brightness-[0.72] saturate-110"
                 priority={index === 0}
+                fetchPriority={index === 0 ? "high" : undefined}
                 sizes="100vw"
               />
             </div>

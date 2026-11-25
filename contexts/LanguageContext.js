@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { loadLanguage } from '@/lib/translations';
 
 const LanguageContext = createContext();
 
@@ -10,7 +11,7 @@ export function LanguageProvider({ children }) {
   useEffect(() => {
     const savedLanguage = localStorage.getItem('language');
     if (savedLanguage) {
-      setLanguage(savedLanguage);
+      loadLanguage(savedLanguage).then(() => setLanguage(savedLanguage));
     }
   }, []);
 
@@ -18,13 +19,13 @@ export function LanguageProvider({ children }) {
     document.documentElement.lang = language;
   }, [language]);
 
+  // Switch only once the new language's strings are in, so nothing renders
+  // half-translated.
   const toggleLanguage = useCallback(() => {
-    setLanguage((prev) => {
-      const newLanguage = prev === 'en' ? 'hi' : 'en';
-      localStorage.setItem('language', newLanguage);
-      return newLanguage;
-    });
-  }, []);
+    const newLanguage = language === 'en' ? 'hi' : 'en';
+    localStorage.setItem('language', newLanguage);
+    loadLanguage(newLanguage).then(() => setLanguage(newLanguage));
+  }, [language]);
 
   const contextValue = useMemo(() => ({ language, toggleLanguage }), [language, toggleLanguage]);
 

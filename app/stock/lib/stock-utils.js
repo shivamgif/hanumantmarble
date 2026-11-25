@@ -418,14 +418,28 @@ export function findActiveItemByNameAndGrade(activeItems, name, grade) {
   )) || null;
 }
 
-export async function fetchDashboardData() {
-  const response = await fetch('/api/stock/dashboard');
+// Last good response per URL, for the life of the tab: a page shows it at once
+// on a revisit (onCached), then swaps in the fresh fetch. Switching company or
+// signing out is a full page load, so it never crosses tenants or users.
+// ponytail: plain Map capped at 50 URLs, oldest out; enough for page/search combos.
+const lastJson = new Map();
+
+export async function getJson(url, onCached) {
+  if (onCached && lastJson.has(url)) onCached(lastJson.get(url));
+  const response = await fetch(url);
   const json = await response.json();
   if (!response.ok) throw new Error(json.error || json.message || 'Fetch failed');
+  lastJson.delete(url);
+  lastJson.set(url, json);
+  if (lastJson.size > 50) lastJson.delete(lastJson.keys().next().value);
   return json;
 }
 
-export async function fetchArrivals({ page = 1, pageSize = 25, search = '', sortKey = 'datetime', sortDir = 'desc' } = {}) {
+export async function fetchDashboardData(onCached) {
+  return getJson('/api/stock/dashboard', onCached);
+}
+
+export async function fetchArrivals({ page = 1, pageSize = 25, search = '', sortKey = 'datetime', sortDir = 'desc' } = {}, onCached) {
   const params = new URLSearchParams({
     page: String(page),
     pageSize: String(pageSize),
@@ -433,13 +447,10 @@ export async function fetchArrivals({ page = 1, pageSize = 25, search = '', sort
     sortDir,
   });
   if (search) params.set('search', search);
-  const response = await fetch(`/api/stock/arrivals?${params}`);
-  const json = await response.json();
-  if (!response.ok) throw new Error(json.error || json.message || 'Fetch failed');
-  return json;
+  return getJson(`/api/stock/arrivals?${params}`, onCached);
 }
 
-export async function fetchDispatches({ page = 1, pageSize = 25, search = '', sortKey = 'datetime', sortDir = 'desc' } = {}) {
+export async function fetchDispatches({ page = 1, pageSize = 25, search = '', sortKey = 'datetime', sortDir = 'desc' } = {}, onCached) {
   const params = new URLSearchParams({
     page: String(page),
     pageSize: String(pageSize),
@@ -447,10 +458,7 @@ export async function fetchDispatches({ page = 1, pageSize = 25, search = '', so
     sortDir,
   });
   if (search) params.set('search', search);
-  const response = await fetch(`/api/stock/dispatches?${params}`);
-  const json = await response.json();
-  if (!response.ok) throw new Error(json.error || json.message || 'Fetch failed');
-  return json;
+  return getJson(`/api/stock/dispatches?${params}`, onCached);
 }
 
 // Arrivals/dispatches are server-paginated, so the visible page is all the

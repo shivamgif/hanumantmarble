@@ -192,7 +192,7 @@ export default function StockDocumentsPage() {
     file: null,
   });
 
-  const queryString = useMemo(() => new URLSearchParams({ limit: '100' }).toString(), []);
+  const queryString = useMemo(() => new URLSearchParams({ limit: '100', meta: '1' }).toString(), []);
 
   useEffect(() => {
     let mounted = true;
@@ -283,6 +283,17 @@ export default function StockDocumentsPage() {
       description: t.documentPreview,
       record: document,
     });
+    if (document.file_url) return;
+    // The list comes without file contents (?meta=1); fetch this one's now.
+    fetch(`/api/stock/documents?id=${document.id}&limit=1`, { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((json) => {
+        const full = json.documents?.[0];
+        if (!full) return;
+        setDocuments((rows) => rows.map((row) => (row.id === full.id ? full : row)));
+        setPreviewState((current) => (current.record?.id === full.id ? { ...current, record: full } : current));
+      })
+      .catch(() => {});
   }
 
   function closePreview() {

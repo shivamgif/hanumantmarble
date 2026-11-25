@@ -3,7 +3,7 @@
 import Image from "next/image"
 import { MapPin, Phone, Navigation, MapPinned } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useAnimateOnScroll } from "@/lib/hooks/useAnimateOnScroll"
+import { useInView } from "@/lib/hooks/useInView"
 import { useLanguage } from "@/contexts/LanguageContext"
 import { getTranslation } from "@/lib/translations"
 import { SectionHeading } from "./section-heading"
@@ -19,7 +19,7 @@ const branches = [
 
 export function Branches() {
   const { language } = useLanguage()
-  const { ref: gridRef, inView } = useAnimateOnScroll({ threshold: 0.1, triggerOnce: true })
+  const [gridRef, inView] = useInView({ threshold: 0.1 })
 
   return (
     <section id="branches" className="relative py-16 sm:py-24 bg-muted/25 overflow-hidden">

@@ -97,11 +97,19 @@ export function useStockNotifications({ user, accessApproved }) {
 
     loadNotifications();
 
+    // A hidden tab doesn't poll; it catches up the moment it's shown again.
     const intervalId = setInterval(() => {
-      loadNotifications({ silent: true });
+      if (!document.hidden) loadNotifications({ silent: true });
     }, 60000);
+    const onVisible = () => {
+      if (!document.hidden) loadNotifications({ silent: true });
+    };
+    document.addEventListener('visibilitychange', onVisible);
 
-    return () => clearInterval(intervalId);
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [accessApproved, userId, loadNotifications]);
 
   return {

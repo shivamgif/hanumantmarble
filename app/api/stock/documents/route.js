@@ -59,9 +59,19 @@ export const GET = stockRoute(async function GET(request) {
     const entityId = searchParams.get('entityId');
     const documentType = searchParams.get('documentType');
     const limit = Math.min(Number(searchParams.get('limit') || 50), 200);
+    // ?meta=1: every column but file_url. Files are stored inline as base64, so
+    // a 100-row list with them is megabytes; the documents page fetches one
+    // file (?id=) when it opens a preview.
+    const metaOnly = searchParams.get('meta') === '1';
+    const id = searchParams.get('id');
 
     const filters = [];
     const values = [];
+
+    if (id) {
+      values.push(Number(id));
+      filters.push(`id = $${values.length}`);
+    }
 
     if (entityType) {
       values.push(entityType);
@@ -81,7 +91,9 @@ export const GET = stockRoute(async function GET(request) {
     values.push(limit);
 
     const documents = await sql(
-      `SELECT *
+      `SELECT ${metaOnly
+        ? 'id, document_number, document_type, entity_type, entity_id, file_name, mime_type, file_size_bytes, checksum, archived_at, notes, created_by, created_at, updated_at'
+        : '*'}
        FROM stock_documents
        ${filters.length ? `WHERE ${filters.join(' AND ')}` : ''}
        ORDER BY created_at DESC

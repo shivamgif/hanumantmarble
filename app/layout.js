@@ -15,7 +15,7 @@ const BASE_URL = "https://hanumantmarble.com";
 const dmSans = DM_Sans({
   subsets: ['latin', 'latin-ext'],
   weight: ['300', '400', '500', '600', '700'],
-  style: ['normal', 'italic'],
+  // No italic: nothing sets DM Sans in italic (hero italics are DM Serif).
   variable: '--font-dm-sans',
   display: 'swap',
 });

@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import QRCode from 'qrcode';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { amountInWords, computeInvoiceTotals, GST_STATES } from '@/lib/gst-invoice.mjs';
 import { formatRupees, useInvoiceText } from '../../../components/invoice-form';
@@ -38,7 +37,10 @@ export default function CreditNotePrintPage() {
   const signedQr = data?.note?.signed_qr;
   useEffect(() => {
     if (!signedQr) return;
-    QRCode.toString(signedQr, { type: 'svg', margin: 1, errorCorrectionLevel: 'L' }).then(setQrSvg).catch(() => setQrSvg(''));
+    import('qrcode')
+      .then((m) => m.default.toString(signedQr, { type: 'svg', margin: 1, errorCorrectionLevel: 'L' }))
+      .then(setQrSvg)
+      .catch(() => setQrSvg(''));
   }, [signedQr]);
 
   if (error) return <div className={CLASSES.contentWrap}><p className="text-sm text-rose-500">{error}</p></div>;
