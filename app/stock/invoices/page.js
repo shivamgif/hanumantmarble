@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Ban, Check, Download, ExternalLink, FileBadge, FileMinus, FilePlus, FileText, Pencil, Plus, Upload, X } from 'lucide-react';
+import { Ban, Check, Download, ExternalLink, FileBadge, FileMinus, FilePlus, FileText, MoreHorizontal, Pencil, Plus, Search, Upload, X } from 'lucide-react';
 import { isCharge, PROFORMA_VALIDITY_DAYS } from '@/lib/gst-invoice.mjs';
 import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
@@ -15,6 +15,10 @@ import { canSell, getRoleFlags } from '@/lib/stock-roles.mjs';
 import { invoiceFormSchema } from '@/lib/forms/stock-forms';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ReasonDialog } from '@/components/ui/reason-dialog';
+import PaginationControls from '@/components/ui/pagination-controls';
+import { Checkbox } from '@/components/ui/checkbox';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DEFAULT_PAGE_SIZE, getPageCount } from '@/lib/pagination';
 import { InvoiceFormContent, formatRupees, invoiceStatus, useInvoiceText } from '../components/invoice-form';
 import { StockToast } from '../components/stock-toast';
 import { NoteSheet, NotesList, STATUS_TONE } from '../components/credit-notes';
@@ -26,6 +30,7 @@ import {
   PILL_BUTTON_CLASS,
   PILL_PRIMARY_BUTTON_CLASS,
   ERROR_BOX_CLASS,
+  FORM_INPUT_CLASS,
   tabButtonClass,
   tabTrackClass,
 } from '../lib/stock-utils';
@@ -123,6 +128,29 @@ async function loadInvoiceBranches() {
     .map((location) => ({ ...location, stateCode: byId.get(location.businessId).stateCode, city: byId.get(location.businessId).city }));
 }
 
+/** The ⋯ menu on an invoice row. `items` may hold falsy entries; nothing to show, no button. */
+function RowMenu({ items, busy, label }) {
+  const shown = items.filter(Boolean);
+  if (!shown.length) return null;
+  // modal={false}: a modal menu closing as a dialog opens leaves the page unclickable (Radix).
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <button type="button" disabled={busy} aria-label={label} title={label} className={PILL_BUTTON_CLASS}>
+          <MoreHorizontal className="h-3.5 w-3.5" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {shown.map(({ icon: Icon, label: itemLabel, onSelect, danger }) => (
+          <DropdownMenuItem key={itemLabel} onSelect={onSelect} className={danger ? 'text-rose-600 dark:text-rose-400' : undefined}>
+            <Icon className="mr-2 h-3.5 w-3.5" /> {itemLabel}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export default function InvoicesPage() {
   const t = useInvoiceText();
   const { language } = useLanguage();
@@ -153,6 +181,16 @@ export default function InvoicesPage() {
   const notesOnly = Boolean(accessUser) && accessRole === 'stock_maintainer';
   useEffect(() => { if (notesOnly) setFilter('creditNotes'); }, [notesOnly]);
   const [invoices, setInvoices] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [search, setSearch] = useState('');
+  const [query, setQuery] = useState('');
+  // Typing settles for 300 ms before it searches; a new query starts at page 1.
+  useEffect(() => {
+    const timer = setTimeout(() => { setQuery(search.trim()); setPage(1); }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
   const [notes, setNotes] = useState([]);
   const [creditNoteRequest, setCreditNoteRequest] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -177,19 +215,22 @@ export default function InvoicesPage() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    const url = filter === 'creditNotes' ? '/api/stock/notes'
-      : `/api/stock/sales-invoices${filter === 'all' ? '' : `?status=${filter}`}`;
+    const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    if (!['all', 'creditNotes'].includes(filter)) params.set('status', filter);
+    if (query) params.set('search', query);
+    const url = `/api/stock/${filter === 'creditNotes' ? 'notes' : 'sales-invoices'}?${params}`;
     fetch(url, { cache: 'no-store' })
       .then(readJson)
       .then((json) => {
         if (cancelled) return;
         if (filter === 'creditNotes') setNotes(json.notes || []); else setInvoices(json.invoices || []);
+        setTotal(json.total || 0);
         setError('');
       })
       .catch((err) => { if (!cancelled) setError(err.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [filter, refreshKey]);
+  }, [filter, refreshKey, page, pageSize, query]);
 
   /** Opens the estimate form: blank for a new one, prefilled to review `invoice`. */
   const openEstimateForm = useCallback(async (invoice = null) => {
@@ -273,6 +314,36 @@ export default function InvoicesPage() {
     } finally {
       setBusyId(null);
     }
+  }, [t]);
+
+  // Bulk approve: the one-invoice approval, one after another, so each keeps its
+  // own number lock, credit-limit check and no-self-approval rule. Anything
+  // that stops is listed; over a credit limit, approve that one on its own.
+  const [selected, setSelected] = useState(() => new Set());
+  const [bulk, setBulk] = useState(null); // { done, of } while running; { approved, failed } after
+  useEffect(() => { setSelected(new Set()); }, [filter, page, pageSize, query, refreshKey]);
+  const toggleSelected = (id) => setSelected((current) => {
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const approveSelected = useCallback(async (chosen) => {
+    const failed = [];
+    for (const [index, invoice] of chosen.entries()) {
+      setBulk({ done: index, of: chosen.length });
+      try {
+        await readJson(await fetch(`/api/stock/sales-invoices/${invoice.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'approve' }),
+        }));
+      } catch (err) {
+        failed.push(`${invoice.proforma_number || `${t('estimate')} #${invoice.id}`} · ${invoice.bill_to_name}: ${err.message}`);
+      }
+    }
+    setBulk({ approved: chosen.length - failed.length, failed });
+    setToast({ type: failed.length ? 'error' : 'success', message: t('bulkApproved', { count: chosen.length - failed.length, of: chosen.length }) });
+    setRefreshKey((k) => k + 1);
   }, [t]);
 
   // New estimate → POST; review → PATCH update, then approve when asked to.
@@ -364,6 +435,9 @@ export default function InvoicesPage() {
     }
   }, [t]);
 
+  const approvable = filter === 'creditNotes' ? [] : invoices.filter(canApproveInvoice);
+  const bulkRunning = bulk != null && bulk.of != null;
+
   // Salespeople see estimates and invoices only: no IRN queue, no credit notes.
   // Stock maintainers land here only for supplier debit notes.
   const visibleFilters = notesOnly ? ['creditNotes'] : FILTERS.filter((key) => (key !== 'needs_irn' || isApprover)
@@ -389,7 +463,7 @@ export default function InvoicesPage() {
             type="button"
             role="tab"
             aria-selected={filter === key}
-            onClick={() => setFilter(key)}
+            onClick={() => { setFilter(key); setPage(1); }}
             className={tabButtonClass(filter === key, visibleFilters.length)}
           >
             {t(key)}
@@ -417,7 +491,35 @@ export default function InvoicesPage() {
         </div>
       ) : null}
 
+      {bulk?.failed?.length ? (
+        <div className="glass-panel space-y-1 rounded-xl p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium text-amber-700 dark:text-amber-400">{t('bulkNotApproved', { count: bulk.failed.length })}</p>
+            <button type="button" onClick={() => setBulk(null)} aria-label={t('close')} className="text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>
+          </div>
+          <ul className="list-disc space-y-0.5 pl-5 text-xs text-amber-700 dark:text-amber-400">
+            {bulk.failed.map((line) => <li key={line}>{line}</li>)}
+          </ul>
+          <p className="text-xs text-slate-500">{t('bulkCreditHint')}</p>
+        </div>
+      ) : null}
+
       <section className="glass-panel overflow-hidden rounded-xl">
+        {(
+          <div className="border-b border-border px-3 py-2.5">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={t(filter === 'creditNotes' ? 'searchNotes' : 'searchInvoices')}
+                aria-label={t(filter === 'creditNotes' ? 'searchNotes' : 'searchInvoices')}
+                className={`${FORM_INPUT_CLASS} pl-9`}
+              />
+            </div>
+          </div>
+        )}
         {loading ? (
           <div className="space-y-2 p-4" aria-busy="true">{[0, 1, 2, 3, 4].map((i) => <div key={i} className="h-12 skeleton rounded-lg" />)}</div>
         ) : error ? (
@@ -435,12 +537,57 @@ export default function InvoicesPage() {
         ) : !invoices.length ? (
           <p className="py-8 text-center text-sm text-muted-foreground">{t('noInvoices')}</p>
         ) : (
+          <>
+          {approvable.length ? (
+            <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2 text-sm">
+              <label className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                <Checkbox
+                  checked={approvable.every((invoice) => selected.has(invoice.id))}
+                  onChange={(event) => setSelected(event.target.checked ? new Set(approvable.map((invoice) => invoice.id)) : new Set())}
+                  disabled={bulkRunning}
+                />
+                {t('selectAllApprovable', { count: approvable.length })}
+              </label>
+              {bulkRunning ? (
+                <span className="text-xs text-slate-500 tabular-nums">{t('bulkApproving', { done: bulk.done + 1, of: bulk.of })}</span>
+              ) : selected.size ? (
+                <button
+                  type="button"
+                  className={PILL_PRIMARY_BUTTON_CLASS}
+                  onClick={() => {
+                    const chosen = approvable.filter((invoice) => selected.has(invoice.id));
+                    setReasonDialog({
+                      title: t('approveSelected', { count: chosen.length }),
+                      description: t('approveSelectedDesc', {
+                        count: chosen.length,
+                        total: formatRupees(chosen.reduce((sum, invoice) => sum + Number(invoice.grand_total || 0), 0)),
+                      }),
+                      placeholder: t('notes'),
+                      confirmText: t('approve'),
+                      onSubmit: () => approveSelected(chosen),
+                    });
+                  }}
+                >
+                  <Check className="h-3.5 w-3.5" /> {t('approveSelected', { count: selected.size })}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           <ul className="divide-y divide-border">
             {invoices.map((invoice) => {
               const status = invoiceStatus(invoice);
               const busy = busyId === invoice.id;
               return (
                 <li key={invoice.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+                  {approvable.length ? (
+                    <Checkbox
+                      aria-label={t('select')}
+                      checked={selected.has(invoice.id)}
+                      onChange={() => toggleSelected(invoice.id)}
+                      disabled={bulkRunning || !canApproveInvoice(invoice)}
+                      className={canApproveInvoice(invoice) ? undefined : 'invisible'}
+                    />
+                  ) : null}
                   <div className="min-w-[12rem] flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-slate-900 dark:text-slate-100">
@@ -465,31 +612,44 @@ export default function InvoicesPage() {
                     </p>
                   </div>
                   <span className="text-sm font-semibold tabular-nums">{formatRupees(invoice.grand_total)}</span>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Link href={`/stock/invoices/${invoice.id}`} className={PILL_BUTTON_CLASS}>
                       <ExternalLink className="h-3.5 w-3.5" /> {t('open')}
                     </Link>
-                    {canEdit(invoice) ? (
+                    {/* One primary action on the row; the rest live in the ⋯ menu. */}
+                    {canApproveInvoice(invoice) ? (
+                      <button type="button" disabled={busy || bulkRunning} onClick={() => act(invoice, 'approve')} className={PILL_PRIMARY_BUTTON_CLASS}>
+                        <Check className="h-3.5 w-3.5" /> {t('approve')}
+                      </button>
+                    ) : canEdit(invoice) ? (
                       <button type="button" disabled={busy} onClick={() => openEstimateForm(invoice)} className={PILL_BUTTON_CLASS}>
                         <Pencil className="h-3.5 w-3.5" /> {isApprover ? t('review') : t('edit')}
                       </button>
                     ) : null}
-                    {isApprover && invoice.status === 'pending' && !invoice.dispatch_id ? (
-                      <button type="button" disabled={busy} onClick={() => issueProforma(invoice)} className={PILL_BUTTON_CLASS}>
-                        <FileBadge className="h-3.5 w-3.5" /> {invoice.proforma_number ? t('extendProforma') : t('proforma')}
-                      </button>
-                    ) : null}
-                    {/* Own estimates wait for another approver (server enforces it too). */}
-                    {canApproveInvoice(invoice) ? (
-                      <>
-                        <button type="button" disabled={busy} onClick={() => act(invoice, 'approve')} className={PILL_PRIMARY_BUTTON_CLASS}>
-                          <Check className="h-3.5 w-3.5" /> {t('approve')}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busy}
-                          className={PILL_BUTTON_CLASS}
-                          onClick={() => setReasonDialog({
+                    <RowMenu
+                      busy={busy}
+                      label={t('moreActions')}
+                      items={[
+                        canApproveInvoice(invoice) && canEdit(invoice) && {
+                          icon: Pencil, label: t('review'), onSelect: () => openEstimateForm(invoice),
+                        },
+                        isApprover && invoice.status === 'pending' && !invoice.dispatch_id && {
+                          icon: FileBadge,
+                          label: invoice.proforma_number ? t('extendProforma') : t('issueProforma'),
+                          onSelect: () => issueProforma(invoice),
+                        },
+                        isApprover && invoice.status === 'approved' && {
+                          icon: FileMinus, label: t('creditNote'), onSelect: () => setCreditNoteRequest({ invoiceId: invoice.id }),
+                        },
+                        isApprover && invoice.status === 'approved' && {
+                          icon: FilePlus, label: t('debitNote'), onSelect: () => setCreditNoteRequest({ invoiceId: invoice.id, kind: 'debit' }),
+                        },
+                        // Own estimates wait for another approver (server enforces it too).
+                        canApproveInvoice(invoice) && {
+                          icon: X,
+                          label: t('reject'),
+                          danger: true,
+                          onSelect: () => setReasonDialog({
                             title: t('reject'),
                             description: `${invoice.bill_to_name} · ${formatRupees(invoice.grand_total)}`,
                             placeholder: t('rejectReason'),
@@ -497,45 +657,49 @@ export default function InvoicesPage() {
                             confirmText: t('reject'),
                             tone: 'rose',
                             onSubmit: (reason) => act(invoice, 'reject', { reason }),
-                          })}
-                        >
-                          <X className="h-3.5 w-3.5" /> {t('reject')}
-                        </button>
-                      </>
-                    ) : null}
-                    {isApprover && invoice.status === 'approved' ? (
-                      <>
-                        <button type="button" onClick={() => setCreditNoteRequest({ invoiceId: invoice.id })} className={PILL_BUTTON_CLASS}>
-                          <FileMinus className="h-3.5 w-3.5" /> {t('creditNote')}
-                        </button>
-                        <button type="button" onClick={() => setCreditNoteRequest({ invoiceId: invoice.id, kind: 'debit' })} className={PILL_BUTTON_CLASS}>
-                          <FilePlus className="h-3.5 w-3.5" /> {t('debitNote')}
-                        </button>
-                      </>
-                    ) : null}
-                    {canCancel(invoice) ? (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        className={PILL_BUTTON_CLASS}
-                        onClick={() => setReasonDialog({
-                          title: t('cancel'),
-                          description: `${invoice.invoice_number || `${t('estimate')} #${invoice.id}`} · ${t('cancelConfirm')}`,
-                          placeholder: t('notes'),
-                          confirmText: t('cancel'),
-                          tone: 'rose',
-                          onSubmit: () => act(invoice, 'cancel'),
-                        })}
-                      >
-                        <Ban className="h-3.5 w-3.5" /> {t('cancel')}
-                      </button>
-                    ) : null}
+                          }),
+                        },
+                        canCancel(invoice) && {
+                          icon: Ban,
+                          label: t('cancel'),
+                          danger: true,
+                          onSelect: () => setReasonDialog({
+                            title: t('cancel'),
+                            description: `${invoice.invoice_number || `${t('estimate')} #${invoice.id}`} · ${t('cancelConfirm')}`,
+                            placeholder: t('notes'),
+                            confirmText: t('cancel'),
+                            tone: 'rose',
+                            onSubmit: () => act(invoice, 'cancel'),
+                          }),
+                        },
+                      ]}
+                    />
                   </div>
                 </li>
               );
             })}
           </ul>
+          </>
         )}
+        {!loading && !error ? (
+          <div className="border-t border-border px-4 py-3">
+            <PaginationControls
+              page={page}
+              pageCount={getPageCount(total, pageSize)}
+              total={total}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              labels={{
+                showing: td('paginationShowing'),
+                of: td('paginationOf'),
+                previous: td('paginationPrevious'),
+                next: td('paginationNext'),
+                page: td('paginationPage'),
+              }}
+            />
+          </div>
+        ) : null}
       </section>
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>

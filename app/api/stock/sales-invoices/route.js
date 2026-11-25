@@ -21,13 +21,20 @@ export const GET = stockRoute(async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search')?.trim().slice(0, 100) || '';
-    const invoices = await listSalesInvoices({
+    // ?page=: the invoices list, a page at a time. Without it: the topbar's
+    // quick search (top 5) or the newest 100.
+    const paged = searchParams.has('page');
+    const pageSize = Math.min(Math.max(Number(searchParams.get('pageSize')) || 25, 1), 100);
+    const page = Math.max(Number(searchParams.get('page')) || 1, 1);
+    const rows = await listSalesInvoices({
       status: searchParams.get('status') || null,
       ownerUserId: normalizeStockRole(appUser.role) === 'salesperson' ? Number(appUser.id) : null,
       search,
-      ...(search ? { limit: 5 } : {}),
+      ...(paged ? { limit: pageSize, offset: (page - 1) * pageSize } : search ? { limit: 5 } : {}),
     });
-    return NextResponse.json({ invoices });
+    const total = Number(rows[0]?.total_count ?? 0);
+    const invoices = rows.map(({ total_count: _count, ...invoice }) => invoice);
+    return NextResponse.json({ invoices, total, page, pageSize });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load invoices', detail: error.message }, { status: 500 });
   }

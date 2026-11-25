@@ -36,12 +36,20 @@ export const GET = stockRoute(async function GET(request) {
 
   try {
     if (!invoiceId && !purchaseId) {
-      const notes = await listNotes({
+      // ?page=: a page at a time (the invoices page). Without it: the newest 100.
+      const paged = searchParams.has('page');
+      const pageSize = Math.min(Math.max(Number(searchParams.get('pageSize')) || 25, 1), 100);
+      const page = Math.max(Number(searchParams.get('page')) || 1, 1);
+      const rows = await listNotes({
         status: searchParams.get('status') || null,
         // Stock maintainers run purchases: supplier debit notes only.
         partyKind: normalizeStockRole(appUser.role) === 'stock_maintainer' ? 'supplier' : null,
+        search: searchParams.get('search')?.trim().slice(0, 100) || '',
+        ...(paged ? { limit: pageSize, offset: (page - 1) * pageSize } : {}),
       });
-      return NextResponse.json({ notes });
+      const total = Number(rows[0]?.total_count ?? 0);
+      const notes = rows.map(({ total_count: _count, ...note }) => note);
+      return NextResponse.json({ notes, total, page, pageSize });
     }
 
     const original = await loadOriginal(sql, { salesInvoiceId: invoiceId || null, inboundShipmentId: purchaseId || null });

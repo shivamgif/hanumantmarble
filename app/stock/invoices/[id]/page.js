@@ -7,6 +7,7 @@ import QRCode from 'qrcode';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { amountInWords, computeInvoiceTotals, GST_STATES, isCharge, PLACEHOLDER_GSTIN } from '@/lib/gst-invoice.mjs';
 import { useInvoiceText } from '../../components/invoice-form';
+import { InvoiceHistory } from '../../components/invoice-history';
 import { CLASSES, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../../lib/stock-utils';
 
 const fmt = (n) => Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -502,6 +503,8 @@ export default function InvoicePrintPage() {
 
         <p className="mt-1 text-center text-[10px]">{t('computerGenerated')}</p>
       </article>
+
+      <InvoiceHistory invoiceId={invoice.id} t={t} />
     </div>
   );
 }
