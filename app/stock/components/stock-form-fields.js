@@ -185,7 +185,7 @@ export function InlineNotice({ notice }) {
   );
 }
 
-export function SuggestCombobox({ value, onChange, options = [], placeholder, className, onBlur, disabled, inputRef, ...props }) {
+export function SuggestCombobox({ value, onChange, options = [], placeholder, className, onBlur, disabled, inputRef, hideEmpty = false, ...props }) {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [mobileSearch, setMobileSearch] = useState('');
@@ -285,7 +285,7 @@ export function SuggestCombobox({ value, onChange, options = [], placeholder, cl
   }
 
   return (
-    <Popover open={open && (filtered.length > 0 || desktopNeedle.length > 0)} onOpenChange={setOpen}>
+    <Popover open={open && (filtered.length > 0 || (!hideEmpty && desktopNeedle.length > 0))} onOpenChange={setOpen}>
       <PopoverAnchor asChild>
         <Input
           ref={inputRef}
@@ -546,7 +546,7 @@ export function ItemSuggestCombobox({ value, onChange, onItemSelect, items = [],
   );
 }
 
-export function SuggestComboboxField({ control, name, label, placeholder, options, className, disabled, onChangeExtra }) {
+export function SuggestComboboxField({ control, name, label, placeholder, options, className, disabled, onChangeExtra, hideEmpty }) {
   return (
     <FormField
       control={control}
@@ -566,6 +566,7 @@ export function SuggestComboboxField({ control, name, label, placeholder, option
               placeholder={placeholder}
               className={className}
               disabled={disabled}
+              hideEmpty={hideEmpty}
             />
           </FormControl>
           <FormMessage className="text-xs" />
@@ -611,42 +612,94 @@ export function StockFormField({ control, name, label, placeholder, type = 'text
   );
 }
 
-// Phone first, then the customer, offered the names already saved for that
-// number so one customer is not saved again under a new spelling. Any other
-// name can still be typed: the server saves it as a separate customer.
-export function CustomerPhoneNameFields({ form, phoneLabel, nameLabel, autoFocus = false }) {
-  const key = phoneKey(useWatch({ control: form.control, name: 'customerPhoneNumber' }));
-  const [saved, setSaved] = useState({ key: '', names: [] });
-
+// Saved customers from /api/stock/form-suggestions for `query` (a query
+// string, '' for none), 300 ms after it settles. `fresh` is false while the
+// answer on hand is for an earlier query.
+function useCustomerLookup(query) {
+  const [result, setResult] = useState({ query: '', customers: [] });
   useEffect(() => {
-    if (key.length !== 10 || key === saved.key) return undefined;
+    if (!query || query === result.query) return undefined;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/stock/form-suggestions?phone=${key}`, { cache: 'no-store', signal: controller.signal });
-        const names = res.ok ? (await res.json()).customerNames || [] : [];
-        setSaved({ key, names });
-        if (names.length === 1 && !String(form.getValues('customerName') || '').trim()) {
-          form.setValue('customerName', names[0], { shouldDirty: true, shouldValidate: true });
-        }
+        const res = await fetch(`/api/stock/form-suggestions?${query}`, { cache: 'no-store', signal: controller.signal });
+        setResult({ query, customers: res.ok ? (await res.json()).customers || [] : [] });
       } catch {
         // Aborted, or offline: suggestions are a convenience, the name stays typeable.
       }
     }, 300);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [key, saved.key, form]);
+  }, [query, result.query]);
+  return useMemo(
+    () => ({ customers: query ? result.customers : [], fresh: !!query && result.query === query }),
+    [query, result]
+  );
+}
 
-  const names = saved.key === key ? saved.names : [];
+// Phone first, then the customer. The name box suggests the customers already
+// saved on that number; when the number has none (or none is typed yet) it
+// searches saved customers by name, shown with their phone. Picking one sends
+// its id, so the sale goes to that customer even from a new number. Any other
+// name can still be typed: the server saves it as a separate customer.
+export function CustomerPhoneNameFields({ form, phoneLabel, nameLabel, autoFocus = false }) {
+  const [phone, name] = useWatch({ control: form.control, name: ['customerPhoneNumber', 'customerName'] });
+  const key = phoneKey(phone);
+  const needle = String(name ?? '').trim().replace(/\s+/g, ' ');
+
+  const onPhone = useCustomerLookup(key.length === 10 ? `phone=${key}` : '');
+  const phoneHasNone = key.length !== 10 || (onPhone.fresh && onPhone.customers.length === 0);
+  const byName = useCustomerLookup(phoneHasNone && needle.length >= 2 ? `customerName=${encodeURIComponent(needle)}` : '');
+
+  // Label -> customer. On a number every row shares the phone, so the name is
+  // enough; a name search shows the phone to tell same-named customers apart.
+  const options = useMemo(() => {
+    const map = new Map();
+    const usePhone = onPhone.fresh && onPhone.customers.length > 0;
+    for (const c of usePhone ? onPhone.customers : byName.customers) {
+      const label = usePhone || !c.phone ? c.name : `${c.name} · ${c.phone}`;
+      if (!map.has(label)) map.set(label, c);
+    }
+    return map;
+  }, [onPhone, byName]);
+
+  const pick = useCallback((customer) => {
+    const opts = { shouldDirty: true, shouldValidate: true };
+    form.setValue('customerName', customer.name, opts);
+    form.setValue('customerId', String(customer.id), opts);
+    if (!String(form.getValues('customerPhoneNumber') || '').trim() && customer.phone) {
+      form.setValue('customerPhoneNumber', customer.phone, opts);
+    }
+  }, [form]);
+
+  // One customer on the number and no name yet: fill it in, once per number,
+  // so clearing the name to type a different one sticks.
+  const filledFor = useRef('');
+  useEffect(() => {
+    if (key.length !== 10) { filledFor.current = ''; return; } // cleared, e.g. form reset after saving
+    if (!onPhone.fresh || filledFor.current === key) return;
+    filledFor.current = key;
+    if (onPhone.customers.length === 1 && !String(form.getValues('customerName') || '').trim()) {
+      pick(onPhone.customers[0]);
+    }
+  }, [onPhone, key, form, pick]);
+
   return (
     <>
       <StockFormField control={form.control} name="customerPhoneNumber" label={phoneLabel} placeholder="+91 9876543210" type="tel" autoFocus={autoFocus} />
-      {/* A plain box for a new number: the combobox would show "No matches" on
-          every keystroke and, on mobile, a picker sheet with nothing to pick. */}
-      {names.length > 0 ? (
-        <SuggestComboboxField control={form.control} name="customerName" label={nameLabel} placeholder="Customer Name..." options={names} />
-      ) : (
-        <StockFormField control={form.control} name="customerName" label={nameLabel} placeholder="Customer Name..." />
-      )}
+      <SuggestComboboxField
+        control={form.control}
+        name="customerName"
+        label={nameLabel}
+        placeholder="Customer Name..."
+        options={[...options.keys()]}
+        hideEmpty
+        onChangeExtra={(value) => {
+          const customer = options.get(value);
+          // Typing over a picked name makes it a new entry again.
+          if (customer) pick(customer);
+          else form.setValue('customerId', '', { shouldDirty: true });
+        }}
+      />
     </>
   );
 }

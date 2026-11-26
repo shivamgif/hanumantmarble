@@ -786,6 +786,7 @@ export default function AdminDashboard() {
         body: JSON.stringify({
           action: 'update',
           customerName: trimText(values.customerName) || undefined,
+          customerId: values.customerId || undefined,
           customerPhoneNumber: trimText(values.customerPhoneNumber) || undefined,
           truckLicensePlate: trimText(values.truckLicensePlate) || undefined,
           driverName: trimText(values.driverName) || undefined,

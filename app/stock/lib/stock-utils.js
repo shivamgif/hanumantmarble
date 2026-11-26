@@ -261,6 +261,7 @@ export function createInitialArrivalDraft() {
 export function createInitialDispatchDraft() {
   return {
     customerName: '',
+    customerId: '',
     customerPhoneNumber: '',
     truckLicensePlate: '',
     driverName: '',

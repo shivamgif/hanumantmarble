@@ -45,6 +45,7 @@ const invoiceItemRow = () => ({ ...createDispatchItemRow(), hsnCode: '', gstRate
 const blankInvoice = ({ branch = null, stateCode = '', city = '', seller = null } = {}) => ({
   locationId: branch ? String(branch.id) : '',
   customerName: '',
+  customerId: '',
   customerPhoneNumber: '',
   billToAddress: '',
   billToGstin: '',

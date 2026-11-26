@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { customerNamesForPhone, ensureDatabaseAvailable, getStockContext, hasAnyStockRole, stockRoute } from '@/lib/stock-workflow';
+import { customerSuggestions, ensureDatabaseAvailable, getStockContext, hasAnyStockRole, stockRoute } from '@/lib/stock-workflow';
 import { loadFormSuggestions } from '@/lib/stock-suggestions';
 
 export const GET = stockRoute(async function GET(request) {
@@ -18,11 +18,12 @@ export const GET = stockRoute(async function GET(request) {
   }
 
   try {
-    // ?phone=…: just the names already saved for that number, which the
-    // dispatch and estimate forms suggest once a phone is typed.
-    const phone = new URL(request.url).searchParams.get('phone');
-    if (phone != null) {
-      return NextResponse.json({ customerNames: await customerNamesForPhone(phone) });
+    // ?phone=… or ?customerName=…: saved customers for the dispatch and
+    // estimate forms to suggest (see CustomerPhoneNameFields).
+    const params = new URL(request.url).searchParams;
+    if (params.has('phone') || params.has('customerName')) {
+      const customers = await customerSuggestions(params.has('phone') ? { phone: params.get('phone') } : { name: params.get('customerName') });
+      return NextResponse.json({ customers });
     }
     return NextResponse.json({ suggestions: await loadFormSuggestions() });
   } catch (error) {

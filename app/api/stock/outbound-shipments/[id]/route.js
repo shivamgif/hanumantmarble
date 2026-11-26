@@ -1113,7 +1113,7 @@ export const PATCH = stockRoute(async function PATCH(request, context) {
       let divisionValidation = null;
 
       if (body.customerName) {
-        const found = await findOrCreateCustomer(body.customerName, body.customerPhoneNumber, tx);
+        const found = await findOrCreateCustomer(body.customerName, body.customerPhoneNumber, { db: tx, id: body.customerId });
         resolvedCustomerId = found?.customer_id || null;
       }
 

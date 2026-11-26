@@ -1026,6 +1026,7 @@ export default function StockDashboard() {
 
       const payload = {
         customerName,
+        customerId: values.customerId || undefined,
         customerPhoneNumber: trimText(values.customerPhoneNumber) || undefined,
         truckLicensePlate: trimText(values.truckLicensePlate) || undefined,
         truckNumber: trimText(values.truckLicensePlate) || undefined,
