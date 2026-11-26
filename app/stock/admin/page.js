@@ -150,7 +150,7 @@ export default function AdminDashboard() {
     hsn: td('hsn'), handlingCost: td('handlingCost'), fuelCost: td('fuelCost'), gst: td('gst'),
     weightKg: td('weightKg'), assets: td('assets'), submitPurchase: td('submitPurchase'),
     submitDispatch: td('submitDispatch'), replaceFile: td('replaceFile'), chooseFile: td('chooseFile'),
-    attachHint: td('attachHint'), formSection: td('formSection'), controlLabel: td('controlLabel'),
+    attachHint: td('attachHint'), formSection: td('formSection'), controlLabel: td('controlLabel'), costsAndFreight: td('costsAndFreight'),
     dispatchBasics: td('dispatchBasics'), dispatchBasicsDesc: td('dispatchBasicsDesc'),
     transportAndVehicle: td('transportAndVehicle'), shipments: td('shipments'),
     retWhole: td('retWhole'), retBrok: td('retBrok'), customerPhone: td('customerPhone'),

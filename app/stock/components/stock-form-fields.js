@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect, useRef, useId } from 'react';
-import { UploadCloud, ChevronRight, Search, Check, X as XIcon } from 'lucide-react';
+import { UploadCloud, Search, Check, X as XIcon } from 'lucide-react';
 import {
   Form,
   FormControl,
@@ -169,17 +169,13 @@ export function InlineNotice({ notice }) {
   );
 }
 
- export function FormSectionTitle({ icon: Icon, title, description, category, tc }) {
+export function FormSectionTitle({ icon: Icon, title, description }) {
   return (
-    <div className="flex items-start gap-4 mb-4">
-      <div className="space-y-2">
-        <nav className="flex items-center gap-2 text-xs font-medium text-slate-500">
-          <span>{category || tc.formSection}</span>
-          <ChevronRight className="h-2.5 w-2.5 opacity-50" />
-          <span className="text-foreground">{tc.controlLabel}</span>
-        </nav>
-        <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">{title}</h3>
-        {description ? <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold leading-relaxed opacity-70">{description}</p> : null}
+    <div className="flex items-start gap-2">
+      {Icon ? <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" /> : null}
+      <div className="min-w-0">
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        {description ? <p className="mt-0.5 text-xs text-muted-foreground">{description}</p> : null}
       </div>
     </div>
   );

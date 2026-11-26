@@ -2,7 +2,7 @@
 
 import { memo, useEffect, useMemo, useState } from 'react';
 import { useWatch } from 'react-hook-form';
-import { Boxes, FileText, Plus, ReceiptText, Truck, ChevronRight, X, Package } from 'lucide-react';
+import { FileText, Plus, ReceiptText, Truck, X, Package } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,7 +17,7 @@ import {
   SuggestCombobox,
   SuggestComboboxField,
 } from './stock-form-fields';
-import { FORM_CARD_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS, SUBMIT_BUTTON_BASE, SUBMIT_BUTTON_CLASS, parseSizeLabelSqm, round3, toNumber } from '../lib/stock-utils';
+import { FORM_FOOTER_CLASS, FORM_GRID_CLASS, FORM_INPUT_CLASS, FORM_ITEM_HEAD_CLASS, FORM_ITEM_ROW_CLASS, FORM_LABEL_CLASS, FORM_SECTION_CLASS, SUBMIT_BUTTON_BASE, SUBMIT_BUTTON_CLASS, parseSizeLabelSqm, round3, toNumber } from '../lib/stock-utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import { normalizePlate } from '@/lib/stock-inbound-trips.mjs';
@@ -60,7 +60,7 @@ function TransporterFields({ form, suggestions, t, tc }) {
         control={form.control}
         name="transporterUnknown"
         render={({ field }) => (
-          <FormItem className="flex items-start gap-2 sm:col-span-2 lg:col-span-3">
+          <FormItem className="flex items-start gap-2 sm:col-span-2 xl:col-span-3">
             <FormControl>
               <input
                 type="checkbox"
@@ -297,7 +297,7 @@ function TripPicker({ form }) {
   const separateChecked = pickedSeparate && !tripId;
 
   return (
-    <div className="sm:col-span-2 lg:col-span-3 rounded-lg border border-border bg-muted p-4 space-y-4">
+    <div className="sm:col-span-2 xl:col-span-3 rounded-lg border border-border bg-muted p-4 space-y-4">
       <p className="text-xs font-bold text-foreground">{tt('tripFoundTitle')}</p>
       <p className="text-[11px] text-muted-foreground">{tt('tripFoundHint')}</p>
       <div className="space-y-2" role="radiogroup" aria-label={tt('tripFoundTitle')}>
@@ -421,76 +421,73 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
   const wholeQtySqmDisplay = _sqmPerBox != null ? round3(_sqmPerBox * _wholeQty) : null;
   const brokenQtySqmDisplay = _sqmPerBox != null ? round3(_sqmPerBox * _brokenQty) : null;
 
+  const sqmLine = [
+    [tc.orderedSqm, orderedQtySqmDisplay],
+    [tc.wholeSqm, wholeQtySqmDisplay],
+    [tc.brokenSqm, brokenQtySqmDisplay],
+  ];
+
   return (
-    <div key={fieldRow.id} className="glass-panel rounded-lg overflow-hidden group/item">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/60 px-4 py-2">
+    <div key={fieldRow.id} className={FORM_ITEM_ROW_CLASS}>
+      <div className={FORM_ITEM_HEAD_CLASS}>
         <div className="flex items-center gap-2">
           <span className="h-1.5 w-1.5 rounded-full bg-foreground" />
-          <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">{tc.itemLabel} {index + 1}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className={`rounded-lg border px-2 py-1 text-xs font-medium ${isCatalogItem ? 'border-border bg-muted text-emerald-700 dark:text-emerald-400' : 'border-border bg-muted text-amber-700 dark:text-amber-400'}`}>
+          <span className="text-xs font-semibold text-foreground">{tc.itemLabel} {index + 1}</span>
+          <span className={`text-xs font-medium ${isCatalogItem ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>
             {isCatalogItem ? tc.autofilledCatalog : tc.newTileEntry}
           </span>
-          {totalItems > 1 && (
-            <button
-              type="button"
-              onClick={() => onRemoveItem(index)}
-              className="p-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-muted transition-colors"
-              title="Remove item"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
         </div>
+        {totalItems > 1 && (
+          <button
+            type="button"
+            onClick={() => onRemoveItem(index)}
+            className="-mr-2 rounded-lg p-1.5 text-red-600 transition-colors hover:bg-muted dark:text-red-400"
+            title="Remove item"
+            aria-label="Remove item"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
-      <div className="p-4 space-y-6">
-        <div className="mb-4">
-          <div>
-            <div className={FORM_LABEL_CLASS}>{t('name')}</div>
-            <FormField
-              control={control}
-              name={`items.${index}.itemName`}
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <SuggestCombobox
-                      value={field.value ?? ''}
-                      onChange={(v) => onItemNameChange(index, v)}
-                      onBlur={field.onBlur}
-                      options={itemNames}
-                      placeholder={tc.typeTileName}
-                      className={FORM_INPUT_CLASS}
-                    />
-                  </FormControl>
-                  <FormMessage className="text-xs" />
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="space-y-4 p-4">
+        <FormField
+          control={control}
+          name={`items.${index}.itemName`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className={FORM_LABEL_CLASS}>{t('name')}</FormLabel>
+              <FormControl>
+                <SuggestCombobox
+                  value={field.value ?? ''}
+                  onChange={(v) => onItemNameChange(index, v)}
+                  onBlur={field.onBlur}
+                  options={itemNames}
+                  placeholder={tc.typeTileName}
+                  className={FORM_INPUT_CLASS}
+                />
+              </FormControl>
+              <FormMessage className="text-xs" />
+            </FormItem>
+          )}
+        />
+        {/* Quantities and price on one line, the same five-across as a dispatch row. */}
+        <div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 xl:grid-cols-5">
             <StockFormField control={control} name={`items.${index}.orderedBoxes`} label={tc.ordered} type="number" placeholder="0" min="0" />
-            <StockFormField control={control} name={`items.${index}.wholeQty`} label={tc.wholeBox} type="number" placeholder="0" min="0"  />
-            <StockFormField control={control} name={`items.${index}.brokenQty`} label={tc.brokenTiles} type="number"  placeholder="0"  min="0"/>
+            <StockFormField control={control} name={`items.${index}.wholeQty`} label={tc.wholeBox} type="number" placeholder="0" min="0" />
+            <StockFormField control={control} name={`items.${index}.brokenQty`} label={tc.brokenTiles} type="number" placeholder="0" min="0" />
+            <StockFormField control={control} name={`items.${index}.costPerSqm`} label={t('costPerSqm')} type="number" min="0" step="0.01" />
+            <StockFormField control={control} name={`items.${index}.discountAmount`} label="Discount (₹)" type="number" placeholder="0" min="0" step="0.01" />
           </div>
-        <div className="grid gap-4 sm:grid-cols-3 p-4 rounded-lg bg-muted/50 border border-border">
-          {[
-            { label: tc.orderedSqm, value: orderedQtySqmDisplay },
-            { label: tc.wholeSqm, value: wholeQtySqmDisplay },
-            { label: tc.brokenSqm, value: brokenQtySqmDisplay },
-          ].map(({ label, value }) => (
-            <div key={label}>
-              <div className="text-xs font-medium text-slate-500/60 mb-1">{label}</div>
-              <div className="text-sm font-bold text-slate-900 dark:text-white tabular-nums tracking-tight">{value ?? '—'}</div>
-            </div>
-          ))}
+          <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            {sqmLine.map(([label, value]) => (
+              <span key={label}>{label} <span className="font-semibold tabular-nums text-foreground">{value ?? '—'}</span></span>
+            ))}
+          </p>
         </div>
         <div>
-          <div className="mb-4 flex items-center gap-2 text-xs font-medium text-slate-400">
-            {isCatalogItem ? tc.catalogIntelligence : tc.technicalEntry}
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{isCatalogItem ? tc.catalogIntelligence : tc.technicalEntry}</div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <StockFormField control={control} name={`items.${index}.brandName`} label={tc.brand} placeholder={tc.brand} disabled={isCatalogItem} list="sg-brandName" />
             <FormField
               control={control}
@@ -574,11 +571,11 @@ const ArrivalItemRow = memo(function ArrivalItemRow({ index, fieldRow, control, 
             <StockFormField control={control} name={`items.${index}.piecesPerBox`} label={tc.piecesPerBox} type="number" placeholder="2" min="0" disabled={isCatalogItem} />
             <StockFormField control={control} name={`items.${index}.hsnCode`} label={tc.hsn} placeholder={tc.hsn} list="sg-hsnCode" disabled={isCatalogItem} digitsOnly />
             <StockFormField control={control} name={`items.${index}.thicknessMm`} label={`${tc.thickness} (${tc.mm})`} type="number" min="0" step="0.01" disabled={isCatalogItem} />
-            <StockFormField control={control} name={`items.${index}.costPerSqm`} label={t('costPerSqm')} type="number" min="0" step="0.01" />
-            <StockFormField control={control} name={`items.${index}.discountAmount`} label="Discount (₹)" type="number" placeholder="0" min="0" step="0.01" />
-            <StockFormField control={control} name={`items.${index}.description`} label={tc.description} placeholder="Notes..." className="sm:col-span-2 lg:col-span-3 2xl:col-span-4" disabled={isCatalogItem} />
           </div>
         </div>
+        {/* className on StockFormField styles the input, not the cell, so the old
+            col-span here replaced the input's own styling. Full width on its own. */}
+        <StockFormField control={control} name={`items.${index}.description`} label={tc.description} placeholder="Notes..." disabled={isCatalogItem} />
       </div>
     </div>
   );
@@ -588,69 +585,71 @@ const FlatRateArrivalItemRow = memo(function FlatRateArrivalItemRow({ index, fie
   const v = variant ?? FLAT_RATE_VARIANTS.bag;
   const isStone = v.key === 'stone';
   return (
-    <div key={fieldRow.id} className="glass-panel rounded-lg overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/60 px-4 py-2">
+    <div key={fieldRow.id} className={FORM_ITEM_ROW_CLASS}>
+      <div className={FORM_ITEM_HEAD_CLASS}>
         <div className="flex items-center gap-2">
           <span className={`h-1.5 w-1.5 rounded-full ${v.accentDot}`} />
-          <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">{tc?.itemLabel ?? 'Item'} {index + 1}</span>
-          <span className={`rounded-lg border px-2 py-1 text-xs font-medium ${v.accentChip}`}>{v.badge}</span>
+          <span className="text-xs font-semibold text-foreground">{tc?.itemLabel ?? 'Item'} {index + 1}</span>
+          <span className={`text-xs font-medium ${v.accentText}`}>{v.badge}</span>
         </div>
         {totalItems > 1 && (
-          <button type="button" onClick={() => onRemoveItem(index)} className="p-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-muted transition-colors">
+          <button
+            type="button"
+            onClick={() => onRemoveItem(index)}
+            className="-mr-2 rounded-lg p-1.5 text-red-600 transition-colors hover:bg-muted dark:text-red-400"
+            title="Remove item"
+            aria-label="Remove item"
+          >
             <X className="h-4 w-4" />
           </button>
         )}
       </div>
-      <div className="p-4 space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-          <div className="sm:col-span-2 lg:col-span-1">
-            <div className={FORM_LABEL_CLASS}>{tc?.productName ?? 'Product Name'}</div>
-            <FormField
-              control={control}
-              name={`items.${index}.itemName`}
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <SuggestCombobox
-                      value={field.value ?? ''}
-                      onChange={(v) => onItemNameChange(index, v)}
-                      onBlur={field.onBlur}
-                      options={bagItemNames}
-                      placeholder={tc?.selectProduct ?? 'Select Product'}
-                      className={FORM_INPUT_CLASS}
-                    />
-                  </FormControl>
-                  <FormMessage className="text-xs" />
-                </FormItem>
-              )}
-            />
-          </div>
+      <div className="space-y-4 p-4">
+        {/* What it is, three across; then every number on one grid. */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <FormField
+            control={control}
+            name={`items.${index}.itemName`}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className={FORM_LABEL_CLASS}>{tc?.productName ?? 'Product Name'}</FormLabel>
+                <FormControl>
+                  <SuggestCombobox
+                    value={field.value ?? ''}
+                    onChange={(v) => onItemNameChange(index, v)}
+                    onBlur={field.onBlur}
+                    options={bagItemNames}
+                    placeholder={tc?.selectProduct ?? 'Select Product'}
+                    className={FORM_INPUT_CLASS}
+                  />
+                </FormControl>
+                <FormMessage className="text-xs" />
+              </FormItem>
+            )}
+          />
           <SuggestComboboxField control={control} name={`items.${index}.brandName`} label={tc?.brand ?? 'Brand'} placeholder={tc?.brand ?? 'Brand'} options={bagBrands} />
           <SuggestComboboxField control={control} name={`items.${index}.typeName`} label={tc?.type ?? 'Type'} placeholder={tc?.type ?? 'Type'} options={bagTypes} />
-          {isStone ? (
+        </div>
+        {isStone ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <StockFormField control={control} name={`items.${index}.qtySqft`} label={tc?.qtySqft ?? 'Qty (Sqft)'} type="number" placeholder="0" min="0" step="0.001" />
-          ) : (
+            <StockFormField control={control} name={`items.${index}.ratePerSqft`} label={tc?.ratePerSqft ?? 'Rate per Sqft (₹)'} type="number" placeholder="0" min="0" step="0.01" />
+            {/* Slab size is recorded per delivery — it changes next time, so it is
+                a note on this consignment, not a property of the item. */}
+            <StockFormField control={control} name={`items.${index}.sizeLabel`} label={tc?.slabSize ?? 'Slab Size (this delivery)'} placeholder="e.g. 2x2 ft" />
+            <StockFormField control={control} name={`items.${index}.thicknessMm`} label={`${tc?.thickness ?? 'Thickness'} (${tc?.mm ?? 'mm'})`} type="number" placeholder="25" min="0" step="0.01" />
+            <StockFormField control={control} name={`items.${index}.discountAmount`} label="Discount (₹)" type="number" placeholder="0" min="0" step="0.01" />
+            <StockFormField control={control} name={`items.${index}.hsnCode`} label={tc?.hsn ?? 'HSN Code'} placeholder={tc?.hsn ?? 'HSN Code'} list="sg-hsnCode" digitsOnly />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 xl:grid-cols-5">
             <StockFormField control={control} name={`items.${index}.qtyBags`} label={tc?.qtyBags ?? 'Qty (Bags)'} type="number" placeholder="0" min="0" />
-          )}
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {isStone ? (
-            <>
-              <StockFormField control={control} name={`items.${index}.ratePerSqft`} label={tc?.ratePerSqft ?? 'Rate per Sqft (₹)'} type="number" placeholder="0" min="0" step="0.01" />
-              {/* Slab size is recorded per delivery — it changes next time, so it is
-                  a note on this consignment, not a property of the item. */}
-              <StockFormField control={control} name={`items.${index}.sizeLabel`} label={tc?.slabSize ?? 'Slab Size (this delivery)'} placeholder="e.g. 2x2 ft" />
-              <StockFormField control={control} name={`items.${index}.thicknessMm`} label={`${tc?.thickness ?? 'Thickness'} (${tc?.mm ?? 'mm'})`} type="number" placeholder="25" min="0" step="0.01" />
-            </>
-          ) : (
-            <>
-              <StockFormField control={control} name={`items.${index}.weightPerUnitKg`} label={tc?.weightPerBag ?? 'Weight per Bag (kg)'} type="number" placeholder="25" min="0" step="0.1" />
-              <StockFormField control={control} name={`items.${index}.ratePerBag`} label={tc?.ratePerBag ?? 'Rate per Bag (₹)'} type="number" placeholder="0" min="0" step="0.01" />
-            </>
-          )}
-          <StockFormField control={control} name={`items.${index}.discountAmount`} label="Discount (₹)" type="number" placeholder="0" min="0" step="0.01" />
-          <StockFormField control={control} name={`items.${index}.hsnCode`} label={tc?.hsn ?? 'HSN Code'} placeholder={tc?.hsn ?? 'HSN Code'} list="sg-hsnCode" digitsOnly />
-        </div>
+            <StockFormField control={control} name={`items.${index}.weightPerUnitKg`} label={tc?.weightPerBag ?? 'Weight per Bag (kg)'} type="number" placeholder="25" min="0" step="0.1" />
+            <StockFormField control={control} name={`items.${index}.ratePerBag`} label={tc?.ratePerBag ?? 'Rate per Bag (₹)'} type="number" placeholder="0" min="0" step="0.01" />
+            <StockFormField control={control} name={`items.${index}.discountAmount`} label="Discount (₹)" type="number" placeholder="0" min="0" step="0.01" />
+            <StockFormField control={control} name={`items.${index}.hsnCode`} label={tc?.hsn ?? 'HSN Code'} placeholder={tc?.hsn ?? 'HSN Code'} list="sg-hsnCode" digitsOnly />
+          </div>
+        )}
         <StockFormField control={control} name={`items.${index}.description`} label={tc?.description ?? 'Description'} placeholder={tc?.notesPlaceholder ?? 'Notes...'} />
       </div>
     </div>
@@ -688,50 +687,46 @@ export function FlatRateArrivalFormContent({
   return (
     <Form {...form}>
       <form className="mt-6" onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
-        <fieldset disabled={submitting} className="space-y-6 border-0 p-0 m-0 min-w-0">
         {Object.entries(suggestions || {}).map(([key, values]) => (
           <datalist key={key} id={`sg-${key}`}>
             {[...new Set(values || [])].map((v, idx) => <option key={`${key}-${idx}`} value={v} />)}
           </datalist>
         ))}
-        <div className={FORM_CARD_CLASS}>
-          <FormSectionTitle category="Intake Strategy" icon={FileText} title="Purchase Basics" description={v.arrivalDescription} tc={tc} />
-          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <fieldset disabled={submitting} className="space-y-6 border-0 p-0 m-0 min-w-0">
+        <section className={FORM_SECTION_CLASS}>
+          <FormSectionTitle icon={FileText} title={tc?.purchaseBasics ?? 'Purchase Basics'} description={v.arrivalDescription} />
+          <div className={FORM_GRID_CLASS}>
             <SuggestComboboxField control={form.control} name="supplierName" label={t?.('supplier') ?? 'Supplier'} placeholder="Supplier Name..." options={suggestions?.supplierName} />
             <StockFormField control={form.control} name="invoiceNumber" label={t?.('invoiceNo') ?? 'Invoice No.'} placeholder="INV-..." invoiceChars />
-            <StockDateField control={form.control} name="invoiceDate" label={tc?.invoiceDate ?? 'Invoice Date'} placeholder="Invoice Date" />
-            <StockFormField control={form.control} name="handlingCostPercent" label="Handling Cost %" type="number" placeholder="1.0" min="0" step="0.1" />
-            <StockFormField control={form.control} name="fuelCostPercent" label="Fuel Cost %" type="number" placeholder="5.0" min="0" step="0.1" />
-            <StockFormField control={form.control} name="gstPercent" label="GST %" type="number" placeholder={v.gstPlaceholder} min="0" step="0.1" />
+            <StockDateField control={form.control} name="invoiceDate" label={tc?.invoiceDate ?? 'Invoice Date'} placeholder={tc?.invoiceDate ?? 'Invoice Date'} />
             <StockFormField control={form.control} name="discountAmount" label="Shipment Discount (₹)" type="number" placeholder="0" min="0" step="0.01" />
             <AttachmentField label={tc?.invoicePhoto ?? 'Invoice Photo'} file={attachments?.purchaseInvoice} onChange={(file) => setAttachment('purchaseInvoice', file)} hint={tc?.invoicePhotoHint} tc={tc} />
             <AttachmentField label={tc?.transporterBillPhoto ?? 'Transporter Bill'} file={attachments?.transporterBill} onChange={(file) => setAttachment('transporterBill', file)} accept="image/*" hint={tc?.transporterBillHint} tc={tc} />
           </div>
-        </div>
-        <div className={FORM_CARD_CLASS}>
-          <FormSectionTitle category="Mobility Details" icon={Truck} title={tc?.transportInvoice ?? 'Transport & Vehicle'} tc={tc} />
-          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        </section>
+        <section className={FORM_SECTION_CLASS}>
+          <FormSectionTitle icon={Truck} title={tc?.transportInvoice ?? 'Transport & Vehicle'} />
+          <div className={FORM_GRID_CLASS}>
             <TransporterFields form={form} suggestions={suggestions} t={t} tc={tc} />
             <TripPicker form={form} />
             <SuggestComboboxField control={form.control} name="originCity" label={tc?.originCity ?? 'Origin City'} placeholder="Source city" options={suggestions?.originCity} />
             <SuggestComboboxField control={form.control} name="destinationWarehouseName" label={tc?.destinationWarehouse ?? 'Destination Warehouse'} placeholder="Warehouse name" options={suggestions?.destinationWarehouseName} />
+          </div>
+        </section>
+        <section className={FORM_SECTION_CLASS}>
+          <FormSectionTitle icon={ReceiptText} title={tc?.costsAndFreight ?? 'Costs & Freight'} />
+          <div className={FORM_GRID_CLASS}>
             <StockMoneyField control={form.control} name="transportCost" label={t?.('transportCost') ?? 'Transport Cost'} hint={tc?.amountInInr} />
             <StockMoneyField control={form.control} name="laborCost" label={t?.('laborCost') ?? 'Labour Cost'} hint={tc?.amountInInr} />
             <FreightWeightField form={form} label={tc?.weightKg ?? 'Freight Weight'} />
+            <StockFormField control={form.control} name="handlingCostPercent" label="Handling Cost %" type="number" placeholder="1.0" min="0" step="0.1" />
+            <StockFormField control={form.control} name="fuelCostPercent" label="Fuel Cost %" type="number" placeholder="5.0" min="0" step="0.1" />
+            <StockFormField control={form.control} name="gstPercent" label="GST %" type="number" placeholder={v.gstPlaceholder} min="0" step="0.1" />
           </div>
-        </div>
-        <div className={FORM_CARD_CLASS}>
-          <div className="flex justify-between items-center mb-4 gap-4 px-1">
-            <div className="space-y-1">
-              <nav className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                <span>Inventory Hub</span>
-                <ChevronRight className="h-2.5 w-2.5 opacity-50" />
-                <span className={v.accentText}>{v.breadcrumb}</span>
-              </nav>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">Items</h3>
-            </div>
-          </div>
-          <div className="space-y-4">
+        </section>
+        <section className={FORM_SECTION_CLASS}>
+          <FormSectionTitle icon={Package} title={t?.('items') ?? 'Items'} />
+          <div className="mt-4 space-y-4">
             {itemsFieldArray.fields.map((fieldRow, index) => (
               <FlatRateArrivalItemRow
                 key={fieldRow.id}
@@ -748,17 +743,17 @@ export function FlatRateArrivalFormContent({
                 onRemoveItem={(i) => itemsFieldArray.remove(i)}
               />
             ))}
-            <button
-              type="button"
-              onClick={onAddItem}
-              className={`inline-flex mb-4 mt-4 items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${v.accentAddBtn}`}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              {v.addItemLabel}
-            </button>
           </div>
-        </div>
-        <div className={FORM_CARD_CLASS}>
+          <button
+            type="button"
+            onClick={onAddItem}
+            className={`mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${v.accentAddBtn}`}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {v.addItemLabel}
+          </button>
+        </section>
+        <section className={FORM_SECTION_CLASS}>
           <FormField
             control={form.control}
             name="notes"
@@ -772,20 +767,16 @@ export function FlatRateArrivalFormContent({
               </FormItem>
             )}
           />
-        </div>
+        </section>
         <InlineNotice notice={notice} />
         </fieldset>
-        <button
-          type="submit"
-          disabled={submitting}
-          className={`mt-6 ${SUBMIT_BUTTON_BASE} text-white hover:brightness-110 ${v.accentSubmitBtn}`}
-        >
-          <span className="inline-flex items-center gap-2">
+        <div className={FORM_FOOTER_CLASS}>
+          <button type="submit" disabled={submitting} className={`${SUBMIT_BUTTON_BASE} text-white hover:brightness-110 ${v.accentSubmitBtn} sm:w-auto sm:min-w-48`}>
             <Package className="h-5 w-5" />
             {submitting ? (tc?.submitting ?? 'Submitting...') : v.submitArrivalLabel}
             <kbd aria-hidden="true" className="hidden rounded-lg bg-white/20 px-2 font-sans text-[11px] font-medium sm:inline">Ctrl ↵</kbd>
-          </span>
-        </button>
+          </button>
+        </div>
       </form>
     </Form>
   );
@@ -825,52 +816,46 @@ export function ArrivalFormContent({
   return (
     <Form {...form}>
       <form className="mt-6" onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
-        <fieldset disabled={submitting} className="space-y-6 border-0 p-0 m-0 min-w-0">
         {Object.entries(suggestions).map(([key, values]) => (
           <datalist key={key} id={`sg-${key}`}>
             {[...new Set(values || [])].map((v, idx) => <option key={`${key}-${idx}`} value={v} />)}
           </datalist>
         ))}
-        <div className={FORM_CARD_CLASS}>
-          <FormSectionTitle category="Intake Strategy" icon={FileText} title={tc.purchaseBasics} description={tc.purchaseBasicsDesc} tc={tc} />
-          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <fieldset disabled={submitting} className="space-y-6 border-0 p-0 m-0 min-w-0">
+        <section className={FORM_SECTION_CLASS}>
+          <FormSectionTitle icon={FileText} title={tc.purchaseBasics} description={tc.purchaseBasicsDesc} />
+          <div className={FORM_GRID_CLASS}>
             <SuggestComboboxField control={form.control} name="supplierName" label={t('supplier')} placeholder="Supplier Name..." options={suggestions.supplierName} />
             <StockFormField control={form.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." invoiceChars />
             <StockDateField control={form.control} name="invoiceDate" label={tc.invoiceDate} placeholder={tc.invoiceDate} />
-            <StockFormField control={form.control} name="handlingCostPercent" label={`${tc.handlingCost} %`} type="number" placeholder="1.0" min="0" step="0.1" />
-            <StockFormField control={form.control} name="fuelCostPercent" label={`${tc.fuelCost} %`} type="number" placeholder="5.0" min="0" step="0.1" />
-            <StockFormField control={form.control} name="gstPercent" label={`${tc.gst} %`} type="number" placeholder="18.0" min="0" step="0.1" />
             <StockFormField control={form.control} name="discountAmount" label="Shipment Discount (₹)" type="number" placeholder="0" min="0" step="0.01" />
             <AttachmentField label={tc.invoicePhoto} file={attachments.purchaseInvoice} onChange={(file) => setAttachment('purchaseInvoice', file)} hint={tc.invoicePhotoHint} tc={tc} />
             <AttachmentField label={tc.transporterBillPhoto} file={attachments.transporterBill} onChange={(file) => setAttachment('transporterBill', file)} accept="image/*" hint={tc.transporterBillHint} tc={tc} />
           </div>
-        </div>
-        <div className={FORM_CARD_CLASS}>
-          <FormSectionTitle category="Mobility Details" icon={Truck} title={tc.transportInvoice} tc={tc} />
-          <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        </section>
+        <section className={FORM_SECTION_CLASS}>
+          <FormSectionTitle icon={Truck} title={tc.transportInvoice} />
+          <div className={FORM_GRID_CLASS}>
             <TransporterFields form={form} suggestions={suggestions} t={t} tc={tc} />
             <TripPicker form={form} />
             <SuggestComboboxField control={form.control} name="originCity" label={tc.originCity} placeholder="Source city" options={suggestions.originCity} />
             <SuggestComboboxField control={form.control} name="destinationWarehouseName" label={tc.destinationWarehouse} placeholder="Warehouse name" options={suggestions.destinationWarehouseName} />
+          </div>
+        </section>
+        <section className={FORM_SECTION_CLASS}>
+          <FormSectionTitle icon={ReceiptText} title={tc?.costsAndFreight ?? 'Costs & Freight'} />
+          <div className={FORM_GRID_CLASS}>
             <StockMoneyField control={form.control} name="transportCost" label={t('transportCost')} hint={tc.amountInInr} />
             <StockMoneyField control={form.control} name="laborCost" label={t('laborCost')} hint={tc.amountInInr} />
             <FreightWeightField form={form} label={tc.weightKg} />
+            <StockFormField control={form.control} name="handlingCostPercent" label={`${tc.handlingCost} %`} type="number" placeholder="1.0" min="0" step="0.1" />
+            <StockFormField control={form.control} name="fuelCostPercent" label={`${tc.fuelCost} %`} type="number" placeholder="5.0" min="0" step="0.1" />
+            <StockFormField control={form.control} name="gstPercent" label={`${tc.gst} %`} type="number" placeholder="18.0" min="0" step="0.1" />
           </div>
-        </div>
-        <div className={FORM_CARD_CLASS}>
-          <div className="flex justify-between items-center mb-4 gap-4 px-1">
-            <div className="space-y-1">
-              <nav className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                <span>{tc.inventoryHub}</span>
-                <ChevronRight className="h-2.5 w-2.5 opacity-50" />
-                <span className="text-foreground">{tc.assets}</span>
-              </nav>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">{t('items')}</h3>
-            </div>
-
-          </div>
-          <div className="space-y-4">
-            
+        </section>
+        <section className={FORM_SECTION_CLASS}>
+          <FormSectionTitle icon={Package} title={t('items')} />
+          <div className="mt-4 space-y-4">
             {itemsFieldArray.fields.map((fieldRow, index) => (
               <ArrivalItemRow
                 key={fieldRow.id}
@@ -889,17 +874,17 @@ export function ArrivalFormContent({
                 onRemoveItem={(i) => itemsFieldArray.remove(i)}
               />
             ))}
-            <button
-              type="button"
-              onClick={onAddItem}
-              className="inline-flex mb-4 items-center gap-2 rounded-lg bg-muted px-4 py-2 text-[13px] font-semibold text-foreground [&>svg]:text-brand-primary transition hover:bg-border active:scale-[0.96]"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              {t('addItem')}
-            </button>
           </div>
-        </div>
-        <div className={FORM_CARD_CLASS}>
+          <button
+            type="button"
+            onClick={onAddItem}
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-muted px-4 py-2 text-[13px] font-semibold text-foreground transition hover:bg-border active:scale-[0.96] [&>svg]:text-brand-primary"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {t('addItem')}
+          </button>
+        </section>
+        <section className={FORM_SECTION_CLASS}>
           <FormField
             control={form.control}
             name="notes"
@@ -913,20 +898,16 @@ export function ArrivalFormContent({
               </FormItem>
             )}
           />
-        </div>
+        </section>
         <InlineNotice notice={notice} />
         </fieldset>
-        <button
-          type="submit"
-          disabled={submitting}
-          className={`mt-6 ${SUBMIT_BUTTON_CLASS}`}
-        >
-          <span className="inline-flex items-center gap-2">
+        <div className={FORM_FOOTER_CLASS}>
+          <button type="submit" disabled={submitting} className={`${SUBMIT_BUTTON_CLASS} sm:w-auto sm:min-w-48`}>
             <ReceiptText className="h-5 w-5" />
             {submitting ? tc.submitting : tc.submitPurchase}
             <kbd aria-hidden="true" className="hidden rounded-lg bg-white/20 px-2 font-sans text-[11px] font-medium sm:inline">Ctrl ↵</kbd>
-          </span>
-        </button>
+          </button>
+        </div>
       </form>
     </Form>
   );

@@ -118,6 +118,7 @@ export default function StockDashboard() {
     attachHint: t('attachHint'),
     formSection: t('formSection'),
     controlLabel: t('controlLabel'),
+    costsAndFreight: t('costsAndFreight'),
     dispatchBasics: t('dispatchBasics'),
     dispatchBasicsDesc: t('dispatchBasicsDesc'),
     transportAndVehicle: t('transportAndVehicle'),

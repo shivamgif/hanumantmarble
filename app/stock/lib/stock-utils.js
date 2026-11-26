@@ -501,6 +501,14 @@ export function getSortedRows(rows, sortState, accessors) {
 export const FORM_LABEL_CLASS = 'block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2';
 export const FORM_INPUT_CLASS = 'w-full rounded-lg border border-input bg-card px-4 py-[7px] text-sm text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-brand-primary/15 dark:focus:border-slate-500';
 export const FORM_CARD_CLASS = 'glass-panel rounded-lg p-4 sm:p-6';
+// Dispatch/purchase drawer sections: a rule between sections instead of a card
+// round each, so the drawer is one surface rather than cards inside cards.
+export const FORM_SECTION_CLASS = 'border-t border-border pt-6 first-of-type:border-t-0 first-of-type:pt-0';
+export const FORM_GRID_CLASS = 'mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3';
+// Submit row closing the form, after the last section.
+export const FORM_FOOTER_CLASS = 'mt-6 flex justify-end border-t border-border pt-4';
+export const FORM_ITEM_ROW_CLASS = 'rounded-lg border border-border';
+export const FORM_ITEM_HEAD_CLASS = 'flex items-center justify-between gap-2 border-b border-border px-4 py-2';
 
 // One control height across the app: inputs, selects, pills and tab strips
 // are all 36px, so a toolbar mixing them lines up.

@@ -378,6 +378,7 @@
       "attachHint": "Attach photo / PDF",
       "formSection": "Form Section",
       "controlLabel": "Control",
+      "costsAndFreight": "Costs & Freight",
       "dispatchBasics": "Dispatch Basics",
       "dispatchBasicsDesc": "Fill in the core details for this dispatch.",
       "transportAndVehicle": "Transport & Vehicle",

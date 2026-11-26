@@ -118,7 +118,7 @@ export function InvoiceFormContent({
       <form className="mt-6" onSubmit={form.handleSubmit(onSubmit)}>
         <fieldset disabled={submitting} className="m-0 min-w-0 space-y-6 border-0 p-0">
           <div className={FORM_CARD_CLASS}>
-            <FormSectionTitle category={t('estimate')} icon={FileText} title={t('customerDetails')} description={t('branchHint')} tc={{}} />
+            <FormSectionTitle icon={FileText} title={t('customerDetails')} description={t('branchHint')} tc={{}} />
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <SelectFormField control={form.control} name="locationId" label={t('branch')} placeholder={t('selectBranch')}>
                 {branches.map((branch) => (
