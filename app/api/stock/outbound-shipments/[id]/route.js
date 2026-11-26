@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, generateReference, getStockContext, hasAnyStockRole, normalizeStockRole, queueNotification, recordTimelineEvent, stockRoute } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, findOrCreateCustomer, generateReference, getStockContext, hasAnyStockRole, normalizeStockRole, queueNotification, recordTimelineEvent, stockRoute } from '@/lib/stock-workflow';
 import { sql, withTransaction } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import {
@@ -1113,30 +1113,8 @@ export const PATCH = stockRoute(async function PATCH(request, context) {
       let divisionValidation = null;
 
       if (body.customerName) {
-        const trimmedName = body.customerName.trim();
-        const trimmedPhone = body.customerPhoneNumber?.trim() || null;
-        let found = null;
-        if (trimmedPhone) {
-          const rows = await tx(
-            'SELECT id FROM stock_customers WHERE lower(name) = lower($1) AND phone = $2 LIMIT 1',
-            [trimmedName, trimmedPhone]
-          );
-          found = rows[0] || null;
-        } else {
-          const rows = await tx(
-            'SELECT id FROM stock_customers WHERE lower(name) = lower($1) LIMIT 1',
-            [trimmedName]
-          );
-          found = rows[0] || null;
-        }
-        if (!found) {
-          const rows = await tx(
-            'INSERT INTO stock_customers (name, phone) VALUES ($1, $2) RETURNING id',
-            [trimmedName, trimmedPhone]
-          );
-          found = rows[0];
-        }
-        resolvedCustomerId = found?.id || null;
+        const found = await findOrCreateCustomer(body.customerName, body.customerPhoneNumber, tx);
+        resolvedCustomerId = found?.customer_id || null;
       }
 
       const requiresDivisionValidation = (body.items && Array.isArray(body.items) && body.items.length > 0)

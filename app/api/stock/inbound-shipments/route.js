@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import {
   collectNotificationRecipients,
   ensureDatabaseAvailable,
+  findOrCreateCustomer,
   generateReference,
   getStockContext,
   hasAnyStockRole,
@@ -314,22 +315,8 @@ export const POST = stockRoute(async function POST(request) {
     let resolvedCustomerId = body.customerId ? Number(body.customerId) : null;
     if (!resolvedCustomerId && body.customerName && normalizeText(body.customerName)) {
       const custName = normalizeText(body.customerName);
-      const custInsert = await sql(
-        `INSERT INTO stock_customers (name, phone, is_active)
-         VALUES ($1, $2, TRUE)
-         ON CONFLICT DO NOTHING
-         RETURNING id`,
-        [custName, normalizeText(body.customerPhone) || null]
-      );
-      if (custInsert[0]) {
-        resolvedCustomerId = custInsert[0].id;
-      } else {
-        const existing = await sql(
-          `SELECT id FROM stock_customers WHERE lower(trim(name)) = lower(trim($1)) LIMIT 1`,
-          [custName]
-        );
-        resolvedCustomerId = existing[0]?.id || null;
-      }
+      const customer = await findOrCreateCustomer(custName, normalizeText(body.customerPhone));
+      resolvedCustomerId = customer?.customer_id || null;
     }
 
     // ── Group B: resolve salesperson FK ────────────────────────────

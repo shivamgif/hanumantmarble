@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   AttachmentField,
+  CustomerPhoneNameFields,
   FormSectionTitle,
   InlineNotice,
   ItemSuggestCombobox,
@@ -420,8 +421,7 @@ export function DispatchFormContent({
             tc={tc}
           />
           <div className="mt-8 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            <StockFormField control={form.control} name="customerName" label={t('customer')} placeholder="Customer Name..." autoFocus />
-            <StockFormField control={form.control} name="customerPhoneNumber" label={tc.customerPhone} placeholder="+91 9876543210" type="tel" />
+            <CustomerPhoneNameFields form={form} phoneLabel={tc.customerPhone} nameLabel={t('customer')} autoFocus />
             <StockFormField control={form.control} name="invoiceNumber" label={t('invoiceNo')} placeholder="INV-..." invoiceChars />
             <StockDateField control={form.control} name="dispatchDate" label={tc.invoiceDate} placeholder={tc.invoiceDate} />
             <SuggestComboboxField

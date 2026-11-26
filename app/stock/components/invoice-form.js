@@ -9,7 +9,7 @@ import { SelectField } from '@/components/ui/select';
 import { CARTAGE_SAC, computeInvoiceTotals, GST_STATES } from '@/lib/gst-invoice.mjs';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
-import { FormSectionTitle, InlineNotice, StockFormField, SuggestComboboxField } from './stock-form-fields';
+import { CustomerPhoneNameFields, FormSectionTitle, InlineNotice, StockFormField, SuggestComboboxField } from './stock-form-fields';
 import { DispatchItemRow } from './dispatch-form';
 import { FORM_CARD_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS, SUBMIT_BUTTON_CLASS, SUBMIT_SECONDARY_CLASS } from '../lib/stock-utils';
 
@@ -125,8 +125,7 @@ export function InvoiceFormContent({
                   <option key={branch.id} value={String(branch.id)}>{branch.name}</option>
                 ))}
               </SelectFormField>
-              <StockFormField control={form.control} name="customerName" label={t('customer')} placeholder="Customer name…" />
-              <StockFormField control={form.control} name="customerPhoneNumber" label={t('phone')} placeholder="+91 9876543210" type="tel" />
+              <CustomerPhoneNameFields form={form} phoneLabel={t('phone')} nameLabel={t('customer')} />
               <SelectFormField control={form.control} name="billToStateCode" label={t('billToState')} placeholder="State…">
                 {Object.entries(GST_STATES).map(([code, name]) => (
                   <option key={code} value={code}>{code} · {name}</option>

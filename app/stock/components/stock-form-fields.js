@@ -17,6 +17,8 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { useWatch } from 'react-hook-form';
+import { phoneKey } from '@/lib/stock-customer-match.mjs';
 import { FORM_LABEL_CLASS, FORM_INPUT_CLASS } from '../lib/stock-utils';
 
 const MAX_RESULTS = 200;
@@ -606,6 +608,46 @@ export function StockFormField({ control, name, label, placeholder, type = 'text
         </FormItem>
       )}
     />
+  );
+}
+
+// Phone first, then the customer, offered the names already saved for that
+// number so one customer is not saved again under a new spelling. Any other
+// name can still be typed: the server saves it as a separate customer.
+export function CustomerPhoneNameFields({ form, phoneLabel, nameLabel, autoFocus = false }) {
+  const key = phoneKey(useWatch({ control: form.control, name: 'customerPhoneNumber' }));
+  const [saved, setSaved] = useState({ key: '', names: [] });
+
+  useEffect(() => {
+    if (key.length !== 10 || key === saved.key) return undefined;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/stock/form-suggestions?phone=${key}`, { cache: 'no-store', signal: controller.signal });
+        const names = res.ok ? (await res.json()).customerNames || [] : [];
+        setSaved({ key, names });
+        if (names.length === 1 && !String(form.getValues('customerName') || '').trim()) {
+          form.setValue('customerName', names[0], { shouldDirty: true, shouldValidate: true });
+        }
+      } catch {
+        // Aborted, or offline: suggestions are a convenience, the name stays typeable.
+      }
+    }, 300);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [key, saved.key, form]);
+
+  const names = saved.key === key ? saved.names : [];
+  return (
+    <>
+      <StockFormField control={form.control} name="customerPhoneNumber" label={phoneLabel} placeholder="+91 9876543210" type="tel" autoFocus={autoFocus} />
+      {/* A plain box for a new number: the combobox would show "No matches" on
+          every keystroke and, on mobile, a picker sheet with nothing to pick. */}
+      {names.length > 0 ? (
+        <SuggestComboboxField control={form.control} name="customerName" label={nameLabel} placeholder="Customer Name..." options={names} />
+      ) : (
+        <StockFormField control={form.control} name="customerName" label={nameLabel} placeholder="Customer Name..." />
+      )}
+    </>
   );
 }
 
