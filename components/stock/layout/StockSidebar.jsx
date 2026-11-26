@@ -1,13 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
-import { ArrowDown, ArrowUp, Bell, Check, ChevronsUpDown, Eye, EyeOff, GripVertical, Languages, MoonStar, RotateCcw, SlidersHorizontal, SunMedium, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
-import { moveItem } from '@/lib/layout-prefs.mjs';
+import { Bell, Check, ChevronsUpDown, Eye, EyeOff, GripVertical, Languages, MoonStar, RotateCcw, SlidersHorizontal, SunMedium, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { DragGhost, usePointerSort } from '@/hooks/usePointerSort';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { CompanyMark } from '@/components/ui/brand-mark';
 import { TENANT_COOKIE } from '@/lib/tenant-cookie';
+
+// Dashboard is always the first link: no grip, and nothing drops above it.
+const PINNED_NAV = new Set(['/stock']);
+const navId = (item) => item.href;
+// Grip and hide show on hover or keyboard focus, and always on touch screens.
+const NAV_REVEAL = 'opacity-0 transition-opacity group-hover/nav:opacity-100 group-focus-within/nav:opacity-100 [@media(hover:none)]:opacity-100';
 
 function SidebarNavItem({ Icon, Label, Href, IsActive, Collapsed }) {
   return (
@@ -49,14 +55,24 @@ export default function StockSidebar({
   onToggleCollapse,
   tenant,
   tenants = [],
-  navEditing = false,
-  setNavEditing,
+  allNavItems = navigationItems,
   onNavChange,
   onNavReset,
   lockedNav,
 }) {
   const iconButtonClass = 'h-9 w-9 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 transition-colors hover:bg-muted hover:text-slate-900 dark:hover:text-slate-100 focus-ring';
   const collapseLabel = collapsed ? t('expandSidebar') : t('collapseSidebar');
+  // Links reorder in place by their grip; Dashboard stays first. The sort
+  // works on every link, hidden ones too, so they keep their place.
+  const sort = usePointerSort(allNavItems, onNavChange, {
+    scope: 'nav',
+    getId: navId,
+    isVisible: (item) => !item.hidden,
+    pinned: PINNED_NAV,
+  });
+  const shownNav = collapsed ? navigationItems : sort.list.filter((item) => !item.hidden);
+  const hiddenNav = allNavItems.filter((item) => item.hidden);
+  const setHidden = (href, hidden) => onNavChange(allNavItems.map((item) => (item.href === href ? { ...item, hidden } : item)));
 
   return (
     <aside className={`${classes.sidebar} border-r border-border flex flex-col`}>
@@ -116,22 +132,48 @@ export default function StockSidebar({
 
       {/* Nav */}
       <div className={`flex-1 overflow-y-auto py-2 custom-scrollbar ${collapsed ? 'px-4' : 'px-4'}`}>
-        {navEditing && !collapsed ? (
-          <NavEditor items={navigationItems} locked={lockedNav} onChange={onNavChange} onReset={onNavReset} onDone={() => setNavEditing(false)} t={t} />
-        ) : (
         <nav className="space-y-1">
-          {navigationItems.map((item) => (
-            <SidebarNavItem
-              key={item.href}
-              Icon={item.icon}
-              Label={item.label}
-              Href={item.href}
-              IsActive={isActiveRoute(item.href)}
-              Collapsed={collapsed}
-            />
-          ))}
+          {shownNav.map((item) => {
+            const pinned = PINNED_NAV.has(item.href);
+            const dragging = sort.dragId === item.href;
+            return (
+              <div
+                key={item.href}
+                data-sort-scope="nav"
+                data-sort-id={item.href}
+                className={`group/nav relative rounded-lg ${dragging ? 'opacity-60 outline-dashed outline-1 outline-border' : ''}`}
+              >
+                <SidebarNavItem
+                  Icon={item.icon}
+                  Label={item.label}
+                  Href={item.href}
+                  IsActive={isActiveRoute(item.href)}
+                  Collapsed={collapsed}
+                />
+                {!collapsed && !pinned ? (
+                  <button
+                    {...sort.gripProps(item.href, `${t('dragToMove')}: ${item.label}`, item.label)}
+                    className={`absolute inset-y-0 left-0 flex w-4 cursor-grab items-center justify-center rounded-l-lg text-muted-foreground focus-ring active:cursor-grabbing ${NAV_REVEAL}`}
+                  >
+                    <GripVertical className="h-3.5 w-3.5" />
+                  </button>
+                ) : null}
+                {!collapsed && !lockedNav?.has(item.href) ? (
+                  <button
+                    type="button"
+                    aria-label={`${t('hideLink')}: ${item.label}`}
+                    title={t('hideLink')}
+                    onClick={() => setHidden(item.href, true)}
+                    className={`absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-card hover:text-foreground focus-ring ${NAV_REVEAL}`}
+                  >
+                    <EyeOff className="h-3.5 w-3.5" />
+                  </button>
+                ) : null}
+              </div>
+            );
+          })}
         </nav>
-        )}
+        <DragGhost ghost={sort.ghost} />
       </div>
 
       {/* Bottom controls */}
@@ -168,20 +210,48 @@ export default function StockSidebar({
               <TooltipContent>{t('notifications')}</TooltipContent>
             </Tooltip>
             {!collapsed ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button type="button" aria-label={t('customizeSidebar')} title={t('customizeSidebar')} className={`relative ${iconButtonClass}`}>
+                    <SlidersHorizontal className="h-4 w-4" />
+                    {hiddenNav.length > 0 ? (
+                      <span className="absolute right-0.5 top-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-lg bg-muted px-1 text-[10px] font-semibold leading-none text-muted-foreground ring-1 ring-background">
+                        {hiddenNav.length}
+                      </span>
+                    ) : null}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent side="top" align="start" className="w-60 p-2">
+                  <p className="px-1 pb-1 text-[11px] text-muted-foreground">{t('sidebarHint')}</p>
+                  <p className="px-1 pt-1 text-xs font-medium text-foreground">{t('hiddenLinks')}</p>
+                  {hiddenNav.length === 0 ? (
+                    <p className="px-1 py-2 text-xs text-muted-foreground">{t('noHiddenLinks')}</p>
+                  ) : (
+                    <ul className="py-1">
+                      {hiddenNav.map((item) => (
+                        <li key={item.href} className="flex items-center gap-2 rounded-md px-1 py-1 text-xs">
+                          <item.icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+                          <span className="min-w-0 flex-1 truncate text-foreground">{item.label}</span>
+                          <button
+                            type="button"
+                            onClick={() => setHidden(item.href, false)}
+                            className="inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-ring"
+                          >
+                            <Eye className="h-3 w-3" /> {t('showLink')}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setNavEditing?.((v) => !v)}
-                    aria-label={t('customizeSidebar')}
-                    aria-pressed={navEditing}
-                    className={`${iconButtonClass} ${navEditing ? '!text-brand-primary' : ''}`}
+                    onClick={onNavReset}
+                    className="mt-1 flex h-8 w-full items-center justify-center gap-2 rounded-md border border-border text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-ring"
                   >
-                    <SlidersHorizontal className="h-4 w-4" />
+                    <RotateCcw className="h-3.5 w-3.5" /> {t('resetLayout')}
                   </button>
-                </TooltipTrigger>
-                <TooltipContent>{t('customizeSidebar')}</TooltipContent>
-              </Tooltip>
+                </PopoverContent>
+              </Popover>
             ) : null}
             <button
               type="button"
@@ -222,70 +292,5 @@ export default function StockSidebar({
         </div>
       </div>
     </aside>
-  );
-}
-
-// Customize sidebar: reorder (drag or arrows) and hide links. Locked links
-// (Dashboard, Settings) cannot be hidden, and Dashboard does not move.
-function NavEditor({ items, locked, onChange, onReset, onDone, t }) {
-  const [dragHref, setDragHref] = useState(null);
-  const move = (from, to) => {
-    if (to < 1 || from < 1) return; // Dashboard keeps slot 0
-    onChange(moveItem(items, from, to));
-  };
-  const rowButton = 'flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground hover:bg-card hover:text-foreground disabled:opacity-30 [&>svg]:h-3.5 [&>svg]:w-3.5';
-
-  return (
-    <div className="space-y-1">
-      <ul className="space-y-1">
-        {items.map((item, index) => {
-          const pinned = index === 0;
-          return (
-            <li
-              key={item.href}
-              draggable={!pinned}
-              onDragStart={() => setDragHref(item.href)}
-              onDragEnd={() => setDragHref(null)}
-              onDragOver={(event) => { if (dragHref && !pinned) event.preventDefault(); }}
-              onDrop={(event) => {
-                event.preventDefault();
-                const from = items.findIndex((row) => row.href === dragHref);
-                if (from !== -1) move(from, index);
-                setDragHref(null);
-              }}
-              className={`flex h-9 items-center gap-2 rounded-lg border border-dashed border-border px-2 text-sm ${dragHref === item.href ? 'opacity-50' : ''} ${item.hidden ? 'text-muted-foreground' : 'text-foreground'}`}
-            >
-              <GripVertical className={`h-3.5 w-3.5 shrink-0 ${pinned ? 'opacity-0' : 'cursor-grab text-muted-foreground'}`} aria-hidden="true" />
-              <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-              <span className={`min-w-0 flex-1 truncate ${item.hidden ? 'line-through' : ''}`}>{item.label}</span>
-              {!pinned ? (
-                <>
-                  <button type="button" className={rowButton} aria-label={`${t('moveUp')}: ${item.label}`} disabled={index === 1} onClick={() => move(index, index - 1)}><ArrowUp /></button>
-                  <button type="button" className={rowButton} aria-label={`${t('moveDown')}: ${item.label}`} disabled={index === items.length - 1} onClick={() => move(index, index + 1)}><ArrowDown /></button>
-                </>
-              ) : null}
-              {!locked?.has(item.href) ? (
-                <button
-                  type="button"
-                  className={rowButton}
-                  aria-label={`${item.hidden ? t('showLink') : t('hideLink')}: ${item.label}`}
-                  onClick={() => onChange(items.map((row) => (row.href === item.href ? { ...row, hidden: !row.hidden } : row)))}
-                >
-                  {item.hidden ? <EyeOff /> : <Eye />}
-                </button>
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
-      <div className="flex gap-2 pt-1">
-        <button type="button" onClick={onReset} className="flex h-8 flex-1 items-center justify-center gap-2 rounded-lg border border-border bg-card text-xs font-medium text-muted-foreground hover:text-foreground">
-          <RotateCcw className="h-3.5 w-3.5" /> {t('resetLayout')}
-        </button>
-        <button type="button" onClick={onDone} className="flex h-8 flex-1 items-center justify-center gap-2 rounded-lg bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90">
-          <Check className="h-3.5 w-3.5" /> {t('doneCustomize')}
-        </button>
-      </div>
-    </div>
   );
 }

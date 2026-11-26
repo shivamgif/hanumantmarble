@@ -3,9 +3,6 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
   LineChart,
   Line,
   XAxis,
@@ -15,10 +12,10 @@ import {
 } from 'recharts';
 import {
   TrendingDown,
-  AlertCircle,
   Clock,
   Package,
   Hourglass,
+  ChevronRight,
   X,
   PackageX,
   Archive,
@@ -37,15 +34,14 @@ import { getTranslation } from '@/lib/translations';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import {
   AnalyticsCard,
-  ChartTooltip,
   CsvExportButton,
   EmptyState,
   TrendCapsule,
-  CHART_INK,
-  INDUSTRIAL_COLORS,
   paceAdjustedTarget,
   formatRelativeTime,
-  formatMonthLabel,
+  formatBucketLabel,
+  formatBucketLong,
+  formatRangeLabel,
   formatCompactNumber,
   formatINR,
   formatCompactINR,
@@ -53,7 +49,7 @@ import {
 } from '../../components/dashboard-ui';
 import { deriveSpotlight } from '../lib/spotlight.mjs';
 import { deriveStreak, streakTier, goalTier, projectMonth } from '../lib/streak.mjs';
-import { revenuePace } from '../lib/revenue-pace.mjs';
+import { ACTIVE_DOT, CHART_MARGIN, GRID, KitTooltip, LINE_CURSOR, OTHER, RankedBars, SERIES, ScopeTag, Sparkline, X_AXIS, Y_AXIS } from './chart-kit';
 import { SelectField } from '@/components/ui/select';
 
 // Bars animate from 0 on mount so the hero visibly "fills in" - purely cosmetic,
@@ -649,87 +645,78 @@ function MiniStat({ icon: Icon, label, value, sub, change }) {
   );
 }
 
-export function StockHealthScorecard({ data, stockRisk, approvalOps, monthlyProfit = [], elapsedFraction = 1 }) {
+// The four headline tiles. Money tiles are the range against the same number
+// of days just before it; stock is a snapshot and says so.
+export function StockHealthScorecard({ data, stockRisk, approvalOps, periodTotals, revenueTrend = [], profitTrend = [], range }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
-  const pace = revenuePace(monthlyProfit, elapsedFraction);
-  const paceUp = pace?.changePct == null || pace.changePct >= 0;
+  const cur = periodTotals?.current || {};
+  const prev = periodTotals?.previous || {};
+  const change = (a, b) => (Number(b) > 0 ? ((Number(a) - Number(b)) / Number(b)) * 100 : null);
+  const costed = Number(cur.revenue || 0) - Number(cur.uncostedRevenue || 0);
+  const margin = costed > 0 ? (Number(cur.profit || 0) / costed) * 100 : null;
+
   const healthy = data.reduce((s, d) => s + Math.max(0, Number(d.total_items || 0) - Number(d.at_risk || 0)), 0);
   const totalItems = data.reduce((s, d) => s + Number(d.total_items || 0), 0);
-  const healthyRatio = totalItems > 0 ? healthy / totalItems : 0;
-
   const zeroStock = Number(stockRisk?.zeroStock || 0);
   const lowStock = Number(stockRisk?.lowStock || 0);
-  const riskCount = zeroStock + lowStock;
   const medianLagHours = Number(approvalOps?.medianLagHours || 0);
+  const spark = (rows, key) => rows.map((r) => ({ v: Number(r[key] || 0) }));
 
-  // Pending approvals used to be a tile here too, repeating the HeroCallouts
-  // pill right above it. Its slot shows the one money figure Overview lacked.
-  const metrics = [
+  const tiles = [
     {
-      label: t('revenueThisMonth'),
-      value: pace ? formatCompactINR(pace.revenue) : '—',
-      subValue: pace
-        ? `${formatCompactINR(pace.profit)} ${t('profit')}${pace.marginPct != null ? ` · ${pace.marginPct.toFixed(1)}% ${t('margin')}` : ''}`
-        : t('noData'),
-      color: paceUp ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400',
-      bg: paceUp ? 'bg-muted' : 'bg-muted',
-      border: paceUp ? 'border-border' : 'border-border',
-      icon: Wallet,
-      change: pace?.changePct ?? null,
+      label: t('revenue'),
+      value: formatCompactINR(cur.revenue),
+      sub: `${t('vsPrevious')} ${formatCompactINR(prev.revenue)} · ${formatCompactNumber(cur.dispatches || 0)} ${t('dispatchesUnit')}`,
+      change: change(cur.revenue, prev.revenue),
+      spark: <Sparkline id="revenue" data={spark(revenueTrend, 'revenue')} dataKey="v" color={SERIES[0]} />,
+    },
+    {
+      label: t('grossProfit'),
+      value: formatCompactINR(cur.profit),
+      sub: `${margin != null ? `${margin.toFixed(1)}% ${t('margin')}` : '—'}${Number(cur.uncostedRevenue) > 0 ? ` · ${formatCompactINR(cur.uncostedRevenue)} ${t('uncostedShort')}` : ''}`,
+      change: change(cur.profit, prev.profit),
+      spark: <Sparkline id="profit" data={spark(profitTrend, 'profit')} dataKey="v" color={SERIES[2]} />,
     },
     {
       label: t('stockRisk'),
-      value: formatCompactNumber(riskCount),
-      subValue: `${zeroStock} ${t('zeroStock')} · ${lowStock} ${t('lowStock')}`,
-      color: riskCount > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400',
-      bg: riskCount > 0 ? 'bg-muted' : 'bg-muted',
-      border: riskCount > 0 ? 'border-border' : 'border-border',
-      icon: AlertCircle,
+      tag: t('scopeNow'),
+      value: formatCompactNumber(zeroStock + lowStock),
+      sub: `${zeroStock} ${t('zeroStock')} · ${lowStock} ${t('lowStock')}`,
+      meter: totalItems > 0 ? healthy / totalItems : null,
+      meterLabel: totalItems > 0 ? `${((healthy / totalItems) * 100).toFixed(0)}% ${t('healthyLineItems')}` : null,
     },
     {
       label: t('approvalLag'),
       value: formatHours(medianLagHours),
-      subValue: t('medianHoursToApprove'),
-      color: medianLagHours > 24 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400',
-      bg: medianLagHours > 24 ? 'bg-muted' : 'bg-muted',
-      border: medianLagHours > 24 ? 'border-border' : 'border-border',
-      icon: Clock,
-    },
-    {
-      label: t('operationalStability'),
-      value: `${(healthyRatio * 100).toFixed(1)}%`,
-      subValue: `${formatCompactNumber(healthy)} ${t('healthyLineItems')}`,
-      color: 'text-emerald-600 dark:text-emerald-400',
-      bg: 'bg-muted',
-      border: 'border-border',
-      icon: Package,
+      sub: t('medianHoursToApprove'),
+      tone: medianLagHours > 24 ? 'text-amber-600 dark:text-amber-400' : null,
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-4 sm:gap-4 lg:grid-cols-4">
-      {metrics.map((m) => (
-        <div className="glass-panel rounded-lg p-4 sm:p-6 relative overflow-hidden transition-[box-shadow,border-color] duration-200 hover:shadow-card-hover group" key={m.label}>
-          <div className="relative z-10">
-            <div className="flex items-center justify-between mb-2 sm:mb-6">
-              <div className={`w-10 h-10 sm:w-16 sm:h-16 flex items-center justify-center rounded-lg sm:rounded-lg border ${m.bg} ${m.border}`}>
-                <m.icon className={`h-5 w-5 sm:h-8 sm:w-8 ${m.color}`} />
-              </div>
-              {m.change != null ? (
-                <span title={t('paceVsLastMonth')} aria-label={t('paceVsLastMonth')}>
-                  <TrendCapsule value={m.change} isPositive={m.change >= 0} />
-                </span>
-              ) : null}
-            </div>
-            <div className="space-y-1 sm:space-y-2">
-              <div className="text-slate-500 dark:text-slate-400 text-[11px] sm:text-sm font-bold">{m.label}</div>
-              <div className={`text-2xl sm:text-4xl lg:text-5xl font-bold font-sans tracking-tight text-slate-900 dark:text-white leading-none`}>{m.value}</div>
-              <div className="text-[11px] sm:text-xs font-medium text-slate-400 mt-2 sm:mt-2">{m.subValue}</div>
-            </div>
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {tiles.map((m) => (
+        <div key={m.label} className="glass-panel flex flex-col rounded-lg p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-medium text-muted-foreground">{m.label}</span>
+            {m.tag ? <ScopeTag>{m.tag}</ScopeTag> : m.change != null ? (
+              <span title={`${t('vsPrevious')} ${formatRangeLabel({ from: range?.prevFrom, to: range?.prevTo })}`}>
+                <TrendCapsule value={m.change} isPositive={m.change >= 0} />
+              </span>
+            ) : null}
           </div>
-          <div className={`absolute -right-6 -bottom-6 w-24 h-24 sm:w-40 sm:h-40 opacity-[0.04] transition-opacity duration-200 pointer-events-none group-hover:opacity-[0.08]`}>
-            <m.icon className="w-full h-full" />
+          <div className={`mt-2 text-3xl font-semibold tracking-tight tabular-nums ${m.tone || 'text-foreground'}`}>{m.value}</div>
+          <div className="mt-1 truncate text-xs text-muted-foreground">{m.sub}</div>
+          <div className="mt-auto pt-3">
+            {m.spark || (m.meter != null ? (
+              <div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full" style={{ width: `${m.meter * 100}%`, backgroundColor: 'var(--status-good)' }} />
+                </div>
+                <p className="mt-1.5 text-[11px] text-muted-foreground">{m.meterLabel}</p>
+              </div>
+            ) : <div className="h-10" />)}
           </div>
         </div>
       ))}
@@ -789,7 +776,7 @@ export function HeroCallouts({ stockedOut, approvalsWaiting, oldestPendingHours,
 // Individual salesperson view. Derived entirely from the payload the Team tab
 // already has: salespersonTrend carries every salesperson x month row (no LIMIT),
 // so no extra fetch is needed to scope down to one person.
-export function SalespersonSpotlight({ trend, ranking, goals, selected, onSelect, months }) {
+export function SalespersonSpotlight({ trend, ranking, goals, selected, onSelect, range, onDrill }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
 
@@ -826,9 +813,18 @@ export function SalespersonSpotlight({ trend, ranking, goals, selected, onSelect
     <AnalyticsCard
       title={t('spotlightTitle')}
       subtitle={t('spotlightSubtitle')}
-      contextBar={`${months}M · ${rank != null ? `${t('rank')} ${rank} ${t('ofLabel')} ${outOf}` : t('noData')}`}
+      contextBar={`${formatRangeLabel(range)} · ${rank != null ? `${t('rank')} ${rank} ${t('ofLabel')} ${outOf}` : t('noData')}`}
       topRight={
         <label className="flex items-center gap-2">
+          {onDrill && active ? (
+            <button
+              type="button"
+              onClick={() => onDrill({ title: active, filter: { salesperson: active }, by: 'customer' })}
+              className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-ring"
+            >
+              {t('details')} <ChevronRight className="h-3 w-3" />
+            </button>
+          ) : null}
           <span className="sr-only">{t('selectSalesperson')}</span>
           <SelectField
             value={active || ''}
@@ -887,21 +883,22 @@ export function SalespersonSpotlight({ trend, ranking, goals, selected, onSelect
       {series.length === 0 ? (
         <EmptyState label={t('noData')} />
       ) : (
-        <div className="h-[220px] rounded-lg border border-border/60 bg-muted/20 p-4">
+        <div className="h-[220px]">
           <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
-            <LineChart data={series} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200/80 dark:stroke-slate-800" />
-              <XAxis dataKey="bucket" tickFormatter={formatMonthLabel} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactINR} width={56} />
-              <RechartsTooltip content={<ChartTooltip formatter={(v) => formatCompactINR(v)} labelFormatter={formatMonthLabel} />} />
+            {/* ponytail: only buckets with sales are plotted; zero-fill if day ranges look gappy. */}
+            <LineChart data={series} margin={CHART_MARGIN}>
+              <CartesianGrid {...GRID} />
+              <XAxis dataKey="bucket" {...X_AXIS} tickFormatter={(v) => formatBucketLabel(v, range?.bucket)} />
+              <YAxis {...Y_AXIS} tickFormatter={formatCompactINR} />
+              <RechartsTooltip cursor={LINE_CURSOR} content={<KitTooltip formatter={formatINR} labelFormatter={(v) => formatBucketLong(v, range?.bucket)} />} />
               <Line
                 type="monotone"
                 dataKey="revenue"
                 name={t('revenue')}
-                stroke={CHART_INK}
+                stroke={SERIES[0]}
                 strokeWidth={2}
-                dot={{ r: 3, fill: CHART_INK, strokeWidth: 0 }}
-                activeDot={{ r: 6, stroke: 'rgb(var(--card))', strokeWidth: 2 }}
+                dot={series.length <= 12 ? { r: 2.5, fill: SERIES[0], strokeWidth: 0 } : false}
+                activeDot={ACTIVE_DOT}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -1000,7 +997,7 @@ function LeaderboardRow({ row, i, maxVal, onSelect, isSelected, blendedMargin, g
   );
 }
 
-export function Leaderboard({ ranking, goals = [], months, onSelect, selected }) {
+export function Leaderboard({ ranking, goals = [], query, onSelect, selected }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   // ponytail: joined by name - ranking rows only carry the salesperson label.
@@ -1025,7 +1022,7 @@ export function Leaderboard({ ranking, goals = [], months, onSelect, selected })
     <AnalyticsCard
       title={t('salesPerformance')}
       subtitle={t('personnelRanking')}
-      topRight={<CsvExportButton type="leaderboard" months={months} label={t('exportCsv')} />}
+      topRight={<CsvExportButton type="leaderboard" query={query} label={t('exportCsv')} />}
       contextBar={`${t('thisMonthVsGoal')}: ${t('dayLabel')} ${day} ${t('ofLabel')} ${daysInMonth} · ${t('expectedPace')} ${Math.round((day / daysInMonth) * 100)}%`}
     >
       {rows.length === 0 ? (
@@ -1060,38 +1057,43 @@ export function Leaderboard({ ranking, goals = [], months, onSelect, selected })
   );
 }
 
-export function ReorderNowWidget({ items, months }) {
+export function ReorderNowWidget({ items, query, range, onDrill }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+  const Row = onDrill ? 'button' : 'div';
   return (
     <AnalyticsCard
       title={t('reorderNow')}
-      subtitle={t('reorderSubtitle')}
-      topRight={items.length > 0 ? <CsvExportButton type="reorder" months={months} label={t('exportCsv')} /> : null}
+      subtitle={`${t('reorderRangeSubtitle')} · ${formatRangeLabel(range)}`}
+      topRight={items.length > 0 ? <CsvExportButton type="reorder" query={query} label={t('exportCsv')} /> : null}
     >
       {items.length === 0 ? (
         <EmptyState label={t('noData')} />
       ) : (
-        <div className="space-y-2">
+        <div className="divide-y divide-border/50">
           {items.map((item) => {
             const cover = Number(item.days_cover || 0);
             const isCritical = cover <= 0;
             return (
-              <div key={item.id} className="flex items-center gap-2 py-2 border-b border-slate-100 dark:border-slate-800/40 last:border-b-0">
+              <Row
+                key={item.id}
+                {...(onDrill ? { type: 'button', onClick: () => onDrill({ title: item.name, filter: { item: item.id }, by: 'customer' }) } : {})}
+                className={`flex w-full items-center gap-3 rounded-md px-2 py-2 text-left ${onDrill ? 'transition-colors hover:bg-muted/60 focus-ring' : ''}`}
+              >
                 <PackageX className={`h-4 w-4 shrink-0 ${isCritical ? 'text-rose-500' : 'text-amber-500'}`} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate" title={item.name}>{item.name}</p>
-                  <p className="text-[11px] text-slate-400 font-bold truncate">{item.division} · {item.sku}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-medium text-foreground" title={item.name}>{item.name}</p>
+                  <p className="truncate text-[11px] text-muted-foreground">{item.division} · {item.sku}</p>
                 </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-xs font-bold font-sans text-slate-900 dark:text-white tabular-nums">{item.sold_30d}</p>
-                  <p className="text-xs text-slate-400 font-medium">{t('sold30d')}</p>
+                <div className="shrink-0 text-right tabular-nums">
+                  <p className="text-xs font-semibold text-foreground">{formatCompactNumber(item.sold_in_range)}</p>
+                  <p className="text-[11px] text-muted-foreground">{t('soldInRange')}</p>
                 </div>
-                <div className={`shrink-0 text-right w-16 px-2 py-1 rounded-lg ${isCritical ? 'bg-muted text-rose-700  dark:text-rose-400' : 'bg-muted text-amber-700  dark:text-amber-400'}`}>
-                  <p className="text-xs font-bold tabular-nums">{cover.toFixed(1)}d</p>
-                  <p className="text-xs font-semibold leading-none">{t('daysCover')}</p>
+                <div className={`w-16 shrink-0 rounded-md px-2 py-1 text-right tabular-nums ${isCritical ? 'bg-rose-500/10 text-rose-700 dark:text-rose-400' : 'bg-amber-500/10 text-amber-700 dark:text-amber-400'}`}>
+                  <p className="text-xs font-semibold">{cover.toFixed(1)}d</p>
+                  <p className="text-[10px] leading-none">{t('daysCover')}</p>
                 </div>
-              </div>
+              </Row>
             );
           })}
         </div>
@@ -1100,7 +1102,7 @@ export function ReorderNowWidget({ items, months }) {
   );
 }
 
-export function DeadStockWidget({ data, months }) {
+export function DeadStockWidget({ data, query, range }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   const count = Number(data?.itemCount || 0);
@@ -1110,8 +1112,8 @@ export function DeadStockWidget({ data, months }) {
   return (
     <AnalyticsCard
       title={t('deadStock')}
-      subtitle={t('deadStockSubtitle')}
-      topRight={count > 0 ? <CsvExportButton type="deadstock" months={months} label={t('exportCsv')} /> : null}
+      subtitle={`${t('deadStockRangeSubtitle')} ${formatRangeLabel({ from: range?.from, to: range?.from })}`}
+      topRight={count > 0 ? <CsvExportButton type="deadstock" query={query} label={t('exportCsv')} /> : null}
     >
       <div className="flex items-start gap-4">
         <div className="w-14 h-14 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-slate-800 shrink-0">
@@ -1147,7 +1149,7 @@ export function PendingQueueWidget({ items, onApprove, onReject, actionLoading }
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   return (
-    <AnalyticsCard title={t('pendingQueueTitle')} subtitle={t('pendingQueueSubtitle')}>
+    <AnalyticsCard title={t('pendingQueueTitle')} subtitle={t('pendingQueueSubtitle')} topRight={<ScopeTag>{t('scopeNow')}</ScopeTag>}>
       {items.length === 0 ? (
         <EmptyState label={t('noData')} />
       ) : (
@@ -1205,7 +1207,7 @@ export function PendingQueueWidget({ items, onApprove, onReject, actionLoading }
 // the customer list is long enough that a fifth is normal.
 const CONCENTRATION_ALERT_PCT = 20;
 
-export function CustomerConcentrationWidget({ rows }) {
+export function CustomerConcentrationWidget({ rows, onDrill }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   if (!rows || rows.length === 0) {
@@ -1221,52 +1223,36 @@ export function CustomerConcentrationWidget({ rows }) {
   const totalProfit = rows.reduce((sum, r) => sum + Number(r.gross_profit || 0), 0);
   const blendedMargin = costedRevenue > 0 ? (totalProfit / costedRevenue) * 100 : null;
   const allRevenue = Number(rows[0]?.all_customer_revenue || 0);
-  const shownRevenue = rows.reduce((sum, row) => sum + Number(row.revenue || 0), 0);
-  const otherRevenue = Math.max(0, allRevenue - shownRevenue);
-  const pieData = rows.map((row, i) => ({
-    name: row.name,
-    value: Number(row.revenue || 0),
-    color: INDUSTRIAL_COLORS[i % INDUSTRIAL_COLORS.length],
-  }));
-  if (otherRevenue > 0) {
-    pieData.push({ name: t('otherCustomers'), value: otherRevenue, color: '#94a3b8' });
+  const otherRevenue = Math.max(0, allRevenue - rows.reduce((sum, row) => sum + Number(row.revenue || 0), 0));
+  const topShare = Number(rows[0]?.share_pct || 0);
+  const bars = rows.map((row) => {
+    const margin = row.margin_pct != null ? Number(row.margin_pct) : null;
+    return {
+      key: String(row.id),
+      id: row.id,
+      label: row.name,
+      value: Number(row.revenue || 0),
+      share: Number(row.share_pct || 0),
+      // One hue for every customer: the bar length is the comparison, and a
+      // customer above the concentration line is flagged in status red.
+      color: Number(row.share_pct || 0) >= CONCENTRATION_ALERT_PCT ? 'var(--status-bad)' : SERIES[0],
+      extra: margin != null ? `${margin.toFixed(1)}% ${t('margin')}${blendedMargin != null && margin < blendedMargin ? ' ↓' : ''}` : null,
+    };
+  });
+  if (otherRevenue > 0 && allRevenue > 0) {
+    bars.push({ key: '__other', label: t('otherCustomers'), value: otherRevenue, share: (otherRevenue / allRevenue) * 100, color: OTHER });
   }
   return (
-    <AnalyticsCard title={t('topCustomers')} subtitle={t('concentrationSubtitle')}>
-      <div className="h-36 mb-2">
-        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
-          <PieChart>
-            <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={36} outerRadius={62} paddingAngle={2}>
-              {pieData.map((entry, i) => <Cell key={i} fill={entry.color} stroke="none" />)}
-            </Pie>
-            <RechartsTooltip content={<ChartTooltip formatter={(v) => formatCompactINR(v)} />} />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="space-y-2">
-        {rows.slice(0, 5).map((row, i) => {
-          const share = Number(row.share_pct || 0);
-          const isConcentrated = share >= CONCENTRATION_ALERT_PCT;
-          const margin = row.margin_pct != null ? Number(row.margin_pct) : null;
-          const marginLags = margin != null && blendedMargin != null && margin < blendedMargin;
-          return (
-            <div key={row.id} className="flex items-center gap-2 text-xs">
-              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: INDUSTRIAL_COLORS[i % INDUSTRIAL_COLORS.length] }} />
-              <span className="font-bold text-slate-700 dark:text-slate-300 flex-1 truncate" title={row.name}>{row.name}</span>
-              <span className="font-sans font-bold text-slate-900 dark:text-white tabular-nums shrink-0">{formatCompactINR(row.revenue)}</span>
-              <span
-                className={`text-[11px] font-bold tabular-nums shrink-0 w-14 text-right ${marginLags ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}
-                title={margin != null ? `${formatCompactINR(row.gross_profit)} ${t('profit')}` : undefined}
-              >
-                {margin != null ? `${margin.toFixed(1)}% ${t('margin')}` : '\u2014'}
-              </span>
-              <span className={`text-[11px] font-bold tabular-nums shrink-0 w-12 text-right ${isConcentrated ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}>
-                {share.toFixed(1)}%
-              </span>
-            </div>
-          );
-        })}
-      </div>
+    <AnalyticsCard
+      title={t('topCustomers')}
+      subtitle={t('concentrationSubtitle')}
+      contextBar={topShare >= CONCENTRATION_ALERT_PCT ? `${rows[0].name}: ${topShare.toFixed(1)}% ${t('ofSales')} · ${t('concentrationAlert')}` : null}
+    >
+      <RankedBars
+        rows={bars}
+        format={formatCompactINR}
+        onSelect={onDrill ? (row) => row.key !== '__other' && onDrill({ title: row.label, filter: { customer: row.id }, by: 'item' }) : undefined}
+      />
     </AnalyticsCard>
   );
 }
@@ -1283,7 +1269,7 @@ const RATE_GAP_ALERT_PCT = 10;
 // The table is sorted by uplift, not by spread, because a 30% spread on an item
 // that sold twice is worth less than a 5% spread on the item that carries the
 // month. Uplift is already the answer to "where do I start".
-export function PriceDispersionWidget({ rows }) {
+export function PriceDispersionWidget({ rows, onDrill }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
 
@@ -1333,7 +1319,11 @@ export function PriceDispersionWidget({ rows }) {
             {rows.map((row) => {
               const wideGap = gapPct(row) >= RATE_GAP_ALERT_PCT;
               return (
-                <tr key={row.item_id} className="group hover:bg-muted/50 transition-colors">
+                <tr
+                  key={row.item_id}
+                  onClick={onDrill ? () => onDrill({ title: row.name, filter: { item: row.item_id }, by: 'salesperson' }) : undefined}
+                  className={`group hover:bg-muted/50 transition-colors ${onDrill ? 'cursor-pointer' : ''}`}
+                >
                   <td className="px-6 py-4">
                     <p className="font-bold text-slate-900 dark:text-slate-100 text-xs truncate max-w-[240px]" title={row.name}>{row.name}</p>
                     <p className="text-[11px] text-slate-500 mt-1 truncate max-w-[240px]" title={row.sku}>{row.sku}</p>
@@ -1357,7 +1347,11 @@ export function PriceDispersionWidget({ rows }) {
         {rows.map((row) => {
           const wideGap = gapPct(row) >= RATE_GAP_ALERT_PCT;
           return (
-            <div key={`disp-mob-${row.item_id}`} className="p-6 rounded-lg border border-border/60 bg-muted/20 space-y-4">
+            <div
+              key={`disp-mob-${row.item_id}`}
+              onClick={onDrill ? () => onDrill({ title: row.name, filter: { item: row.item_id }, by: 'salesperson' }) : undefined}
+              className="p-4 rounded-lg border border-border/60 space-y-4"
+            >
               <div className="flex justify-between items-start gap-2">
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{row.name}</p>
@@ -1424,14 +1418,14 @@ export function ActivityFeedWidget({ events }) {
   );
 }
 
-export function RiskInventoryTable({ divisionRisk, months }) {
+export function RiskInventoryTable({ divisionRisk, query }) {
   const { language } = useLanguage();
   const t = (key) => getTranslation(`stock.analytics.${key}`, language);
   return (
     <AnalyticsCard
       title={t('riskInventory')}
       subtitle={t('divisionsNeedingAttention')}
-      topRight={<CsvExportButton type="risk" months={months} label={t('exportCsv')} />}
+      topRight={<><ScopeTag>{t('scopeNow')}</ScopeTag><CsvExportButton type="risk" query={query} label={t('exportCsv')} /></>}
     >
       <div className="hidden md:block overflow-x-auto rounded-lg border border-border/60">
         <table className="w-full text-left text-sm min-w-[600px]">

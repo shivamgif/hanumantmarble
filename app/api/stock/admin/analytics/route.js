@@ -8,51 +8,15 @@ import {
   freightRepeatedAmountExpr,
   goalProgressSql,
   netRevenueExpr,
-  monthProgress,
   netUnitsExpr,
   idleStockWhere,
   marginAggregates,
   marginColumns,
-  sellerFilter,
   shippedFilter,
   unitCostCte,
 } from '@/lib/stock-analytics-sql.mjs';
+import { parseAnalyticsRange } from '@/lib/analytics-range.mjs';
 import { findDuplicateItemPairs, summarizeDuplicateItems } from '@/lib/stock-duplicate-items.mjs';
-
-function toDateOnly(value) {
-  return value.toISOString().slice(0, 10);
-}
-
-function clampNumber(value, min, max, fallback) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    return fallback;
-  }
-
-  return Math.min(max, Math.max(min, parsed));
-}
-
-function normalizeRange(searchParams) {
-  const rangeMonths = clampNumber(searchParams.get('months'), 1, 24, 6);
-  const endDate = searchParams.get('endDate') ? new Date(searchParams.get('endDate')) : new Date();
-
-  if (Number.isNaN(endDate.getTime())) {
-    throw new Error('Invalid endDate query param');
-  }
-
-  const startDate = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth() - (rangeMonths - 1), 1));
-  const normalizedEnd = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth() + 1, 0, 23, 59, 59, 999));
-
-  const lastBucket = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), 1));
-
-  return {
-    months: rangeMonths,
-    startDate,
-    endDate: normalizedEnd,
-    lastBucket,
-    ...monthProgress(endDate),
-  };
-}
 
 // Below this many dispatches an item's median rate is an anecdote, not a price.
 const MIN_PRICED_SALES = 5;
@@ -314,6 +278,110 @@ async function loadReview(schemaCaps, startDate, endDate) {
   };
 }
 
+// The side sheet behind every clickable chart mark. One slice of the range
+// (narrowed by any of division / salesperson / customer / item, and by the
+// clicked bucket's own from/to), broken down by one dimension, plus the
+// dispatches that make it up. Every figure goes through the same revenue,
+// cost and shipped-status fragments as the charts it was opened from.
+const DRILL_BY = {
+  division: { key: `COALESCE(d.name, 'Uncategorized')`, label: `COALESCE(d.name, 'Uncategorized')`, sub: `NULL::text` },
+  item: { key: `i.id::text`, label: `i.name`, sub: `i.sku` },
+  customer: { key: `COALESCE(c.id::text, '-')`, label: `COALESCE(c.name, '—')`, sub: `NULL::text` },
+  salesperson: { key: null, label: null, sub: `NULL::text` },
+};
+
+async function loadDrill(schemaCaps, searchParams, startDate, endDate, salespersonLabelExpr, salespersonUserJoin) {
+  const by = DRILL_BY[searchParams.get('by')] ? searchParams.get('by') : 'division';
+  const dim = by === 'salesperson'
+    ? { key: salespersonLabelExpr, label: salespersonLabelExpr, sub: 'NULL::text' }
+    : DRILL_BY[by];
+  const text = (k) => (searchParams.get(k) || '').trim() || null;
+  const id = (k) => (Number.isInteger(Number(searchParams.get(k))) && Number(searchParams.get(k)) > 0 ? Number(searchParams.get(k)) : null);
+  const params = [startDate, endDate, text('division'), text('salesperson'), id('customer'), id('item')];
+  const netRevenue = netRevenueExpr(schemaCaps, 'osi', 'i');
+  const netUnits = netUnitsExpr(schemaCaps, 'osi', 'i');
+  const from = `FROM stock_outbound_shipments o
+           JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = o.id
+           JOIN stock_items i ON i.id = osi.item_id
+           LEFT JOIN stock_divisions d ON d.id = i.division_id
+           LEFT JOIN stock_customers c ON c.id = o.customer_id
+           LEFT JOIN stock_sales_people sp ON sp.id = o.salesperson_id
+           ${salespersonUserJoin.replace('s.salesperson_user_id', 'o.salesperson_user_id')}
+           LEFT JOIN unit_cost uc ON uc.item_id = i.id
+           WHERE o.dispatch_date::date BETWEEN $1::date AND $2::date
+             AND ${shippedFilter('o')}
+             AND ($3::text IS NULL OR COALESCE(d.name, 'Uncategorized') = $3::text)
+             AND ($4::text IS NULL OR ${salespersonLabelExpr} = $4::text)
+             AND ($5::int IS NULL OR o.customer_id = $5::int)
+             AND ($6::int IS NULL OR i.id = $6::int)`;
+
+  const [breakdown, dispatches] = await Promise.all([
+    sql(
+      `WITH ${unitCostCte(schemaCaps)}, g AS (
+         SELECT
+           ${dim.key} AS key,
+           MAX(${dim.label}) AS label,
+           MAX(${dim.sub}) AS sub,
+           COUNT(DISTINCT o.id)::int AS dispatches,
+           COALESCE(SUM(${netUnits}), 0)::numeric(14,2) AS units,
+           COALESCE(SUM(${netRevenue}), 0)::numeric(14,2) AS revenue,
+           ${marginAggregates(schemaCaps)}
+         ${from}
+         GROUP BY 1
+       )
+       SELECT
+         g.*,
+         ${marginColumns('g.revenue', 'g.uncosted_revenue', 'g.cost')},
+         SUM(g.revenue) OVER ()::numeric(14,2) AS all_revenue,
+         SUM(g.uncosted_revenue) OVER ()::numeric(14,2) AS all_uncosted,
+         SUM(g.cost) OVER ()::numeric(14,2) AS all_cost,
+         COUNT(*) OVER ()::int AS all_groups
+       FROM g
+       WHERE g.revenue <> 0
+       ORDER BY g.revenue DESC
+       LIMIT 100`,
+      params
+    ),
+    // Only the lines inside the slice count toward a dispatch's value here, so
+    // a mixed truck opened from "Tiles" shows its tile value, not the truck's.
+    sql(
+      `WITH ${unitCostCte(schemaCaps)}
+       SELECT
+         o.id,
+         o.shipment_number,
+         o.dispatch_date::date::text AS dispatch_date,
+         MAX(c.name) AS customer,
+         MAX(${salespersonLabelExpr}) AS salesperson,
+         COALESCE(SUM(${netRevenue}), 0)::numeric(14,2) AS value,
+         COUNT(*) OVER ()::int AS all_dispatches
+       ${from}
+       GROUP BY o.id, o.shipment_number, o.dispatch_date
+       ORDER BY value DESC
+       LIMIT 50`,
+      params
+    ),
+  ]);
+
+  const first = breakdown[0] || {};
+  const revenue = Number(first.all_revenue || 0);
+  const uncosted = Number(first.all_uncosted || 0);
+  const cost = Number(first.all_cost || 0);
+  const costed = revenue - uncosted;
+  return {
+    by,
+    totals: {
+      revenue,
+      profit: costed - cost,
+      marginPct: costed > 0 ? ((costed - cost) / costed) * 100 : null,
+      uncostedRevenue: uncosted,
+      dispatches: Number(dispatches[0]?.all_dispatches || 0),
+      groups: Number(first.all_groups || 0),
+    },
+    breakdown,
+    dispatches,
+  };
+}
+
 export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
   if (!session || !hasAnyStockRole(appUser, ['admin', 'manager', 'read_only_admin'])) {
@@ -325,15 +393,15 @@ export const GET = stockRoute(async function GET(request) {
   }
 
   try {
-    const { searchParams: searchParamsForCache } = new URL(request.url);
-    const months = clampNumber(searchParamsForCache.get('months'), 1, 24, 6);
-    const endDateParam = searchParamsForCache.get('endDate') || '';
-    const fresh = searchParamsForCache.get('fresh');
-    // ?section=review is the admin page's freight + duplicate-item tabs. The
-    // analytics page never shows those, so each caller gets only its own queries.
-    const section = searchParamsForCache.get('section') === 'review' ? 'review' : 'analytics';
+    const { searchParams } = new URL(request.url);
+    const range = parseAnalyticsRange(searchParams);
+    const { from: startDate, to: endDate, prevFrom, bucket } = range;
+    const fresh = searchParams.get('fresh');
+    // ?section=review is the admin page's freight + duplicate-item tabs and
+    // ?section=drill the analytics side sheet. Each caller gets only its own queries.
+    const section = ['review', 'drill'].includes(searchParams.get('section')) ? searchParams.get('section') : 'analytics';
     // Tenant first: the Map is per server instance, shared by every company.
-    const cacheKey = `${requestTenant(request).tenant?.id}:${section}:${months}:${endDateParam}`;
+    const cacheKey = `${requestTenant(request).tenant?.id}:${section}:${startDate}:${endDate}${section === 'drill' ? `:${searchParams.toString()}` : ''}`;
     if (!fresh) {
       const cached = cacheGet(cacheKey);
       if (cached) {
@@ -355,18 +423,23 @@ export const GET = stockRoute(async function GET(request) {
     const outboundShipped = shippedFilter('s');
     const outboundShippedO = shippedFilter('o');
 
-    const { searchParams } = new URL(request.url);
-    const range = normalizeRange(searchParams);
-    const startDate = toDateOnly(range.startDate);
-    const endDate = toDateOnly(range.endDate);
-    const lastBucket = toDateOnly(range.lastBucket);
-    const elapsedFraction = range.elapsedFraction;
-
     if (section === 'review') {
       const payload = await loadReview(schemaCaps, startDate, endDate);
       cacheSet(cacheKey, payload);
       return NextResponse.json({ ...payload, _cache: 'miss' });
     }
+
+    if (section === 'drill') {
+      const payload = await loadDrill(schemaCaps, searchParams, startDate, endDate, salespersonLabelExpr, salespersonUserJoin);
+      cacheSet(cacheKey, payload);
+      return NextResponse.json({ ...payload, _cache: 'miss' });
+    }
+
+    // Day or month, from a fixed pair - safe to inline into the SQL.
+    const unit = bucket === 'day' ? 'day' : 'month';
+    const periodsCte = `periods AS (
+           SELECT generate_series(date_trunc('${unit}', $1::date), date_trunc('${unit}', $2::date), interval '1 ${unit}')::date AS bucket
+         )`;
 
     const [
       dispatchTrend,
@@ -386,14 +459,13 @@ export const GET = stockRoute(async function GET(request) {
       abcItemRows,
       monthlyProfitRows,
       priceDispersionRows,
+      periodTotalRows,
     ] = await Promise.all([
       // Outbound activity per month: how many dispatches went out and what they
       // billed. Draft, cancelled and rejected shipments are excluded - a draft
       // would otherwise book revenue, because dispatch_date defaults to NOW().
       sql(
-        `WITH periods AS (
-           SELECT generate_series(date_trunc('month', $1::date), date_trunc('month', $2::date), interval '1 month')::date AS bucket
-         ), dispatch_value AS (
+        `WITH ${periodsCte}, dispatch_value AS (
            SELECT
              osi.outbound_shipment_id,
              SUM(${netRevenue}) AS revenue
@@ -402,7 +474,7 @@ export const GET = stockRoute(async function GET(request) {
            GROUP BY osi.outbound_shipment_id
          ), dispatches AS (
            SELECT
-             date_trunc('month', s.dispatch_date)::date AS bucket,
+             date_trunc('${unit}', s.dispatch_date)::date AS bucket,
              s.status,
              COALESCE(dv.revenue, 0) AS revenue
            FROM stock_outbound_shipments s
@@ -411,7 +483,7 @@ export const GET = stockRoute(async function GET(request) {
              AND ${outboundShipped}
          )
          SELECT
-           p.bucket,
+           p.bucket::text AS bucket,
            COUNT(d.*)::int AS total,
            COUNT(*) FILTER (WHERE d.status = 'delivered')::int AS delivered,
            COALESCE(SUM(d.revenue), 0)::numeric(14,2) AS revenue
@@ -425,18 +497,16 @@ export const GET = stockRoute(async function GET(request) {
       // outbound revenue on one axis. grand_total is what the shipment was
       // actually priced at.
       sql(
-        `WITH periods AS (
-           SELECT generate_series(date_trunc('month', $1::date), date_trunc('month', $2::date), interval '1 month')::date AS bucket
-         ), arrivals AS (
+        `WITH ${periodsCte}, arrivals AS (
            SELECT
-             date_trunc('month', COALESCE(s.arrival_date, s.created_at))::date AS bucket,
+             date_trunc('${unit}', COALESCE(s.arrival_date, s.created_at))::date AS bucket,
              COALESCE(s.grand_total, 0) AS inbound_value
            FROM stock_inbound_shipments s
            WHERE COALESCE(s.arrival_date, s.created_at)::date BETWEEN $1::date AND $2::date
              AND s.approval_status <> 'rejected'
          )
          SELECT
-           p.bucket,
+           p.bucket::text AS bucket,
            COUNT(a.*)::int AS arrivals,
            COALESCE(SUM(a.inbound_value), 0)::numeric(14,2) AS inbound_value
          FROM periods p
@@ -479,7 +549,7 @@ export const GET = stockRoute(async function GET(request) {
       // client-side for the spotlight without a second fetch.
       sql(
         `SELECT
-           date_trunc('month', s.dispatch_date)::date AS bucket,
+           date_trunc('${unit}', s.dispatch_date)::date::text AS bucket,
            ${salespersonLabelExpr} AS salesperson,
            COUNT(DISTINCT s.id)::int AS shipment_count,
            COALESCE(SUM(${netUnits}), 0)::numeric(14,2) AS total_qty,
@@ -498,19 +568,16 @@ export const GET = stockRoute(async function GET(request) {
       // Leaderboard. Ordered by revenue, the only figure comparable across
       // stone and tile, and the same order the CSV export uses.
       //
-      // growth_ratio prorates the previous month down to the share of the
-      // current month that has elapsed ($4), so a month-to-date figure is
-      // compared against a like-for-like slice rather than a full month.
+      // growth_ratio compares the range against the same number of days just
+      // before it ($3 .. $1 - 1), so a window always meets a like-for-like one
+      // and a month in progress never reads as a collapse.
       //
-      // consistency_score is simply the share of months in the range with any
-      // sales. The old version also subtracted a variance penalty scaled by an
-      // unexplained constant, and divided by months the person appeared in
-      // rather than months in the range, which handed a perfect score to
-      // anyone with a single active month.
+      // consistency_score is the share of the range's buckets (days or months,
+      // $4 of them) with any sales.
       sql(
         `WITH ${unitCostCte(schemaCaps)}, monthly AS (
            SELECT
-             date_trunc('month', s.dispatch_date)::date AS bucket,
+             date_trunc('${unit}', s.dispatch_date)::date AS bucket,
              ${salespersonLabelExpr} AS salesperson,
              COUNT(DISTINCT s.id)::int AS shipment_count,
              COALESCE(SUM(${netUnits}), 0)::numeric(14,2) AS total_qty,
@@ -525,6 +592,18 @@ export const GET = stockRoute(async function GET(request) {
            WHERE s.dispatch_date::date BETWEEN $1::date AND $2::date
              AND ${outboundShipped}
            GROUP BY bucket, salesperson
+         ), previous AS (
+           SELECT
+             ${salespersonLabelExpr} AS salesperson,
+             COALESCE(SUM(${netRevenue}), 0)::numeric(14,2) AS revenue
+           FROM stock_outbound_shipments s
+           LEFT JOIN stock_sales_people sp ON sp.id = s.salesperson_id
+           ${salespersonUserJoin}
+           LEFT JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = s.id
+           LEFT JOIN stock_items i ON i.id = osi.item_id
+           WHERE s.dispatch_date::date BETWEEN $3::date AND ($1::date - 1)
+             AND ${outboundShipped}
+           GROUP BY 1
          ), ranked AS (
            SELECT
              salesperson,
@@ -533,32 +612,30 @@ export const GET = stockRoute(async function GET(request) {
              COALESCE(SUM(total_revenue), 0)::numeric(14,2) AS revenue,
              COALESCE(SUM(uncosted_revenue), 0)::numeric(14,2) AS uncosted_revenue,
              COALESCE(SUM(cost), 0)::numeric(14,2) AS cost,
-             COALESCE(MAX(total_revenue) FILTER (WHERE bucket = $3::date), 0)::numeric(14,2) AS current_period_revenue,
-             COALESCE(MAX(total_revenue) FILTER (WHERE bucket = ($3::date - interval '1 month')::date), 0)::numeric(14,2) AS previous_period_revenue,
-             COUNT(*) FILTER (WHERE total_revenue > 0)::int AS active_months
+             COUNT(*) FILTER (WHERE total_revenue > 0)::int AS active_buckets
            FROM monthly
            GROUP BY salesperson
          )
          SELECT
-           salesperson,
-           shipments,
-           quantity,
-           revenue,
-           uncosted_revenue,
-           cost,
-           ${marginColumns()},
-           current_period_revenue,
-           previous_period_revenue,
+           r.salesperson,
+           r.shipments,
+           r.quantity,
+           r.revenue,
+           r.uncosted_revenue,
+           r.cost,
+           ${marginColumns('r.revenue', 'r.uncosted_revenue', 'r.cost')},
+           r.revenue AS current_period_revenue,
+           COALESCE(p.revenue, 0)::numeric(14,2) AS previous_period_revenue,
            CASE
-             WHEN previous_period_revenue * $4::numeric = 0 THEN NULL
-             ELSE ((current_period_revenue - previous_period_revenue * $4::numeric)
-                   / (previous_period_revenue * $4::numeric))::numeric(10,4)
+             WHEN COALESCE(p.revenue, 0) = 0 THEN NULL
+             ELSE ((r.revenue - p.revenue) / p.revenue)::numeric(10,4)
            END AS growth_ratio,
-           LEAST(100, GREATEST(0, (active_months::numeric / $5::numeric) * 100))::numeric(10,2) AS consistency_score
-         FROM ranked
-         ORDER BY revenue DESC
+           LEAST(100, GREATEST(0, (r.active_buckets::numeric / $4::numeric) * 100))::numeric(10,2) AS consistency_score
+         FROM ranked r
+         LEFT JOIN previous p ON p.salesperson = r.salesperson
+         ORDER BY r.revenue DESC
          LIMIT 50`,
-        [startDate, endDate, lastBucket, elapsedFraction, range.months]
+        [startDate, endDate, prevFrom, range.bucketCount]
       ),
       sql(
         `WITH item_sales AS (
@@ -645,16 +722,17 @@ export const GET = stockRoute(async function GET(request) {
          WHERE i.is_active = TRUE`,
         []
       ),
-      // Reorder Now: items at or below reorder level that are still selling.
+      // Reorder Now: items at or below reorder level that sold in the range.
+      // days_cover is stock on hand over the range's average daily sales.
       sql(
         `WITH velocity AS (
            SELECT
              osi.item_id,
-             SUM(${netUnits})::numeric AS sold_30d
+             SUM(${netUnits})::numeric AS sold_in_range
            FROM stock_outbound_shipment_items osi
            JOIN stock_outbound_shipments o ON o.id = osi.outbound_shipment_id
            JOIN stock_items i ON i.id = osi.item_id
-           WHERE o.dispatch_date > NOW() - INTERVAL '30 days'
+           WHERE o.dispatch_date::date BETWEEN $1::date AND $2::date
              AND ${outboundShippedO}
            GROUP BY osi.item_id
          )
@@ -664,19 +742,19 @@ export const GET = stockRoute(async function GET(request) {
            i.name,
            COALESCE(d.name, 'Uncategorized') AS division,
            ${availableQty}::numeric(14,2) AS available_qty,
-           v.sold_30d::numeric(14,2) AS sold_30d,
-           ROUND(${availableQty} / v.sold_30d * 30, 1) AS days_cover
+           v.sold_in_range::numeric(14,2) AS sold_in_range,
+           ROUND(GREATEST(${availableQty}, 0) / (v.sold_in_range / $3::numeric), 1) AS days_cover
          FROM stock_items i
          JOIN velocity v ON v.item_id = i.id
          LEFT JOIN stock_divisions d ON d.id = i.division_id
          WHERE i.is_active = TRUE
-           AND v.sold_30d > 0
+           AND v.sold_in_range > 0
            AND ${availableQty} <= COALESCE(i.reorder_level, 0)
-         ORDER BY days_cover ASC, v.sold_30d DESC
+         ORDER BY days_cover ASC, v.sold_in_range DESC
          LIMIT 8`,
-        []
+        [startDate, endDate, range.days]
       ),
-      // Dead Stock: on hand, nothing shipped in 60 days. Capital idle is valued
+      // Dead Stock: on hand, nothing shipped since the range began. Capital idle is valued
       // at what the stock actually cost to buy; items with no priced receipt
       // are counted but contribute no value rather than a made-up zero-cost one.
       sql(
@@ -688,8 +766,8 @@ export const GET = stockRoute(async function GET(request) {
            COUNT(*) FILTER (WHERE uc.cost_per_unit IS NULL)::int AS uncosted_items
          FROM stock_items i
          LEFT JOIN unit_cost uc ON uc.item_id = i.id
-         WHERE ${idleStockWhere(schemaCaps, 'i')}`,
-        []
+         WHERE ${idleStockWhere(schemaCaps, 'i', '$1::date')}`,
+        [startDate]
       ),
       // Pending Queue: 5 oldest pending dispatches
       sql(
@@ -752,7 +830,7 @@ export const GET = stockRoute(async function GET(request) {
          LIMIT 8`,
         [startDate, endDate]
       ),
-      // Activity Feed: last 12 outbound/inbound events
+      // Activity Feed: the latest 12 outbound/inbound events in the range
       sql(
         `SELECT
            e.id,
@@ -766,9 +844,10 @@ export const GET = stockRoute(async function GET(request) {
          LEFT JOIN stock_app_users u ON u.id = e.recorded_by_user_id
          WHERE e.entity_type IN ('outbound_shipment', 'inbound_shipment')
            AND e.event_type NOT IN ('other')
+           AND e.occurred_at::date BETWEEN $1::date AND $2::date
          ORDER BY e.occurred_at DESC
          LIMIT 12`,
-        []
+        [startDate, endDate]
       ),
       // Top sellers. Only 50 rows are returned, but rank_at_80 is computed
       // over every item with sales so the "N items make 80%" caption stays
@@ -841,11 +920,9 @@ export const GET = stockRoute(async function GET(request) {
       // revenue is reported separately as uncosted_revenue instead of being
       // silently treated as pure profit.
       sql(
-        `WITH periods AS (
-           SELECT generate_series(date_trunc('month', $1::date), date_trunc('month', $2::date), interval '1 month')::date AS bucket
-         ), ${unitCostCte(schemaCaps)}, sales AS (
+        `WITH ${periodsCte}, ${unitCostCte(schemaCaps)}, sales AS (
            SELECT
-             date_trunc('month', o.dispatch_date)::date AS bucket,
+             date_trunc('${unit}', o.dispatch_date)::date AS bucket,
              SUM(${netRevenue}) AS revenue,
              SUM(${netRevenue}) FILTER (WHERE uc.cost_per_unit IS NULL) AS uncosted_revenue,
              SUM(${netUnits} * uc.cost_per_unit) FILTER (WHERE uc.cost_per_unit IS NOT NULL) AS cost
@@ -858,7 +935,7 @@ export const GET = stockRoute(async function GET(request) {
            GROUP BY bucket
          )
          SELECT
-           p.bucket,
+           p.bucket::text AS bucket,
            COALESCE(s.revenue, 0)::numeric(14,2) AS revenue,
            COALESCE(s.uncosted_revenue, 0)::numeric(14,2) AS uncosted_revenue,
            (COALESCE(s.revenue, 0) - COALESCE(s.uncosted_revenue, 0))::numeric(14,2) AS costed_revenue,
@@ -933,23 +1010,52 @@ export const GET = stockRoute(async function GET(request) {
          LIMIT 12`,
         [startDate, endDate, MIN_PRICED_SALES]
       ),
+      // The headline: the range against the same number of days just before
+      // it, with profit costed the same way as the monthly profit chart.
+      sql(
+        `WITH ${unitCostCte(schemaCaps)}, lines AS (
+           SELECT
+             (o.dispatch_date::date >= $1::date) AS is_current,
+             ${netRevenue} AS revenue,
+             CASE WHEN uc.cost_per_unit IS NULL THEN ${netRevenue} END AS uncosted,
+             ${netUnits} * uc.cost_per_unit AS cost,
+             o.id AS shipment_id
+           FROM stock_outbound_shipments o
+           JOIN stock_outbound_shipment_items osi ON osi.outbound_shipment_id = o.id
+           JOIN stock_items i ON i.id = osi.item_id
+           LEFT JOIN unit_cost uc ON uc.item_id = i.id
+           WHERE o.dispatch_date::date BETWEEN $3::date AND $2::date
+             AND ${outboundShippedO}
+         )
+         SELECT
+           is_current,
+           COALESCE(SUM(revenue), 0)::numeric(14,2) AS revenue,
+           COALESCE(SUM(uncosted), 0)::numeric(14,2) AS uncosted_revenue,
+           COALESCE(SUM(cost), 0)::numeric(14,2) AS cost,
+           COUNT(DISTINCT shipment_id)::int AS dispatches
+         FROM lines
+         GROUP BY is_current`,
+        [startDate, endDate, prevFrom]
+      ),
     ]);
 
     const approvalOpsRow = approvalOps[0] || {};
     const stockRiskRow = stockRisk[0] || {};
     const deadStockData = deadStockRow[0] || {};
 
+    const period = (current) => {
+      const row = periodTotalRows.find((r) => r.is_current === current) || {};
+      const revenue = Number(row.revenue || 0);
+      const uncosted = Number(row.uncosted_revenue || 0);
+      const cost = Number(row.cost || 0);
+      return { revenue, uncostedRevenue: uncosted, cost, profit: revenue - uncosted - cost, dispatches: Number(row.dispatches || 0) };
+    };
+
     const payload = {
-      range: {
-        months: range.months,
-        startDate,
-        endDate,
-        lastBucket,
-        // The UI drops or labels the final bucket wherever a comparison would
-        // otherwise pit part of a month against a whole one.
-        partialLastMonth: range.partialLastMonth,
-        elapsedFraction: Number(elapsedFraction.toFixed(4)),
-      },
+      // The UI labels the final bucket wherever a comparison would otherwise
+      // pit part of a day or month against a whole one (partialLastBucket).
+      range,
+      periodTotals: { current: period(true), previous: period(false) },
       dispatchPerformance: {
         trend: dispatchTrend,
       },

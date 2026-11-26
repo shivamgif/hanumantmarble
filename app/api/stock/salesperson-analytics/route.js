@@ -13,6 +13,7 @@ import {
   shippedFilter,
 } from '@/lib/stock-analytics-sql.mjs';
 import { normalizeSettings } from '@/lib/attendance.mjs';
+import { istToday, parseAnalyticsRange } from '@/lib/analytics-range.mjs';
 
 export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
@@ -39,16 +40,20 @@ export const GET = stockRoute(async function GET(request) {
     const owned = ownershipFilter(schemaCaps, 's', '$1');
     const netRevenue = netRevenueExpr(schemaCaps, 'soi', 'i');
     const shipped = shippedFilter('s');
+    // The trend follows the analytics page's window (six months when opened
+    // without one). Always in months, whatever the window's length: each row
+    // is held against a monthly goal, and a day held against one means nothing.
+    const range = parseAnalyticsRange(new URL(request.url).searchParams);
+    const currentMonthKey = istToday().slice(0, 7);
 
     const [monthlyRows, currentMonthRows, recentRows, activeDayRows] = await Promise.all([
-      // Exactly six calendar months, the current one last. generate_series keeps
-      // a month with no dispatches as a zero bar instead of dropping it, and a
-      // month-aligned start stops the oldest bar from holding a stray few days.
+      // Every calendar month the window touches. generate_series keeps a month
+      // with no dispatches as a zero bar instead of dropping it.
       sql(
         `WITH months AS (
            SELECT generate_series(
-             DATE_TRUNC('month', (NOW() AT TIME ZONE 'Asia/Kolkata')) - INTERVAL '5 months',
-             DATE_TRUNC('month', (NOW() AT TIME ZONE 'Asia/Kolkata')),
+             DATE_TRUNC('month', $2::date),
+             DATE_TRUNC('month', $3::date),
              INTERVAL '1 month'
            ) AS month_start
          ),
@@ -62,7 +67,7 @@ export const GET = stockRoute(async function GET(request) {
            JOIN stock_items i ON i.id = soi.item_id
            WHERE ${owned}
              AND ${shipped}
-             AND s.dispatch_date >= DATE_TRUNC('month', (NOW() AT TIME ZONE 'Asia/Kolkata')) - INTERVAL '5 months'
+             AND s.dispatch_date::date BETWEEN $2::date AND $3::date
            GROUP BY 1
          )
          SELECT
@@ -72,7 +77,7 @@ export const GET = stockRoute(async function GET(request) {
          FROM months m
          LEFT JOIN agg a ON a.month_start = m.month_start
          ORDER BY m.month_start ASC`,
-        [appUser.id]
+        [appUser.id, range.from, range.to]
       ),
       sql(
         `SELECT
@@ -102,10 +107,11 @@ export const GET = stockRoute(async function GET(request) {
          LEFT JOIN stock_customers c ON c.id = s.customer_id
          WHERE ${owned}
            AND ${shipped}
+           AND s.dispatch_date::date BETWEEN $2::date AND $3::date
          GROUP BY s.id, s.shipment_number, s.dispatch_date, c.name, s.status, s.approval_status
          ORDER BY s.dispatch_date DESC
          LIMIT 10`,
-        [appUser.id]
+        [appUser.id, range.from, range.to]
       ),
       // Days with at least one dispatch, for the sales streak. No items join -
       // one dispatch makes the day active regardless of value. dispatch_date is
@@ -194,11 +200,11 @@ export const GET = stockRoute(async function GET(request) {
         holidays: holidayRows.map((r) => r.day),
       },
       today: currentMonthRows[0]?.today ?? null,
-      monthlyTrend: monthlyRows.map((r, index) => ({
+      monthlyTrend: monthlyRows.map((r) => ({
         monthKey: r.month_key,
         dispatchCount: Number(r.dispatch_count),
         totalValue: Number(r.total_value),
-        isCurrent: index === monthlyRows.length - 1,
+        isCurrent: r.month_key === currentMonthKey,
       })),
       thisMonth: {
         count: Number(currentMonthRows[0]?.this_month_count ?? 0),

@@ -6,347 +6,409 @@ import {
   Area,
   BarChart,
   Bar,
+  Cell,
   LineChart,
   Line,
-  PieChart,
-  Pie,
-  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
+  Brush,
   Tooltip as RechartsTooltip,
 } from 'recharts';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
+import { bucketSlice } from '@/lib/analytics-range.mjs';
 import {
   AnalyticsCard,
-  ChartTooltip,
   TrendCapsule,
   EmptyState,
-  CHART_INK,
-  INDUSTRIAL_COLORS,
-  SERIES_COLORS,
-  formatMonthLabel,
+  formatBucketLabel,
+  formatBucketLong,
   formatCompactNumber,
   formatCompactINR,
+  formatINR,
 } from '../../components/dashboard-ui';
+import {
+  ACTIVE_DOT,
+  BAR,
+  BAR_CURSOR,
+  BAR_GAP,
+  BRUSH,
+  BRUSH_MIN_POINTS,
+  CHART_MARGIN,
+  DataTable,
+  GRID,
+  KitTooltip,
+  LINE_CURSOR,
+  Legend,
+  OTHER,
+  RankedBars,
+  SERIES,
+  STATUS_BAD,
+  X_AXIS,
+  Y_AXIS,
+  bucketClick,
+  useTableView,
+} from './chart-kit';
 
-export function SalesRevenueChart({ data, partial = false }) {
+const useT = () => {
   const { language } = useLanguage();
-  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+  return (key) => getTranslation(`stock.analytics.${key}`, language);
+};
 
-  if (!data || data.length === 0)
-    return (
-      <AnalyticsCard title={t('salesVolume')} subtitle={t('noData')}>
-        <div className="h-64 flex items-center justify-center"><EmptyState label={t('noData')} className="w-full max-w-xs border-none bg-transparent" /></div>
-      </AnalyticsCard>
-    );
+function Empty({ title }) {
+  const t = useT();
+  return (
+    <AnalyticsCard title={title}>
+      <div className="flex h-64 items-center justify-center"><EmptyState label={t('noData')} className="w-full max-w-xs border-none bg-transparent" /></div>
+    </AnalyticsCard>
+  );
+}
 
-  const chartData = data.map((d, i) => ({
-    month: formatMonthLabel(d.month || d.bucket) + (partial && i === data.length - 1 ? '*' : ''),
-    total: Number(d.total || 0),
-  }));
+// Shared by every time series: axis labels for the range's bucket size, an
+// asterisk on a bucket still filling, and a click that opens the drill sheet
+// on that bucket's own dates.
+function useBuckets(range, onDrill, by = 'division') {
+  const bucket = range?.bucket || 'month';
+  return useMemo(() => {
+    const tick = (lastBucket) => (v) => formatBucketLabel(v, bucket) + (range?.partialLastBucket && v === lastBucket ? '*' : '');
+    const long = (v) => formatBucketLong(v, bucket);
+    const drill = onDrill
+      ? bucketClick((b) => onDrill({ title: long(b), filter: bucketSlice(b, bucket, range), by }))
+      : undefined;
+    return { bucket, tick, long, drill };
+  }, [bucket, range, onDrill, by]);
+}
 
-  // The last bucket is the month we are standing in, so comparing it against a
-  // full prior month always reads as a fall. Trend and peak both use complete
-  // months only; the partial bucket still draws, marked with an asterisk.
-  const complete = partial ? data.slice(0, -1) : data;
-  const trend =
-    complete.length >= 2
-      ? ((Number(complete[complete.length - 1].total || 0) - Number(complete[complete.length - 2].total || 0)) /
-        Number(complete[complete.length - 2].total || 1)) *
-      100
-      : 0;
-  const isPositive = trend >= 0;
+const ChartBox = ({ children, clickable, height = 'h-72' }) => (
+  <div className={`${height} w-full ${clickable ? 'cursor-pointer' : ''}`}>
+    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
+      {children}
+    </ResponsiveContainer>
+  </div>
+);
 
-  const peakPool = complete.length > 0 ? complete : data;
-  const peak = peakPool.reduce((best, d) => (Number(d.total || 0) > Number(best.total || 0) ? d : best), peakPool[0]);
-  const peakLabel = peak ? `${t('highestActivity')}: ${formatCompactNumber(peak.total)} ${t('unitsIn')} ${formatMonthLabel(peak.month || peak.bucket)}` : null;
-  const contextBar = partial ? `${peakLabel} · ${t('partialMonthNote')}` : peakLabel;
+const pctChange = (current, previous) => (previous > 0 ? ((current - previous) / previous) * 100 : null);
+
+/** Revenue per bucket, with dispatch count in the tooltip; headline is the range vs the one before it. */
+export function SalesRevenueChart({ data, range, periodTotals, onDrill }) {
+  const t = useT();
+  const [table, tableButton] = useTableView();
+  const { tick, long, drill } = useBuckets(range, onDrill);
+  if (!data || data.length === 0) return <Empty title={t('revenueTrend')} />;
+
+  const rows = data.map((d) => ({ bucket: d.bucket, revenue: Number(d.revenue || 0), dispatches: Number(d.total || 0), delivered: Number(d.delivered || 0) }));
+  const last = rows[rows.length - 1].bucket;
+  const current = Number(periodTotals?.current?.revenue || 0);
+  const previous = Number(periodTotals?.previous?.revenue || 0);
+  const change = pctChange(current, previous);
+  const complete = range?.partialLastBucket ? rows.slice(0, -1) : rows;
+  const peak = complete.reduce((best, r) => (r.revenue > (best?.revenue ?? -1) ? r : best), null);
 
   return (
     <AnalyticsCard
-      title={t('activityTrend')}
-      subtitle={t('monthlyOutboundVolume')}
-      contextBar={contextBar}
-      topRight={<TrendCapsule value={trend} isPositive={isPositive} />}
+      title={t('revenueTrend')}
+      subtitle={t('revenueTrendSubtitle')}
+      topRight={tableButton}
+      contextBar={[
+        peak && peak.revenue > 0 ? `${t('bestBucket')}: ${long(peak.bucket)} · ${formatCompactINR(peak.revenue)}` : null,
+        range?.partialLastBucket ? t('partialBucketNote') : null,
+        onDrill ? t('clickToDrill') : null,
+      ].filter(Boolean).join(' · ')}
     >
-      <div className="h-72 lg:h-80 rounded-lg border border-border/60 bg-muted/20 p-4">
-        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
-          <AreaChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+      <div className="mb-4 flex flex-wrap items-end gap-x-3 gap-y-1">
+        <span className="text-3xl font-semibold tracking-tight tabular-nums text-foreground">{formatCompactINR(current)}</span>
+        {change != null ? <TrendCapsule value={change} isPositive={change >= 0} /> : null}
+        <span className="pb-1 text-xs text-muted-foreground">
+          {t('vsPrevious')} {formatCompactINR(previous)} · {formatCompactNumber(periodTotals?.current?.dispatches || 0)} {t('dispatchesUnit')}
+        </span>
+      </div>
+      {table ? (
+        <DataTable
+          columns={[
+            { key: 'bucket', label: t('period'), format: long },
+            { key: 'dispatches', label: t('dispatchesUnit') },
+            { key: 'delivered', label: t('delivered') },
+            { key: 'revenue', label: t('revenue'), format: formatINR },
+          ]}
+          rows={rows}
+          onRow={drill ? (r) => drill({ activeLabel: r.bucket }) : undefined}
+        />
+      ) : (
+        <ChartBox clickable={Boolean(drill)}>
+          <AreaChart data={rows} margin={CHART_MARGIN} onClick={drill}>
             <defs>
-              <linearGradient id="salesArea" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor={CHART_INK} stopOpacity={0.25} />
-                <stop offset="100%" stopColor={CHART_INK} stopOpacity={0} />
+              <linearGradient id="kit-revenue" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor={SERIES[0]} stopOpacity={0.22} />
+                <stop offset="100%" stopColor={SERIES[0]} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200/80 dark:stroke-slate-800" />
-            <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactNumber} width={40} />
-            <RechartsTooltip content={<ChartTooltip formatter={(v) => `${formatCompactNumber(v)} ${t('dispatchesUnit')}`} />} />
-            <Area type="monotone" dataKey="total" name={t('dispatchesUnit')} stroke={CHART_INK} strokeWidth={2} fill="url(#salesArea)" dot={false} activeDot={{ r: 6, stroke: 'rgb(var(--card))', strokeWidth: 2 }} />
+            <CartesianGrid {...GRID} />
+            <XAxis dataKey="bucket" {...X_AXIS} tickFormatter={tick(last)} />
+            <YAxis {...Y_AXIS} tickFormatter={formatCompactINR} />
+            <RechartsTooltip
+              cursor={LINE_CURSOR}
+              content={
+                <KitTooltip
+                  labelFormatter={long}
+                  formatter={(v, entry) => `${formatINR(v)} · ${entry.payload.dispatches} ${t('dispatchesUnit')}`}
+                />
+              }
+            />
+            <Area type="monotone" dataKey="revenue" name={t('revenue')} stroke={SERIES[0]} strokeWidth={2} fill="url(#kit-revenue)" dot={false} activeDot={ACTIVE_DOT} />
+            {rows.length >= BRUSH_MIN_POINTS ? <Brush dataKey="bucket" {...BRUSH} /> : null}
           </AreaChart>
-        </ResponsiveContainer>
-      </div>
+        </ChartBox>
+      )}
     </AnalyticsCard>
   );
 }
 
-export function TopDivisionsChart({ data }) {
-  const { language } = useLanguage();
-  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+/** Division share of revenue as ranked bars; a row opens that division. */
+export function TopDivisionsChart({ data, onDrill }) {
+  const t = useT();
+  const [table, tableButton] = useTableView();
+  if (!data || data.length === 0) return <Empty title={t('divisionContribution')} />;
 
-  if (!data || data.length === 0)
-    return (
-      <AnalyticsCard title={t('topSellingDivisions')} subtitle={t('noData')}>
-        <div className="h-64 flex items-center justify-center"><EmptyState label={t('noData')} className="w-full max-w-xs border-none bg-transparent" /></div>
-      </AnalyticsCard>
-    );
-
-  const topDivisions = [...data].sort((a, b) => Number(b.total_revenue || 0) - Number(a.total_revenue || 0)).slice(0, 5);
-  // Share is of every division, not just the five shown, so a top-five list
-  // cannot imply it is the whole business.
-  const totalRev = data.reduce((s, d) => s + Number(d.total_revenue || 0), 0) || 1;
-  const shownRev = topDivisions.reduce((s, d) => s + Number(d.total_revenue || 0), 0);
-  const otherRev = Math.max(0, totalRev - shownRev);
-  const pieData = topDivisions.map((d, i) => ({
-    name: d.division || t('unknown'),
+  const sorted = [...data].sort((a, b) => Number(b.total_revenue || 0) - Number(a.total_revenue || 0));
+  const total = sorted.reduce((s, d) => s + Number(d.total_revenue || 0), 0) || 1;
+  const shown = sorted.slice(0, 6);
+  const otherValue = sorted.slice(6).reduce((s, d) => s + Number(d.total_revenue || 0), 0);
+  // Colour by the division's place in the full list, so a division keeps its
+  // colour when the list below it changes.
+  const rows = shown.map((d, i) => ({
+    key: d.division,
+    label: d.division || t('unknown'),
     value: Number(d.total_revenue || 0),
-    color: INDUSTRIAL_COLORS[i % INDUSTRIAL_COLORS.length],
+    share: (Number(d.total_revenue || 0) / total) * 100,
+    color: SERIES[i],
+    extra: `${formatCompactNumber(d.shipment_count)} ${t('dispatchesShort')}`,
   }));
-  if (otherRev > 0) {
-    pieData.push({ name: t('otherDivisions'), value: otherRev, color: '#94a3b8' });
-  }
+  if (otherValue > 0) rows.push({ key: '__other', label: t('otherDivisions'), value: otherValue, share: (otherValue / total) * 100, color: OTHER });
+  const open = onDrill
+    ? (row) => row.key !== '__other' && onDrill({ title: row.label, filter: { division: row.key }, by: 'item' })
+    : undefined;
 
   return (
-    <AnalyticsCard
-      title={t('divisionContribution')}
-      subtitle={t('performanceByUnit')}
-    >
-      <div className="h-44 mb-4">
-        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
-          <PieChart>
-            <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={2}>
-              {pieData.map((entry, i) => (
-                <Cell key={i} fill={entry.color} stroke="none" />
-              ))}
-            </Pie>
-            <RechartsTooltip content={<ChartTooltip formatter={(v) => formatCompactINR(v)} />} />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="space-y-4">
-        {topDivisions.map((d, i) => {
-          const pct = (Number(d.total_revenue || 0) / totalRev) * 100;
-          const color = INDUSTRIAL_COLORS[i % INDUSTRIAL_COLORS.length];
-          return (
-            <div key={d.division || i} className="flex items-center gap-2 text-xs">
-              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-              <span className="font-medium text-xs text-slate-600 dark:text-slate-300 flex-1 truncate">{d.division || t('unknown')}</span>
-              <span className="font-sans font-bold text-slate-900 dark:text-white tracking-wider">{formatCompactINR(d.total_revenue)}</span>
-              <span className="text-[11px] font-bold text-slate-400 w-10 text-right">{pct.toFixed(0)}%</span>
-            </div>
-          );
-        })}
-      </div>
+    <AnalyticsCard title={t('divisionContribution')} subtitle={t('performanceByUnit')} topRight={tableButton}>
+      {table ? (
+        <DataTable
+          columns={[
+            { key: 'division', label: t('division') },
+            { key: 'total_revenue', label: t('revenue'), format: formatCompactINR },
+            { key: 'shipment_count', label: t('dispatchesShort') },
+            { key: 'top_item', label: t('topItem'), format: (v) => v || '—' },
+          ]}
+          rows={sorted}
+          onRow={open ? (r) => open({ key: r.division, label: r.division }) : undefined}
+        />
+      ) : (
+        <RankedBars rows={rows} format={formatCompactINR} onSelect={open} />
+      )}
     </AnalyticsCard>
   );
 }
 
-export function MonthlyCostVolumeChart({ dispatchTrend, inboundTrend, partial = false }) {
-  const { language } = useLanguage();
-  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+/** What was bought against what was sold, per bucket. One axis: both are rupees. */
+export function MonthlyCostVolumeChart({ dispatchTrend, inboundTrend, range, onDrill }) {
+  const t = useT();
+  const [table, tableButton] = useTableView();
+  const { tick, long, drill } = useBuckets(range, onDrill);
 
-  const chartData = useMemo(() => {
-    const byMonth = {};
-    (inboundTrend || []).forEach((d) => {
-      const k = d.bucket || d.month;
-      if (!k) return;
-      byMonth[k] = { ...byMonth[k], month: k, inboundValue: Number(d.inbound_value || 0) };
-    });
-    (dispatchTrend || []).forEach((d) => {
-      const k = d.bucket || d.month;
-      if (!k) return;
-      byMonth[k] = { ...byMonth[k], month: k, outboundValue: Number(d.revenue || 0) };
-    });
-    const ordered = Object.values(byMonth)
-      .sort((a, b) => (a.month < b.month ? -1 : 1))
-      .slice(-6);
-    return ordered.map((d, i) => ({
-      month: formatMonthLabel(d.month) + (partial && i === ordered.length - 1 ? '*' : ''),
-      inbound: d.inboundValue || 0,
-      outbound: d.outboundValue || 0,
-    }));
-  }, [inboundTrend, dispatchTrend, partial]);
+  const rows = useMemo(() => {
+    const byBucket = new Map();
+    (inboundTrend || []).forEach((d) => byBucket.set(d.bucket, { bucket: d.bucket, inbound: Number(d.inbound_value || 0), outbound: 0 }));
+    (dispatchTrend || []).forEach((d) => byBucket.set(d.bucket, { ...(byBucket.get(d.bucket) || { bucket: d.bucket, inbound: 0 }), outbound: Number(d.revenue || 0) }));
+    return [...byBucket.values()].sort((a, b) => (a.bucket < b.bucket ? -1 : 1));
+  }, [inboundTrend, dispatchTrend]);
 
-  if (!chartData || chartData.length === 0)
-    return (
-      <AnalyticsCard title={t('flowAnalysis')} subtitle={t('noData')}>
-        <div className="h-64 flex items-center justify-center"><EmptyState label={t('noData')} className="w-full max-w-xs border-none bg-transparent" /></div>
-      </AnalyticsCard>
-    );
+  if (rows.length === 0) return <Empty title={t('businessFlow')} />;
+  const last = rows[rows.length - 1].bucket;
+  const totalIn = rows.reduce((s, r) => s + r.inbound, 0);
+  const totalOut = rows.reduce((s, r) => s + r.outbound, 0);
 
   return (
     <AnalyticsCard
       title={t('businessFlow')}
       subtitle={t('inboundOutboundMatch')}
-      contextBar={partial ? t('partialMonthNote') : null}
       topRight={
-        <div className="flex flex-wrap gap-2">
-          <div className="flex items-center gap-2 text-xs font-medium text-slate-400 bg-card px-4 py-2 rounded-lg border border-border">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> {t('inbound')}
-          </div>
-          <div className="flex items-center gap-2 text-xs font-medium text-slate-400 bg-card px-4 py-2 rounded-lg border border-border">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> {t('outbound')}
-          </div>
-        </div>
+        <>
+          <Legend items={[{ label: t('outbound'), color: SERIES[0] }, { label: t('inbound'), color: SERIES[1] }]} />
+          {tableButton}
+        </>
       }
+      contextBar={`${t('outbound')} ${formatCompactINR(totalOut)} · ${t('inbound')} ${formatCompactINR(totalIn)}${range?.partialLastBucket ? ` · ${t('partialBucketNote')}` : ''}`}
     >
-      <div className="h-[280px] rounded-lg border border-border/60 bg-muted/20 p-4">
-        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
-          <BarChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }} barGap={4}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200/80 dark:stroke-slate-800" />
-            <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactINR} width={56} />
-            <RechartsTooltip content={<ChartTooltip formatter={(v) => formatCompactINR(v)} />} cursor={{ fill: 'rgba(148,163,184,0.08)' }} />
-            <Bar dataKey="inbound" name={t('inbound')} fill="#F43F5E" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="outbound" name={t('outbound')} fill="#10B981" radius={[4, 4, 0, 0]} />
+      {table ? (
+        <DataTable
+          columns={[
+            { key: 'bucket', label: t('period'), format: long },
+            { key: 'outbound', label: t('outbound'), format: formatINR },
+            { key: 'inbound', label: t('inbound'), format: formatINR },
+          ]}
+          rows={rows}
+          onRow={drill ? (r) => drill({ activeLabel: r.bucket }) : undefined}
+        />
+      ) : (
+        <ChartBox clickable={Boolean(drill)}>
+          <BarChart data={rows} margin={CHART_MARGIN} barGap={BAR_GAP} onClick={drill}>
+            <CartesianGrid {...GRID} />
+            <XAxis dataKey="bucket" {...X_AXIS} tickFormatter={tick(last)} />
+            <YAxis {...Y_AXIS} tickFormatter={formatCompactINR} />
+            <RechartsTooltip cursor={BAR_CURSOR} content={<KitTooltip labelFormatter={long} formatter={formatINR} />} />
+            <Bar dataKey="outbound" name={t('outbound')} fill={SERIES[0]} {...BAR} />
+            <Bar dataKey="inbound" name={t('inbound')} fill={SERIES[1]} {...BAR} />
+            {rows.length >= BRUSH_MIN_POINTS ? <Brush dataKey="bucket" {...BRUSH} /> : null}
           </BarChart>
-        </ResponsiveContainer>
-      </div>
+        </ChartBox>
+      )}
     </AnalyticsCard>
   );
 }
 
-export function MonthlyProfitChart({ data, partial = false }) {
-  const { language } = useLanguage();
-  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+/** Revenue and profit per bucket; a loss bar is drawn in the status red. */
+export function MonthlyProfitChart({ data, range, onDrill }) {
+  const t = useT();
+  const [table, tableButton] = useTableView();
+  const { tick, long, drill } = useBuckets(range, onDrill);
+  if (!data || data.length === 0) return <Empty title={t('profitPerMonth')} />;
 
-  const rows = data || [];
-  const chartData = rows.map((d, i) => ({
-    month: formatMonthLabel(d.bucket || d.month) + (partial && i === rows.length - 1 ? '*' : ''),
-    revenue: Number(d.revenue || 0),
-    profit: Number(d.profit || 0),
-  }));
-
-  if (chartData.length === 0)
-    return (
-      <AnalyticsCard title={t('profitPerMonth')} subtitle={t('noData')}>
-        <div className="h-64 flex items-center justify-center"><EmptyState label={t('noData')} className="w-full max-w-xs border-none bg-transparent" /></div>
-      </AnalyticsCard>
-    );
-
-  // Margin is measured against the revenue that could be costed. Revenue from
-  // items with no recorded purchase cost is called out separately rather than
-  // being counted as pure profit.
-  const latestRow = rows[rows.length - 1] || {};
-  const latest = chartData[chartData.length - 1];
-  const costedRevenue = Number(latestRow.costed_revenue ?? latestRow.revenue ?? 0);
-  const uncostedRevenue = Number(latestRow.uncosted_revenue || 0);
-  const marginPct = costedRevenue > 0 ? (Number(latestRow.profit || 0) / costedRevenue) * 100 : 0;
-  const contextBar = [
-    `${latest.month}${partial ? ` (${t('partialMonth')})` : ''}: ${formatCompactINR(latest.profit)} ${t('profit')} · ${marginPct.toFixed(1)}% ${t('margin')}`,
-    uncostedRevenue > 0 ? `${formatCompactINR(uncostedRevenue)} ${t('uncostedRevenue')}` : null,
-  ].filter(Boolean).join(' · ');
+  const rows = data.map((d) => {
+    const costed = Number(d.costed_revenue ?? d.revenue ?? 0);
+    const profit = Number(d.profit || 0);
+    return {
+      bucket: d.bucket,
+      revenue: Number(d.revenue || 0),
+      profit,
+      cost: Number(d.cost || 0),
+      uncosted: Number(d.uncosted_revenue || 0),
+      margin: costed > 0 ? (profit / costed) * 100 : null,
+    };
+  });
+  const last = rows[rows.length - 1].bucket;
+  // Range totals. Margin is over revenue that could be costed; revenue from
+  // items with no purchase cost is called out rather than counted as profit.
+  const sum = (k) => rows.reduce((s, r) => s + r[k], 0);
+  const costedTotal = sum('revenue') - sum('uncosted');
+  const marginTotal = costedTotal > 0 ? (sum('profit') / costedTotal) * 100 : null;
+  const pct = (v) => (v == null ? '—' : `${v.toFixed(1)}%`);
 
   return (
     <AnalyticsCard
       title={t('profitPerMonth')}
       subtitle={t('profitSubtitle')}
-      contextBar={contextBar}
       topRight={
-        <div className="flex flex-wrap gap-2">
-          <div className="flex items-center gap-2 text-xs font-medium text-slate-400 bg-card px-4 py-2 rounded-lg border border-border">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-600" /> {t('revenue')}
-          </div>
-          <div className="flex items-center gap-2 text-xs font-medium text-slate-400 bg-card px-4 py-2 rounded-lg border border-border">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" /> {t('profit')}
-          </div>
-        </div>
+        <>
+          <Legend items={[{ label: t('revenue'), color: SERIES[0] }, { label: t('profit'), color: SERIES[2] }]} />
+          {tableButton}
+        </>
       }
+      contextBar={[
+        `${formatCompactINR(sum('profit'))} ${t('profit')} · ${pct(marginTotal)} ${t('margin')}`,
+        sum('uncosted') > 0 ? `${formatCompactINR(sum('uncosted'))} ${t('uncostedRevenue')}` : null,
+        range?.partialLastBucket ? t('partialBucketNote') : null,
+      ].filter(Boolean).join(' · ')}
     >
-      <div className="h-[280px] rounded-lg border border-border/60 bg-muted/20 p-4">
-        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
-          <BarChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }} barGap={4}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200/80 dark:stroke-slate-800" />
-            <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactINR} width={56} />
-            <RechartsTooltip content={<ChartTooltip formatter={(v) => formatCompactINR(v)} />} cursor={{ fill: 'rgba(148,163,184,0.08)' }} />
-            <Bar dataKey="revenue" name={t('revenue')} fill="#2563EB" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="profit" name={t('profit')} fill="#059669" radius={[4, 4, 0, 0]} />
+      {table ? (
+        <DataTable
+          columns={[
+            { key: 'bucket', label: t('period'), format: long },
+            { key: 'revenue', label: t('revenue'), format: formatINR },
+            { key: 'cost', label: t('cost'), format: formatINR },
+            { key: 'profit', label: t('profit'), format: formatINR },
+            { key: 'margin', label: t('margin'), format: pct },
+            { key: 'uncosted', label: t('uncostedRevenue'), format: formatINR },
+          ]}
+          rows={rows}
+          onRow={drill ? (r) => drill({ activeLabel: r.bucket }) : undefined}
+        />
+      ) : (
+        <ChartBox clickable={Boolean(drill)}>
+          <BarChart data={rows} margin={CHART_MARGIN} barGap={BAR_GAP} onClick={drill}>
+            <CartesianGrid {...GRID} />
+            <XAxis dataKey="bucket" {...X_AXIS} tickFormatter={tick(last)} />
+            <YAxis {...Y_AXIS} tickFormatter={formatCompactINR} />
+            <RechartsTooltip
+              cursor={BAR_CURSOR}
+              content={(props) => (
+                <KitTooltip
+                  {...props}
+                  labelFormatter={long}
+                  formatter={formatINR}
+                  hint={props.payload?.[0] ? `${pct(props.payload[0].payload.margin)} ${t('margin')}` : null}
+                />
+              )}
+            />
+            <Bar dataKey="revenue" name={t('revenue')} fill={SERIES[0]} {...BAR} />
+            <Bar dataKey="profit" name={t('profit')} fill={SERIES[2]} {...BAR}>
+              {rows.map((r) => <Cell key={r.bucket} fill={r.profit < 0 ? STATUS_BAD : SERIES[2]} />)}
+            </Bar>
+            {rows.length >= BRUSH_MIN_POINTS ? <Brush dataKey="bucket" {...BRUSH} /> : null}
           </BarChart>
-        </ResponsiveContainer>
-      </div>
+        </ChartBox>
+      )}
     </AnalyticsCard>
   );
 }
 
-export function SalespersonTrendChart({ trend }) {
-  const { language } = useLanguage();
-  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+/** Top five sellers over the range; legend names open a person, the plot opens a bucket. */
+export function SalespersonTrendChart({ trend, range, onDrill }) {
+  const t = useT();
+  const [table, tableButton] = useTableView();
+  const { tick, long, drill } = useBuckets(range, onDrill, 'salesperson');
 
-  const { chartData, people } = useMemo(() => {
+  const { rows, people, totals } = useMemo(() => {
     const totals = {};
+    (trend || []).forEach((r) => { totals[r.salesperson] = (totals[r.salesperson] || 0) + Number(r.total_revenue || 0); });
+    const people = Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name]) => name);
+    const byBucket = new Map();
     (trend || []).forEach((r) => {
-      totals[r.salesperson] = (totals[r.salesperson] || 0) + Number(r.total_revenue || 0);
+      if (!byBucket.has(r.bucket)) byBucket.set(r.bucket, Object.fromEntries([['bucket', r.bucket], ...people.map((p) => [p, 0])]));
+      if (people.includes(r.salesperson)) byBucket.get(r.bucket)[r.salesperson] = Number(r.total_revenue || 0);
     });
-    const people = Object.entries(totals)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([name]) => name);
-    const byMonth = {};
-    (trend || []).forEach((r) => {
-      const k = r.bucket || r.month;
-      if (!k) return;
-      if (!byMonth[k]) {
-        byMonth[k] = { month: k };
-        people.forEach((p) => { byMonth[k][p] = 0; });
-      }
-      if (people.includes(r.salesperson)) byMonth[k][r.salesperson] = Number(r.total_revenue || 0);
-    });
-    const chartData = Object.values(byMonth)
-      .sort((a, b) => (a.month < b.month ? -1 : 1))
-      .map((d) => ({ ...d, month: formatMonthLabel(d.month) }));
-    return { chartData, people };
+    return { rows: [...byBucket.values()].sort((a, b) => (a.bucket < b.bucket ? -1 : 1)), people, totals };
   }, [trend]);
 
-  if (chartData.length === 0)
-    return (
-      <AnalyticsCard title={t('salespersonMonthly')} subtitle={t('noData')}>
-        <div className="h-64 flex items-center justify-center"><EmptyState label={t('noData')} className="w-full max-w-xs border-none bg-transparent" /></div>
-      </AnalyticsCard>
-    );
+  if (rows.length === 0) return <Empty title={t('salespersonMonthly')} />;
+  const last = rows[rows.length - 1].bucket;
+  // Colour by overall rank across the range, fixed for the chart's life.
+  const color = (i) => SERIES[i];
 
   return (
-    <AnalyticsCard title={t('salespersonMonthly')} subtitle={t('salespersonMonthlySubtitle')}>
-      <div className="h-[280px] rounded-lg border border-border/60 bg-muted/20 p-4">
-        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
-          <LineChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200/80 dark:stroke-slate-800" />
-            <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={formatCompactINR} width={56} />
-            <RechartsTooltip content={<ChartTooltip formatter={(v) => formatCompactINR(v)} />} />
+    <AnalyticsCard title={t('salespersonMonthly')} subtitle={t('salespersonMonthlySubtitle')} topRight={tableButton}>
+      {table ? (
+        <DataTable
+          columns={[{ key: 'bucket', label: t('period'), format: long }, ...people.map((p) => ({ key: p, label: p, format: formatCompactINR }))]}
+          rows={rows}
+          onRow={drill ? (r) => drill({ activeLabel: r.bucket }) : undefined}
+        />
+      ) : (
+        <ChartBox clickable={Boolean(drill)}>
+          <LineChart data={rows} margin={CHART_MARGIN} onClick={drill}>
+            <CartesianGrid {...GRID} />
+            <XAxis dataKey="bucket" {...X_AXIS} tickFormatter={tick(last)} />
+            <YAxis {...Y_AXIS} tickFormatter={formatCompactINR} />
+            <RechartsTooltip cursor={LINE_CURSOR} content={<KitTooltip labelFormatter={long} formatter={formatCompactINR} />} />
             {people.map((p, i) => (
-              <Line
-                key={p}
-                type="monotone"
-                dataKey={p}
-                name={p}
-                stroke={SERIES_COLORS[i % SERIES_COLORS.length]}
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 6, stroke: 'rgb(var(--card))', strokeWidth: 2 }}
-              />
+              <Line key={p} type="monotone" dataKey={p} name={p} stroke={color(i)} strokeWidth={2} dot={false} activeDot={ACTIVE_DOT} />
             ))}
+            {rows.length >= BRUSH_MIN_POINTS ? <Brush dataKey="bucket" {...BRUSH} /> : null}
           </LineChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2 px-1">
+        </ChartBox>
+      )}
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
         {people.map((p, i) => (
-          <span key={p} className="flex items-center gap-2 text-[11px] font-bold text-slate-600 dark:text-slate-300 min-w-0">
-            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: SERIES_COLORS[i % SERIES_COLORS.length] }} />
-            <span className="truncate max-w-[10rem]">{p}</span>
-          </span>
+          <button
+            key={p}
+            type="button"
+            disabled={!onDrill}
+            onClick={() => onDrill?.({ title: p, filter: { salesperson: p }, by: 'customer' })}
+            className="flex min-w-0 items-center gap-1.5 rounded-md px-1 text-xs text-muted-foreground transition-colors hover:text-foreground focus-ring disabled:cursor-default"
+          >
+            <span className="h-0.5 w-3 shrink-0 rounded-full" style={{ backgroundColor: color(i) }} />
+            <span className="max-w-[10rem] truncate">{p}</span>
+            <span className="tabular-nums text-foreground">{formatCompactINR(totals[p])}</span>
+          </button>
         ))}
       </div>
     </AnalyticsCard>
@@ -358,9 +420,8 @@ export function SalespersonTrendChart({ trend }) {
 const DAYS_LEFT_URGENT = 15;
 const DAYS_LEFT_SOON = 30;
 
-export function TopSellersWidget({ items }) {
-  const { language } = useLanguage();
-  const t = (key) => getTranslation(`stock.analytics.${key}`, language);
+export function TopSellersWidget({ items, onDrill }) {
+  const t = useT();
   if (!items || items.length === 0) {
     return (
       <AnalyticsCard title={t('topSellers')} subtitle={t('topSellersSubtitle')}>
@@ -371,15 +432,16 @@ export function TopSellersWidget({ items }) {
   const totalItems = Number(items[0]?.total_items_with_sales || items.length);
   const top80Count = Number(items[0]?.rank_at_80 || 0);
   const maxRev = Number(items[0]?.revenue || 1);
-  const headCell = 'text-xs font-medium text-slate-400';
+  const headCell = 'text-xs font-medium text-muted-foreground';
   const cols = 'md:grid md:grid-cols-[1.5rem_minmax(0,2fr)_minmax(0,1.6fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,1fr)] md:items-center md:gap-4';
+  const Row = onDrill ? 'button' : 'div';
   return (
     <AnalyticsCard
       title={t('topSellers')}
       subtitle={t('topSellersSubtitle')}
       contextBar={top80Count > 0 ? `${top80Count} ${t('ofLabel')} ${totalItems} ${t('itemsEqual80')}` : null}
     >
-      <div className={`hidden ${cols} px-1 pb-2 border-b border-border/60`}>
+      <div className={`hidden ${cols} border-b border-border/60 px-2 pb-2`}>
         <span />
         <span className={headCell}>{t('item')}</span>
         <span className={headCell}>{t('revenue')}</span>
@@ -387,55 +449,59 @@ export function TopSellersWidget({ items }) {
         <span className={`${headCell} text-right`}>{t('profit')}</span>
         <span className={`${headCell} text-right`}>{t('stockLeft')}</span>
       </div>
-      <div className="max-h-[32rem] overflow-y-auto pr-1">
+      <div className="max-h-[32rem] overflow-y-auto">
         {items.map((it) => {
           const revenue = Number(it.revenue || 0);
           const profit = Number(it.gross_profit || 0);
           const margin = it.margin_pct != null ? Number(it.margin_pct) : null;
           const daysLeft = it.days_left != null ? Number(it.days_left) : null;
           const daysTone = daysLeft == null
-            ? 'text-slate-400'
+            ? 'text-muted-foreground'
             : daysLeft <= DAYS_LEFT_URGENT
-              ? 'bg-muted text-rose-700  dark:text-rose-400'
+              ? 'bg-rose-500/10 text-rose-700 dark:text-rose-400'
               : daysLeft <= DAYS_LEFT_SOON
-                ? 'bg-muted text-amber-700  dark:text-amber-400'
-                : 'text-slate-500 dark:text-slate-400';
+                ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                : 'text-muted-foreground';
           return (
-            <div key={it.id} className={`${cols} grid grid-cols-2 gap-x-4 gap-y-2 py-2 px-1 border-b border-slate-100 dark:border-slate-800/40 last:border-b-0`}>
-              <span className="hidden md:block text-xs font-bold text-slate-400 text-right tabular-nums">{it.rank}.</span>
-              <div className="col-span-2 md:col-span-1 min-w-0">
-                <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate" title={it.name}>
-                  <span className="md:hidden text-slate-400 tabular-nums">{it.rank}. </span>{it.name}
+            <Row
+              key={it.id}
+              {...(onDrill ? { type: 'button', onClick: () => onDrill({ title: it.name, filter: { item: it.id }, by: 'customer' }) } : {})}
+              className={`${cols} grid w-full grid-cols-2 gap-x-4 gap-y-2 rounded-md border-b border-border/50 px-2 py-2 text-left last:border-b-0 ${onDrill ? 'transition-colors hover:bg-muted/60 focus-ring' : ''}`}
+            >
+              <span className="hidden text-right text-xs tabular-nums text-muted-foreground md:block">{it.rank}</span>
+              <div className="col-span-2 min-w-0 md:col-span-1">
+                <p className="truncate text-xs font-medium text-foreground" title={it.name}>
+                  <span className="tabular-nums text-muted-foreground md:hidden">{it.rank}. </span>{it.name}
                 </p>
-                <p className="text-[11px] font-bold text-slate-400 truncate">{it.division}{it.sku ? ` · ${it.sku}` : ''}</p>
+                <p className="truncate text-[11px] text-muted-foreground">{it.division}{it.sku ? ` · ${it.sku}` : ''}</p>
               </div>
-              <div className="col-span-2 md:col-span-1 min-w-0">
+              <div className="col-span-2 min-w-0 md:col-span-1">
                 <div className="flex items-baseline justify-between gap-2 tabular-nums">
-                  <span className="text-xs font-bold text-slate-900 dark:text-white">{formatCompactINR(revenue)}</span>
-                  <span className="text-[11px] font-bold text-slate-400">{Number(it.share_pct || 0).toFixed(1)}% {t('ofSales')}</span>
+                  <span className="text-xs font-semibold text-foreground">{formatCompactINR(revenue)}</span>
+                  <span className="text-[11px] text-muted-foreground">{Number(it.share_pct || 0).toFixed(1)}%</span>
                 </div>
-                <div className="mt-1 h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-brand-secondary rounded-full" style={{ width: `${Math.min(100, (revenue / maxRev) * 100)}%` }} />
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full" style={{ width: `${Math.min(100, (revenue / maxRev) * 100)}%`, backgroundColor: SERIES[0] }} />
                 </div>
               </div>
-              <div className="md:text-right tabular-nums">
-                <span className="md:hidden text-xs font-medium text-slate-400">{t('sold')} </span>
-                <span className="text-xs font-bold text-slate-900 dark:text-white">{formatCompactNumber(it.units)}</span>
+              <div className="tabular-nums md:text-right">
+                <span className="text-xs text-muted-foreground md:hidden">{t('sold')} </span>
+                <span className="text-xs font-semibold text-foreground">{formatCompactNumber(it.units)}</span>
               </div>
               <div className="text-right tabular-nums">
-                <p className={`text-xs font-bold ${profit < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                  <span className="md:hidden text-xs text-slate-400">{t('profit')} </span>
+                <p className={`text-xs font-semibold ${profit < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-foreground'}`}>
+                  <span className="text-xs font-normal text-muted-foreground md:hidden">{t('profit')} </span>
                   {formatCompactINR(profit)}
                 </p>
-                {margin != null ? <p className="text-[11px] font-bold text-slate-400">{margin.toFixed(1)}% {t('margin')}</p> : null}
+                {margin != null ? <p className="text-[11px] text-muted-foreground">{margin.toFixed(1)}% {t('margin')}</p> : null}
               </div>
-              <div className="col-span-2 md:col-span-1 flex items-center justify-between md:justify-end gap-2 tabular-nums">
-                <span className="text-[11px] font-bold text-slate-400">{formatCompactNumber(it.in_stock)} {t('onHandShort')}</span>
-                <span className={`text-[11px] font-bold px-2 py-1 rounded-lg ${daysTone}`}>
+              <div className="col-span-2 flex items-center justify-between gap-2 tabular-nums md:col-span-1 md:justify-end">
+                <span className="text-[11px] text-muted-foreground">{formatCompactNumber(it.in_stock)} {t('onHandShort')}</span>
+                <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${daysTone}`}>
                   {daysLeft != null ? `${daysLeft}${t('daysShort')}` : '—'}
                 </span>
               </div>
-            </div>
+            </Row>
           );
         })}
       </div>

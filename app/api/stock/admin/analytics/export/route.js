@@ -13,6 +13,7 @@ import {
   shippedFilter,
   unitCostCte,
 } from '@/lib/stock-analytics-sql.mjs';
+import { parseAnalyticsRange } from '@/lib/analytics-range.mjs';
 
 function csvEscape(value) {
   if (value === null || value === undefined) return '';
@@ -42,25 +43,6 @@ function csvResponse(filename, body) {
   });
 }
 
-function clampInt(value, min, max, fallback) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, Math.round(n)));
-}
-
-function rangeFromParams(searchParams) {
-  const months = clampInt(searchParams.get('months'), 1, 24, 6);
-  const endDate = searchParams.get('endDate') ? new Date(searchParams.get('endDate')) : new Date();
-  if (Number.isNaN(endDate.getTime())) throw new Error('Invalid endDate');
-  const startDate = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth() - (months - 1), 1));
-  const normalizedEnd = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth() + 1, 0, 23, 59, 59, 999));
-  return {
-    months,
-    startDate: startDate.toISOString().slice(0, 10),
-    endDate: normalizedEnd.toISOString().slice(0, 10),
-  };
-}
-
 export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
   if (!session || !hasAnyStockRole(appUser, ['admin', 'manager', 'read_only_admin'])) {
@@ -75,7 +57,10 @@ export const GET = stockRoute(async function GET(request) {
   const type = (searchParams.get('type') || 'leaderboard').toLowerCase();
 
   try {
-    const range = rangeFromParams(searchParams);
+    // Same window as the page the CSV was downloaded from.
+    const { from: startDate, to: endDate, bucket, days } = parseAnalyticsRange(searchParams);
+    const range = { startDate, endDate };
+    const unit = bucket === 'day' ? 'day' : 'month';
     const stamp = new Date().toISOString().slice(0, 10);
     const schemaCaps = await getStockSchemaCapabilities();
     // Same expressions the dashboard uses, so a CSV and the screen it was
@@ -166,10 +151,10 @@ export const GET = stockRoute(async function GET(request) {
     if (type === 'trends') {
       const rows = await sql(
         `WITH periods AS (
-           SELECT generate_series(date_trunc('month', $1::date), date_trunc('month', $2::date), interval '1 month')::date AS bucket
+           SELECT generate_series(date_trunc('${unit}', $1::date), date_trunc('${unit}', $2::date), interval '1 ${unit}')::date AS bucket
          ), inbound AS (
            SELECT
-             date_trunc('month', COALESCE(s.arrival_date, s.created_at))::date AS bucket,
+             date_trunc('${unit}', COALESCE(s.arrival_date, s.created_at))::date AS bucket,
              COUNT(*)::int AS arrivals,
              COALESCE(SUM(s.grand_total), 0)::numeric(14,2) AS inbound_value
            FROM stock_inbound_shipments s
@@ -178,7 +163,7 @@ export const GET = stockRoute(async function GET(request) {
            GROUP BY bucket
          ), outbound AS (
            SELECT
-             date_trunc('month', s.dispatch_date)::date AS bucket,
+             date_trunc('${unit}', s.dispatch_date)::date AS bucket,
              COUNT(DISTINCT s.id)::int AS dispatches,
              COALESCE(SUM(${netUnits}), 0)::numeric(14,2) AS dispatched_units,
              COALESCE(SUM(${netRevenue}), 0)::numeric(14,2) AS dispatched_value
@@ -190,7 +175,7 @@ export const GET = stockRoute(async function GET(request) {
            GROUP BY bucket
          )
          SELECT
-           to_char(p.bucket, 'YYYY-MM') AS month,
+           to_char(p.bucket, '${unit === 'day' ? 'YYYY-MM-DD' : 'YYYY-MM'}') AS month,
            COALESCE(i.arrivals, 0) AS arrivals,
            COALESCE(i.inbound_value, 0) AS inbound_value,
            COALESCE(o.dispatches, 0) AS dispatches,
@@ -203,7 +188,7 @@ export const GET = stockRoute(async function GET(request) {
         [range.startDate, range.endDate]
       );
       const headers = [
-        { label: 'Month', accessor: 'month' },
+        { label: unit === 'day' ? 'Date' : 'Month', accessor: 'month' },
         { label: 'Arrivals', accessor: 'arrivals' },
         { label: 'Inbound Value (INR)', accessor: 'inbound_value' },
         { label: 'Dispatches', accessor: 'dispatches' },
@@ -218,11 +203,11 @@ export const GET = stockRoute(async function GET(request) {
         `WITH velocity AS (
            SELECT
              osi.item_id,
-             SUM(${netUnits})::numeric AS sold_30d
+             SUM(${netUnits})::numeric AS sold_in_range
            FROM stock_outbound_shipment_items osi
            JOIN stock_outbound_shipments o ON o.id = osi.outbound_shipment_id
            JOIN stock_items i ON i.id = osi.item_id
-           WHERE o.dispatch_date > NOW() - INTERVAL '30 days'
+           WHERE o.dispatch_date::date BETWEEN $1::date AND $2::date
              AND ${outboundShippedO}
            GROUP BY osi.item_id
          )
@@ -233,16 +218,16 @@ export const GET = stockRoute(async function GET(request) {
            ${availableQty}::numeric(14,2) AS available_qty,
            i.unit_of_measure,
            COALESCE(i.reorder_level, 0) AS reorder_level,
-           v.sold_30d AS sold_last_30d,
-           ROUND(${availableQty} / v.sold_30d * 30, 1) AS days_cover
+           v.sold_in_range,
+           ROUND(GREATEST(${availableQty}, 0) / (v.sold_in_range / $3::numeric), 1) AS days_cover
          FROM stock_items i
          JOIN velocity v ON v.item_id = i.id
          LEFT JOIN stock_divisions d ON d.id = i.division_id
          WHERE i.is_active = TRUE
-           AND v.sold_30d > 0
+           AND v.sold_in_range > 0
            AND ${availableQty} <= COALESCE(i.reorder_level, 0)
-         ORDER BY days_cover ASC, v.sold_30d DESC`,
-        []
+         ORDER BY days_cover ASC, v.sold_in_range DESC`,
+        [startDate, endDate, days]
       );
       const headers = [
         { label: 'SKU', accessor: 'sku' },
@@ -251,10 +236,10 @@ export const GET = stockRoute(async function GET(request) {
         { label: 'Available Qty', accessor: 'available_qty' },
         { label: 'Unit', accessor: 'unit_of_measure' },
         { label: 'Reorder Level', accessor: 'reorder_level' },
-        { label: 'Sold Last 30d', accessor: 'sold_last_30d' },
+        { label: `Sold ${startDate} to ${endDate}`, accessor: 'sold_in_range' },
         { label: 'Days Cover', accessor: 'days_cover' },
       ];
-      return csvResponse(`reorder_now_${stamp}.csv`, rowsToCsv(headers, rows));
+      return csvResponse(`reorder_now_${startDate}_to_${endDate}.csv`, rowsToCsv(headers, rows));
     }
 
     if (type === 'deadstock') {
@@ -275,9 +260,9 @@ export const GET = stockRoute(async function GET(request) {
          FROM stock_items i
          LEFT JOIN stock_divisions d ON d.id = i.division_id
          LEFT JOIN unit_cost uc ON uc.item_id = i.id
-         WHERE ${idleStockWhere(schemaCaps, 'i')}
+         WHERE ${idleStockWhere(schemaCaps, 'i', '$1::date')}
          ORDER BY estimated_value DESC NULLS LAST, units_idle DESC`,
-        []
+        [startDate]
       );
       const headers = [
         { label: 'SKU', accessor: 'sku' },
@@ -290,7 +275,7 @@ export const GET = stockRoute(async function GET(request) {
         { label: 'Last Dispatch', accessor: (row) => row.last_dispatch_date ? new Date(row.last_dispatch_date).toISOString().slice(0, 10) : 'never' },
         { label: 'Days Idle', accessor: 'days_idle' },
       ];
-      return csvResponse(`dead_stock_${stamp}.csv`, rowsToCsv(headers, rows));
+      return csvResponse(`dead_stock_since_${startDate}.csv`, rowsToCsv(headers, rows));
     }
 
     return NextResponse.json({ error: 'Unknown export type' }, { status: 400 });

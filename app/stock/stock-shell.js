@@ -147,7 +147,6 @@ export default function StockShell({ children }) {
   const navKey = navigationItems.map((item) => item.href).join('|');
   const navDefaults = useMemo(() => navKey.split('|').map((id) => ({ id })), [navKey]);
   const navLayout = useLayoutPref('nav', navDefaults, accessUser?.ui_prefs?.nav);
-  const [navEditing, setNavEditing] = useState(false);
   const byHref = Object.fromEntries(navigationItems.map((item) => [item.href, item]));
   const arrangedNav = [
     ...navLayout.items.filter((item) => item.id === '/stock'),
@@ -224,9 +223,8 @@ export default function StockShell({ children }) {
         toggleLanguage={toggleLanguage}
         setNotificationOpen={notificationsState.setNotificationOpen}
         unreadCount={notificationsState.unreadCount}
-        navigationItems={navEditing && !sidebarCollapsed ? arrangedNav : visibleNav}
-        navEditing={navEditing}
-        setNavEditing={setNavEditing}
+        navigationItems={visibleNav}
+        allNavItems={arrangedNav}
         onNavChange={saveNav}
         onNavReset={navLayout.reset}
         lockedNav={ALWAYS_SHOWN}

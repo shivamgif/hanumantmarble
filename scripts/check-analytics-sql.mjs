@@ -143,6 +143,10 @@ const idle = idleStockWhere(modern);
 assert.match(idle, new RegExp(`INTERVAL '${IDLE_STOCK_DAYS} days'`));
 assert.match(idle, /> 0/, 'out-of-stock items are not dead stock');
 assert.match(idle, /is_active = TRUE/);
+// The analytics page cuts dead stock to its own window instead of 60 days.
+const idleInRange = idleStockWhere(modern, 'i', '$1::date');
+assert.match(idleInRange, /< \$1::date\)/, 'a range start replaces the fixed 60 days');
+assert.doesNotMatch(idleInRange, /INTERVAL/);
 
 // --- repeated freight ---------------------------------------------------------
 // The old rule asked whether the whole truck-day carried one figure

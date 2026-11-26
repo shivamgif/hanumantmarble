@@ -331,6 +331,25 @@
     --ring: 224 122 0;
 
     --radius: 0.5rem;
+
+    /* Chart palette: fixed categorical order, validated for colour-blind
+       separation against the card surface (dataviz validate_palette.js).
+       Plain hex - SVG fills read these directly. Slots 3-5 sit under 3:1 on
+       white, so every chart ships direct labels or a table view. */
+    --series-1: #257de0;
+    --series-2: #c96e00;
+    --series-3: #00b894;
+    --series-4: #f2a600;
+    --series-5: #ee7fac;
+    --series-6: #008a17;
+    --series-7: #6a4ce2;
+    --series-8: #ec4647;
+    --series-other: #94a3b8;
+    --chart-grid: #eef2f6;
+    --chart-axis: #64748b;
+    --chart-cursor: rgba(100, 116, 139, 0.08);
+    --status-good: #047857;
+    --status-bad: #be123c;
   }
 
   .dark {
@@ -362,6 +381,22 @@
     --destructive-foreground: 241 245 249;
 
     --ring: 224 122 0;
+
+    /* Dark steps of the same eight hues, validated on the dark card (#1e293b). */
+    --series-1: #338ced;
+    --series-2: #e76624;
+    --series-3: #00a888;
+    --series-4: #d28e05;
+    --series-5: #e24d8b;
+    --series-6: #0aac23;
+    --series-7: #9887ef;
+    --series-8: #eb6263;
+    --series-other: #64748b;
+    --chart-grid: #2b3a50;
+    --chart-axis: #94a3b8;
+    --chart-cursor: rgba(148, 163, 184, 0.1);
+    --status-good: #34d399;
+    --status-bad: #fb7185;
   }
 }
  

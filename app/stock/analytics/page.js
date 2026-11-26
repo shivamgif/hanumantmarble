@@ -7,11 +7,11 @@ import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { canSell, getRoleFlags } from '@/lib/stock-roles.mjs';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Boxes, Check, Download, LayoutGrid, RotateCcw, SlidersHorizontal, TrendingUp, UserCheck, Users } from 'lucide-react';
+import { Boxes, Download, LayoutGrid, TrendingUp, UserCheck, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CLASSES, paceAdjustedTarget } from '../components/dashboard-ui';
-import { ERROR_BOX_CLASS, getJson, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS, tabButtonClass, tabTrackClass } from '../lib/stock-utils';
-import { WidgetGrid } from './components/widget-grid';
+import { ERROR_BOX_CLASS, getJson, PILL_BUTTON_CLASS, tabButtonClass, tabTrackClass } from '../lib/stock-utils';
+import { LayoutMenu, WidgetGrid } from './components/widget-grid';
 import { useLayoutPref } from '@/hooks/useLayoutPref';
 import { PageHeader } from '../components/page-header';
 import {
@@ -37,6 +37,9 @@ import {
   RiskInventoryTable,
 } from './components/widgets';
 import { AttendanceSummaryWidget } from './components/attendance-widget';
+import { RangePicker } from './components/range-picker';
+import { DrillSheet } from './components/drill-sheet';
+import { parseAnalyticsRange, rangeQuery } from '@/lib/analytics-range.mjs';
 
 const TABS = [
   { id: 'overview', labelKey: 'tabOverview', icon: LayoutGrid },
@@ -69,10 +72,15 @@ function AnalyticsDashboardInner() {
   const searchParams = useSearchParams();
   const [adminAnalytics, setAdminAnalytics] = useState(null);
   const [salespersonAnalytics, setSalespersonAnalytics] = useState(null);
-  const [analyticsRangeMonths, setAnalyticsRangeMonths] = useState(6);
+  // The time window lives in the URL (?range=6m or ?from=&to=), so a refresh
+  // or a shared link opens on the same slice. Every fetch below is cut to it.
+  const range = useMemo(() => parseAnalyticsRange(searchParams), [searchParams]);
+  const query = rangeQuery(range);
   // Kept in ?tab= too, so a refresh or a shared link lands on the same tab —
   // the same arrangement as /stock/attendance?view=.
   const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'overview');
+  // The side sheet behind a clicked chart mark: { title, filter, by } or null.
+  const [drill, setDrill] = useState(null);
   // null = spotlight falls back to the top performer; lifted here so the
   // leaderboard rows can drive the selection too.
   const [selectedSalesperson, setSelectedSalesperson] = useState(null);
@@ -99,15 +107,28 @@ function AnalyticsDashboardInner() {
     [sellsToo, canViewAllAnalytics]
   );
   const currentTab = visibleTabs.some((tab) => tab.id === activeTab) ? activeTab : 'overview';
-  const [editing, setEditing] = useState(false);
   const layout = useLayoutPref(`analytics.${currentTab}`, ANALYTICS_LAYOUT[currentTab] || NO_WIDGETS, accessUser?.ui_prefs?.[`analytics.${currentTab}`]);
 
+  const pushUrl = useCallback(
+    (tab, nextQuery) => {
+      const params = new URLSearchParams(nextQuery);
+      if (params.get('range') === '6m') params.delete('range'); // the default needs no param
+      if (tab !== 'overview') params.set('tab', tab);
+      const qs = params.toString();
+      router.replace(qs ? `/stock/analytics?${qs}` : '/stock/analytics', { scroll: false });
+    },
+    [router]
+  );
   const selectTab = useCallback(
     (id) => {
       setActiveTab(id);
-      router.replace(id === 'overview' ? '/stock/analytics' : `/stock/analytics?tab=${id}`, { scroll: false });
+      pushUrl(id, query);
     },
-    [router]
+    [pushUrl, query]
+  );
+  const setRange = useCallback(
+    (next) => pushUrl(activeTab, next.preset ? `range=${next.preset}` : `from=${next.from}&to=${next.to}`),
+    [pushUrl, activeTab]
   );
 
   useEffect(() => {
@@ -134,8 +155,8 @@ function AnalyticsDashboardInner() {
           if (mounted) set(json);
         };
         await Promise.all([
-          canViewAllAnalytics && load(`/api/stock/admin/analytics?months=${analyticsRangeMonths}`, setAdminAnalytics),
-          sellsToo && load('/api/stock/salesperson-analytics', setSalespersonAnalytics),
+          canViewAllAnalytics && load(`/api/stock/admin/analytics?${query}`, setAdminAnalytics),
+          sellsToo && load(`/api/stock/salesperson-analytics?${query}`, setSalespersonAnalytics),
         ]);
       } catch (err) {
         if (mounted) setError(err.message);
@@ -147,18 +168,18 @@ function AnalyticsDashboardInner() {
     return () => {
       mounted = false;
     };
-  }, [user, analyticsRangeMonths, canViewAllAnalytics, sellsToo, isAuthorized]);
+  }, [user, query, canViewAllAnalytics, sellsToo, isAuthorized]);
 
   const [pendingActionLoading, setPendingActionLoading] = useState(null);
 
   const refetchAnalytics = useCallback(async () => {
     if (!canViewAllAnalytics) return;
     try {
-      const response = await fetch(`/api/stock/admin/analytics?months=${analyticsRangeMonths}&fresh=1`, { cache: 'no-store' });
+      const response = await fetch(`/api/stock/admin/analytics?${query}&fresh=1`, { cache: 'no-store' });
       const json = await response.json();
       if (response.ok) setAdminAnalytics(json);
     } catch {}
-  }, [analyticsRangeMonths, canViewAllAnalytics]);
+  }, [query, canViewAllAnalytics]);
 
   const handlePendingApprove = useCallback(async (item) => {
     setPendingActionLoading(String(item.id));
@@ -221,7 +242,7 @@ function AnalyticsDashboardInner() {
     }).length;
   }, [salespersonGoalsAll]);
 
-  // The full skeleton is for the first load only. Switching 3M/6M/12M keeps the
+  // The full skeleton is for the first load only. Switching the range keeps the
   // current figures up (dimmed, below) until the new ones arrive.
   const hasData = Boolean(adminAnalytics || salespersonAnalytics);
   if (loading && !hasData)
@@ -259,13 +280,14 @@ function AnalyticsDashboardInner() {
     );
   }
 
+  // The server's reading of the range wins (bucket size, partial last bucket).
+  const dataRange = adminAnalytics?.range || range;
+  const periodTotals = adminAnalytics?.periodTotals;
+
   const divisionRisk = adminAnalytics?.inventoryHealth?.divisionRisk || [];
   const divisionPerformance = adminAnalytics?.divisionPerformance?.ranking || [];
   const dispatchTrend = adminAnalytics?.dispatchPerformance?.trend || [];
   const inboundTrend = adminAnalytics?.inboundFlow?.trend || [];
-  // The final bucket is the month in progress. Charts that compare periods drop
-  // it rather than pit a few days against a whole month.
-  const partialLastMonth = Boolean(adminAnalytics?.range?.partialLastMonth);
   const salespersonRanking = adminAnalytics?.salespersonPerformance?.ranking || [];
   const salespersonTrend = adminAnalytics?.salespersonPerformance?.trend || [];
   const monthlyProfit = adminAnalytics?.monthlyProfit || [];
@@ -289,12 +311,14 @@ function AnalyticsDashboardInner() {
           data={divisionRisk}
           stockRisk={stockRisk}
           approvalOps={approvalOps}
-          monthlyProfit={monthlyProfit}
-          elapsedFraction={Number(adminAnalytics?.range?.elapsedFraction || 1)}
+          periodTotals={periodTotals}
+          revenueTrend={dispatchTrend}
+          profitTrend={monthlyProfit}
+          range={dataRange}
         />
       ),
     },
-    revenue: { title: t('w.revenue'), node: <SalesRevenueChart data={dispatchTrend} partial={partialLastMonth} /> },
+    revenue: { title: t('w.revenue'), node: <SalesRevenueChart data={dispatchTrend} range={dataRange} periodTotals={periodTotals} onDrill={setDrill} /> },
     pending: {
       title: t('w.pending'),
       node: (
@@ -306,15 +330,15 @@ function AnalyticsDashboardInner() {
         />
       ),
     },
-    reorder: { title: t('w.reorder'), node: <ReorderNowWidget items={reorderNow} months={analyticsRangeMonths} /> },
-    profit: { title: t('w.profit'), node: <MonthlyProfitChart data={monthlyProfit} partial={partialLastMonth} /> },
-    divisions: { title: t('w.divisions'), node: <TopDivisionsChart data={divisionPerformance} /> },
-    costVolume: { title: t('w.costVolume'), node: <MonthlyCostVolumeChart dispatchTrend={dispatchTrend} inboundTrend={inboundTrend} partial={partialLastMonth} /> },
-    concentration: { title: t('w.concentration'), node: <CustomerConcentrationWidget rows={customerConcentration} /> },
-    dispersion: { title: t('w.dispersion'), node: <PriceDispersionWidget rows={priceDispersion} /> },
-    topSellers: { title: t('w.topSellers'), node: <TopSellersWidget items={abcItems} /> },
-    risk: { title: t('w.risk'), node: <RiskInventoryTable divisionRisk={divisionRisk} months={analyticsRangeMonths} /> },
-    deadStock: { title: t('w.deadStock'), node: <DeadStockWidget data={deadStock} months={analyticsRangeMonths} /> },
+    reorder: { title: t('w.reorder'), node: <ReorderNowWidget items={reorderNow} query={query} range={dataRange} onDrill={setDrill} /> },
+    profit: { title: t('w.profit'), node: <MonthlyProfitChart data={monthlyProfit} range={dataRange} onDrill={setDrill} /> },
+    divisions: { title: t('w.divisions'), node: <TopDivisionsChart data={divisionPerformance} onDrill={setDrill} /> },
+    costVolume: { title: t('w.costVolume'), node: <MonthlyCostVolumeChart dispatchTrend={dispatchTrend} inboundTrend={inboundTrend} range={dataRange} onDrill={setDrill} /> },
+    concentration: { title: t('w.concentration'), node: <CustomerConcentrationWidget rows={customerConcentration} onDrill={setDrill} /> },
+    dispersion: { title: t('w.dispersion'), node: <PriceDispersionWidget rows={priceDispersion} onDrill={setDrill} /> },
+    topSellers: { title: t('w.topSellers'), node: <TopSellersWidget items={abcItems} onDrill={setDrill} /> },
+    risk: { title: t('w.risk'), node: <RiskInventoryTable divisionRisk={divisionRisk} query={query} /> },
+    deadStock: { title: t('w.deadStock'), node: <DeadStockWidget data={deadStock} query={query} range={dataRange} /> },
     spotlight: {
       title: t('w.spotlight'),
       node: (
@@ -324,18 +348,19 @@ function AnalyticsDashboardInner() {
           goals={salespersonGoals}
           selected={selectedSalesperson}
           onSelect={setSelectedSalesperson}
-          months={analyticsRangeMonths}
+          range={dataRange}
+          onDrill={setDrill}
         />
       ),
     },
-    salesTrend: { title: t('w.salesTrend'), node: <SalespersonTrendChart trend={salespersonTrend} /> },
+    salesTrend: { title: t('w.salesTrend'), node: <SalespersonTrendChart trend={salespersonTrend} range={dataRange} onDrill={setDrill} /> },
     pace: {
       title: t('w.pace'),
       node: (
         <Leaderboard
           ranking={salespersonRanking}
           goals={salespersonGoals}
-          months={analyticsRangeMonths}
+          query={query}
           onSelect={setSelectedSalesperson}
           selected={selectedSalesperson}
         />
@@ -387,21 +412,9 @@ function AnalyticsDashboardInner() {
         </div>
 
         <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-2">
-          <div className={`${tabTrackClass(3)} !w-fit`} role="group" aria-label="Range">
-            {[3, 6, 12].map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setAnalyticsRangeMonths(m)}
-                aria-pressed={analyticsRangeMonths === m}
-                className={`${tabButtonClass(analyticsRangeMonths === m, 5)} !h-8 px-4`}
-              >
-                {m}M
-              </button>
-            ))}
-          </div>
+          <RangePicker key={query} value={range} onChange={setRange} t={t} />
           <a
-            href={`/api/stock/admin/analytics/export?type=trends&months=${analyticsRangeMonths}`}
+            href={`/api/stock/admin/analytics/export?type=trends&${query}`}
             download
             className={PILL_BUTTON_CLASS}
             title={t('downloadTrendsCsv')}
@@ -410,21 +423,7 @@ function AnalyticsDashboardInner() {
             CSV
           </a>
           {currentTab !== 'me' ? (
-            <>
-              {editing ? (
-                <button type="button" onClick={layout.reset} className={PILL_BUTTON_CLASS}>
-                  <RotateCcw /> {t('resetLayout')}
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => setEditing((v) => !v)}
-                aria-pressed={editing}
-                className={editing ? PILL_PRIMARY_BUTTON_CLASS : PILL_BUTTON_CLASS}
-              >
-                {editing ? <Check /> : <SlidersHorizontal />} {editing ? t('doneCustomize') : t('customize')}
-              </button>
-            </>
+            <LayoutMenu items={layout.items} widgets={widgets} onChange={layout.save} onReset={layout.reset} t={t} />
           ) : null}
         </div>
       </div>
@@ -449,12 +448,13 @@ function AnalyticsDashboardInner() {
       {currentTab === 'me' ? (
         <MyPerformancePanel data={salespersonAnalytics} goal={ownGoal} />
       ) : (
-        <WidgetGrid items={layout.items} widgets={widgets} editing={editing} onChange={layout.save} t={t} />
+        <WidgetGrid items={layout.items} widgets={widgets} onChange={layout.save} t={t} />
       )}
 
       </div>
 
       <ReasonDialog request={reasonDialog} onClose={() => setReasonDialog(null)} />
+      {canViewAllAnalytics ? <DrillSheet request={drill} range={dataRange} onClose={() => setDrill(null)} /> : null}
     </div>
   );
 }
