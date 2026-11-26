@@ -120,10 +120,15 @@ export function WidgetGrid({ items, widgets, onChange, t }) {
   );
 }
 
-/** Hidden widgets to bring back, and the reset. Sits in the page header. */
+/**
+ * Customize: every card on the tab, each with show/hide and a width picker,
+ * and the reset. The same changes the in-place grip and edge make, for anyone
+ * who never finds those (they only appear on hover). Sits in the page header.
+ */
 export function LayoutMenu({ items, widgets, onChange, onReset, t }) {
-  const hidden = items.filter((item) => item.hidden && widgets[item.id]);
-  const show = (id) => onChange(items.map((item) => (item.id === id ? { ...item, hidden: false } : item)));
+  const list = items.filter((item) => widgets[item.id]);
+  const hiddenCount = list.filter((item) => item.hidden).length;
+  const update = (id, patch) => onChange(items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -134,34 +139,50 @@ export function LayoutMenu({ items, widgets, onChange, onReset, t }) {
         >
           <LayoutGrid className="h-4 w-4 text-muted-foreground" />
           <span className="hidden sm:inline">{t('layoutMenu')}</span>
-          {hidden.length > 0 ? <span className="rounded-md bg-muted px-1.5 text-[11px] tabular-nums text-muted-foreground">{hidden.length}</span> : null}
+          {hiddenCount > 0 ? <span className="rounded-md bg-muted px-1.5 text-[11px] tabular-nums text-muted-foreground">{hiddenCount}</span> : null}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-64 p-2">
-        <p className="px-1 pb-1 text-[11px] text-muted-foreground">{t('layoutHint')}</p>
-        <p className="px-1 pt-1 text-xs font-medium text-foreground">{t('hiddenWidgets')}</p>
-        {hidden.length === 0 ? (
-          <p className="px-1 py-2 text-xs text-muted-foreground">{t('noHiddenWidgets')}</p>
-        ) : (
-          <ul className="py-1">
-            {hidden.map((item) => (
-              <li key={item.id} className="flex items-center gap-2 rounded-md px-1 py-1 text-xs">
-                <span className="min-w-0 flex-1 truncate text-foreground">{widgets[item.id].title}</span>
+      <PopoverContent align="end" className="w-[22rem] max-w-[calc(100vw-2rem)] p-2">
+        <p className="px-1 pb-2 text-[11px] leading-relaxed text-muted-foreground">{t('layoutHint')}</p>
+        <ul className="space-y-0.5">
+          {list.map((item) => {
+            const { title } = widgets[item.id];
+            return (
+              <li key={item.id} className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-muted/50">
                 <button
                   type="button"
-                  onClick={() => show(item.id)}
-                  className="inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-ring"
+                  onClick={() => update(item.id, { hidden: !item.hidden })}
+                  aria-pressed={!item.hidden}
+                  aria-label={`${item.hidden ? t('showWidget') : t('hideWidget')}: ${title}`}
+                  title={item.hidden ? t('showWidget') : t('hideWidget')}
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-ring"
                 >
-                  <Eye className="h-3 w-3" /> {t('showWidget')}
+                  {item.hidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                 </button>
+                <span className={`min-w-0 flex-1 truncate text-xs ${item.hidden ? 'text-muted-foreground' : 'text-foreground'}`}>{title}</span>
+                {/* Width: wide screens only, where the grid has columns. */}
+                <div role="group" aria-label={`${t('widgetWidth')}: ${title}`} className="hidden shrink-0 items-center gap-0.5 rounded-md bg-muted p-0.5 lg:flex">
+                  {SPANS.map((span) => (
+                    <button
+                      key={span}
+                      type="button"
+                      disabled={item.hidden}
+                      aria-pressed={item.span === span}
+                      onClick={() => update(item.id, { span })}
+                      className={`h-6 min-w-[1.75rem] rounded px-1.5 text-[11px] transition-colors focus-ring disabled:opacity-40 ${item.span === span ? 'glass-chip font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                    >
+                      {span === 12 ? t('fullWidth') : SPAN_LABEL[span]}
+                    </button>
+                  ))}
+                </div>
               </li>
-            ))}
-          </ul>
-        )}
+            );
+          })}
+        </ul>
         <button
           type="button"
           onClick={onReset}
-          className="mt-1 flex h-8 w-full items-center justify-center gap-2 rounded-md border border-border text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-ring"
+          className="mt-2 flex h-8 w-full items-center justify-center gap-2 rounded-md border border-border text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-ring"
         >
           <RotateCcw className="h-3.5 w-3.5" /> {t('resetLayout')}
         </button>

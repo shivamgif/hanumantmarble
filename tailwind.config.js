@@ -1,6 +1,9 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ["class"],
+  // hover: styles only on devices that can hover, so a tap on a phone does not
+  // leave a button lifted and shadowed until the next tap elsewhere.
+  future: { hoverOnlyWhenSupported: true },
   content: [
     './pages/**/*.{js,jsx}',
     './components/**/*.{js,jsx}',
@@ -77,7 +80,7 @@ module.exports = {
       },
       boxShadow: {
         // Soft and few: the 1px border draws the edge, the shadow only hints at depth.
-        card: "0 1px 2px 0 rgb(15 23 42 / 0.04)",
+        card: "0 1px 2px 0 rgb(15 23 42 / 0.06), 0 1px 3px 0 rgb(15 23 42 / 0.05)",
         "card-hover": "0 1px 2px 0 rgb(15 23 42 / 0.04), 0 4px 12px -4px rgb(15 23 42 / 0.08)",
         // Menus, popovers, dialogs, toasts: anything floating over the page.
         float: "0 2px 4px -2px rgb(15 23 42 / 0.06), 0 12px 24px -8px rgb(15 23 42 / 0.12)",

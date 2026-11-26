@@ -1,5 +1,6 @@
 'use client';
 
+import { TabTrack } from '../components/tab-track';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import { useCallback, useEffect, useState } from 'react';
@@ -9,7 +10,7 @@ import Link from 'next/link';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { lazyZodResolver } from '@/lib/forms/lazy-zod-resolver';
 import { useStockFormStore } from '@/lib/stores/stock-form-store';
-import { createArrivalItemRow, createBagArrivalItemRow, createDispatchItemRow, createInitialArrivalDraft, createInitialBagArrivalDraft, createInitialDispatchDraft, formatLineVolume, formatShipmentVolume, toNumber, trimText, parseSizeLabelDimensions, tabButtonClass, tabTrackClass, CLASSES, ERROR_BOX_CLASS, PILL_BUTTON_CLASS, SUBMIT_BUTTON_CLASS, SUBMIT_SECONDARY_CLASS } from '@/app/stock/lib/stock-utils';
+import { createArrivalItemRow, createBagArrivalItemRow, createDispatchItemRow, createInitialArrivalDraft, createInitialBagArrivalDraft, createInitialDispatchDraft, formatLineVolume, formatShipmentVolume, toNumber, trimText, parseSizeLabelDimensions, tabButtonClass, CLASSES, ERROR_BOX_CLASS, PILL_BUTTON_CLASS, SUBMIT_BUTTON_CLASS, SUBMIT_SECONDARY_CLASS } from '@/app/stock/lib/stock-utils';
 import { PageHeader } from '@/app/stock/components/page-header';
 import { ArrivalFormContent, BagArrivalFormContent } from '@/app/stock/components/arrival-form';
 import { DispatchFormContent } from '@/app/stock/components/dispatch-form';
@@ -1231,8 +1232,8 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Same strip as every other page (see tabTrackClass). */}
-      <div className={tabTrackClass(adminTabs.length)}>
+      {/* Same strip as every other page (see TabTrack). */}
+      <TabTrack>
         {adminTabs.map((tab) => {
           const isActive = mobileSection === tab.id;
           const Icon = tab.icon;
@@ -1249,18 +1250,15 @@ export default function AdminDashboard() {
               <span className="min-w-0 truncate">
                 {tab.label}
               </span>
-              {/* Waiting work, shown as a count where there is room and a dot
-                  where the tab has collapsed to an icon. */}
+              {/* Waiting work: tabs keep their labels at every width now, so the
+                  count shows everywhere. */}
               {tab.badge ? (
-                <>
-                  <span className="ml-2 hidden rounded-lg bg-muted px-2 py-1 text-[11px] leading-none text-amber-600 dark:text-amber-400 sm:inline-block">{tab.badge}</span>
-                  <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 sm:hidden" />
-                </>
+                <span className="rounded-lg bg-background px-1.5 py-0.5 text-[11px] leading-none text-amber-700 dark:text-amber-400">{tab.badge}</span>
               ) : null}
             </button>
           );
         })}
-      </div>
+      </TabTrack>
 
       <div className="grid grid-cols-1 gap-4">
         <section id="approval-queue" className={`space-y-6 ${mobileSection === 'approvals' ? '' : 'hidden'}`}>

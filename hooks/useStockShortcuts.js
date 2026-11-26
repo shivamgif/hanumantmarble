@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getRoleFlags } from '@/lib/stock-roles.mjs';
 import { COMMANDS } from '@/components/stock/layout/StockTopbar';
-import { matchesKey, parentPath } from '@/lib/shortcuts.mjs';
+import { isBareKey, matchesKey, parentPath, tabIndexFor } from '@/lib/shortcuts.mjs';
 
 // Fields Enter walks through, Tally-style. Popover triggers (date pickers) count.
 const FIELDS = 'input:not([type=hidden]):not([type=submit]):not([type=button]):not([disabled]):not([readonly]), select:not([disabled]), textarea:not([disabled]), button[aria-haspopup]:not([disabled])';
@@ -96,6 +96,43 @@ export function useStockShortcuts({ dashboardSearchRef, accessRole }) {
       if (event.key === '?') {
         event.preventDefault();
         setShortcutsOpen(true);
+        return;
+      }
+
+      // Single keys, as in Gmail or GitHub. Never while a dialog or list is
+      // open: those keys belong to it.
+      const bare = isBareKey(event) && !isOpenLayer();
+
+      // '/' searches, the same as ⌘K / Ctrl+K.
+      if (bare && event.key === '/') {
+        event.preventDefault();
+        dashboardSearchRef.current?.focus();
+        dashboardSearchRef.current?.select();
+        return;
+      }
+
+      // N: the page's own "new" button (New dispatch, New estimate, …), which
+      // marks itself aria-keyshortcuts="N". The one on screen wins, so the key
+      // follows the tab you are on without this hook knowing the pages.
+      if (bare && event.key.toLowerCase() === 'n') {
+        const button = [...document.querySelectorAll('[aria-keyshortcuts="N"]')]
+          .find((el) => !el.disabled && el.getClientRects().length);
+        if (button) {
+          event.preventDefault();
+          button.click();
+        }
+        return;
+      }
+
+      // 1-9: the page's tabs (TabTrack, components/tab-track.js).
+      const tabIndex = bare ? tabIndexFor(event) : -1;
+      if (tabIndex >= 0) {
+        const track = [...document.querySelectorAll('.tab-scroll')].find((el) => el.getClientRects().length);
+        const tab = track?.children[tabIndex];
+        if (tab && !tab.disabled) {
+          event.preventDefault();
+          tab.click();
+        }
         return;
       }
 

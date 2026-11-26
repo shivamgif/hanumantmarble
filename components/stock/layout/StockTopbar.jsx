@@ -63,6 +63,8 @@ export const COMMANDS = [
     show: (flags, role) => flags.canViewAllAnalytics || role === 'salesperson' },
 ];
 
+const QUICK_ACTION_IDS = ['new-estimate', 'new-dispatch', 'new-purchase'];
+
 const DEFAULT_COMMAND_IDS = ['new-dispatch', 'new-purchase', 'new-estimate', 'dispatches', 'purchases', 'inventory', 'invoices'];
 
 function scoreCommand(cmd, query) {
@@ -392,6 +394,9 @@ export function ShortcutsSheet({ open, onOpenChange, isApple, language }) {
     ]],
     [hi ? 'कहीं भी' : 'Anywhere', [
       [[mod, 'K'], hi ? 'खोजें या कोई भी पेज खोलें' : 'Search, or jump to any page'],
+      [['/'], hi ? 'खोजें' : 'Search'],
+      [['N'], hi ? 'इस पेज पर नया (डिस्पैच, खरीद, एस्टिमेट, वाउचर)' : 'New on this page (dispatch, purchase, estimate, voucher)'],
+      [['1–9'], hi ? 'पेज के टैब बदलें' : "Switch the page's tabs"],
       [['F8'], hi ? 'नया एस्टिमेट (सेल्स)' : 'New estimate (sales)'],
       [keyLabels('Alt+F8', isApple), hi ? 'नया डिस्पैच (डिलीवरी नोट)' : 'New dispatch (delivery note)'],
       [['F9'], hi ? 'नई खरीद' : 'New purchase'],
@@ -454,10 +459,13 @@ export default function StockTopbar({
   const tabs = navigationItems.slice(0, MOBILE_TABS);
   const overflow = navigationItems.slice(MOBILE_TABS);
   const overflowActive = overflow.some((item) => isActiveRoute(item.href));
-  const quickActions = getRoleFlags(accessRole).isReadOnly ? [] : [
-    { label: 'Purchase', href: '/stock?view=purchases&new=purchase', keys: ['F9'] },
-    { label: 'Dispatch', href: '/stock?view=dispatches&new=dispatch', keys: keyLabels('Alt+F8', mod !== 'Ctrl') },
-  ];
+  // The F-key vouchers, from COMMANDS so the buttons, the keys and the role
+  // gating can't drift apart (an estimate is open to more roles than a dispatch).
+  const flags = getRoleFlags(accessRole);
+  const quickActions = QUICK_ACTION_IDS
+    .map((id) => COMMANDS.find((c) => c.id === id))
+    .filter((c) => !c.show || c.show(flags, accessRole))
+    .map((c) => ({ label: c.label.replace(/^New /, ''), href: c.href, keys: keyLabels(c.shortcut, mod !== 'Ctrl') }));
 
   return (
     <header className="glass-bar sticky top-0 z-20">

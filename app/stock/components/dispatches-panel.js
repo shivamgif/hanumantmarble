@@ -10,7 +10,7 @@ import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
 import { DispatchFormContent } from './dispatch-form';
 import { groupRowsByDay, formatTime } from '../lib/group-by-day.mjs';
 import { ProductSalesReport } from './product-sales-report';
-import { formatDateTime, getGeneratedByRoleLabel, getStatusVariant, CLASSES, FORM_INPUT_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS, exportToCSV, EXPORT_PERIOD_PRESETS, filterRowsByPeriod, invalidateShipmentCache, fetchAllPages, fetchDispatches } from '../lib/stock-utils';
+import { formatDateTime, getGeneratedByRoleLabel, getStatusVariant, CLASSES, FORM_INPUT_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS, exportToCSV, EXPORT_PERIOD_PRESETS, filterRowsByPeriod, invalidateShipmentCache, fetchAllPages, fetchDispatches, PANEL_ACTIONS_CLASS, PANEL_SECTION_CLASS, KBD_ON_PRIMARY_CLASS } from '../lib/stock-utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -109,7 +109,7 @@ export function DispatchesPanel({
     <div className="stock-tab-panel" key="stock-panel-dispatches">
       <div className="flex flex-wrap items-center justify-between gap-2 pb-4">
         {tabs}
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-2">
+        <div className={PANEL_ACTIONS_CLASS}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
@@ -185,9 +185,11 @@ export function DispatchesPanel({
         disabled={!canCreateDispatch || dispatchSubmitting}
         title={!canCreateDispatch ? 'Your role cannot log new dispatches' : dispatchSubmitting ? 'Submission in progress...' : undefined}
         className={PILL_PRIMARY_BUTTON_CLASS}
+        aria-keyshortcuts="N"
       >
         <Plus className="h-4 w-4" />
         {t('newDispatch')}
+        <kbd aria-hidden="true" className={KBD_ON_PRIMARY_CLASS}>N</kbd>
       </button>
         </div>
         <Sheet open={dispatchSheetOpen} onOpenChange={setDispatchSheetOpen}>
@@ -216,7 +218,7 @@ export function DispatchesPanel({
           </SheetContent>
         </Sheet>
       </div>
-      <section id="dispatches" className="flex h-full flex-col overflow-hidden scroll-mt-6 glass-panel rounded-lg">
+      <section id="dispatches" className={PANEL_SECTION_CLASS}>
         <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-card px-4 py-2">
           <div className="relative group min-w-0 flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -240,7 +242,7 @@ export function DispatchesPanel({
             {dispatchGrouped ? (dispatchSort.direction === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />) : null}
           </button>
         </div>
-        <div className={`px-4 pb-1 md:hidden transition-opacity duration-200 ${dispatchFetching ? 'opacity-50' : ''}`}>
+        <div className={`pb-1 md:hidden transition-opacity duration-200 ${dispatchFetching ? 'opacity-50' : ''}`}>
           {dispatchFetching && dispatchPagination.rows.length === 0 && (
             <div className="flex items-center justify-center gap-2 py-8 text-slate-400">
               <span className="h-4 w-4 animate-spin rounded-full border border-slate-300 border-t-foreground" />
@@ -248,7 +250,7 @@ export function DispatchesPanel({
             </div>
           )}
           {dispatchGroups.map((group) => (
-            <div key={group.key} className="-mx-2 border-t border-border first:border-t-0">
+            <div key={group.key} className="border-t border-border first:border-t-0">
               {dispatchGrouped && (
                 <h3 className="border-b border-border bg-muted px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200">{group.label}</h3>
               )}
@@ -256,7 +258,7 @@ export function DispatchesPanel({
               {group.rows.map((d) => {
                 const expanded = dispatchExpandedId === d.id;
                 return (
-                  <article key={`dispatch-mobile-${d.id}`} className="px-1 py-2">
+                  <article key={`dispatch-mobile-${d.id}`} className="py-2">
                     <div className="flex items-start justify-between gap-2">
                       <button
                         type="button"

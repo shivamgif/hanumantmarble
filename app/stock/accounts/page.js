@@ -1,11 +1,12 @@
 'use client';
 
+import { TabTrack } from '../components/tab-track';
 import { useCallback, useEffect, useState } from 'react';
 import { BarChart3, BookOpen, HandCoins, Notebook, Plus, Receipt, Settings2 } from 'lucide-react';
 import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { getRoleFlags } from '@/lib/stock-roles.mjs';
-import { CLASSES, ERROR_BOX_CLASS, PILL_PRIMARY_BUTTON_CLASS, tabButtonClass, tabTrackClass } from '../lib/stock-utils';
+import { CLASSES, ERROR_BOX_CLASS, PILL_PRIMARY_BUTTON_CLASS, tabButtonClass, KBD_ON_PRIMARY_CLASS } from '../lib/stock-utils';
 import { PageHeader } from '../components/page-header';
 import { SelectField } from '@/components/ui/select';
 import { StockToast } from '../components/stock-toast';
@@ -75,8 +76,8 @@ export default function AccountsPage() {
               </SelectField>
             ) : null}
             {isApprover && view ? (
-              <button type="button" onClick={() => setSheetOpen(true)} className={PILL_PRIMARY_BUTTON_CLASS}>
-                <Plus /> {t('newVoucher')}
+              <button type="button" onClick={() => setSheetOpen(true)} className={PILL_PRIMARY_BUTTON_CLASS} aria-keyshortcuts="N">
+                <Plus /> {t('newVoucher')} <kbd aria-hidden="true" className={KBD_ON_PRIMARY_CLASS}>N</kbd>
               </button>
             ) : null}
           </>
@@ -86,14 +87,14 @@ export default function AccountsPage() {
       {error ? <p role="alert" className={ERROR_BOX_CLASS}>{error}</p> : null}
 
       {tabs.length > 1 ? (
-        <div className={tabTrackClass(tabs.length)} role="tablist">
+        <TabTrack role="tablist">
           {tabs.map((key) => { const Icon = tabIcons[key]; return (
             <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className={tabButtonClass(tab === key, tabs.length)}>
               <Icon className="h-4 w-4 shrink-0" />
               <span className="min-w-0 truncate">{t(key)}</span>
             </button>
           ); })}
-        </div>
+        </TabTrack>
       ) : null}
 
       {view ? (

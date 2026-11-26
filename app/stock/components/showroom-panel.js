@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   FORM_INPUT_CLASS, PILL_BUTTON_CLASS, formatDateTime, exportToCSV, EXPORT_PERIOD_PRESETS, filterRowsByPeriod,
-  normalizeSearchValue, matchesQuery, SHOWROOM_ACTIONS, showroomActionOf, formatShowroomQty,
+  normalizeSearchValue, matchesQuery, SHOWROOM_ACTIONS, showroomActionOf, formatShowroomQty, PANEL_ACTIONS_CLASS, PANEL_SECTION_CLASS
 } from '../lib/stock-utils';
 
 /**
@@ -58,7 +58,7 @@ export function ShowroomPanel({ tabs, tc, pageSize, setPageSize, refreshKey }) {
     <div className="stock-tab-panel" key="stock-panel-showroom">
       <div className="flex flex-wrap items-center justify-between gap-2 pb-4">
         {tabs}
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-2">
+        <div className={PANEL_ACTIONS_CLASS}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
@@ -97,7 +97,7 @@ export function ShowroomPanel({ tabs, tc, pageSize, setPageSize, refreshKey }) {
       </DropdownMenu>
         </div>
       </div>
-      <section id="showroom" className="flex h-full flex-col overflow-hidden scroll-mt-6 glass-panel rounded-lg">
+      <section id="showroom" className={PANEL_SECTION_CLASS}>
 
         <div className="sticky top-0 z-10 border-b border-border bg-card px-4 py-2">
           <div className="relative group">

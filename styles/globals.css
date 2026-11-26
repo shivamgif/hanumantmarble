@@ -147,6 +147,22 @@
   display: none;
 }
 
+/* Tab strips that scroll sideways fade out at each end with more tabs past it
+   (TabTrack sets data-more). Fading the labels themselves reads as "this runs
+   on" far more clearly than a shadow; the grey track sits outside, unfaded. */
+.tab-scroll[data-more='end'] {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+}
+.tab-scroll[data-more='start'] {
+  -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 32px), transparent);
+  mask-image: linear-gradient(to left, #000 calc(100% - 32px), transparent);
+}
+.tab-scroll[data-more='both'] {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent);
+}
+
 @layer components {
   /* Base animation states with no animation */
   .animate-on-scroll {
@@ -424,14 +440,18 @@
   /* The company's accent (lib/accent.mjs), set on <body> by stock-shell.js. */
   --primary: var(--accent-light, 224 122 0);
   --ring: var(--accent-light, 224 122 0);
-  --background: 232 237 243; /* between slate-100 and -200: white cards clearly lift off it; also the bg-slate-50 inset tone */
+  /* Four distinct steps, measured: card on canvas 1.13:1, muted is a recess
+     darker than the canvas (1.11:1) and the card (1.25:1), borders show on
+     both (1.55 / 1.37:1), input edges 2.4:1 on white. The old set sat at
+     1.01-1.38:1, so canvas, tab tracks, cards and inputs blended together. */
+  --background: 238 241 246;
   --card: 255 255 255;
   --popover: 255 255 255;
-  --muted: 233 238 244;      /* tab tracks, table heads, hovers: between canvas and slate-200 */
-  --border: 213 220 230;     /* a step past the canvas, so card edges still show */
-  --input: 214 222 232;
+  --muted: 225 230 238;      /* tab tracks, table heads, chips */
+  --border: 200 208 220;
+  --input: 156 170 189;
   --foreground: 15 23 42;    /* slate-900 */
-  --muted-foreground: 100 116 139; /* slate-500, 4.8:1 on white */
+  --muted-foreground: 85 100 122; /* 4.8:1 on muted, 6:1 on white */
 
   color: rgb(var(--foreground));
   /* Every figure in a stock table lines up by column. */
@@ -543,7 +563,7 @@ html[lang="hi"] body.stock-scope {
    AA floor, and it carries ~300 labels, sub-values and breadcrumbs. Light mode
    only (it reads fine on the dark surfaces), and :where() keeps this at the
    utility's own specificity, so hover:/group-hover:/dark: variants still win. */
-:where(html:not(.dark) .stock-scope) .text-slate-400 { color: rgb(var(--muted-foreground)); }
+:where(html:not(.dark) .stock-scope) :is(.text-slate-400, .text-slate-500) { color: rgb(var(--muted-foreground)); }
 
 /* Chart axis labels: Recharts writes a fixed fill="#94a3b8" attribute, which
    any CSS outranks. muted-foreground is slate-500 light / slate-400 dark. */

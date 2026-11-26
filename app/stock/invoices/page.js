@@ -1,5 +1,6 @@
 'use client';
 
+import { TabTrack } from '../components/tab-track';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -31,8 +32,7 @@ import {
   PILL_PRIMARY_BUTTON_CLASS,
   ERROR_BOX_CLASS,
   FORM_INPUT_CLASS,
-  tabButtonClass,
-  tabTrackClass,
+  tabButtonClass, KBD_ON_PRIMARY_CLASS
 } from '../lib/stock-utils';
 import { PageHeader } from '../components/page-header';
 
@@ -459,13 +459,13 @@ export default function InvoicesPage() {
         title={t('title')}
         subtitle={t('subtitle')}
         actions={canRaise ? (
-          <button type="button" onClick={openNewEstimate} className={PILL_PRIMARY_BUTTON_CLASS}>
-            <Plus /> {t('newEstimate')}
+          <button type="button" onClick={openNewEstimate} className={PILL_PRIMARY_BUTTON_CLASS} aria-keyshortcuts="N">
+            <Plus /> {t('newEstimate')} <kbd aria-hidden="true" className={KBD_ON_PRIMARY_CLASS}>N</kbd>
           </button>
         ) : null}
       />
 
-      <div className={tabTrackClass(visibleFilters.length)} role="tablist">
+      <TabTrack role="tablist">
         {visibleFilters.map((key) => { const Icon = FILTER_ICONS[key]; return (
           <button
             key={key}
@@ -479,7 +479,7 @@ export default function InvoicesPage() {
             <span className="min-w-0 truncate">{t(key)}</span>
           </button>
         ); })}
-      </div>
+      </TabTrack>
 
       {filter === 'needs_irn' && isApprover ? (
         <div className="glass-panel space-y-2 rounded-lg p-4">

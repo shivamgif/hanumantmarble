@@ -1,12 +1,13 @@
 'use client';
 
+import { TabTrack } from '../components/tab-track';
 import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Building2, MapPin, Ruler, Settings, Users } from 'lucide-react';
 import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { getRoleFlags } from '@/lib/stock-roles.mjs';
-import { CLASSES, tabButtonClass, tabTrackClass } from '../lib/stock-utils';
+import { CLASSES, tabButtonClass } from '../lib/stock-utils';
 import { CompanyPanel } from '../components/company-panel';
 import { PageHeader } from '../components/page-header';
 import { BranchesPanel } from '../components/branches-panel';
@@ -41,14 +42,14 @@ export default function SettingsPage() {
     <div className={CLASSES.contentWrap}>
       <PageHeader icon={Settings} title="Settings" subtitle="Your company's name, logo and colour, GST registrations, branches and units." />
 
-      <div className={tabTrackClass(TABS.length)} role="tablist">
+      <TabTrack role="tablist">
         {TABS.map(({ key, label, icon: Icon }) => (
           <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className={tabButtonClass(tab === key, TABS.length)}>
             <Icon className="h-4 w-4 shrink-0" />
             <span className="min-w-0 truncate">{label}</span>
           </button>
         ))}
-      </div>
+      </TabTrack>
 
       {tab === 'company' ? <CompanyPanel /> : null}
       {tab === 'gst' ? <BranchesPanel /> : null}

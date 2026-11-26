@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Download, MapPinOff, Pencil, Plus } from 'lucide-react';
 import { MonthPicker } from '@/components/ui/month-picker';
 import { formatMinutes, istMonth, needsReview } from '@/lib/attendance.mjs';
-import { CLASSES, FORM_INPUT_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS, exportToCSV } from '../lib/stock-utils';
+import { CLASSES, FORM_INPUT_CLASS, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS, exportToCSV, KBD_ON_PRIMARY_CLASS } from '../lib/stock-utils';
 import { SelectField } from '@/components/ui/select';
 
 export const STATUS_STYLE = {
@@ -128,9 +128,10 @@ export function AttendanceTimesheet({ scope = 'self', employees = [], canManage 
             Export
           </button>
           {onAdd ? (
-            <button type="button" onClick={onAdd} className={PILL_PRIMARY_BUTTON_CLASS}>
+            <button type="button" onClick={onAdd} className={PILL_PRIMARY_BUTTON_CLASS} aria-keyshortcuts="N">
               <Plus />
               Add entry
+              <kbd aria-hidden="true" className={KBD_ON_PRIMARY_CLASS}>N</kbd>
             </button>
           ) : null}
         </div>

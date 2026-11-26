@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import { Download, Boxes, ChevronUp, ChevronDown, Package, Search } from 'lucide-react';
 import PaginationControls from '@/components/ui/pagination-controls';
 import { DEFAULT_PAGE_SIZE } from '@/lib/pagination';
-import { FORM_INPUT_CLASS, FORM_LABEL_CLASS, PILL_BUTTON_CLASS, exportToCSV } from '../lib/stock-utils';
+import { FORM_INPUT_CLASS, FORM_LABEL_CLASS, PILL_BUTTON_CLASS, exportToCSV, PANEL_ACTIONS_CLASS } from '../lib/stock-utils';
 import { showroomSplit } from '@/lib/stock-showroom';
 
 const fmtQty = (n) => Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
@@ -46,7 +46,7 @@ export function StockItemsTable({ tabs, kpis, pagination, sort, setSort, search,
     <div className="stock-tab-panel" key="stock-panel-items">
       <div className="flex flex-wrap items-center justify-between gap-2 pb-4">
         {tabs}
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-2">
+        <div className={PANEL_ACTIONS_CLASS}>
         <button
           type="button"
           onClick={() => {
@@ -79,7 +79,7 @@ export function StockItemsTable({ tabs, kpis, pagination, sort, setSort, search,
         </button>
         </div>
       </div>
-      <div id="current-stock" className="glass-panel overflow-hidden rounded-lg">
+      <div id="current-stock" className="glass-panel overflow-hidden rounded-lg max-sm:-mx-4 max-sm:rounded-none max-sm:border-x-0">
 
         {kpis && <div className="border-b border-border px-4 py-4 sm:px-4">{kpis}</div>}
         <div className="sticky top-0 z-10 border-b border-border bg-card px-4 py-2">

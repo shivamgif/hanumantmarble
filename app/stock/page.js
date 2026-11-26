@@ -1,5 +1,6 @@
 'use client';
 
+import { TabTrack } from './components/tab-track';
 import Link from 'next/link';
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
@@ -39,7 +40,7 @@ import {
   fetchShipmentDocuments,
   invalidateShipmentCache,
   shipmentCache,
-  tabButtonClass, tabTrackClass, ERROR_BOX_CLASS,
+  tabButtonClass, ERROR_BOX_CLASS,
 } from './lib/stock-utils';
 import { PageHeader } from './components/page-header';
 import { StockStatsGrid } from './components/stock-stats-grid';
@@ -1124,7 +1125,7 @@ export default function StockDashboard() {
 
   // ponytail: one tab strip, rendered inside whichever panel's header is on screen.
   const tabsBar = (
-    <div className={tabTrackClass(tableViewTabs.length)}>
+    <TabTrack>
       {tableViewTabs.map((tab) => {
         const isActive = activeTableView === tab.id;
         const Icon = tab.icon;
@@ -1144,7 +1145,7 @@ export default function StockDashboard() {
           </button>
         );
       })}
-    </div>
+    </TabTrack>
   );
 
   // arrival rows come from server — no client-side filtering or sorting needed
@@ -1432,7 +1433,7 @@ export default function StockDashboard() {
             href="/stock/analytics"
             className="glass-panel flex items-center gap-2 rounded-lg px-4 py-2 transition-shadow hover:shadow-card-hover"
           >
-            <p className="w-16 shrink-0 text-xs font-medium leading-tight text-slate-500">{getTranslation('stock.analytics.me.monthlyGoal', language)}</p>
+            <p className="w-16 shrink-0 text-xs font-medium leading-tight text-muted-foreground">{getTranslation('stock.analytics.me.monthlyGoal', language)}</p>
             {/* The figure sits inside the bar, printed twice: dark over the empty
                 track, light over the fill. The light copy is as wide as the whole
                 track (100/fill of the fill's width), so the two line up exactly
@@ -1444,14 +1445,14 @@ export default function StockDashboard() {
               aria-valuemax={100}
               aria-valuenow={Math.min(pct, 100)}
               aria-valuetext={label}
-              className="relative h-7 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
+              className="relative h-7 min-w-0 flex-1 overflow-hidden rounded-full bg-muted"
             >
-              <span className="absolute inset-0 flex items-center justify-center whitespace-nowrap px-4 text-[11px] font-bold tabular-nums text-slate-700 dark:text-slate-200">{label}</span>
+              <span className="absolute inset-0 flex items-center justify-center whitespace-nowrap px-4 text-[11px] font-semibold tabular-nums text-foreground">{label}</span>
               {fill > 0 && (
                 <div className={`absolute inset-y-0 left-0 overflow-hidden rounded-full ${barColor}`} style={{ width: `${fill}%` }}>
                   <span
                     aria-hidden="true"
-                    className={`absolute inset-y-0 left-0 flex items-center justify-center whitespace-nowrap px-4 text-[11px] font-bold tabular-nums ${achieved ? 'text-slate-900' : 'text-white'}`}
+                    className={`absolute inset-y-0 left-0 flex items-center justify-center whitespace-nowrap px-4 text-[11px] font-semibold tabular-nums ${achieved ? 'text-slate-900' : 'text-white'}`}
                     style={{ width: `${10000 / fill}%` }}
                   >
                     {label}
@@ -1461,7 +1462,7 @@ export default function StockDashboard() {
             </div>
             {/* Quiet while on track; speaks up when the goal is hit or the month slips. */}
             {(achieved || (goal > 0 && standing.behind)) && (
-              <span className={`shrink-0 whitespace-nowrap rounded-lg border px-2 py-1 text-[11px] font-bold ${standing.color} ${standing.bg} ${standing.border}`}>
+              <span className={`shrink-0 whitespace-nowrap rounded-md px-1.5 py-0.5 text-xs font-semibold ${standing.color} ${standing.bg}`}>
                 {getTranslation(`stock.analytics.me.${standing.key}`, language)}
               </span>
             )}
@@ -1475,39 +1476,40 @@ export default function StockDashboard() {
           can't leak purchase prices. One row at every width; on a phone the
           row scrolls sideways instead of stacking. */}
       {accessRole === 'salesperson' && (data?.sellFirst?.items?.length ?? 0) > 0 && (
-        <section
-          aria-labelledby="sell-first-title"
-          title={t('sellFirstSubtitle')}
-          className="flex items-stretch gap-2 overflow-x-auto rounded-lg border border-border bg-muted p-2  snap-x"
-        >
-          <div className="flex shrink-0 flex-col justify-center rounded-lg px-2 sm:px-4">
-            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">{t('sellFirstEyebrow')}</p>
-            <h2 id="sell-first-title" className="whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white">{t('sellFirstTitle')}</h2>
+        <section aria-labelledby="sell-first-title" className="glass-panel rounded-lg p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h2 id="sell-first-title" className="text-sm font-semibold text-foreground">
+              {t('sellFirstTitle')}
+              <span className="ml-2 text-xs font-medium text-amber-700 dark:text-amber-400">{t('sellFirstEyebrow')}</span>
+            </h2>
+            <p className="text-xs text-muted-foreground">{t('sellFirstSubtitle')}</p>
           </div>
-          {data.sellFirst.items.map((item) => {
-            const unit = item.unitOfMeasure === 'sqft' ? 'sqft' : item.unitOfMeasure === 'bag' ? t('bagsUnit') : t('boxes');
-            const details = [item.brandName, item.sizeLabel, item.divisionName].filter(Boolean).join(' · ');
-            const soldLine = item.lastSoldOn
-              ? `${t('lastSoldOn')} ${item.lastSoldOn.split('-').reverse().join('/')}`
-              : t('neverSold');
-            return (
-              <div
-                key={item.id}
-                title={[item.name, details, soldLine].filter(Boolean).join('\n')}
-                className="min-w-[10rem] flex-1 snap-start rounded-lg bg-white/70 px-4 py-2 dark:bg-slate-900/50"
-              >
-                <p className="truncate text-xs font-bold text-slate-900 dark:text-slate-100">{item.name}</p>
-                <p className="mt-1 flex items-baseline justify-between gap-2 text-[11px] tabular-nums">
-                  <span className="font-bold text-slate-700 dark:text-slate-200">
-                    {Number(item.availableQty).toLocaleString('en-IN', { maximumFractionDigits: 3 })} <span className="font-bold text-slate-500">{unit}</span>
-                  </span>
-                  <span className={`whitespace-nowrap font-bold ${item.daysIdle >= 120 ? 'text-rose-600 dark:text-rose-400' : 'text-amber-700 dark:text-amber-400'}`}>
-                    {item.daysIdle} {t('daysIdle')}
-                  </span>
-                </p>
-              </div>
-            );
-          })}
+          <ul className="mt-3 flex gap-2 overflow-x-auto scrollbar-none snap-x">
+            {data.sellFirst.items.map((item) => {
+              const unit = item.unitOfMeasure === 'sqft' ? 'sqft' : item.unitOfMeasure === 'bag' ? t('bagsUnit') : t('boxes');
+              const details = [item.brandName, item.sizeLabel, item.divisionName].filter(Boolean).join(' · ');
+              const soldLine = item.lastSoldOn
+                ? `${t('lastSoldOn')} ${item.lastSoldOn.split('-').reverse().join('/')}`
+                : t('neverSold');
+              return (
+                <li
+                  key={item.id}
+                  title={[item.name, details, soldLine].filter(Boolean).join('\n')}
+                  className="min-w-[10rem] flex-1 snap-start rounded-lg border border-border px-3 py-2"
+                >
+                  <p className="truncate text-sm font-medium text-foreground">{item.name}</p>
+                  <p className="mt-0.5 flex items-baseline justify-between gap-2 text-xs tabular-nums">
+                    <span className="text-foreground">
+                      {Number(item.availableQty).toLocaleString('en-IN', { maximumFractionDigits: 3 })} <span className="text-muted-foreground">{unit}</span>
+                    </span>
+                    <span className={`whitespace-nowrap ${item.daysIdle >= 120 ? 'text-rose-700 dark:text-rose-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                      {item.daysIdle} {t('daysIdle')}
+                    </span>
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
         </section>
       )}
 

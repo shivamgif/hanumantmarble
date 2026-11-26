@@ -798,6 +798,8 @@
         "lastOrder": "Last order {date} · {days} days ago",
         "lifetime": "with you",
         "trendTitle": "Dispatch Value Trend",
+        "trendSubtitle": "Your dispatch value, month by month. This month's faint bar is where it lands at your current pace.",
+        "legendPace": "At current pace",
         "inProgress": "In progress",
         "goalLine": "Monthly goal",
         "orders": "{n} orders",
@@ -819,7 +821,8 @@
         "legendToday": "Today, still open",
         "streakBroke": "Streak broke on {date} (no dispatch). Dispatch today to restart.",
         "safeToday": "Today counted ✓ Streak is safe.",
-        "keepAlive": "Dispatch today to make it {n} days."
+        "keepAlive": "Dispatch today to make it {n} days.",
+        "heroTitle": "This month"
       },
       "customize": "Customize",
       "doneCustomize": "Done",
@@ -887,10 +890,12 @@
       "dim_salesperson": "Salesperson",
       "dragToMove": "Drag to move",
       "dragToResize": "Drag to resize",
-      "layoutMenu": "Layout",
-      "layoutHint": "Drag a card by the grip on its top edge to move it, or its right edge to resize.",
+      "layoutMenu": "Customize",
+      "layoutHint": "Show or hide each card and set its width. You can also drag a card by the grip on its top edge to move it, or by its right edge to resize.",
       "hiddenWidgets": "Hidden widgets",
-      "noHiddenWidgets": "Nothing hidden"
+      "noHiddenWidgets": "Nothing hidden",
+      "widgetWidth": "Width",
+      "fullWidth": "Full"
     },
     "preview": {
       "invoiceNoLabel": "Invoice No",

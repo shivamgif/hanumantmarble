@@ -512,24 +512,33 @@ export const FORM_ITEM_HEAD_CLASS = 'flex items-center justify-between gap-2 bor
 
 // One control height across the app: inputs, selects, pills and tab strips
 // are all 36px, so a toolbar mixing them lines up.
-// Panel header action pills. Smaller text, padding and gap below sm so three of
-// them still fit one line on a 360px viewport; the row holding them is flex-wrap.
-const PILL_BASE = 'flex min-h-9 shrink-0 items-center gap-2 rounded-lg px-2 py-1 sm:px-4 text-[13px] font-medium [&>svg]:h-4 [&>svg]:w-4 transition hover:-translate-y-px hover:shadow-card-hover active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50';
+// Panel header action pills. On a phone, PANEL_ACTIONS_CLASS turns the
+// secondary ones into icon buttons so a header row holds them all.
+const PILL_BASE = 'flex min-h-9 shrink-0 items-center gap-2 rounded-lg px-3 py-1 sm:px-4 text-[13px] font-medium [&>svg]:h-4 [&>svg]:w-4 transition hover:-translate-y-px hover:shadow-card-hover active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50';
 export const PILL_BUTTON_CLASS = `${PILL_BASE} border border-border bg-card text-slate-700 hover:bg-muted dark:text-slate-200`;
 // Form submit buttons: one 36px row, the same height as the inputs above them.
 export const SUBMIT_BUTTON_BASE = 'flex h-9 w-full items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-semibold transition-[filter,background-color] disabled:cursor-not-allowed disabled:opacity-60 [&_svg]:h-4 [&_svg]:w-4';
 export const SUBMIT_BUTTON_CLASS = `${SUBMIT_BUTTON_BASE} bg-primary text-primary-foreground hover:brightness-110`;
 export const SUBMIT_SECONDARY_CLASS = `${SUBMIT_BUTTON_BASE} border border-border bg-card text-foreground hover:bg-muted`;
 export const PILL_PRIMARY_BUTTON_CLASS = `${PILL_BASE} bg-primary font-semibold text-primary-foreground hover:bg-primary/90`;
+// The key chip inside a primary button, shown only where a keyboard is likely
+// (xl screens). Pair it with aria-keyshortcuts on the button.
+export const KBD_ON_PRIMARY_CLASS = 'hidden rounded bg-white/20 px-1.5 font-sans text-[11px] font-medium leading-5 xl:inline';
 
-// Page tab strips (dashboard, invoices, accounts, analytics, admin, attendance,
-// settings). Every tab is a 36px row, icon left of its label. Below sm the
-// strip is a grid so labels keep room: four tabs go 2x2 and five or more go
-// three across (a 360px phone gives six tabs in one row ~52px each, and
-// "Timesheets" needs ~63). From sm up it's a single row.
-export const tabTrackClass = (count) => `grid w-full min-w-0 gap-1 rounded-lg bg-muted p-1 scrollbar-none sm:flex sm:w-fit sm:items-center sm:overflow-x-auto ${count > 4 ? 'grid-cols-3' : count === 4 ? 'grid-cols-2' : 'auto-cols-[minmax(0,1fr)] grid-flow-col'}`;
+// The action row in a panel header. Below sm every secondary pill shows only its
+// icon: the label is set to 0px rather than removed, so it stays the button's
+// accessible name. The primary action (bg-primary) keeps its label.
+export const PANEL_ACTIONS_CLASS = 'ml-auto flex flex-wrap items-center justify-end gap-2 max-sm:[&>button:not(.bg-primary)]:w-9 max-sm:[&>button:not(.bg-primary)]:justify-center max-sm:[&>button:not(.bg-primary)]:gap-0 max-sm:[&>button:not(.bg-primary)]:px-0 max-sm:[&>button:not(.bg-primary)]:text-[0px]';
 
-export const tabButtonClass = (isActive) => `relative flex h-9 min-w-0 flex-row items-center justify-center gap-2 rounded-lg px-2 text-[11px] leading-tight transition duration-200 sm:h-8 sm:flex-none sm:px-4 sm:text-[13px] ${isActive
+// A dashboard data panel (dispatches, purchases, stock, showroom). On a phone it
+// runs edge to edge, cancelling the page's p-4, so rows get one 16px gutter
+// instead of a card inset inside a page inset.
+export const PANEL_SECTION_CLASS = 'flex h-full flex-col overflow-hidden scroll-mt-6 glass-panel rounded-lg max-sm:-mx-4 max-sm:rounded-none max-sm:border-x-0';
+
+// Page tab buttons, inside <TabTrack> (components/tab-track.js), which holds
+// the scrolling row and its edge fade. They fill the row when they fit and
+// keep their full label when they don't. `count` is accepted and unused.
+export const tabButtonClass = (isActive) => `relative flex h-8 flex-auto shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3 text-[13px] transition duration-200 sm:flex-none sm:px-4 ${isActive
   ? 'glass-chip font-semibold text-slate-900 dark:text-slate-50 [&>svg]:text-brand-primary'
   : 'font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'}`;
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { TabTrack } from '../components/tab-track';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CalendarDays, CalendarOff, Clock, Settings, Users, Wallet } from 'lucide-react';
@@ -14,7 +15,7 @@ import { AttendanceSettings } from '../components/attendance-settings';
 import { AttendanceTeam } from '../components/attendance-team';
 import { AttendanceEntrySheet } from '../components/attendance-entry-sheet';
 import { AttendanceMonth } from '../components/attendance-month';
-import { CLASSES, tabButtonClass, tabTrackClass } from '../lib/stock-utils';
+import { CLASSES, tabButtonClass } from '../lib/stock-utils';
 import { PageHeader } from '../components/page-header';
 import { useAttendanceText } from '@/lib/attendance-i18n';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -72,8 +73,8 @@ function AttendancePageInner() {
       <PageHeader icon={Clock} crumbs={[{ label: t('dashboard'), href: '/stock' }, { label: t('title') }]} title={t('title')} subtitle={t('subtitle')} />
 
       {tabs.length > 1 ? (
-        // Same strip as every other page (see tabTrackClass).
-        <div className={tabTrackClass(tabs.length)}>
+        // Same strip as every other page (see TabTrack).
+        <TabTrack>
           {tabs.map((tab) => {
             const isActive = view === tab.id;
             const Icon = tab.icon;
@@ -94,7 +95,7 @@ function AttendancePageInner() {
               </button>
             );
           })}
-        </div>
+        </TabTrack>
       ) : null}
 
       {view === 'me' ? (

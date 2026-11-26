@@ -50,24 +50,28 @@ export default function ClockInReminder({ t, onAttendancePage }) {
     setShow(false);
   }
 
+  // Lined up with the page below (contentWrap is p-4 sm:p-6, centred at
+  // 1600px), as a card with an amber edge rather than a one-off grey banner.
   return (
-    <div role="status" className="mx-4 mt-2 flex items-center gap-2 rounded-lg border border-border bg-muted px-4 py-4 sm:mx-6 lg:mx-8">
-      <Clock className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-      <p className="flex-1 text-sm font-semibold text-amber-800 dark:text-amber-300">{t('clockInReminder')}</p>
-      <Link
-        href="/stock/attendance"
-        className="shrink-0 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700"
-      >
-        {t('clockInNow')}
-      </Link>
-      <button
-        type="button"
-        onClick={dismiss}
-        aria-label={t('clockInLater')}
-        className="shrink-0 rounded-lg p-1 text-amber-700 transition hover:bg-muted dark:text-amber-400"
-      >
-        <X className="h-4 w-4" />
-      </button>
+    <div className="mx-auto w-full max-w-[1600px] px-4 pt-4 sm:px-6 sm:pt-6">
+      <div role="status" className="glass-panel flex items-center gap-3 rounded-lg border-l-4 border-l-amber-500 px-4 py-2.5">
+        <Clock className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+        <p className="flex-1 text-sm font-medium text-foreground">{t('clockInReminder')}</p>
+        <Link
+          href="/stock/attendance"
+          className="inline-flex h-8 shrink-0 items-center rounded-lg bg-primary px-3 text-[13px] font-semibold text-primary-foreground transition hover:bg-primary/90"
+        >
+          {t('clockInNow')}
+        </Link>
+        <button
+          type="button"
+          onClick={dismiss}
+          aria-label={t('clockInLater')}
+          className="-mr-1 shrink-0 rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }

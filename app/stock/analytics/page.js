@@ -1,4 +1,5 @@
 'use client';
+import { TabTrack } from '../components/tab-track';
 import { ReasonDialog } from '@/components/ui/reason-dialog';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
@@ -10,7 +11,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Boxes, Download, LayoutGrid, TrendingUp, UserCheck, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CLASSES, paceAdjustedTarget } from '../components/dashboard-ui';
-import { ERROR_BOX_CLASS, getJson, PILL_BUTTON_CLASS, tabButtonClass, tabTrackClass } from '../lib/stock-utils';
+import { ERROR_BOX_CLASS, getJson, PILL_BUTTON_CLASS, tabButtonClass } from '../lib/stock-utils';
 import { LayoutMenu, WidgetGrid } from './components/widget-grid';
 import { useLayoutPref } from '@/hooks/useLayoutPref';
 import { PageHeader } from '../components/page-header';
@@ -30,7 +31,8 @@ import {
   ReorderNowWidget,
   DeadStockWidget,
   PendingQueueWidget,
-  MyPerformancePanel,
+  myPerformanceLayout,
+  useMyPerformanceWidgets,
   CustomerConcentrationWidget,
   PriceDispersionWidget,
   ActivityFeedWidget,
@@ -55,11 +57,14 @@ const MY_PERFORMANCE_TAB = { id: 'me', labelKey: 'tabMyPerformance', icon: UserC
 // Each tab's default arrangement on the 12-column grid. Pairs in a row add up
 // to 12 so nothing leaves a gap; a user's own arrangement (Customize) is
 // merged over this, so adding a widget here reaches everyone.
+// Width follows what a widget holds: charts over time and wide tables get the
+// row, one-column lists get a third (a list stretched full width puts each
+// name a screen away from its number), and the two action queues pair up.
 const ANALYTICS_LAYOUT = {
-  overview: [{ id: 'health', span: 12 }, { id: 'revenue', span: 8 }, { id: 'pending', span: 4 }, { id: 'reorder', span: 12 }],
+  overview: [{ id: 'health', span: 12 }, { id: 'revenue', span: 12 }, { id: 'reorder', span: 8 }, { id: 'pending', span: 4 }],
   sales: [{ id: 'profit', span: 8 }, { id: 'divisions', span: 4 }, { id: 'costVolume', span: 8 }, { id: 'concentration', span: 4 }, { id: 'dispersion', span: 12 }],
   inventory: [{ id: 'topSellers', span: 12 }, { id: 'risk', span: 8 }, { id: 'deadStock', span: 4 }],
-  team: [{ id: 'spotlight', span: 12 }, { id: 'salesTrend', span: 12 }, { id: 'pace', span: 6 }, { id: 'activity', span: 6 }, { id: 'attendance', span: 12 }],
+  team: [{ id: 'spotlight', span: 12 }, { id: 'salesTrend', span: 12 }, { id: 'pace', span: 8 }, { id: 'activity', span: 4 }, { id: 'attendance', span: 12 }],
 };
 const NO_WIDGETS = [];
 
@@ -108,6 +113,15 @@ function AnalyticsDashboardInner() {
   );
   const currentTab = visibleTabs.some((tab) => tab.id === activeTab) ? activeTab : 'overview';
   const layout = useLayoutPref(`analytics.${currentTab}`, ANALYTICS_LAYOUT[currentTab] || NO_WIDGETS, accessUser?.ui_prefs?.[`analytics.${currentTab}`]);
+  // A salesperson's own cards: the whole page for a salesperson, the My
+  // Performance tab for an admin who sells. Saved as analytics.me either way.
+  const meWidgets = useMyPerformanceWidgets({ data: salespersonAnalytics, goal: ownGoal });
+  const hasSellFirst = Boolean(meWidgets.sellFirst);
+  const hasFollowUps = Boolean(meWidgets.followUps);
+  const meDefaults = useMemo(() => myPerformanceLayout(hasSellFirst, hasFollowUps), [hasSellFirst, hasFollowUps]);
+  const meLayout = useLayoutPref('analytics.me', meDefaults, accessUser?.ui_prefs?.['analytics.me']);
+  const meMenu = <LayoutMenu items={meLayout.items} widgets={meWidgets} onChange={meLayout.save} onReset={meLayout.reset} t={t} />;
+  const meGrid = <WidgetGrid items={meLayout.items} widgets={meWidgets} onChange={meLayout.save} t={t} />;
 
   const pushUrl = useCallback(
     (tab, nextQuery) => {
@@ -273,9 +287,10 @@ function AnalyticsDashboardInner() {
           crumbs={[{ label: t('me.crumbHome'), href: '/stock' }, { label: t('me.crumbMine') }]}
           title={t('tabMyPerformance')}
           subtitle={t('me.pageSubtitle')}
+          actions={meMenu}
         />
 
-        <MyPerformancePanel data={salespersonAnalytics} goal={ownGoal} />
+        {meGrid}
       </div>
     );
   }
@@ -388,8 +403,8 @@ function AnalyticsDashboardInner() {
       />
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-        {/* Same strip as every other page (see tabTrackClass). */}
-        <div className={tabTrackClass(visibleTabs.length)}>
+        {/* Same strip as every other page (see TabTrack). */}
+        <TabTrack>
           {visibleTabs.map((tab) => {
             const isActive = currentTab === tab.id;
             const Icon = tab.icon;
@@ -409,7 +424,7 @@ function AnalyticsDashboardInner() {
               </button>
             );
           })}
-        </div>
+        </TabTrack>
 
         <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-2">
           <RangePicker key={query} value={range} onChange={setRange} t={t} />
@@ -422,9 +437,9 @@ function AnalyticsDashboardInner() {
             <Download className="h-4 w-4" />
             CSV
           </a>
-          {currentTab !== 'me' ? (
+          {currentTab === 'me' ? meMenu : (
             <LayoutMenu items={layout.items} widgets={widgets} onChange={layout.save} onReset={layout.reset} t={t} />
-          ) : null}
+          )}
         </div>
       </div>
 
@@ -445,9 +460,7 @@ function AnalyticsDashboardInner() {
       ) : null}
 
       <div aria-busy={loading} className={`space-y-4 transition-opacity duration-200 lg:space-y-6 ${loading ? 'pointer-events-none opacity-60' : ''}`}>
-      {currentTab === 'me' ? (
-        <MyPerformancePanel data={salespersonAnalytics} goal={ownGoal} />
-      ) : (
+      {currentTab === 'me' ? meGrid : (
         <WidgetGrid items={layout.items} widgets={widgets} onChange={layout.save} t={t} />
       )}
 

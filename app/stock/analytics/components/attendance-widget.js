@@ -106,7 +106,7 @@ export function AttendanceSummaryWidget() {
         </Link>
       }
     >
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-4">
         {tiles.map((tile) => {
           const body = (
             <>
