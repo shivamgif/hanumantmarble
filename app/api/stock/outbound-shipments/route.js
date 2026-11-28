@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import {
-  collectNotificationRecipients,
+  approverUserIds,
   ensureDatabaseAvailable,
   findOrCreateCustomer,
   generateReference,
@@ -8,7 +8,7 @@ import {
   hasAnyStockRole,
   normalizeStockRole,
   normalizeText,
-  queueNotification,
+  notifyUsers,
   recordTimelineEvent, stockRoute } from '@/lib/stock-workflow';
 import { sql, withTransaction } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
@@ -746,14 +746,11 @@ export const POST = stockRoute(async function POST(request) {
       );
     }
 
-    const recipients = await collectNotificationRecipients(
-      divisionValidation.itemDivisionIds.length ? divisionValidation.itemDivisionIds : null
-    );
-    await queueNotification({
-      channel: 'whatsapp',
+    await notifyUsers({
+      userIds: await approverUserIds(),
+      actorId: appUser?.id,
       eventType: 'outbound_dispatch',
       messageText: `New stock dispatch submitted: ${shipment.shipment_number}. Review and approve before issue.`,
-      recipients,
       sourceTable: 'stock_outbound_shipments',
       sourceId: shipment.id,
       createdBy: session.user.email,

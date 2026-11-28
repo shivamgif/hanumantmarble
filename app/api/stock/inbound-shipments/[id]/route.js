@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, generateReference, getStockContext, hasAnyStockRole, normalizeText, queueNotification, recordTimelineEvent, upsertNamedRecord, stockRoute } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, generateReference, getStockContext, hasAnyStockRole, normalizeText, notifyUsers, recordTimelineEvent, resolveSourceNotifications, upsertNamedRecord, stockRoute } from '@/lib/stock-workflow';
 import { sql, withTransaction } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { computeInboundTotals } from '@/lib/stock-pricing';
@@ -635,44 +635,19 @@ async function patchInboundShipment(request, context) {
               ? result.salespersonRecipients
               : [];
 
-            const receivedItems = (Array.isArray(result.items) ? result.items : []).filter(
-              (item) => Number(item.received_whole_qty || 0) > 0 || Number(item.received_broken_qty || 0) > 0
-            );
-            const primaryItem = receivedItems[0] || null;
-            const totalReceived = receivedItems.reduce(
-              (sum, item) => sum + Number(item.received_whole_qty || 0) + Number(item.received_broken_qty || 0),
-              0
-            );
-
+            await resolveSourceNotifications('stock_inbound_shipments', id);
+            // Each salesperson hears once, about their own division's new stock.
+            const byDepartment = new Map();
             for (const recipient of recipientsByDepartment) {
               const department = String(recipient.department || 'Adhesive').trim() || 'Adhesive';
-              const messageText = `Stock purchase approved: ${result.shipment.shipment_number}. New ${department} inventory is available.`;
-
-              await queueNotification({
-                channel: 'whatsapp',
+              byDepartment.set(department, [...(byDepartment.get(department) || []), recipient.id]);
+            }
+            for (const [department, userIds] of byDepartment) {
+              await notifyUsers({
+                userIds,
+                actorId: appUser?.id,
                 eventType: 'inbound_received',
-                messageText,
-                recipients: [
-                  {
-                    kind: 'salesperson',
-                    userId: recipient.id,
-                    name: recipient.name,
-                    email: recipient.email,
-                    phone: recipient.phone,
-                    department,
-                    whatsappPayload: {
-                      to: recipient.phone || recipient.email,
-                      template: 'stock_department_arrival',
-                      variables: {
-                        shipmentNumber: result.shipment.shipment_number,
-                        department,
-                        brandName: primaryItem?.brand_name || 'Generic',
-                        itemName: primaryItem?.item_name || 'Stock',
-                        totalQty: String(totalReceived),
-                      },
-                    },
-                  },
-                ],
+                messageText: `Stock purchase approved: ${result.shipment.shipment_number}. New ${department} inventory is available.`,
                 sourceTable: 'stock_inbound_shipments',
                 sourceId: id,
                 createdBy: session.user.email,
@@ -732,6 +707,16 @@ async function patchInboundShipment(request, context) {
         summary: `Inbound shipment rejected`,
         details: { notes: body.notes || null },
         userId: appUser?.id || null,
+      });
+      await resolveSourceNotifications('stock_inbound_shipments', id);
+      await notifyUsers({
+        userIds: [rows[0]?.submitted_by_user_id],
+        actorId: appUser?.id,
+        eventType: 'other',
+        messageText: `Stock purchase ${rows[0]?.shipment_number || ''} rejected${body.notes ? `: ${body.notes}` : '.'}`,
+        sourceTable: 'stock_inbound_shipments',
+        sourceId: id,
+        createdBy: session.user.email,
       });
 
       return NextResponse.json({ shipment: rows[0] });
@@ -837,6 +822,16 @@ async function patchInboundShipment(request, context) {
         summary: `Change requested for inbound shipment`,
         details: { requestId: changeRequestRows[0].id },
         userId: appUser?.id || null,
+      });
+      await resolveSourceNotifications('stock_inbound_shipments', id);
+      await notifyUsers({
+        userIds: [rows[0]?.submitted_by_user_id],
+        actorId: appUser?.id,
+        eventType: 'other',
+        messageText: `Changes requested on stock purchase ${rows[0]?.shipment_number || ''}: ${body.reason || 'see the purchase'}`,
+        sourceTable: 'stock_inbound_shipments',
+        sourceId: id,
+        createdBy: session.user.email,
       });
 
       return NextResponse.json({ shipment: rows[0], changeRequest: changeRequestRows[0] });

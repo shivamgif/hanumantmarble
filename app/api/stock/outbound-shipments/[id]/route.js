@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, findOrCreateCustomer, generateReference, getStockContext, hasAnyStockRole, normalizeStockRole, queueNotification, recordTimelineEvent, stockRoute } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, findOrCreateCustomer, generateReference, getStockContext, hasAnyStockRole, normalizeStockRole, notifyUsers, recordTimelineEvent, resolveSourceNotifications, stockRoute } from '@/lib/stock-workflow';
 import { sql, withTransaction } from '@/lib/db';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import {
@@ -228,6 +228,23 @@ async function recordDivisionValidationTimeline({
   } catch (error) {
     console.error('Failed to record dispatch division validation timeline:', error);
   }
+}
+
+// The outcome of a dispatch goes only to the people it belongs to: its
+// salesperson and whoever submitted it. Other approvers' "needs approval"
+// entries for it are cleared first.
+async function notifyDispatchOwners(shipment, appUser, session, messageText) {
+  if (!shipment) return;
+  await resolveSourceNotifications('stock_outbound_shipments', shipment.id);
+  await notifyUsers({
+    userIds: [shipment.salesperson_user_id, shipment.submitted_by_user_id],
+    actorId: appUser?.id,
+    eventType: 'outbound_dispatch',
+    messageText,
+    sourceTable: 'stock_outbound_shipments',
+    sourceId: shipment.id,
+    createdBy: session.user.email,
+  });
 }
 
 async function applyShipmentApproval(shipmentId, session, appUser, idempotencyKey) {
@@ -532,21 +549,8 @@ export const PATCH = stockRoute(async function PATCH(request, context) {
         warnings.push('Timeline entry could not be saved.');
       }
 
-      try {
-        await withTransaction(async () => {
-          await queueNotification({
-            channel: 'whatsapp',
-            eventType: 'outbound_dispatch',
-            messageText: `Stock dispatch approved: ${result.shipment.shipment_number}.`,
-            recipients: [],
-            sourceTable: 'stock_outbound_shipments',
-            sourceId: id,
-            createdBy: session.user.email,
-          });
-        });
-      } catch (notificationError) {
-        console.error('Failed to queue outbound approval notification:', notificationError);
-        warnings.push('Notification could not be queued.');
+      if (!result.idempotent) {
+        await notifyDispatchOwners(result.shipment, appUser, session, `Dispatch ${result.shipment.shipment_number} approved.`);
       }
 
       return NextResponse.json({
@@ -580,6 +584,8 @@ export const PATCH = stockRoute(async function PATCH(request, context) {
         details: { notes: body.notes || null },
         userId: appUser?.id || null,
       });
+      await notifyDispatchOwners(rows[0], appUser, session,
+        `Dispatch ${rows[0]?.shipment_number || ''} rejected${body.notes ? `: ${body.notes}` : '.'}`);
 
       return NextResponse.json({ shipment: rows[0] });
     }
@@ -632,6 +638,8 @@ export const PATCH = stockRoute(async function PATCH(request, context) {
         details: { requestId: changeRequestRows[0].id },
         userId: appUser?.id || null,
       });
+      await notifyDispatchOwners(rows[0], appUser, session,
+        `Changes requested on dispatch ${rows[0]?.shipment_number || ''}: ${body.reason || 'see the dispatch'}`);
 
       return NextResponse.json({ shipment: rows[0], changeRequest: changeRequestRows[0] });
     }

@@ -13,7 +13,7 @@ import BrandedLoginPage from '@/components/BrandedLoginPage';
 
 import { getRoleFlags } from '@/lib/stock-roles.mjs';
 import { primeStockAccess, useStockAccess } from '@/hooks/useStockAccess';
-import { useStockNotifications } from '@/hooks/useStockNotifications';
+import { forgetPushOnThisDevice, useStockNotifications } from '@/hooks/useStockNotifications';
 import { useStockShortcuts } from '@/hooks/useStockShortcuts';
 
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -93,15 +93,9 @@ export default function StockShell({ children }) {
     notifications: language === 'hi' ? 'सूचनाएं' : 'Notifications',
     notificationsSubtitle: language === 'hi' ? 'संचालन अलर्ट और शिपमेंट अपडेट।' : 'Operational alerts and shipment updates.',
     unread: language === 'hi' ? 'अपठित' : 'unread',
-    hideDebug: language === 'hi' ? 'डिबग छिपाएं' : 'Hide Debug',
-    debug: language === 'hi' ? 'डिबग' : 'Debug',
     markAllRead: language === 'hi' ? 'सभी को पढ़ा हुआ चिन्हित करें' : 'Mark all read',
     loadingNotifications: language === 'hi' ? 'सूचनाएं लोड हो रही हैं...' : 'Loading notifications...',
     noNotifications: language === 'hi' ? 'अभी कोई सूचना नहीं है।' : 'No notifications yet.',
-    target: language === 'hi' ? 'लक्ष्य' : 'Target',
-    recipients: language === 'hi' ? 'प्राप्तकर्ता' : 'recipients',
-    departmentsShort: language === 'hi' ? 'विभाग' : 'dept',
-    departmentsCount: language === 'hi' ? 'विभाग' : 'departments',
     open: language === 'hi' ? 'खोलें' : 'Open',
   };
 
@@ -109,7 +103,8 @@ export default function StockShell({ children }) {
   const primaryModifierLabel = isApplePlatform ? 'CMD + ' : 'Ctrl + ';
   const isUnauthorizedError = error?.message === 'Unauthorized' || error?.status === 401;
 
-  function handleStockLogout() {
+  async function handleStockLogout() {
+    await forgetPushOnThisDevice();
     document.cookie = `hm-login-return-to=${encodeURIComponent('/stock')}; Path=/; Max-Age=300; SameSite=Lax`;
     window.location.href = getLogoutHref(window.location.origin);
   }
@@ -284,7 +279,7 @@ export default function StockShell({ children }) {
 
       <StockNotificationsSheet
         t={t}
-        accessRole={accessRole}
+        language={language}
         notificationOpen={notificationsState.notificationOpen}
         setNotificationOpen={notificationsState.setNotificationOpen}
         unreadCount={notificationsState.unreadCount}
@@ -292,10 +287,10 @@ export default function StockShell({ children }) {
         notificationLoading={notificationsState.notificationLoading}
         notificationError={notificationsState.notificationError}
         notificationUpdating={notificationsState.notificationUpdating}
-        showNotificationDebug={notificationsState.showNotificationDebug}
-        setShowNotificationDebug={notificationsState.setShowNotificationDebug}
         markAllNotificationsRead={notificationsState.markAllNotificationsRead}
         handleNotificationNavigate={notificationsState.handleNotificationNavigate}
+        pushPermission={notificationsState.pushPermission}
+        enablePush={notificationsState.enablePush}
       />
     </div>
     </TooltipProvider>

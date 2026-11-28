@@ -1,45 +1,8 @@
 import { NextResponse } from 'next/server';
-import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole, stockRoute } from '@/lib/stock-workflow';
+import { ensureDatabaseAvailable, getStockContext, hasAnyStockRole, notificationHref, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
 
 const STOCK_NOTIFICATION_ROLES = ['admin', 'manager', 'stock_maintainer', 'salesperson', 'read_only_admin'];
-
-function buildNotificationActionHref(notification) {
-  const sourceTable = String(notification.source_table || '');
-  const sourceId = Number(notification.source_id);
-  const eventType = String(notification.event_type || '');
-
-  if (sourceTable === 'stock_inbound_shipments' && sourceId > 0) {
-    return `/stock?view=purchases&entityType=inbound_shipment&entityId=${sourceId}`;
-  }
-
-  if (sourceTable === 'stock_outbound_shipments' && sourceId > 0) {
-    return `/stock?view=dispatches&entityType=outbound_shipment&entityId=${sourceId}`;
-  }
-
-  if (sourceTable === 'stock_sales_invoices' && sourceId > 0) {
-    return `/stock/invoices/${sourceId}`;
-  }
-
-  if (sourceTable === 'stock_leave_requests') {
-    return '/stock/attendance?view=leave';
-  }
-
-  if (sourceTable === 'stock_change_requests' && sourceId > 0) {
-    return `/stock/admin?focus=change-requests&requestId=${sourceId}`;
-  }
-
-  if (eventType.startsWith('inbound_')) {
-    return '/stock?view=purchases';
-  }
-
-  if (eventType.startsWith('outbound_')) {
-    return '/stock?view=dispatches';
-  }
-
-  return '/stock';
-}
-
 
 export const GET = stockRoute(async function GET(request) {
   const { session, appUser } = await getStockContext(request);
@@ -57,43 +20,29 @@ export const GET = stockRoute(async function GET(request) {
   }
 
   try {
-    // Removed per-request schema alteration
-
     const { searchParams } = new URL(request.url);
     const limit = Math.min(Number(searchParams.get('limit') || 25), 100);
 
     const [notifications, unreadRows] = await Promise.all([
       sql(
-        `SELECT
-           id,
-           notification_number,
-           channel,
-           event_type,
-           recipients,
-           message_text,
-           status,
-           source_table,
-           source_id,
-           created_by,
-           created_at,
-           is_read,
-           read_at
+        `SELECT id, event_type, message_text, source_table, source_id, created_at, is_read
          FROM stock_notifications
+         WHERE recipient_user_id = $1
          ORDER BY created_at DESC
-         LIMIT $1`,
-        [limit]
+         LIMIT $2`,
+        [appUser.id, limit]
       ),
       sql(
         `SELECT COUNT(*)::INTEGER AS unread_count
          FROM stock_notifications
-         WHERE is_read = FALSE`,
-        []
+         WHERE recipient_user_id = $1 AND is_read = FALSE`,
+        [appUser.id]
       ),
     ]);
 
     const enrichedNotifications = notifications.map((notification) => ({
       ...notification,
-      actionHref: buildNotificationActionHref(notification),
+      actionHref: notificationHref(notification),
     }));
 
     return NextResponse.json({
@@ -122,8 +71,6 @@ export const PATCH = stockRoute(async function PATCH(request) {
   }
 
   try {
-    // Removed per-request schema alteration
-
     const body = await request.json();
     const action = body?.action;
 
@@ -133,8 +80,8 @@ export const PATCH = stockRoute(async function PATCH(request) {
          SET is_read = TRUE,
              read_at = COALESCE(read_at, NOW()),
              updated_at = NOW()
-         WHERE is_read = FALSE`,
-        []
+         WHERE recipient_user_id = $1 AND is_read = FALSE`,
+        [appUser.id]
       );
 
       return NextResponse.json({ ok: true });
@@ -152,10 +99,34 @@ export const PATCH = stockRoute(async function PATCH(request) {
          SET is_read = TRUE,
              read_at = COALESCE(read_at, NOW()),
              updated_at = NOW()
-         WHERE id = $1`,
-        [notificationId]
+         WHERE id = $1 AND recipient_user_id = $2`,
+        [notificationId, appUser.id]
       );
 
+      return NextResponse.json({ ok: true });
+    }
+
+    if (action === 'subscribePush') {
+      const { endpoint, keys } = body?.subscription || {};
+      if (!/^https:\/\//.test(String(endpoint || '')) || !keys?.p256dh || !keys?.auth) {
+        return NextResponse.json({ error: 'Invalid push subscription' }, { status: 400 });
+      }
+      // Same device signing in as someone else: the alerts follow the new person.
+      await sql(
+        `INSERT INTO stock_push_subscriptions (user_id, endpoint, p256dh, auth)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (tenant_id, endpoint)
+         DO UPDATE SET user_id = EXCLUDED.user_id, p256dh = EXCLUDED.p256dh, auth = EXCLUDED.auth`,
+        [appUser.id, String(endpoint).slice(0, 2000), String(keys.p256dh).slice(0, 200), String(keys.auth).slice(0, 200)]
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    if (action === 'unsubscribePush') {
+      await sql(
+        `DELETE FROM stock_push_subscriptions WHERE endpoint = $1 AND user_id = $2`,
+        [String(body?.endpoint || ''), appUser.id]
+      );
       return NextResponse.json({ ok: true });
     }
 

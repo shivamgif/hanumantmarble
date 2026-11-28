@@ -1,6 +1,6 @@
 import { sql, withTransaction } from '@/lib/db';
 import { NextResponse } from 'next/server';
-import { getRoleFlags, queueNotification, recordTimelineEvent, stockRoute } from '@/lib/stock-workflow';
+import { approverUserIds, getRoleFlags, notifyUsers, recordTimelineEvent, resolveSourceNotifications, stockRoute } from '@/lib/stock-workflow';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import { cancelSourceVoucher, ensurePartyLedger, postSalesInvoice, withBooks } from '@/lib/accounts-db';
 import { istToday } from '@/lib/attendance.mjs';
@@ -324,15 +324,25 @@ export const PATCH = stockRoute(async function PATCH(request, context) {
           details: { action: body.action, status: invoice.status, ...(deleted ? { deleted: true } : {}), ...(changes ? { changes } : {}) },
           userId: appUser.id,
         });
-        await queueNotification({
-          channel: 'whatsapp',
-          eventType: 'other',
-          messageText: summary,
-          recipients: [],
-          sourceTable: 'stock_sales_invoices',
-          sourceId: invoiceId,
-          createdBy: session.user.email,
-        });
+      });
+      // The seller acting on their own estimate tells the approvers (an edit
+      // refreshes their open entry; withdrawing it just clears it). Anyone
+      // else acting tells the seller. A decision clears the approvers' entries.
+      if (deleted || ['approve', 'reject', 'cancel'].includes(body.action)) {
+        await resolveSourceNotifications('stock_sales_invoices', invoiceId);
+      }
+      const userIds = isOwn
+        ? (body.action === 'update' ? await approverUserIds() : [])
+        : [current.salesperson_user_id, current.created_by_user_id];
+      await notifyUsers({
+        userIds,
+        actorId: appUser.id,
+        eventType: 'other',
+        messageText: summary,
+        sourceTable: 'stock_sales_invoices',
+        // A deleted estimate has no page left to open.
+        sourceId: deleted ? null : invoiceId,
+        createdBy: session.user.email,
       });
     } catch (sideEffectError) {
       console.error('Failed to log invoice action:', sideEffectError);

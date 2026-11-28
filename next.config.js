@@ -49,11 +49,9 @@ const nextConfig = {
         ],
       },
       {
-        source: '/sw.js',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
-          { key: 'Service-Worker-Allowed', value: '/' },
-        ],
+        // The push worker: always revalidated, so a fix reaches phones on the next visit.
+        source: '/push-sw.js',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' }],
       },
       {
         // Cache static assets aggressively

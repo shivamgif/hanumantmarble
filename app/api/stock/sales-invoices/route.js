@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import {
   canSell,
-  collectNotificationRecipients,
+  approverUserIds,
   getRoleFlags,
   normalizeStockRole,
-  queueNotification,
+  notifyUsers,
   recordTimelineEvent, stockRoute } from '@/lib/stock-workflow';
 import { sql, withTransaction } from '@/lib/db';
 import { estimateSql, listSalesInvoices, readEstimate, salesInvoiceGuard } from '@/lib/sales-invoices';
@@ -60,17 +60,15 @@ export const POST = stockRoute(async function POST(request) {
       values
     );
     const invoice = rows[0];
-    const { items, bill_to_name: billToName } = row;
+    const { bill_to_name: billToName } = row;
 
     try {
       await withTransaction(async () => {
-        // Charges (cartage) belong to no division.
-        const divisionIds = [...new Set(items.filter((item) => item.divisionId).map((item) => item.divisionId))];
-        await queueNotification({
-          channel: 'whatsapp',
+        await notifyUsers({
+          userIds: await approverUserIds(),
+          actorId: appUser.id,
           eventType: 'other',
           messageText: `New estimate from ${seller.name} for ${billToName}: ₹${totals.grandTotal}. Review and approve to issue the invoice.`,
-          recipients: await collectNotificationRecipients(divisionIds),
           sourceTable: 'stock_sales_invoices',
           sourceId: invoice.id,
           createdBy: session.user.email,

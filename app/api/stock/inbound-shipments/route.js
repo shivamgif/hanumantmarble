@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import {
-  collectNotificationRecipients,
+  approverUserIds,
   ensureDatabaseAvailable,
   findOrCreateCustomer,
   generateReference,
   getStockContext,
   hasAnyStockRole,
   normalizeText,
-  queueNotification,
+  notifyUsers,
   recordTimelineEvent,
   upsertNamedRecord, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
@@ -550,7 +550,6 @@ export const POST = stockRoute(async function POST(request) {
     }
     const schemaCaps = tripCaps;
     const insertedItems = [];
-    const itemDivisionIds = [];
     const preparedItems = [];
 
     for (const row of items) {
@@ -559,7 +558,6 @@ export const POST = stockRoute(async function POST(request) {
       const qtySqft = isStoneRow ? toPositiveSqft(row.qtySqft) : 0;
       const orderedBoxes = isBagRow ? Number(row.qtyBags || 0) : isStoneRow ? 0 : Number(row.orderedBoxes || 0);
       const item = await upsertItemMaster(row, orderedBoxes);
-      if (item.division_id) itemDivisionIds.push(item.division_id);
 
       let whole_qty_sqm = null;
       let broken_qty_sqm = null;
@@ -693,13 +691,11 @@ export const POST = stockRoute(async function POST(request) {
       [handlingPct, fuelPct, gstPct, pricing.grandTotal, body.freightWeightKg || null, pricing.shipmentDiscount, shipment.id]
     );
 
-    const uniqueDivisionIds = [...new Set(itemDivisionIds)];
-    const recipients = await collectNotificationRecipients(uniqueDivisionIds.length ? uniqueDivisionIds : null);
-    await queueNotification({
-      channel: 'whatsapp',
+    await notifyUsers({
+      userIds: await approverUserIds(),
+      actorId: appUser?.id,
       eventType: 'inbound_arrival',
       messageText: `New stock purchase submitted: ${shipment.shipment_number}. Review and approve to add to inventory.`,
-      recipients,
       sourceTable: 'stock_inbound_shipments',
       sourceId: shipment.id,
       createdBy: session.user.email,
