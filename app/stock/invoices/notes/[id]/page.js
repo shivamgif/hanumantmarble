@@ -1,5 +1,6 @@
 'use client';
 
+import { Paper } from '../../../components/paper';
 import { PageSkeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -78,7 +79,7 @@ export default function CreditNotePrintPage() {
         </p>
       ) : null}
 
-      <article className="paper relative mx-auto w-full max-w-[210mm] overflow-x-auto bg-white p-6 text-slate-900 shadow-sm print:p-0 print:shadow-none">
+      <Paper className="relative text-slate-900">
         {watermark ? (
           <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-center text-6xl font-black uppercase text-rose-500/20 -rotate-12">
             {watermark}
@@ -191,7 +192,7 @@ export default function CreditNotePrintPage() {
             <p className="mt-10 border-t border-slate-400 pt-1">{t('signatory')}</p>
           </div>
         </footer>
-      </article>
+      </Paper>
     </div>
   );
 }

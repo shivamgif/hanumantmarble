@@ -11,7 +11,9 @@ import * as Dialog from '@radix-ui/react-dialog';
  * Controlled by a single `request` object so a caller can keep one piece of
  * state per page: pass null to close.
  *   { title, description, placeholder, required, confirmText, tone, onSubmit }
- * `inputType: 'date'` asks for a date instead (with `initialValue` and `min`).
+ * `inputType: 'date'` asks for a date instead (with `initialValue` and `min`);
+ * `inputType: 'none'` only confirms. `dismissText` names the way out, so it
+ * never reads like the action ("Cancel" next to "Cancel estimate").
  */
 export function ReasonDialog({ request, onClose }) {
   const [value, setValue] = useState('');
@@ -37,7 +39,10 @@ export function ReasonDialog({ request, onClose }) {
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[9998] bg-black/50 animate-fade-in" />
         <Dialog.Content
-          className="fixed left-1/2 top-1/2 z-[9999] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 text-card-foreground shadow-float animate-scale-in"
+          // Placed without translate: the scale-in animation sets transform too
+          // and wiped the centring, pushing the dialog off a phone screen.
+          // Near the top, so a phone keyboard never covers it.
+          className="fixed inset-x-0 top-[12vh] z-[9999] mx-auto w-[min(28rem,calc(100vw-2rem))] rounded-lg border border-border bg-card p-6 text-card-foreground shadow-float animate-scale-in"
           onOpenAutoFocus={(e) => {
             e.preventDefault();
             e.currentTarget.querySelector('textarea, input')?.focus();
@@ -51,7 +56,7 @@ export function ReasonDialog({ request, onClose }) {
           ) : null}
 
           <form onSubmit={submit}>
-            {request.inputType === 'date' ? (
+            {request.inputType === 'none' ? null : request.inputType === 'date' ? (
               <input
                 type="date"
                 value={value}
@@ -76,7 +81,7 @@ export function ReasonDialog({ request, onClose }) {
                   type="button"
                   className="h-9 rounded-lg border border-border px-4 text-[13px] font-semibold transition-colors hover:bg-muted focus-ring"
                 >
-                  Cancel
+                  {request.dismissText || 'Go back'}
                 </button>
               </Dialog.Close>
               <button

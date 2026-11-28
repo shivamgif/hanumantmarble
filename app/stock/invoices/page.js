@@ -178,6 +178,8 @@ export default function InvoicesPage() {
   const canRaise = canSell(accessUser) || isApprover;
   // Mirrors the server: sellers withdraw their own pending estimate; another
   // approver may void an issued invoice that never shipped.
+  // Mirrors the server: an estimate never issued as a proforma is deleted, not kept as cancelled.
+  const deletable = (invoice) => invoice.status === 'pending' && !invoice.proforma_number;
   const canCancel = (invoice) => {
     if (invoice.dispatch_id) return false;
     const me = Number(accessUser?.id);
@@ -690,27 +692,31 @@ export default function InvoicesPage() {
                         // Own estimates wait for another approver (server enforces it too).
                         canApproveInvoice(invoice) && {
                           icon: X,
-                          label: t('reject'),
+                          label: deletable(invoice) ? t('rejectAndDelete') : t('reject'),
                           danger: true,
                           onSelect: () => setReasonDialog({
-                            title: t('reject'),
-                            description: `${invoice.bill_to_name} · ${formatRupees(invoice.grand_total)}`,
+                            title: deletable(invoice) ? t('rejectAndDelete') : t('reject'),
+                            description: `${invoice.bill_to_name} · ${formatRupees(invoice.grand_total)}${deletable(invoice) ? ` · ${t('deleteEstimateConfirm')}` : ''}`,
                             placeholder: t('rejectReason'),
                             required: true,
-                            confirmText: t('reject'),
+                            confirmText: deletable(invoice) ? t('rejectAndDelete') : t('reject'),
+                            dismissText: t('goBack'),
                             tone: 'rose',
                             onSubmit: (reason) => act(invoice, 'reject', { reason }),
                           }),
                         },
                         canCancel(invoice) && {
                           icon: Ban,
-                          label: t('cancel'),
+                          label: deletable(invoice) ? t('deleteEstimate') : t('cancelInvoice'),
                           danger: true,
                           onSelect: () => setReasonDialog({
-                            title: t('cancel'),
-                            description: `${invoice.invoice_number || `${t('estimate')} #${invoice.id}`} · ${t('cancelConfirm')}`,
-                            placeholder: t('notes'),
-                            confirmText: t('cancel'),
+                            title: deletable(invoice) ? t('deleteEstimate') : t('cancelInvoice'),
+                            description: deletable(invoice)
+                              ? `${t('estimate')} #${invoice.id} · ${invoice.bill_to_name} · ${t('deleteEstimateConfirm')}`
+                              : `${invoice.invoice_number || invoice.proforma_number || `${t('estimate')} #${invoice.id}`} · ${t('cancelConfirm')}`,
+                            inputType: 'none',
+                            confirmText: deletable(invoice) ? t('deleteEstimate') : t('cancelInvoice'),
+                            dismissText: t('goBack'),
                             tone: 'rose',
                             onSubmit: () => act(invoice, 'cancel'),
                           }),

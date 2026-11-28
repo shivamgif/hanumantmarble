@@ -1,5 +1,6 @@
 'use client';
 
+import { Paper } from '../../components/paper';
 import { PageSkeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { Fragment, useEffect, useState } from 'react';
@@ -192,7 +193,7 @@ export default function InvoicePrintPage() {
       ) : null}
 
       {/* Paper: always black on white, also in dark mode, so screen and PDF match. */}
-      <article className="paper relative mx-auto w-full max-w-[210mm] overflow-x-auto bg-white p-6 text-[11px] leading-snug text-black shadow-sm print:p-0 print:shadow-none">
+      <Paper className="relative text-[11px] leading-snug text-black">
         {watermark ? (
           <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-center text-6xl font-black uppercase text-rose-500/20 -rotate-12">
             {watermark}
@@ -526,7 +527,7 @@ export default function InvoicePrintPage() {
         </div>
 
         <p className="mt-1 text-center text-[10px]">{t('computerGenerated')}</p>
-      </article>
+      </Paper>
 
       <InvoiceHistory invoiceId={invoice.id} t={t} />
     </div>

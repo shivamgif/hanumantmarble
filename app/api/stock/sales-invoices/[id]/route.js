@@ -160,6 +160,20 @@ export const PATCH = stockRoute(async function PATCH(request, context) {
     let summary;
     let changes;
 
+    // An estimate that never went out as a numbered proforma is not a document
+    // anyone holds: cancelling or rejecting it deletes it. The audit trigger
+    // keeps the deleted row and the timeline keeps who did it and why. A
+    // proforma's number must stay in its gap-free series, so that one is only
+    // marked cancelled / rejected.
+    const deletable = current.status === 'pending' && !current.proforma_number;
+    const deleteEstimate = () => withBooks(appUser, async (tx) => (await tx(
+      `DELETE FROM stock_sales_invoices
+        WHERE id = $1 AND status = 'pending' AND proforma_number IS NULL
+          AND NOT EXISTS (SELECT 1 FROM stock_outbound_shipments WHERE sales_invoice_id = $1)
+        RETURNING *`,
+      [invoiceId]
+    ))[0]);
+
     if (body.action === 'update') {
       // The seller fixes their own estimate until a proforma goes out; an
       // approver corrects anyone's before approving. Same validation as raising one.
@@ -249,12 +263,17 @@ export const PATCH = stockRoute(async function PATCH(request, context) {
       const reason = String(body.reason || '').trim().slice(0, 1000);
       if (!reason) return NextResponse.json({ error: 'Give a reason for rejecting' }, { status: 400 });
       if (current.status !== 'pending') throw conflict('Only a pending estimate can be rejected.');
-      invoice = (await withBooks(appUser, (tx) => tx(
-        `UPDATE stock_sales_invoices SET status = 'rejected', rejection_reason = $1, updated_at = NOW()
-          WHERE id = $2 AND status = 'pending' RETURNING *`,
-        [reason, invoiceId]
-      )))[0];
-      summary = `Estimate for ${current.bill_to_name} rejected: ${reason}`;
+      if (deletable) {
+        invoice = await deleteEstimate();
+        summary = `Estimate #${invoiceId} for ${current.bill_to_name} rejected and deleted: ${reason}`;
+      } else {
+        invoice = (await withBooks(appUser, (tx) => tx(
+          `UPDATE stock_sales_invoices SET status = 'rejected', rejection_reason = $1, updated_at = NOW()
+            WHERE id = $2 AND status = 'pending' RETURNING *`,
+          [reason, invoiceId]
+        )))[0];
+        summary = `${current.proforma_number || 'Estimate'} for ${current.bill_to_name} rejected: ${reason}`;
+      }
     } else if (body.action === 'cancel') {
       // The seller withdraws their own pending estimate; an approver may also
       // void an issued invoice that never shipped. Its number stays used, so
@@ -268,7 +287,8 @@ export const PATCH = stockRoute(async function PATCH(request, context) {
       );
       if (liveNotes.length) throw conflict('This invoice has credit notes. Cancel them first.');
       const { hasAccounts } = await getStockSchemaCapabilities();
-      invoice = await withBooks(appUser, async (tx) => {
+      if (deletable) invoice = await deleteEstimate();
+      else invoice = await withBooks(appUser, async (tx) => {
         const [row] = await tx(
           `UPDATE stock_sales_invoices
               SET status = 'cancelled', updated_at = NOW(),
@@ -283,13 +303,16 @@ export const PATCH = stockRoute(async function PATCH(request, context) {
         if (row && hasAccounts) await cancelSourceVoucher(tx, 'stock_sales_invoices', invoiceId, appUser.id);
         return row;
       });
-      summary = `${current.invoice_number || 'Estimate'} for ${current.bill_to_name} cancelled`
+      summary = deletable
+        ? `Estimate #${invoiceId} for ${current.bill_to_name} cancelled and deleted`
+        : `${current.invoice_number || current.proforma_number || 'Estimate'} for ${current.bill_to_name} cancelled`
         + (current.irn ? '. Cancel its IRN on the e-invoice portal too (allowed within 24 hours of generation).' : '');
     } else {
       return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
     }
 
     if (!invoice) throw conflict('The invoice changed while you were looking at it. Reload and try again.');
+    const deleted = deletable && ['reject', 'cancel'].includes(body.action);
 
     try {
       await withTransaction(async () => {
@@ -298,7 +321,7 @@ export const PATCH = stockRoute(async function PATCH(request, context) {
           entityType: 'sales_invoice',
           entityId: invoiceId,
           summary,
-          details: { action: body.action, status: invoice.status, ...(changes ? { changes } : {}) },
+          details: { action: body.action, status: invoice.status, ...(deleted ? { deleted: true } : {}), ...(changes ? { changes } : {}) },
           userId: appUser.id,
         });
         await queueNotification({
@@ -315,7 +338,7 @@ export const PATCH = stockRoute(async function PATCH(request, context) {
       console.error('Failed to log invoice action:', sideEffectError);
     }
 
-    return NextResponse.json({ invoice, message: summary });
+    return NextResponse.json({ invoice: deleted ? null : invoice, deleted, message: summary });
   } catch (error) {
     const status = Number.isInteger(error?.statusCode) ? error.statusCode : 500;
     if (status === 500) console.error('Failed to update invoice:', error);
