@@ -256,14 +256,27 @@ export default function InvoicesPage() {
     return () => { cancelled = true; };
   }, [filter, refreshKey, page, pageSize, query]);
 
+  // The form needs every item, the suggestions and the branches: the whole
+  // dashboard payload. Fetched once, in the background as soon as someone who
+  // can raise an estimate opens this page, so "New estimate" opens at once.
+  const setupRequest = useRef(null);
+  const loadFormSetup = useCallback(() => {
+    setupRequest.current ||= Promise.all([fetchDashboardData(), loadInvoiceBranches()])
+      .then(([dashboard, branches]) => ({ items: dashboard.activeItems || [], suggestions: dashboard.suggestions || {}, branches }))
+      .catch((err) => { setupRequest.current = null; throw err; });
+    return setupRequest.current;
+  }, []);
+  useEffect(() => {
+    if (canRaise) loadFormSetup().then(setFormSetup).catch(() => {});
+  }, [canRaise, loadFormSetup]);
+
   /** Opens the estimate form: blank for a new one, prefilled to review `invoice`. */
   const openEstimateForm = useCallback(async (invoice = null) => {
     setNotice(null);
     setEditing(invoice);
     setSheetOpen(true);
     try {
-      const setup = formSetup || await Promise.all([fetchDashboardData(), loadInvoiceBranches()])
-        .then(([dashboard, branches]) => ({ items: dashboard.activeItems || [], suggestions: dashboard.suggestions || {}, branches }));
+      const setup = formSetup || await loadFormSetup();
       setFormSetup(setup);
       if (invoice) {
         form.reset(estimateToForm(invoice));
@@ -288,7 +301,7 @@ export default function InvoicesPage() {
     } catch (err) {
       setNotice({ type: 'error', message: err.message });
     }
-  }, [form, formSetup, t, accessUser?.id]);
+  }, [form, formSetup, loadFormSetup, t, accessUser?.id]);
   const openNewEstimate = useCallback(() => openEstimateForm(), [openEstimateForm]);
 
   // ?new=estimate, from the topbar's "New estimate" command. Waits for the
@@ -761,7 +774,7 @@ export default function InvoicesPage() {
           ) : notice ? (
             <p className="mt-6 text-sm text-rose-500">{notice.message}</p>
           ) : (
-            <p className="mt-6 text-sm text-slate-400">…</p>
+            <div className="mt-6"><ListSkeleton rows={6} /></div>
           )}
         </SheetContent>
       </Sheet>

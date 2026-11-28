@@ -14,8 +14,12 @@ import { GST_STATES } from '@/lib/gst-invoice.mjs';
 const KEY = () => process.env.GOOGLE_MAPS_API_KEY;
 const PLACES = 'https://places.googleapis.com/v1';
 // Lucknow, 50 km (the API's maximum bias radius): results near the showroom
-// first, but anywhere in India still comes up.
+// first. Customers are in Uttar Pradesh, so anything outside it is dropped.
+// Not a Google restriction box: that can't also prefer Lucknow ("sector 18"
+// lost Indira Nagar to Noida), and UP's box spills into Delhi and Haryana.
+// Fewer wrong suggestions, not fewer calls: Google bills each request.
 const LUCKNOW_BIAS = { circle: { center: { latitude: 26.8467, longitude: 80.9462 }, radius: 50000 } };
+const inUttarPradesh = (text) => /Uttar Pradesh(?:\s+\d{6})?(?:,\s*India)?$/i.test(text.trim());
 const STATE_BY_NAME = new Map(Object.entries(GST_STATES).map(([code, name]) => [name.toLowerCase(), code]));
 
 // Calls a day, all staff together, kept under the key's own daily cap (the
@@ -90,6 +94,7 @@ export const GET = stockRoute(async function GET(request) {
     suggestions: (json.suggestions || [])
       .map((s) => s.placePrediction)
       .filter(Boolean)
-      .map((p) => ({ placeId: p.placeId, text: p.text?.text || '' })),
+      .map((p) => ({ placeId: p.placeId, text: p.text?.text || '' }))
+      .filter((p) => inUttarPradesh(p.text)),
   });
 });
