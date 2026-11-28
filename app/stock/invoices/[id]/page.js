@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Fragment, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { ArrowLeft, Printer } from 'lucide-react';
-import { amountInWords, computeInvoiceTotals, GST_STATES, isCharge, PLACEHOLDER_GSTIN } from '@/lib/gst-invoice.mjs';
+import { amountInWords, computeInvoiceTotals, GST_STATES, inclusiveRate, isCharge, PLACEHOLDER_GSTIN } from '@/lib/gst-invoice.mjs';
 import { useInvoiceText } from '../../components/invoice-form';
 import { InvoiceHistory } from '../../components/invoice-history';
 import { CLASSES, PILL_BUTTON_CLASS, PILL_PRIMARY_BUTTON_CLASS } from '../../lib/stock-utils';
@@ -78,8 +78,8 @@ export default function InvoicePrintPage() {
     const qrcode = import('qrcode');
     const svg = (text, errorCorrectionLevel = 'M') =>
       qrcode.then((m) => m.default.toString(text, { type: 'svg', margin: 1, errorCorrectionLevel })).catch(() => '');
-    const upiLink = upiId
-      ? `upi://pay?${new URLSearchParams({ pa: upiId, pn: data.seller.business.legalName, am: Number(invoice.grand_total).toFixed(2), cu: 'INR', tn: invoice.invoice_number || invoice.proforma_number })}`
+    const upiLink = upiId && Number(invoice.grand_total) > (Number(invoice.advance_amount) || 0)
+      ? `upi://pay?${new URLSearchParams({ pa: upiId, pn: data.seller.business.legalName, am: (Number(invoice.grand_total) - (Number(invoice.advance_amount) || 0)).toFixed(2), cu: 'INR', tn: invoice.invoice_number || invoice.proforma_number })}`
       : null;
     Promise.all([
       issued ? svg(`${window.location.origin}/stock?new=dispatch&invoice=${invoice.id}`) : '',
@@ -94,6 +94,8 @@ export default function InvoicePrintPage() {
 
   const business = data.seller?.business || {};
   const branch = data.seller?.location || {};
+  // Where the sale was made: a showroom prints as one; anything else as Tally's "Godown".
+  const branchLabel = invoice.location_type === 'showroom' ? t('showroom') : t('godown');
   const totals = computeInvoiceTotals(invoice.items, business.stateCode, invoice.bill_to_state_code);
   // A number is only ever given on approval: no number = an estimate, never a
   // sale. A proforma is an estimate an approver has issued as a numbered offer.
@@ -122,6 +124,8 @@ export default function InvoicePrintPage() {
   // corrected since it was saved, and approval recomputes it the same way.
   const grandTotal = !isEstimate && invoice.grand_total != null ? Number(invoice.grand_total) : totals.grandTotal;
   const roundOff = round2(grandTotal - totals.taxableTotal - taxTotal);
+  const advance = Number(invoice.advance_amount) || 0;
+  const balanceDue = round2(grandTotal - advance);
 
   // Tax rows under the goods ("CGST @9%"), one per GST rate on the bill.
   const byRate = {};
@@ -298,8 +302,8 @@ export default function InvoicePrintPage() {
                 <th className={th}>{t('hsnSac')}</th>
                 <th className={th}>{t('gstRate')}</th>
                 <th className={th}>{t('quantity')}</th>
-                <th className={th}>{t('rateInclTax')}</th>
                 <th className={th}>{t('rate')}</th>
+                <th className={th}>{t('rateInclTax')}</th>
                 <th className={th}>{t('per')}</th>
                 <th className={th}>{t('amount')}</th>
               </tr>
@@ -311,13 +315,13 @@ export default function InvoicePrintPage() {
                     <td className={`${td} pt-1 text-right`}>{index + 1}</td>
                     <td className={`${td} pt-1`}>
                       <p className="font-bold">{item.itemLabel}</p>
-                      {branch.name ? <p className="pl-2 text-[10px] italic">{t('godown')} : {branch.name}</p> : null}
+                      {branch.name ? <p className="pl-2 text-[10px] italic">{branchLabel} : {branch.name}</p> : null}
                     </td>
                     <td className={`${td} pt-1`}>{item.hsnCode}</td>
                     <td className={`${td} pt-1 text-right`}>{line.gstRate} %</td>
                     <td className={`${td} pt-1 text-right font-bold`}>{fmt(line.qty)} {line.unit}</td>
-                    <td className={`${td} pt-1 text-right`}>{fmt(round2(line.rate * (1 + line.gstRate / 100)))}</td>
                     <td className={`${td} pt-1 text-right`}>{fmt(line.rate)}</td>
+                    <td className={`${td} pt-1 text-right`}>{fmt(inclusiveRate(line.rate, line.gstRate))}</td>
                     <td className={`${td} pt-1`}>{line.unit}</td>
                     <td className={`${td} pt-1 text-right font-bold`}>{fmt(line.taxable)}</td>
                   </tr>
@@ -369,6 +373,24 @@ export default function InvoicePrintPage() {
                 <td className={td} /><td className={td} /><td className={td} />
                 <td className={`${td} whitespace-nowrap text-right text-[13px] font-bold`}>₹ {fmt(grandTotal)}</td>
               </tr>
+              {advance ? (
+                <>
+                  <tr>
+                    <td className={td} />
+                    <td className={`${td} text-right italic`}>
+                      {t('lessAdvance')} ({[t(`mode_${invoice.advance_mode}`), printDate(invoice.advance_date_text)].filter(Boolean).join(', ')})
+                    </td>
+                    <td className={td} /><td className={td} /><td className={td} /><td className={td} /><td className={td} /><td className={td} />
+                    <td className={`${td} text-right`}>− {fmt(advance)}</td>
+                  </tr>
+                  <tr className="border-y border-black">
+                    <td className={td} />
+                    <td className={`${td} text-right font-bold`}>{t('balanceDue')}</td>
+                    <td className={td} /><td className={td} /><td className={td} /><td className={td} /><td className={td} /><td className={td} />
+                    <td className={`${td} whitespace-nowrap text-right text-[13px] font-bold`}>₹ {fmt(balanceDue)}</td>
+                  </tr>
+                </>
+              ) : null}
             </tbody>
           </table>
 

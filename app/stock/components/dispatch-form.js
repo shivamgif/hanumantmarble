@@ -27,13 +27,12 @@ import {
   SUBMIT_BUTTON_CLASS,
 } from '../lib/stock-utils';
 
-// On an invoice a line carries its HSN and GST rate where a dispatch carries returns.
+// On an invoice a line carries its HSN where a dispatch carries returns. The
+// GST rate rides along hidden (18% unless the saved line had another): rates
+// are typed GST-inclusive, so the shop never picks it.
 function InvoiceTaxFields({ control, index, tc }) {
   return (
-    <>
-      <StockFormField control={control} name={`items.${index}.hsnCode`} label={tc?.hsnCode ?? 'HSN'} inputMode="numeric" digitsOnly maxLength={8} placeholder="690721" />
-      <StockFormField control={control} name={`items.${index}.gstRate`} label={tc?.gstRate ?? 'GST %'} type="number" min="0" step="0.25" placeholder="18" />
-    </>
+    <StockFormField control={control} name={`items.${index}.hsnCode`} label={tc?.hsnCode ?? 'HSN'} inputMode="numeric" digitsOnly maxLength={8} placeholder="690721" />
   );
 }
 
@@ -50,6 +49,8 @@ export const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, 
   // Stone is dispatched by total sqft — no boxes, pieces or broken bucket.
   const isStone = itemCategory === 'stone';
   const showBrokenToggle = !isBag && !invoice;
+  // Estimates take the rate as quoted to the customer, GST included.
+  const inclGst = invoice ? ` (${tc?.inclGst ?? 'incl. GST'})` : '';
 
   return (
     <div key={fieldRow.id} className={FORM_ITEM_ROW_CLASS}>
@@ -128,17 +129,17 @@ export const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, 
           )}
         </div>
         {isStone ? (
-          <div className={`grid grid-cols-1 gap-4 ${invoice ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
+          <div className={`grid grid-cols-1 gap-4 sm:grid-cols-3`}>
             <StockFormField control={control} name={`items.${index}.qtySqft`} label={tc?.qtySqft ?? 'Qty (Sqft)'} type="number" min="0" step="0.001" placeholder="0" />
-            <StockMoneyField control={control} name={`items.${index}.ratePerUnit`} label={tc?.ratePerSqft ?? 'Rate / Sqft'} />
+            <StockMoneyField control={control} name={`items.${index}.ratePerUnit`} label={(tc?.ratePerSqft ?? 'Rate / Sqft') + inclGst} />
             {invoice ? <InvoiceTaxFields control={control} index={index} tc={tc} /> : (
               <StockFormField control={control} name={`items.${index}.returnQtySqft`} label={tc?.retSqft ?? 'Return Sqft'} type="number" min="0" step="0.001" placeholder="0" disabled={!canEditReturns} />
             )}
           </div>
         ) : isBag ? (
-          <div className={`grid grid-cols-1 gap-4 ${invoice ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
+          <div className={`grid grid-cols-1 gap-4 sm:grid-cols-3`}>
             <StockFormField control={control} name={`items.${index}.qtyBags`} label={tc?.qtyBags ?? 'Qty (Bags)'} type="number" min="0" placeholder="0" />
-            <StockMoneyField control={control} name={`items.${index}.ratePerUnit`} label={tc?.ratePerBag ?? 'Rate / Bag'} />
+            <StockMoneyField control={control} name={`items.${index}.ratePerUnit`} label={(tc?.ratePerBag ?? 'Rate / Bag') + inclGst} />
             {invoice ? <InvoiceTaxFields control={control} index={index} tc={tc} /> : (
               <StockFormField control={control} name={`items.${index}.returnQtyBags`} label={tc?.retBags ?? 'Return Bags'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />
             )}
@@ -146,7 +147,7 @@ export const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, 
         ) : (
           // Quantity, unit, rate and the two return/tax fields: five on one line
           // when the drawer is wide enough, instead of three then two.
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+          <div className={`grid grid-cols-1 gap-4 sm:grid-cols-3 ${invoice ? 'xl:grid-cols-4' : 'xl:grid-cols-5'}`}>
             {fromBroken ? (
               <StockFormField
                 control={control}
@@ -175,7 +176,7 @@ export const DispatchItemRow = memo(function DispatchItemRow({ index, fieldRow, 
                 ))}
               </div>
             </div>
-            <StockMoneyField control={control} name={`items.${index}.ratePerUnit`} label={sellUnit === 'piece' ? (tc?.ratePerPiece ?? 'Rate / Piece') : (tc?.ratePerBox ?? 'Rate / Box')} />
+            <StockMoneyField control={control} name={`items.${index}.ratePerUnit`} label={(sellUnit === 'piece' ? (tc?.ratePerPiece ?? 'Rate / Piece') : (tc?.ratePerBox ?? 'Rate / Box')) + inclGst} />
             {invoice ? <InvoiceTaxFields control={control} index={index} tc={tc} /> : (
               <>
                 <StockFormField control={control} name={`items.${index}.returnWholeQty`} label={tc?.retWhole ?? 'Ret. Whole'} type="number" min="0" placeholder="0" disabled={!canEditReturns} />

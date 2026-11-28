@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { lazyZodResolver } from '@/lib/forms/lazy-zod-resolver';
 import { Ban, Check, CheckCircle2, Clock, Download, ExternalLink, FileBadge, FileKey, FileMinus, FilePlus, FileText, List, MoreHorizontal, Pencil, Plus, Search, Truck, Upload, X } from 'lucide-react';
-import { isCharge, PROFORMA_VALIDITY_DAYS } from '@/lib/gst-invoice.mjs';
+import { inclusiveRate, isCharge, PROFORMA_VALIDITY_DAYS } from '@/lib/gst-invoice.mjs';
 import { useAuthUser } from '@/lib/auth-client';
 import { useStockAccess } from '@/hooks/useStockAccess';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -61,6 +61,9 @@ const blankInvoice = ({ branch = null, stateCode = '', city = '', seller = null 
   notes: '',
   items: [invoiceItemRow()],
   charges: [],
+  advanceAmount: '',
+  advanceDate: '',
+  advanceMode: '',
 });
 
 /** A saved estimate back into the form, for review. Lines are stored in the dispatch row shape. */
@@ -80,11 +83,15 @@ const estimateToForm = (invoice) => ({
   referredByName: invoice.referred_by_name || '',
   referredByPhone: invoice.referred_by_phone || '',
   notes: invoice.notes || '',
+  advanceAmount: Number(invoice.advance_amount) ? String(Number(invoice.advance_amount)) : '',
+  advanceDate: invoice.advance_date_text || '',
+  advanceMode: invoice.advance_mode || '',
+  // Rates are stored without GST and typed with it.
   // Charges (cartage) are stored among the lines; the form keeps them in their own section.
   charges: invoice.items.filter(isCharge).map((item) => ({
     label: item.itemLabel,
     sacCode: item.hsnCode,
-    amount: String(item.ratePerUnit),
+    amount: String(inclusiveRate(item.ratePerUnit, item.gstRate)),
     gstRate: String(item.gstRate ?? 18),
   })),
   items: invoice.items.filter((item) => !isCharge(item)).map((item) => ({
@@ -96,7 +103,7 @@ const estimateToForm = (invoice) => ({
     loadedWholeQty: item.itemCategory === 'tile' ? String(item.loadedWholeQty) : '',
     qtyBags: item.itemCategory === 'bag' ? String(item.qtyBags) : '',
     qtySqft: item.itemCategory === 'stone' ? String(item.qtySqft) : '',
-    ratePerUnit: String(item.ratePerUnit),
+    ratePerUnit: String(inclusiveRate(item.ratePerUnit, item.gstRate)),
     hsnCode: item.hsnCode || '',
     gstRate: String(item.gstRate ?? 18),
   })),
