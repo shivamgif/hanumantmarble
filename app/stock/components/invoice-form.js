@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFieldArray, useWatch } from 'react-hook-form';
-import { Check, FileText, MapPin, Plus, Send, X } from 'lucide-react';
+import { Check, FileText, MapPin, Package, Plus, Send, Truck, Wallet, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -13,7 +13,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import { CustomerPhoneNameFields, FormSectionTitle, InlineNotice, StockDateField, StockFormField, SuggestComboboxField } from './stock-form-fields';
 import { DispatchItemRow } from './dispatch-form';
-import { FORM_CARD_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS, SUBMIT_BUTTON_CLASS, SUBMIT_SECONDARY_CLASS } from '../lib/stock-utils';
+import { FORM_FOOTER_CLASS, FORM_GRID_CLASS, FORM_INPUT_CLASS, FORM_LABEL_CLASS, FORM_SECTION_CLASS, SUBMIT_BUTTON_CLASS, SUBMIT_SECONDARY_CLASS } from '../lib/stock-utils';
 
 /** stock.invoices.* in the current language, with {slots} filled from `vars`. */
 export function useInvoiceText() {
@@ -129,7 +129,7 @@ function AddressSearch({ label, onPick }) {
   };
 
   return (
-    <div className="relative sm:col-span-2 lg:col-span-3">
+    <div className="relative sm:col-span-2 xl:col-span-3">
       <span className={FORM_LABEL_CLASS}>{label}</span>
       <div className="relative">
         <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -238,9 +238,9 @@ export function InvoiceFormContent({
     <Form {...form}>
       <form className="mt-6" onSubmit={form.handleSubmit(onSubmit)}>
         <fieldset disabled={submitting} className="m-0 min-w-0 space-y-6 border-0 p-0">
-          <div className={FORM_CARD_CLASS}>
-            <FormSectionTitle icon={FileText} title={t('customerDetails')} description={t('branchHint')} tc={{}} />
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <section className={FORM_SECTION_CLASS}>
+            <FormSectionTitle icon={FileText} title={t('customerDetails')} description={t('branchHint')} />
+            <div className={FORM_GRID_CLASS}>
               <SelectFormField control={form.control} name="locationId" label={t('branch')} placeholder={t('selectBranch')}>
                 {branches.map((branch) => (
                   <option key={branch.id} value={String(branch.id)}>{branch.name}</option>
@@ -278,7 +278,13 @@ export function InvoiceFormContent({
                 options={suggestions?.referredByName || []}
               />
               <StockFormField control={form.control} name="referredByPhone" label={t('referredByPhone')} placeholder="Optional" type="tel" />
-              {/* Delivery first: it's where the goods go, and usually the billing address too. */}
+            </div>
+          </section>
+
+          <section className={FORM_SECTION_CLASS}>
+            <FormSectionTitle icon={MapPin} title={t('shipToAddress')} />
+            {/* Delivery first: it's where the goods go, and usually the billing address too. */}
+            <div className={FORM_GRID_CLASS}>
               <AddressSearch
                 label={t('searchDeliveryAddress')}
                 onPick={(place) => {
@@ -296,8 +302,8 @@ export function InvoiceFormContent({
                 control={form.control}
                 name="sameAddress"
                 render={({ field }) => (
-                  <FormItem className="sm:col-span-2 lg:col-span-3">
-                    <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                  <FormItem className="sm:col-span-2 xl:col-span-3">
+                    <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-foreground">
                       <FormControl>
                         <Checkbox checked={field.value !== false} onChange={(e) => field.onChange(e.target.checked)} />
                       </FormControl>
@@ -313,11 +319,11 @@ export function InvoiceFormContent({
                 </>
               ) : null}
             </div>
-          </div>
+          </section>
 
-          <div className={FORM_CARD_CLASS}>
-            <h3 className="mb-4 px-1 text-base font-semibold text-slate-900 dark:text-white">{td('items')}</h3>
-            <div className="space-y-4">
+          <section className={FORM_SECTION_CLASS}>
+            <FormSectionTitle icon={Package} title={td('items')} />
+            <div className="mt-4 space-y-4">
               {itemsFieldArray.fields.map((fieldRow, index) => (
                 <DispatchItemRow
                   key={fieldRow.id}
@@ -334,23 +340,17 @@ export function InvoiceFormContent({
                 />
               ))}
             </div>
-            <button
-              type="button"
-              onClick={onAddItem}
-              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-muted px-4 py-2 text-xs font-semibold text-foreground [&>svg]:text-brand-primary transition-colors hover:bg-border"
-            >
+            <button type="button" onClick={onAddItem} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-muted px-4 py-2 text-[13px] font-semibold text-foreground transition hover:bg-border active:scale-[0.96] [&>svg]:text-brand-primary">
               <Plus className="h-3.5 w-3.5" />
               {td('addItem')}
             </button>
-          </div>
+          </section>
 
-          <div className={FORM_CARD_CLASS}>
-            {/* Optional: cartage or loading billed to the customer. Taxed and booked, never dispatched. */}
-            <div className="mb-6">
-              <h3 className="px-1 text-base font-semibold text-slate-900 dark:text-white">{t('otherCharges')}</h3>
-              <p className="px-1 text-xs text-slate-500">{t('otherChargesHint')}</p>
+          {/* Optional: cartage or loading billed to the customer. Taxed and booked, never dispatched. */}
+          <section className={FORM_SECTION_CLASS}>
+            <FormSectionTitle icon={Truck} title={t('otherCharges')} description={t('otherChargesHint')} />
               {chargesFieldArray.fields.map((fieldRow, index) => (
-                <div key={fieldRow.id} className="mt-2 grid grid-cols-2 items-start gap-4 sm:grid-cols-[2fr_1fr_1fr_auto]">
+                <div key={fieldRow.id} className="mt-4 grid grid-cols-2 items-start gap-4 sm:grid-cols-[2fr_1fr_1fr_auto]">
                   <SuggestComboboxField control={form.control} name={`charges.${index}.label`} label={t('charge')} options={CHARGE_NAMES} />
                   <StockFormField control={form.control} name={`charges.${index}.sacCode`} label="SAC" inputMode="numeric" digitsOnly maxLength={6} />
                   <StockFormField control={form.control} name={`charges.${index}.amount`} label={`${t('amount')} (₹, ${t('inclGst')})`} inputMode="decimal" placeholder="600" />
@@ -364,27 +364,25 @@ export function InvoiceFormContent({
                   </button>
                 </div>
               ))}
-              <button
-                type="button"
-                onClick={() => chargesFieldArray.append(newCharge())}
-                className="mt-2 inline-flex items-center gap-2 rounded-lg bg-muted px-4 py-2 text-xs font-semibold text-foreground [&>svg]:text-brand-primary transition-colors hover:bg-border"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                {t('addCharge')}
-              </button>
+            <button type="button" onClick={() => chargesFieldArray.append(newCharge())} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-muted px-4 py-2 text-[13px] font-semibold text-foreground transition hover:bg-border active:scale-[0.96] [&>svg]:text-brand-primary">
+              <Plus className="h-3.5 w-3.5" />
+              {t('addCharge')}
+            </button>
+          </section>
+
+          {/* Advance the customer paid: printed as "Less: Advance" and the balance due. */}
+          <section className={FORM_SECTION_CLASS}>
+            <FormSectionTitle icon={Wallet} title={t('advanceReceived')} description={t('advanceHint')} />
+            <div className={FORM_GRID_CLASS}>
+              <StockFormField control={form.control} name="advanceAmount" label={`${t('amount')} (₹)`} inputMode="decimal" placeholder="0" />
+              <StockDateField control={form.control} name="advanceDate" label={t('advanceDate')} placeholder={t('advanceDate')} />
+              <SelectFormField control={form.control} name="advanceMode" label={t('advanceMode')} placeholder={t('advanceMode')}>
+                {ADVANCE_MODES.map((mode) => <option key={mode} value={mode}>{t(`mode_${mode}`)}</option>)}
+              </SelectFormField>
             </div>
-            {/* Advance the customer paid: printed as "Less: Advance" and the balance due. */}
-            <div className="mb-6">
-              <h3 className="px-1 text-base font-semibold text-slate-900 dark:text-white">{t('advanceReceived')}</h3>
-              <p className="px-1 text-xs text-slate-500">{t('advanceHint')}</p>
-              <div className="mt-2 grid grid-cols-1 items-start gap-4 sm:grid-cols-3">
-                <StockFormField control={form.control} name="advanceAmount" label={`${t('amount')} (₹)`} inputMode="decimal" placeholder="0" />
-                <StockDateField control={form.control} name="advanceDate" label={t('advanceDate')} placeholder={t('advanceDate')} />
-                <SelectFormField control={form.control} name="advanceMode" label={t('advanceMode')} placeholder={t('advanceMode')}>
-                  {ADVANCE_MODES.map((mode) => <option key={mode} value={mode}>{t(`mode_${mode}`)}</option>)}
-                </SelectFormField>
-              </div>
-            </div>
+          </section>
+
+          <section className={FORM_SECTION_CLASS}>
             <TextareaFormField control={form.control} name="notes" label={t('notes')} />
             {totals ? (
               <dl className="mt-4 ml-auto grid max-w-xs grid-cols-2 gap-y-1 text-sm tabular-nums">
@@ -408,33 +406,25 @@ export function InvoiceFormContent({
                 ) : null}
               </dl>
             ) : null}
-          </div>
+          </section>
           <InlineNotice notice={notice} />
         </fieldset>
-        <div className="mt-6 flex flex-col gap-2 sm:flex-row">
-          <button
-            type="submit"
-            disabled={submitting}
-            className={SUBMIT_BUTTON_CLASS}
-          >
-            <span className="inline-flex items-center justify-center gap-2">
-              <Send className="h-4 w-4" />
-              {submitting ? t('submitting') : submitLabel || t('submitEstimate')}
-              <kbd aria-hidden="true" className="ml-1 hidden rounded-lg bg-white/20 px-2 font-sans text-[11px] font-medium sm:inline">Ctrl ↵</kbd>
-            </span>
-          </button>
+        <div className={`${FORM_FOOTER_CLASS} flex-col gap-2 sm:flex-row`}>
           {onSubmitAndApprove ? (
             <button
               type="button"
               disabled={submitting}
               onClick={form.handleSubmit(onSubmitAndApprove)}
-              className={SUBMIT_SECONDARY_CLASS}
+              className={`${SUBMIT_SECONDARY_CLASS} sm:w-auto`}
             >
-              <span className="inline-flex items-center justify-center gap-2">
-                <Check className="h-4 w-4" /> {t('saveAndApprove')}
-              </span>
+              <Check className="h-4 w-4" /> {t('saveAndApprove')}
             </button>
           ) : null}
+          <button type="submit" disabled={submitting} className={`${SUBMIT_BUTTON_CLASS} sm:w-auto sm:min-w-48`}>
+            <Send className="h-4 w-4" />
+            {submitting ? t('submitting') : submitLabel || t('submitEstimate')}
+            <kbd aria-hidden="true" className="hidden rounded-lg bg-white/20 px-2 font-sans text-[11px] font-medium sm:inline">Ctrl ↵</kbd>
+          </button>
         </div>
       </form>
     </Form>

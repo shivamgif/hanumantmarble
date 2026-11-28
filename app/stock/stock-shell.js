@@ -23,18 +23,17 @@ import StockNotificationsSheet from '@/components/stock/layout/StockNotification
 import ClockInReminder from '@/components/stock/layout/ClockInReminder';
 import { CompanyMark } from '@/components/ui/brand-mark';
 import { PRODUCT_NAME } from '@/lib/product';
+import { PageSkeleton } from '@/components/ui/skeleton';
 
 primeStockAccess();
 
 const ALWAYS_SHOWN = new Set(['/stock', '/stock/settings']);
 
-function FullScreenSpinner({ label }) {
+// Before the shell can draw (sign-in, access): the same skeleton every page loads with.
+function FullScreenLoading({ label }) {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-[#0b0f1a]">
-      <div className="flex flex-col items-center gap-4" role="status" aria-live="polite">
-        <div className="h-8 w-8 animate-spin rounded-full border border-border border-t-foreground" />
-        <p className="text-sm text-slate-400 dark:text-slate-500">{label}</p>
-      </div>
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0b0f1a]">
+      <PageSkeleton label={label} />
     </div>
   );
 }
@@ -164,7 +163,7 @@ export default function StockShell({ children }) {
   };
 
   if (isLoading) {
-    return <FullScreenSpinner label="Loading…" />;
+    return <FullScreenLoading label="Loading…" />;
   }
 
   if (error && !isUnauthorizedError) {
@@ -183,7 +182,7 @@ export default function StockShell({ children }) {
   }
 
   if (accessLoading && !hasResolvedAccessOnce) {
-    return <FullScreenSpinner label={t('loadingAccess')} />;
+    return <FullScreenLoading label={t('loadingAccess')} />;
   }
 
   if (!accessApproved) {

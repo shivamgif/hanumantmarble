@@ -1,5 +1,6 @@
 'use client';
 
+import { ListSkeleton } from '@/components/ui/skeleton';
 import { Fragment, useCallback, useState } from 'react';
 import { BarChart3, Download, PackageCheck, Plus, Search, CalendarDays, ArrowDown, ArrowUp, Send } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -244,10 +245,7 @@ export function DispatchesPanel({
         </div>
         <div className={`pb-1 md:hidden transition-opacity duration-200 ${dispatchFetching ? 'opacity-50' : ''}`}>
           {dispatchFetching && dispatchPagination.rows.length === 0 && (
-            <div className="flex items-center justify-center gap-2 py-8 text-slate-400">
-              <span className="h-4 w-4 animate-spin rounded-full border border-slate-300 border-t-foreground" />
-              <span className="text-sm">Loading…</span>
-            </div>
+            <ListSkeleton />
           )}
           {dispatchGroups.map((group) => (
             <div key={group.key} className="border-t border-border first:border-t-0">
@@ -491,10 +489,7 @@ export function DispatchesPanel({
               {dispatchFetching ? (
                 <tr>
                   <td colSpan={canEdit ? 7 : 4} className="px-4 py-8">
-                    <div className="flex items-center justify-center gap-2 text-slate-400">
-                      <span className="h-4 w-4 animate-spin rounded-full border border-slate-300 border-t-foreground" />
-                      <span className="text-sm">Loading…</span>
-                    </div>
+                    <ListSkeleton />
                   </td>
                 </tr>
               ) : dispatchPagination.total === 0 ? (

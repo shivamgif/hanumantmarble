@@ -13,6 +13,35 @@ export function Skeleton({ className, ...props }) {
   );
 }
 
+/**
+ * The one loading screen of the stock app: title, a row of four tiles, one
+ * block — the shape most pages land in. Used while a page's code or first data
+ * loads, and by the shell while sign-in and access are checked.
+ */
+export function PageSkeleton({ label = "Loading" }) {
+  return (
+    <div className="mx-auto w-full max-w-[1600px] space-y-4 p-4 sm:space-y-6 sm:p-6" role="status" aria-busy="true" aria-label={label}>
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-8 w-64 max-w-full" />
+      </div>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-24" />)}
+      </div>
+      <Skeleton className="h-80 w-full" />
+    </div>
+  );
+}
+
+/** A list or table still loading inside a page: grey rows, same as PageSkeleton's blocks. */
+export function ListSkeleton({ rows = 4 }) {
+  return (
+    <div className="space-y-2" role="status" aria-busy="true" aria-label="Loading">
+      {Array.from({ length: rows }, (_, i) => <Skeleton key={i} className="h-12" />)}
+    </div>
+  );
+}
+
 export function ProductCardSkeleton() {
   return (
     <div className="rounded-lg border-0 bg-card/50 shadow-float overflow-hidden">

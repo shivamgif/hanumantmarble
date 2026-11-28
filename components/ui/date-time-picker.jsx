@@ -46,7 +46,7 @@ export function DateTimePicker({ value, onChange, datePlaceholder = "Pick a date
       />
       <div
         className={cn(
-          "flex h-10 items-center justify-between rounded-lg border border-input bg-muted/40 px-4 text-sm text-foreground",
+          "flex h-9 items-center justify-between rounded-lg border border-input bg-muted/40 px-4 text-sm text-foreground",
           disabled && "cursor-not-allowed opacity-50"
         )}
       >

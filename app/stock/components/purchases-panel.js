@@ -1,5 +1,6 @@
 'use client';
 
+import { ListSkeleton } from '@/components/ui/skeleton';
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { lazyZodResolver } from '@/lib/forms/lazy-zod-resolver';
@@ -586,10 +587,7 @@ export function PurchasesPanel({
         </div>
         <div className={`pb-1 md:hidden transition-opacity duration-200 ${arrivalFetching ? 'opacity-50' : ''}`}>
           {arrivalFetching && arrivalPagination.rows.length === 0 && (
-            <div className="flex items-center justify-center gap-2 py-8 text-slate-400">
-              <span className="h-4 w-4 animate-spin rounded-full border border-slate-300 border-t-foreground" />
-              <span className="text-sm">Loading…</span>
-            </div>
+            <ListSkeleton />
           )}
           {arrivalGroups.map((group) => (
             <div key={group.key} className="border-t border-border first:border-t-0">
@@ -823,10 +821,7 @@ export function PurchasesPanel({
               {arrivalFetching ? (
                 <tr>
                   <td colSpan={canEdit ? 8 : 7} className="px-4 py-8">
-                    <div className="flex items-center justify-center gap-2 text-slate-400">
-                      <span className="h-4 w-4 animate-spin rounded-full border border-slate-300 border-t-foreground" />
-                      <span className="text-sm">Loading…</span>
-                    </div>
+                    <ListSkeleton />
                   </td>
                 </tr>
               ) : arrivalPagination.total === 0 ? (

@@ -1,5 +1,6 @@
 'use client';
 
+import { ListSkeleton } from '@/components/ui/skeleton';
 import { useCallback, useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight, Download } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -241,10 +242,7 @@ export function ProductSalesReport({ open, onOpenChange }) {
               {loading ? (
                 <tr>
                   <td colSpan={colSpan} className="px-4 py-8">
-                    <div className="flex items-center justify-center gap-2 text-slate-400">
-                      <span className="h-4 w-4 animate-spin rounded-full border border-slate-300 border-t-foreground" />
-                      <span className="text-sm">Loading…</span>
-                    </div>
+                    <ListSkeleton />
                   </td>
                 </tr>
               ) : !visible.length && !error ? (

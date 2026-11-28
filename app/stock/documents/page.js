@@ -1,5 +1,6 @@
 'use client';
 
+import { ListSkeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -393,7 +394,7 @@ export default function StockDocumentsPage() {
           </div>
 
           {loading ? (
-            <div className="space-y-2" aria-busy="true">{[0, 1, 2, 3].map((i) => <div key={i} className="h-12 skeleton rounded-lg" />)}</div>
+            <ListSkeleton />
           ) : documents.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">{t.empty}</div>
           ) : (

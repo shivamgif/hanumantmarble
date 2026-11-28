@@ -9,7 +9,7 @@ import { useStockAccess } from '@/hooks/useStockAccess';
 import { canSell, getRoleFlags } from '@/lib/stock-roles.mjs';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Boxes, Download, LayoutGrid, TrendingUp, UserCheck, Users } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { PageSkeleton } from '@/components/ui/skeleton';
 import { CLASSES, paceAdjustedTarget } from '../components/dashboard-ui';
 import { ERROR_BOX_CLASS, getJson, PILL_BUTTON_CLASS, tabButtonClass } from '../lib/stock-utils';
 import { LayoutMenu, WidgetGrid } from './components/widget-grid';
@@ -259,24 +259,7 @@ function AnalyticsDashboardInner() {
   // The full skeleton is for the first load only. Switching the range keeps the
   // current figures up (dimmed, below) until the new ones arrive.
   const hasData = Boolean(adminAnalytics || salespersonAnalytics);
-  if (loading && !hasData)
-    return (
-      <div className={CLASSES.contentWrap} aria-busy="true">
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-4 w-32 rounded-lg" />
-          <Skeleton className="h-8 w-64 max-w-full rounded-lg" />
-        </div>
-        <div className={CLASSES.heroGrid}>
-          {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={`hero-skeleton-${index}`} className="rounded-lg h-36" />
-          ))}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-          <Skeleton className="rounded-lg h-80" />
-          <Skeleton className="rounded-lg h-80" />
-        </div>
-      </div>
-    );
+  if (loading && !hasData) return <PageSkeleton />;
   if (error && !hasData) return <div className={CLASSES.contentWrap}><div role="alert" className={ERROR_BOX_CLASS}>{error}</div></div>;
 
   if (isSalesperson) {

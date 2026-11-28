@@ -1,5 +1,6 @@
 'use client';
 
+import { PageSkeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { Fragment, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -90,7 +91,7 @@ export default function InvoicePrintPage() {
   }, [issued, proformaOut, invoice, upiId, data]);
 
   if (error) return <div className={CLASSES.contentWrap}><p className="text-sm text-rose-500">{error}</p></div>;
-  if (!invoice) return <div className={CLASSES.contentWrap} aria-busy="true"><div className="h-9 w-48 skeleton rounded-lg" /><div className="mx-auto h-[70vh] max-w-[210mm] skeleton rounded-xl" /></div>;
+  if (!invoice) return <PageSkeleton />;
 
   const business = data.seller?.business || {};
   const branch = data.seller?.location || {};

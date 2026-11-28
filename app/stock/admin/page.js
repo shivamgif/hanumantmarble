@@ -1172,7 +1172,7 @@ export default function AdminDashboard() {
     );
   }
   if (!data && error) return <div className={CLASSES.contentWrap}><div role="alert" className={ERROR_BOX_CLASS}>{error}</div></div>;
-  if (!data) return null;
+  if (!data) return <PageSkeleton />;
 
   const adminTabs = [
     { id: 'approvals', label: t('approvals'), icon: ShieldCheck, badge: pendingApprovals },

@@ -1,5 +1,6 @@
 'use client';
 
+import { ListSkeleton } from '@/components/ui/skeleton';
 import { TabTrack } from '../components/tab-track';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -550,7 +551,7 @@ export default function InvoicesPage() {
           </div>
         )}
         {loading ? (
-          <div className="space-y-2 p-4" aria-busy="true">{[0, 1, 2, 3, 4].map((i) => <div key={i} className="h-12 skeleton rounded-lg" />)}</div>
+          <div className="p-4"><ListSkeleton rows={5} /></div>
         ) : error ? (
           <div className="p-4"><p role="alert" className={ERROR_BOX_CLASS}>{error}</p></div>
         ) : filter === 'creditNotes' ? (

@@ -1,5 +1,6 @@
 'use client';
 
+import { PageSkeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -44,7 +45,7 @@ export default function CreditNotePrintPage() {
   }, [signedQr]);
 
   if (error) return <div className={CLASSES.contentWrap}><p className="text-sm text-rose-500">{error}</p></div>;
-  if (!data) return <div className={CLASSES.contentWrap} aria-busy="true"><div className="h-9 w-48 skeleton rounded-lg" /><div className="mx-auto h-[70vh] max-w-[210mm] skeleton rounded-xl" /></div>;
+  if (!data) return <PageSkeleton />;
 
   const { note, party, states } = data;
   const business = data.seller?.business || {};

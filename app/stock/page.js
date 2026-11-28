@@ -2,6 +2,7 @@
 
 import { TabTrack } from './components/tab-track';
 import Link from 'next/link';
+import { PageSkeleton } from '@/components/ui/skeleton';
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { lazyZodResolver } from '@/lib/forms/lazy-zod-resolver';
@@ -1391,24 +1392,9 @@ export default function StockDashboard() {
 
   const stockPaginationWithPage = useMemo(() => ({ ...stockPagination, setPage: setStockPage }), [stockPagination]);
 
-  if (loading) {
-    return (
-      <div className={CLASSES.contentWrap} aria-busy="true">
-        <div className="flex flex-col gap-2">
-          <div className="h-4 w-32 skeleton rounded-lg" />
-          <div className="h-8 w-64 max-w-full skeleton rounded-lg" />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div key={`op-stat-skeleton-${index}`} className="h-36 rounded-lg skeleton" />
-          ))}
-        </div>
-        <div className="h-96 rounded-lg skeleton" />
-      </div>
-    );
-  }
+  if (loading) return <PageSkeleton />;
   if (error) return <div className={CLASSES.contentWrap}><div role="alert" className={ERROR_BOX_CLASS}>{error}</div></div>;
-  if (!data) return null;
+  if (!data) return <PageSkeleton />;
 
   return (
     <div className={`${CLASSES.contentWrap} overflow-x-hidden`}>
