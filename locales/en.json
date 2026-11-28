@@ -1152,7 +1152,7 @@
       "gstRate": "GST Rate",
       "quantity": "Quantity",
       "rateInclTax": "Rate (Incl. of Tax)",
-      "searchAddress": "Search customer address on Google Maps",
+      "sameAsDelivery": "Billing address same as delivery address",
       "searchDeliveryAddress": "Search delivery address on Google Maps",
       "inclGst": "incl. GST",
       "advanceReceived": "Advance received",

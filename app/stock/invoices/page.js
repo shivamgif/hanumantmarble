@@ -54,6 +54,7 @@ const blankInvoice = ({ branch = null, stateCode = '', city = '', seller = null 
   billToPincode: '',
   shipToAddress: '',
   shipToPincode: '',
+  sameAddress: true,
   salespersonName: seller?.name || '',
   salespersonUserId: seller ? String(seller.id) : '',
   referredByName: '',
@@ -76,8 +77,11 @@ const estimateToForm = (invoice) => ({
   billToStateCode: invoice.bill_to_state_code,
   billToCity: invoice.bill_to_city || '',
   billToPincode: invoice.bill_to_pincode || '',
-  shipToAddress: invoice.ship_to_address || '',
-  shipToPincode: invoice.ship_to_pincode || '',
+  // No delivery address saved = delivered to the billing address.
+  shipToAddress: invoice.ship_to_address || invoice.bill_to_address || '',
+  shipToPincode: invoice.ship_to_pincode || invoice.bill_to_pincode || '',
+  sameAddress: !invoice.ship_to_address
+    || (invoice.ship_to_address === invoice.bill_to_address && (invoice.ship_to_pincode || invoice.bill_to_pincode) === invoice.bill_to_pincode),
   salespersonName: invoice.salesperson_name || '',
   salespersonUserId: invoice.salesperson_user_id != null ? String(invoice.salesperson_user_id) : '',
   referredByName: invoice.referred_by_name || '',
@@ -86,13 +90,16 @@ const estimateToForm = (invoice) => ({
   advanceAmount: Number(invoice.advance_amount) ? String(Number(invoice.advance_amount)) : '',
   advanceDate: invoice.advance_date_text || '',
   advanceMode: invoice.advance_mode || '',
-  // Rates are stored without GST and typed with it.
+  // Rates are stored without GST and typed with it: the box shows the price the
+  // customer was quoted. On save the server applies each item's GST from its
+  // purchase bill, so an estimate saved at 0% in the old form is corrected
+  // and keeps its total — the GST is split out of the price, not added on.
   // Charges (cartage) are stored among the lines; the form keeps them in their own section.
   charges: invoice.items.filter(isCharge).map((item) => ({
     label: item.itemLabel,
     sacCode: item.hsnCode,
     amount: String(inclusiveRate(item.ratePerUnit, item.gstRate)),
-    gstRate: String(item.gstRate ?? 18),
+    gstRate: '18',
   })),
   items: invoice.items.filter((item) => !isCharge(item)).map((item) => ({
     ...invoiceItemRow(),
@@ -105,7 +112,7 @@ const estimateToForm = (invoice) => ({
     qtySqft: item.itemCategory === 'stone' ? String(item.qtySqft) : '',
     ratePerUnit: String(inclusiveRate(item.ratePerUnit, item.gstRate)),
     hsnCode: item.hsnCode || '',
-    gstRate: String(item.gstRate ?? 18),
+    gstRate: '18',
   })),
 });
 
@@ -264,8 +271,13 @@ export default function InvoicesPage() {
         // One business behind every branch (the usual case): its state and city are the default place of supply.
         const business = new Set(branches.map((branch) => branch.businessId)).size === 1 ? branches[0] : null;
         const seller = (suggestions.salespersons || []).find((person) => Number(person.id) === Number(accessUser?.id));
+        // The seller's home branch (Attendance → Employees); without one, the
+        // only showroom (sales are made where the customer saw the goods),
+        // else the only branch.
+        const home = branches.find((branch) => Number(branch.id) === Number(seller?.defaultLocationId));
+        const showrooms = branches.filter((branch) => branch.locationType === 'showroom');
         form.reset(blankInvoice({
-          branch: branches.length === 1 ? branches[0] : null,
+          branch: home || (showrooms.length === 1 ? showrooms[0] : null) || (branches.length === 1 ? branches[0] : null),
           stateCode: business?.stateCode,
           city: business?.city,
           seller,

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { canSell, ensureDatabaseAvailable, getStockContext, normalizeStockRole, stockRoute } from '@/lib/stock-workflow';
 import { sql } from '@/lib/db';
+import { PURCHASE_GST_SQL } from '@/lib/gst-invoice.mjs';
 import { loadFormSuggestions } from '@/lib/stock-suggestions';
 import { getStockSchemaCapabilities } from '@/lib/stock-db-compat';
 import {
@@ -122,7 +123,8 @@ export const GET = stockRoute(async function GET(request) {
               ORDER BY isi.id DESC LIMIT 1) AS hsn_code,
            (SELECT isi.cost_per_sqm FROM stock_inbound_shipment_items isi
               WHERE isi.item_id = i.id AND isi.cost_per_sqm IS NOT NULL
-              ORDER BY isi.id DESC LIMIT 1) AS cost_per_sqm
+              ORDER BY isi.id DESC LIMIT 1) AS cost_per_sqm,
+           ${PURCHASE_GST_SQL} AS purchase_gst
          FROM stock_items i
          LEFT JOIN stock_brands b ON b.id = i.brand_id
          LEFT JOIN stock_types t ON t.id = i.type_id

@@ -1151,7 +1151,7 @@
       "gstRate": "GST दर",
       "quantity": "मात्रा",
       "rateInclTax": "दर (टैक्स सहित)",
-      "searchAddress": "ग्राहक का पता Google Maps पर खोजें",
+      "sameAsDelivery": "बिलिंग पता डिलीवरी पते जैसा ही है",
       "searchDeliveryAddress": "डिलीवरी का पता Google Maps पर खोजें",
       "inclGst": "GST सहित",
       "advanceReceived": "एडवांस प्राप्त",

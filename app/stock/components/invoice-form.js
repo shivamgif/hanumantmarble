@@ -4,10 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFieldArray, useWatch } from 'react-hook-form';
 import { Check, FileText, MapPin, Plus, Send, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { SelectField } from '@/components/ui/select';
-import { CARTAGE_SAC, computeInvoiceTotals, exclusiveRate, GST_STATES } from '@/lib/gst-invoice.mjs';
+import { CARTAGE_SAC, computeInvoiceTotals, exclusiveRate, GST_STATES, saleGstRate } from '@/lib/gst-invoice.mjs';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/translations';
 import { CustomerPhoneNameFields, FormSectionTitle, InlineNotice, StockDateField, StockFormField, SuggestComboboxField } from './stock-form-fields';
@@ -37,7 +38,6 @@ const newCharge = () => ({ label: 'Cartage', sacCode: CARTAGE_SAC, amount: '', g
 // Rates and charges are typed with GST in; the preview converts them as the server will.
 /** A form charge row as an invoice line, for the totals preview (the server builds the stored one). */
 const chargeLine = (row) => ({ itemCategory: 'charge', ratePerUnit: exclusiveRate(row.amount, row.gstRate || 18), gstRate: row.gstRate });
-const itemLine = (row) => ({ ...row, ratePerUnit: exclusiveRate(row.ratePerUnit, row.gstRate || 18) });
 const ADVANCE_MODES = ['cash', 'upi', 'bank', 'cheque'];
 
 function SelectFormField({ control, name, label, placeholder, children }) {
@@ -204,17 +204,34 @@ export function InvoiceFormContent({
 }) {
   const [items, charges, locationId, billToStateCode, advanceAmount] = useWatch({ control: form.control, name: ['items', 'charges', 'locationId', 'billToStateCode', 'advanceAmount'] });
   const chargesFieldArray = useFieldArray({ control: form.control, name: 'charges' });
+  // Billing address = delivery address (the default): kept in step as the
+  // delivery address is typed or picked, so the billing boxes stay hidden.
+  const [sameAddress, shipToAddress, shipToPincode] = useWatch({ control: form.control, name: ['sameAddress', 'shipToAddress', 'shipToPincode'] });
+  useEffect(() => {
+    if (!sameAddress) return;
+    const opts = { shouldValidate: form.formState.isSubmitted };
+    form.setValue('billToAddress', shipToAddress ?? '', opts);
+    form.setValue('billToPincode', shipToPincode ?? '', opts);
+  }, [form, sameAddress, shipToAddress, shipToPincode]);
   const sellerState = branches.find((branch) => String(branch.id) === String(locationId))?.stateCode;
+  // Each item's GST comes from its purchase bill, as the server will apply it.
+  const gstById = useMemo(() => new Map((allItems || []).map((item) => [String(item.id), saleGstRate(item.purchase_gst)])), [allItems]);
   const totals = useMemo(
     () => (sellerState && billToStateCode
-      ? computeInvoiceTotals([...(items || []).map(itemLine), ...(charges || []).map(chargeLine)], sellerState, billToStateCode)
+      ? computeInvoiceTotals([
+        ...(items || []).map((row) => {
+          const gstRate = gstById.get(String(row.itemId)) ?? 18;
+          return { ...row, gstRate, ratePerUnit: exclusiveRate(row.ratePerUnit, gstRate) };
+        }),
+        ...(charges || []).map(chargeLine),
+      ], sellerState, billToStateCode)
       : null),
-    [items, charges, sellerState, billToStateCode]
+    [items, charges, sellerState, billToStateCode, gstById]
   );
 
   const salespersonOptions = useMemo(() => {
     const people = Array.isArray(suggestions?.salespersons) ? suggestions.salespersons : [];
-    return people.map((person) => ({ id: String(person.id), name: String(person.name || '') }));
+    return people.map((person) => ({ id: String(person.id), name: String(person.name || ''), home: person.defaultLocationId }));
   }, [suggestions?.salespersons]);
 
   return (
@@ -246,6 +263,10 @@ export function InvoiceFormContent({
                   onChangeExtra={(value) => {
                     const match = salespersonOptions.find((option) => option.name === value);
                     form.setValue('salespersonUserId', match ? match.id : '', { shouldDirty: true });
+                    // Raising it for someone else: their home branch, when it sells.
+                    if (match?.home && branches.some((branch) => Number(branch.id) === Number(match.home))) {
+                      form.setValue('locationId', String(match.home), { shouldDirty: true });
+                    }
                   }}
                 />
               ) : null}
@@ -257,29 +278,40 @@ export function InvoiceFormContent({
                 options={suggestions?.referredByName || []}
               />
               <StockFormField control={form.control} name="referredByPhone" label={t('referredByPhone')} placeholder="Optional" type="tel" />
-              <AddressSearch
-                label={t('searchAddress')}
-                onPick={(place) => {
-                  const set = (name, value) => value && form.setValue(name, value, { shouldDirty: true, shouldValidate: true });
-                  set('billToAddress', place.address);
-                  set('billToCity', place.city);
-                  set('billToPincode', place.pincode);
-                  set('billToStateCode', place.stateCode);
-                }}
-              />
-              <TextareaFormField control={form.control} name="billToAddress" label={t('billToAddress')} />
-              <StockFormField control={form.control} name="billToCity" label={t('city')} placeholder="Ahmedabad" />
-              <StockFormField control={form.control} name="billToPincode" label={t('pincode')} inputMode="numeric" digitsOnly maxLength={6} placeholder="380001" />
+              {/* Delivery first: it's where the goods go, and usually the billing address too. */}
               <AddressSearch
                 label={t('searchDeliveryAddress')}
                 onPick={(place) => {
                   const set = (name, value) => value && form.setValue(name, value, { shouldDirty: true, shouldValidate: true });
                   set('shipToAddress', place.address);
                   set('shipToPincode', place.pincode);
+                  set('billToCity', place.city);
+                  set('billToStateCode', place.stateCode);
                 }}
               />
               <TextareaFormField control={form.control} name="shipToAddress" label={t('shipToAddress')} />
-              <StockFormField control={form.control} name="shipToPincode" label={t('shipToPincode')} inputMode="numeric" digitsOnly maxLength={6} placeholder="Optional" />
+              <StockFormField control={form.control} name="shipToPincode" label={t('shipToPincode')} inputMode="numeric" digitsOnly maxLength={6} placeholder={sameAddress ? '226010' : 'Optional'} />
+              <StockFormField control={form.control} name="billToCity" label={t('city')} placeholder="Lucknow" />
+              <FormField
+                control={form.control}
+                name="sameAddress"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2 lg:col-span-3">
+                    <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                      <FormControl>
+                        <Checkbox checked={field.value !== false} onChange={(e) => field.onChange(e.target.checked)} />
+                      </FormControl>
+                      {t('sameAsDelivery')}
+                    </label>
+                  </FormItem>
+                )}
+              />
+              {sameAddress === false ? (
+                <>
+                  <TextareaFormField control={form.control} name="billToAddress" label={t('billToAddress')} />
+                  <StockFormField control={form.control} name="billToPincode" label={t('pincode')} inputMode="numeric" digitsOnly maxLength={6} placeholder="226010" />
+                </>
+              ) : null}
             </div>
           </div>
 
