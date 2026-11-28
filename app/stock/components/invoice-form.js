@@ -60,8 +60,13 @@ function SelectFormField({ control, name, label, placeholder, children }) {
   );
 }
 
-// null = not asked yet; the server says whether a Google key is configured.
+// null = not asked yet; the server says whether a Google key is configured,
+// and turns it false for the day once the daily budget is spent.
 let placesEnabled = null;
+// Same text, same answer: retyping or backspacing costs nothing.
+const placesCache = new Map();
+// One address search may make this many calls before asking for typing instead.
+const SEARCHES_PER_ADDRESS = 12;
 
 /**
  * "Search on Google Maps" above an address box. Picking a suggestion fills the
@@ -74,7 +79,9 @@ function AddressSearch({ label, onPick }) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [limitNote, setLimitNote] = useState('');
   const session = useRef('');
+  const calls = useRef(0);
 
   useEffect(() => {
     if (placesEnabled !== null) return;
@@ -85,17 +92,27 @@ function AddressSearch({ label, onPick }) {
   }, []);
 
   useEffect(() => {
-    if (!enabled || query.trim().length < 3) { setSuggestions([]); return undefined; }
+    const text = query.trim().toLowerCase();
+    if (!enabled || text.length < 5) { setSuggestions([]); return undefined; }
+    if (placesCache.has(text)) { setSuggestions(placesCache.get(text)); return undefined; }
+    if (calls.current >= SEARCHES_PER_ADDRESS) { setLimitNote('Pick a suggestion or type the rest by hand.'); return undefined; }
     session.current ||= crypto.randomUUID();
-    // ponytail: 350 ms debounce keeps an address to ~5 billed calls; no cache.
+    // Asks only once typing pauses: a whole address usually costs 3–6 calls.
     const timer = setTimeout(() => {
-      fetch(`/api/stock/places?${new URLSearchParams({ q: query, session: session.current })}`)
-        .then((res) => res.json()).then((json) => setSuggestions(json.suggestions || [])).catch(() => setSuggestions([]));
-    }, 350);
+      calls.current += 1;
+      fetch(`/api/stock/places?${new URLSearchParams({ q: text, session: session.current })}`)
+        .then(async (res) => {
+          const json = await res.json();
+          if (json.limited) { placesEnabled = false; setLimitNote(json.error); setSuggestions([]); return; }
+          placesCache.set(text, json.suggestions || []);
+          setSuggestions(json.suggestions || []);
+        })
+        .catch(() => setSuggestions([]));
+    }, 500);
     return () => clearTimeout(timer);
   }, [enabled, query]);
 
-  if (!enabled) return null;
+  if (!enabled && !limitNote) return null;
   const pick = async (placeId) => {
     setBusy(true);
     try {
@@ -103,6 +120,8 @@ function AddressSearch({ label, onPick }) {
       if (res.ok) onPick(await res.json());
     } finally {
       session.current = '';
+      calls.current = 0;
+      if (placesEnabled !== false) setLimitNote('');
       setQuery('');
       setSuggestions([]);
       setBusy(false);
@@ -118,7 +137,7 @@ function AddressSearch({ label, onPick }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
-          disabled={busy}
+          disabled={busy || placesEnabled === false}
           placeholder="Gomti Nagar, Hazratganj, shop or landmark…"
           className={`${FORM_INPUT_CLASS} pl-9`}
           autoComplete="off"
@@ -126,6 +145,7 @@ function AddressSearch({ label, onPick }) {
           aria-expanded={suggestions.length > 0}
         />
       </div>
+      {limitNote ? <p className="mt-1 text-xs text-amber-600">{limitNote}</p> : null}
       {suggestions.length ? (
         <ul role="listbox" className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-border bg-popover text-sm shadow-lg">
           {suggestions.map((s) => (

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { stockRoute } from '@/lib/stock-workflow';
+import { getStockContext, stockRoute } from '@/lib/stock-workflow';
+import { sql } from '@/lib/db';
+import { istToday } from '@/lib/attendance.mjs';
 import { GST_STATES } from '@/lib/gst-invoice.mjs';
 
 // Address suggestions from Google Places (New), proxied so the key never
@@ -16,6 +18,31 @@ const PLACES = 'https://places.googleapis.com/v1';
 const LUCKNOW_BIAS = { circle: { center: { latitude: 26.8467, longitude: 80.9462 }, radius: 50000 } };
 const STATE_BY_NAME = new Map(Object.entries(GST_STATES).map(([code, name]) => [name.toLowerCase(), code]));
 
+// Calls a day, all staff together, kept under the key's own daily cap (the
+// demo key's, or the quota set in Google Cloud). One person gets a fifth, so
+// a stuck screen or a long search session can't starve the rest.
+const dailyLimit = () => Number(process.env.PLACES_DAILY_LIMIT) || 1000;
+
+/** Counts this call; false once today's budget (shop or person) is spent. */
+async function spend(request) {
+  const { appUser } = await getStockContext(request);
+  const [row] = await sql(
+    `WITH up AS (
+       INSERT INTO places_usage (day, user_id, calls) VALUES ($1, $2, 1)
+       ON CONFLICT (tenant_id, day, user_id) DO UPDATE SET calls = places_usage.calls + 1
+       RETURNING calls)
+     SELECT (SELECT calls FROM up) AS mine,
+            (SELECT COALESCE(SUM(calls), 0) FROM places_usage WHERE day = $1) + 1 AS total`,
+    [istToday(), Number(appUser.id)]
+  );
+  return Number(row.total) <= dailyLimit() && Number(row.mine) <= dailyLimit() / 5;
+}
+
+const overBudget = () => NextResponse.json(
+  { error: 'Address search has reached today’s limit. Type the address in by hand.', limited: true },
+  { status: 429 }
+);
+
 const token = (value) => String(value || '').replace(/[^\w-]/g, '').slice(0, 64);
 
 /**
@@ -30,6 +57,7 @@ export const GET = stockRoute(async function GET(request) {
 
   const placeId = token(params.get('placeId'));
   if (placeId) {
+    if (!(await spend(request))) return overBudget();
     const res = await fetch(`${PLACES}/places/${placeId}${sessionToken ? `?sessionToken=${sessionToken}` : ''}`, {
       headers: { ...headers, 'X-Goog-FieldMask': 'formattedAddress,addressComponents' },
       cache: 'no-store',
@@ -47,7 +75,8 @@ export const GET = stockRoute(async function GET(request) {
   }
 
   const input = String(params.get('q') || '').trim().slice(0, 200);
-  if (input.length < 3) return NextResponse.json({ enabled: true, suggestions: [] });
+  if (input.length < 5) return NextResponse.json({ enabled: true, suggestions: [] });
+  if (!(await spend(request))) return overBudget();
   const res = await fetch(`${PLACES}/places:autocomplete`, {
     method: 'POST',
     headers,
